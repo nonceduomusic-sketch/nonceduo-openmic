@@ -127,6 +127,15 @@ export const AdminLogin: React.FC = () => {
             <LogIn className="w-4 h-4 mr-2" />
             {isLoading ? 'Accesso...' : 'Accedi'}
           </Button>
+
+          <div className="text-center pt-2">
+            <a 
+              href="mailto:nonceduo.music@gmail.com?subject=Reset%20Credenziali%20Admin%20-%20Non%20C'è%20Duo&body=Ciao%2C%0A%0ARichiedo%20il%20reset%20delle%20credenziali%20admin%20per%20il%20pannello%20karaoke.%0A%0AGrazie!"
+              className="text-sm text-muted-foreground hover:text-secondary transition-colors underline"
+            >
+              Hai dimenticato le credenziali?
+            </a>
+          </div>
         </form>
       </div>
     </div>
