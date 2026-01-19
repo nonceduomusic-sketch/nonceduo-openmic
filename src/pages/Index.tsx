@@ -79,7 +79,8 @@ const Index: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex flex-col gap-2 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-3">
+        {/* Mobile: 1 col, Tablet: 2 cols with better spacing, Desktop: 3 cols */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-3">
           {filteredSongs.map((song, index) => (
             <SongCard
               key={`${song.title}-${song.artist}-${index}`}
