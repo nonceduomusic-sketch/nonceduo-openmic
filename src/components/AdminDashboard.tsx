@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   LogOut,
   Trash2,
@@ -9,6 +9,8 @@ import {
   CheckSquare,
   Square,
   X,
+  Home,
+  Undo2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAdmin } from '@/contexts/AdminContext';
@@ -26,9 +28,18 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
+
+// Type for tracking undo operations
+interface UndoAction {
+  type: 'complete' | 'reactivate' | 'delete' | 'deleteMultiple';
+  reservations: Reservation[];
+  description: string;
+}
 
 export const AdminDashboard: React.FC = () => {
   const { currentUser, logout } = useAdmin();
+  const { toast } = useToast();
   const {
     activeReservations,
     completedReservations,
@@ -39,12 +50,14 @@ export const AdminDashboard: React.FC = () => {
     resetCompletedReservations,
     deleteReservation,
     deleteMultipleReservations,
+    restoreReservation,
   } = useReservations();
 
   const [notifications, setNotifications] = useState<Reservation[]>([]);
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [lastAction, setLastAction] = useState<UndoAction | null>(null);
 
   const currentReservations =
     activeTab === 'active' ? activeReservations : completedReservations;
@@ -99,23 +112,134 @@ export const AdminDashboard: React.FC = () => {
 
   const handleDeleteSelected = async () => {
     if (selectedIds.size === 0) return;
+    
+    // Store reservations for potential undo
+    const reservationsToDelete = currentReservations.filter(r => selectedIds.has(r.id));
+    
     const success = await deleteMultipleReservations(Array.from(selectedIds));
     if (success) {
+      setLastAction({
+        type: 'deleteMultiple',
+        reservations: reservationsToDelete,
+        description: `${reservationsToDelete.length} prenotazioni eliminate`,
+      });
       setSelectedIds(new Set());
       setSelectionMode(false);
     }
   };
 
   const handleSingleDelete = async (id: string) => {
-    await deleteReservation(id);
+    // Store reservation for potential undo
+    const reservationToDelete = [...activeReservations, ...completedReservations].find(r => r.id === id);
+    
+    const success = await deleteReservation(id);
+    if (success && reservationToDelete) {
+      setLastAction({
+        type: 'delete',
+        reservations: [reservationToDelete],
+        description: `Prenotazione di "${reservationToDelete.customer_name}" eliminata`,
+      });
+    }
   };
 
   const handleResetCurrent = async () => {
+    // Store reservations for potential undo
+    const reservationsToReset = [...currentReservations];
+    
+    let success = false;
     if (activeTab === 'active') {
-      await resetActiveReservations();
+      success = await resetActiveReservations();
     } else {
-      await resetCompletedReservations();
+      success = await resetCompletedReservations();
     }
+    
+    if (success && reservationsToReset.length > 0) {
+      setLastAction({
+        type: 'deleteMultiple',
+        reservations: reservationsToReset,
+        description: `${reservationsToReset.length} prenotazioni ${activeTab === 'active' ? 'in corso' : 'completate'} eliminate`,
+      });
+    }
+  };
+
+  const handleUndo = async () => {
+    if (!lastAction) return;
+    
+    let success = true;
+    for (const reservation of lastAction.reservations) {
+      const result = await restoreReservation(reservation);
+      if (!result) {
+        success = false;
+        break;
+      }
+    }
+    
+    if (success) {
+      toast({
+        title: "Operazione annullata",
+        description: `Ripristinata: ${lastAction.description}`,
+      });
+      setLastAction(null);
+    }
+  };
+
+  const handleComplete = async (id: string) => {
+    const reservation = activeReservations.find(r => r.id === id);
+    const success = await completeReservation(id);
+    if (success && reservation) {
+      setLastAction({
+        type: 'complete',
+        reservations: [reservation],
+        description: `Prenotazione di "${reservation.customer_name}" completata`,
+      });
+    }
+  };
+
+  const handleReactivate = async (id: string) => {
+    const reservation = completedReservations.find(r => r.id === id);
+    const success = await reactivateReservation(id);
+    if (success && reservation) {
+      setLastAction({
+        type: 'reactivate',
+        reservations: [reservation],
+        description: `Prenotazione di "${reservation.customer_name}" riattivata`,
+      });
+    }
+  };
+
+  const handleUndoCompleteOrReactivate = async () => {
+    if (!lastAction) return;
+    
+    const reservation = lastAction.reservations[0];
+    let success = false;
+    
+    if (lastAction.type === 'complete') {
+      success = await reactivateReservation(reservation.id);
+    } else if (lastAction.type === 'reactivate') {
+      success = await completeReservation(reservation.id);
+    }
+    
+    if (success) {
+      toast({
+        title: "Operazione annullata",
+        description: `Ripristinata: ${lastAction.description}`,
+      });
+      setLastAction(null);
+    }
+  };
+
+  const handleUndoAction = async () => {
+    if (!lastAction) return;
+    
+    if (lastAction.type === 'delete' || lastAction.type === 'deleteMultiple') {
+      await handleUndo();
+    } else {
+      await handleUndoCompleteOrReactivate();
+    }
+  };
+
+  const openHomePage = () => {
+    window.open('/', '_blank');
   };
 
   const exitSelectionMode = () => {
@@ -159,6 +283,31 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Home button - always visible */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openHomePage}
+                className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+              >
+                <Home className="w-4 h-4 md:mr-2" />
+                <span className="hidden md:inline">Home</span>
+              </Button>
+
+              {/* Undo button - visible when there's an action to undo */}
+              {lastAction && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleUndoAction}
+                  className="border-amber-500 text-amber-500 hover:bg-amber-500 hover:text-white animate-pulse"
+                  title={`Annulla: ${lastAction.description}`}
+                >
+                  <Undo2 className="w-4 h-4 md:mr-2" />
+                  <span className="hidden md:inline">Annulla</span>
+                </Button>
+              )}
+
               {!selectionMode ? (
                 <>
                   <Button
@@ -336,7 +485,7 @@ export const AdminDashboard: React.FC = () => {
                 <ReservationCard
                   key={reservation.id}
                   reservation={reservation}
-                  onComplete={completeReservation}
+                  onComplete={handleComplete}
                   onDelete={handleSingleDelete}
                   selectionMode={selectionMode}
                   isSelected={selectedIds.has(reservation.id)}
@@ -359,7 +508,7 @@ export const AdminDashboard: React.FC = () => {
                 <ReservationCard
                   key={reservation.id}
                   reservation={reservation}
-                  onReactivate={reactivateReservation}
+                  onReactivate={handleReactivate}
                   onDelete={handleSingleDelete}
                   selectionMode={selectionMode}
                   isSelected={selectedIds.has(reservation.id)}

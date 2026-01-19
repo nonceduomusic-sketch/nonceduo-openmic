@@ -212,6 +212,19 @@ export const useReservations = () => {
     }
   };
 
+  const restoreReservation = async (reservation: Reservation) => {
+    try {
+      await callAdminApi('restore', { reservation });
+      return true;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error restoring reservation:', error);
+      }
+      toast.error('Errore nel ripristino');
+      return false;
+    }
+  };
+
   const activeReservations = reservations.filter((r) => r.status === 'in_progress');
   const completedReservations = reservations
     .filter((r) => r.status === 'completed')
@@ -233,5 +246,6 @@ export const useReservations = () => {
     resetCompletedReservations,
     deleteReservation,
     deleteMultipleReservations,
+    restoreReservation,
   };
 };
