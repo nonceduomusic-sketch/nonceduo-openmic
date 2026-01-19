@@ -5,6 +5,18 @@ import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useAdmin } from '@/contexts/AdminContext';
 import { toast } from 'sonner';
+import { z } from 'zod';
+
+// Input validation schema
+const loginSchema = z.object({
+  username: z.string()
+    .trim()
+    .min(1, 'Username obbligatorio')
+    .max(50, 'Username troppo lungo'),
+  password: z.string()
+    .min(1, 'Password obbligatoria')
+    .max(100, 'Password troppo lunga'),
+});
 
 export const AdminLogin: React.FC = () => {
   const [username, setUsername] = useState('');
@@ -14,32 +26,37 @@ export const AdminLogin: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim() || !password.trim()) return;
+    
+    // Validate inputs
+    const validation = loginSchema.safeParse({ username, password });
+    if (!validation.success) {
+      toast.error(validation.error.errors[0]?.message || 'Input non valido');
+      return;
+    }
 
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase
-        .from('admin_users')
-        .select('*')
-        .eq('username', username.trim())
-        .eq('password_hash', password)
-        .maybeSingle();
+      // Call edge function to validate admin credentials
+      const { data, error: fnError } = await supabase.functions.invoke('admin-login', {
+        body: { username: username.trim(), password }
+      });
 
-      if (error) {
-        console.error('Login error:', error);
+      if (fnError || !data?.success) {
+        toast.error(data?.error || 'Credenziali non valide');
+        setIsLoading(false);
+        return;
+      }
+
+      // Sign in with the admin email and password
+      const { error: signInError } = await login(data.email, password);
+      
+      if (signInError) {
         toast.error('Errore durante il login');
         setIsLoading(false);
         return;
       }
 
-      if (!data) {
-        toast.error('Credenziali non valide');
-        setIsLoading(false);
-        return;
-      }
-
-      login(data.username);
       toast.success(`Benvenuto, ${data.username}!`);
     } catch {
       toast.error('Errore durante il login');
@@ -77,6 +94,8 @@ export const AdminLogin: React.FC = () => {
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Inserisci username..."
                 className="pl-10 bg-muted border-border focus:border-primary"
+                maxLength={50}
+                autoComplete="username"
               />
             </div>
           </div>
@@ -94,6 +113,8 @@ export const AdminLogin: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Inserisci password..."
                 className="pl-10 bg-muted border-border focus:border-primary"
+                maxLength={100}
+                autoComplete="current-password"
               />
             </div>
           </div>
