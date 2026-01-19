@@ -76,7 +76,7 @@ export const AdminLogin: React.FC = () => {
             Admin Login
           </h1>
           <p className="text-muted-foreground text-sm mt-2">
-            Pannello di gestione karaoke
+            Pannello di gestione Non c'è Duo - Open Mic
           </p>
         </div>
 

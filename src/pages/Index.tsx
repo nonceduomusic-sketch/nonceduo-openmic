@@ -72,8 +72,10 @@ const Index: React.FC = () => {
       <main className="container py-4 pb-8">
         {/* Description */}
         <div className="mb-4 p-3 rounded-lg bg-muted/30 border border-border">
-          <p className="text-sm text-muted-foreground text-center">
-            🎤 Cerca la tua canzone preferita, clicca su <strong className="text-primary">Prenota</strong> per inviarci la richiesta su WhatsApp, oppure su <strong className="text-secondary">Testo</strong> per cercare il testo online!
+          <p className="text-sm text-muted-foreground text-center leading-relaxed">
+            🎤 Cerca la tua canzone preferita.<br />
+            👉 Clicca su <strong className="text-primary">Prenota</strong> per inviarci la richiesta su WhatsApp.<br />
+            📄 Clicca su <strong className="text-secondary">Testo</strong> per aprire il testo della canzone online.
           </p>
         </div>
 
