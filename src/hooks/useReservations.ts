@@ -143,6 +143,66 @@ export const useReservations = () => {
     return true;
   };
 
+  const resetActiveReservations = async () => {
+    const { error } = await supabase
+      .from('reservations')
+      .delete()
+      .eq('status', 'in_progress');
+
+    if (error) {
+      console.error('Error resetting active reservations:', error);
+      toast.error('Errore nel reset delle prenotazioni in corso');
+      return false;
+    }
+
+    toast.success('Prenotazioni in corso cancellate');
+    return true;
+  };
+
+  const resetCompletedReservations = async () => {
+    const { error } = await supabase
+      .from('reservations')
+      .delete()
+      .eq('status', 'completed');
+
+    if (error) {
+      console.error('Error resetting completed reservations:', error);
+      toast.error('Errore nel reset delle prenotazioni completate');
+      return false;
+    }
+
+    toast.success('Prenotazioni completate cancellate');
+    return true;
+  };
+
+  const deleteReservation = async (id: string) => {
+    const { error } = await supabase.from('reservations').delete().eq('id', id);
+
+    if (error) {
+      console.error('Error deleting reservation:', error);
+      toast.error('Errore nella cancellazione');
+      return false;
+    }
+
+    return true;
+  };
+
+  const deleteMultipleReservations = async (ids: string[]) => {
+    const { error } = await supabase
+      .from('reservations')
+      .delete()
+      .in('id', ids);
+
+    if (error) {
+      console.error('Error deleting reservations:', error);
+      toast.error('Errore nella cancellazione');
+      return false;
+    }
+
+    toast.success(`${ids.length} prenotazioni cancellate`);
+    return true;
+  };
+
   const activeReservations = reservations.filter((r) => r.status === 'in_progress');
   const completedReservations = reservations
     .filter((r) => r.status === 'completed')
@@ -160,5 +220,9 @@ export const useReservations = () => {
     completeReservation,
     reactivateReservation,
     resetAllReservations,
+    resetActiveReservations,
+    resetCompletedReservations,
+    deleteReservation,
+    deleteMultipleReservations,
   };
 };
