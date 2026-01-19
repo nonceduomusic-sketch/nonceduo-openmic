@@ -53,7 +53,7 @@ serve(async (req: Request): Promise<Response> => {
     // Use service role for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    const { action, id, ids, status, filter } = await req.json();
+    const { action, id, ids, status, filter, reservation } = await req.json();
     console.log(`Admin reservation action: ${action} by ${user.email}`);
 
     switch (action) {
@@ -197,6 +197,36 @@ serve(async (req: Request): Promise<Response> => {
           console.error("Error resetting completed reservations:", error);
           return new Response(
             JSON.stringify({ error: "Errore nel reset" }),
+            { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+        break;
+      }
+
+      case "restore": {
+        if (!reservation) {
+          return new Response(
+            JSON.stringify({ error: "Dati prenotazione mancanti" }),
+            { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+        
+        const { error } = await supabase
+          .from("reservations")
+          .insert({
+            id: reservation.id,
+            customer_name: reservation.customer_name,
+            song_title: reservation.song_title,
+            song_artist: reservation.song_artist,
+            status: reservation.status,
+            completed_at: reservation.completed_at,
+            created_at: reservation.created_at,
+          });
+
+        if (error) {
+          console.error("Error restoring reservation:", error);
+          return new Response(
+            JSON.stringify({ error: "Errore nel ripristino" }),
             { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
           );
         }
