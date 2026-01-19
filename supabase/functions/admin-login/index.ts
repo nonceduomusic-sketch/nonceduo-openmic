@@ -179,13 +179,15 @@ serve(async (req) => {
       
       authUser = newUser.user;
       
-      // Add admin role to user_roles table
+      // Add admin role to user_roles table (use service role to bypass RLS)
       const { error: roleError } = await supabaseAdmin
         .from("user_roles")
-        .insert({ user_id: authUser.id, role: "admin" });
+        .upsert({ user_id: authUser.id, role: "admin" }, { onConflict: 'user_id,role' });
       
       if (roleError) {
         console.error("Error adding admin role:", roleError);
+      } else {
+        console.log("Admin role added for user:", authUser.id);
       }
     } else {
       // Update password if it changed
