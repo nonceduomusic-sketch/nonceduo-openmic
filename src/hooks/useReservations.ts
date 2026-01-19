@@ -12,6 +12,25 @@ export interface Reservation {
   created_at: string;
 }
 
+// Helper to call admin-reservations edge function
+const callAdminApi = async (action: string, data: Record<string, unknown> = {}) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session) {
+    throw new Error('Non autorizzato');
+  }
+
+  const response = await supabase.functions.invoke('admin-reservations', {
+    body: { action, ...data },
+  });
+
+  if (response.error) {
+    throw new Error(response.error.message || 'Errore nella richiesta');
+  }
+
+  return response.data;
+};
+
 export const useReservations = () => {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +42,9 @@ export const useReservations = () => {
       .order('created_at', { ascending: true });
 
     if (error) {
-      console.error('Error fetching reservations:', error);
+      if (import.meta.env.DEV) {
+        console.error('Error fetching reservations:', error);
+      }
       toast.error('Errore nel caricamento delle prenotazioni');
       return;
     }
@@ -85,7 +106,9 @@ export const useReservations = () => {
     });
 
     if (error) {
-      console.error('Error creating reservation:', error);
+      if (import.meta.env.DEV) {
+        console.error('Error creating reservation:', error);
+      }
       toast.error('Errore nella prenotazione');
       return false;
     }
@@ -95,112 +118,98 @@ export const useReservations = () => {
   };
 
   const completeReservation = async (id: string) => {
-    const { error } = await supabase
-      .from('reservations')
-      .update({
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-      })
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error completing reservation:', error);
+    try {
+      await callAdminApi('complete', { id });
+      return true;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error completing reservation:', error);
+      }
       toast.error('Errore nel completamento');
       return false;
     }
-
-    return true;
   };
 
   const reactivateReservation = async (id: string) => {
-    const { error } = await supabase
-      .from('reservations')
-      .update({
-        status: 'in_progress',
-        completed_at: null,
-      })
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error reactivating reservation:', error);
+    try {
+      await callAdminApi('reactivate', { id });
+      return true;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error reactivating reservation:', error);
+      }
       toast.error('Errore nella riattivazione');
       return false;
     }
-
-    return true;
   };
 
   const resetAllReservations = async () => {
-    const { error } = await supabase.from('reservations').delete().neq('id', '');
-
-    if (error) {
-      console.error('Error resetting reservations:', error);
+    try {
+      await callAdminApi('resetAll');
+      toast.success('Tutte le prenotazioni sono state cancellate');
+      return true;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error resetting reservations:', error);
+      }
       toast.error('Errore nel reset');
       return false;
     }
-
-    toast.success('Tutte le prenotazioni sono state cancellate');
-    return true;
   };
 
   const resetActiveReservations = async () => {
-    const { error } = await supabase
-      .from('reservations')
-      .delete()
-      .eq('status', 'in_progress');
-
-    if (error) {
-      console.error('Error resetting active reservations:', error);
+    try {
+      await callAdminApi('resetActive');
+      toast.success('Prenotazioni in corso cancellate');
+      return true;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error resetting active reservations:', error);
+      }
       toast.error('Errore nel reset delle prenotazioni in corso');
       return false;
     }
-
-    toast.success('Prenotazioni in corso cancellate');
-    return true;
   };
 
   const resetCompletedReservations = async () => {
-    const { error } = await supabase
-      .from('reservations')
-      .delete()
-      .eq('status', 'completed');
-
-    if (error) {
-      console.error('Error resetting completed reservations:', error);
+    try {
+      await callAdminApi('resetCompleted');
+      toast.success('Prenotazioni completate cancellate');
+      return true;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error resetting completed reservations:', error);
+      }
       toast.error('Errore nel reset delle prenotazioni completate');
       return false;
     }
-
-    toast.success('Prenotazioni completate cancellate');
-    return true;
   };
 
   const deleteReservation = async (id: string) => {
-    const { error } = await supabase.from('reservations').delete().eq('id', id);
-
-    if (error) {
-      console.error('Error deleting reservation:', error);
+    try {
+      await callAdminApi('delete', { id });
+      return true;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error deleting reservation:', error);
+      }
       toast.error('Errore nella cancellazione');
       return false;
     }
-
-    return true;
   };
 
   const deleteMultipleReservations = async (ids: string[]) => {
-    const { error } = await supabase
-      .from('reservations')
-      .delete()
-      .in('id', ids);
-
-    if (error) {
-      console.error('Error deleting reservations:', error);
+    try {
+      await callAdminApi('deleteMultiple', { ids });
+      toast.success(`${ids.length} prenotazioni cancellate`);
+      return true;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error deleting reservations:', error);
+      }
       toast.error('Errore nella cancellazione');
       return false;
     }
-
-    toast.success(`${ids.length} prenotazioni cancellate`);
-    return true;
   };
 
   const activeReservations = reservations.filter((r) => r.status === 'in_progress');
