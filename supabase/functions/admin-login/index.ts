@@ -11,9 +11,60 @@ function toHex(buffer: Uint8Array): string {
   return Array.from(buffer).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Convert hex string to Uint8Array
+function hexToBytes(hex: string): Uint8Array {
+  const bytes = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < hex.length; i += 2) {
+    bytes[i / 2] = parseInt(hex.substring(i, i + 2), 16);
+  }
+  return bytes;
+}
+
 // Verify password using PBKDF2 (Web Crypto API compatible with Supabase Edge)
 async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
-  const [salt, expectedHash] = storedHash.split(":");
+  // Handle format: "pbkdf2:iterations:saltHex:hashHex"
+  const parts = storedHash.split(":");
+  
+  if (parts.length !== 4 || parts[0] !== "pbkdf2") {
+    // Legacy format check: "saltHex:hashHex" (2 parts)
+    if (parts.length === 2) {
+      const salt = hexToBytes(parts[0]);
+      const expectedHash = parts[1];
+      
+      const encoder = new TextEncoder();
+      const keyMaterial = await crypto.subtle.importKey(
+        "raw",
+        encoder.encode(password),
+        "PBKDF2",
+        false,
+        ["deriveBits"]
+      );
+      
+      const derivedBits = await crypto.subtle.deriveBits(
+        {
+          name: "PBKDF2",
+          salt: salt.buffer as ArrayBuffer,
+          iterations: 100000,
+          hash: "SHA-256"
+        },
+        keyMaterial,
+        256
+      );
+      
+      const hashArray = new Uint8Array(derivedBits);
+      const computedHash = toHex(hashArray);
+      return computedHash === expectedHash;
+    }
+    
+    console.log("Invalid hash format, parts:", parts.length);
+    return false;
+  }
+  
+  // Format: pbkdf2:iterations:saltHex:hashHex
+  const iterations = parseInt(parts[1], 10) || 100000;
+  const salt = hexToBytes(parts[2]);
+  const expectedHash = parts[3];
+  
   if (!salt || !expectedHash) return false;
   
   const encoder = new TextEncoder();
@@ -28,8 +79,8 @@ async function verifyPassword(password: string, storedHash: string): Promise<boo
   const derivedBits = await crypto.subtle.deriveBits(
     {
       name: "PBKDF2",
-      salt: encoder.encode(salt),
-      iterations: 100000,
+      salt: salt.buffer as ArrayBuffer,
+      iterations: iterations,
       hash: "SHA-256"
     },
     keyMaterial,
