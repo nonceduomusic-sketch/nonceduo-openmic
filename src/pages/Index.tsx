@@ -70,6 +70,13 @@ const Index: React.FC = () => {
 
       {/* Song List */}
       <main className="container py-4 pb-8">
+        {/* Description */}
+        <div className="mb-4 p-3 rounded-lg bg-muted/30 border border-border">
+          <p className="text-sm text-muted-foreground text-center">
+            🎤 Cerca la tua canzone preferita, clicca su <strong className="text-primary">Prenota</strong> per inviarci la richiesta su WhatsApp, oppure su <strong className="text-secondary">Testo</strong> per cercare il testo online!
+          </p>
+        </div>
+
         <div className="flex flex-col gap-2 md:grid md:grid-cols-2 lg:grid-cols-3 md:gap-3">
           {filteredSongs.map((song, index) => (
             <SongCard

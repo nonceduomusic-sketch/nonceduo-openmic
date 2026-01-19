@@ -5,6 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Song } from '@/data/songs';
 import { getWhatsAppUrl, formatWhatsAppMessage } from '@/lib/whatsapp';
 import { useReservations } from '@/hooks/useReservations';
+import { z } from 'zod';
+import { toast } from 'sonner';
+
+const reservationSchema = z.object({
+  customer_name: z.string().trim()
+    .min(2, 'Nome troppo corto (minimo 2 caratteri)')
+    .max(50, 'Nome troppo lungo (massimo 50 caratteri)')
+    .regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, 'Il nome può contenere solo lettere, spazi e apostrofi'),
+});
 
 interface BookingModalProps {
   song: Song;
@@ -20,14 +29,22 @@ export const BookingModal: React.FC<BookingModalProps> = ({ song, onClose }) => 
     e.preventDefault();
     if (!name.trim()) return;
 
+    // Validate input
+    const validation = reservationSchema.safeParse({ customer_name: name });
+    if (!validation.success) {
+      const errorMessage = validation.error.errors[0]?.message || 'Dati non validi';
+      toast.error(errorMessage);
+      return;
+    }
+
     setIsSubmitting(true);
     
     // Save to database
-    const success = await createReservation(name.trim(), song.title, song.artist);
+    const success = await createReservation(validation.data.customer_name, song.title, song.artist);
     
     if (success) {
       // Open WhatsApp
-      window.open(getWhatsAppUrl(name.trim(), song.title, song.artist), '_blank');
+      window.open(getWhatsAppUrl(validation.data.customer_name, song.title, song.artist), '_blank');
       onClose();
     }
     
