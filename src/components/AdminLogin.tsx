@@ -129,12 +129,29 @@ export const AdminLogin: React.FC = () => {
           </Button>
 
           <div className="text-center pt-2">
-            <a 
-              href="mailto:nonceduo.music@gmail.com?subject=Reset%20Credenziali%20Admin%20-%20Non%20C'è%20Duo&body=Ciao%2C%0A%0ARichiedo%20il%20reset%20delle%20credenziali%20admin%20per%20il%20pannello%20karaoke.%0A%0AGrazie!"
-              className="text-sm text-muted-foreground hover:text-secondary transition-colors underline"
+            <button
+              type="button"
+              onClick={async () => {
+                const { toast: sonnerToast } = await import('sonner');
+                sonnerToast.loading('Invio email di reset...');
+                try {
+                  const { data, error } = await supabase.functions.invoke('request-password-reset');
+                  if (error || !data?.success) {
+                    sonnerToast.dismiss();
+                    sonnerToast.error(data?.error || 'Errore nell\'invio dell\'email');
+                  } else {
+                    sonnerToast.dismiss();
+                    sonnerToast.success('Email di reset inviata a nonceduo.music@gmail.com');
+                  }
+                } catch {
+                  sonnerToast.dismiss();
+                  sonnerToast.error('Errore nell\'invio dell\'email');
+                }
+              }}
+              className="text-sm text-muted-foreground hover:text-secondary transition-colors underline cursor-pointer"
             >
               Hai dimenticato le credenziali?
-            </a>
+            </button>
           </div>
         </form>
       </div>
