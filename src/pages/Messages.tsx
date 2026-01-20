@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Send, MessageCircle, Edit2, Check, X, Users, Globe, Ban } from 'lucide-react';
+import { ArrowLeft, Send, MessageCircle, Edit2, Check, X, Users, Globe, Ban, Circle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,6 +8,7 @@ import { useConversations, Conversation, ChatMessage } from '@/hooks/useConversa
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { supabase } from '@/integrations/supabase/client';
 
 const messageSchema = z.object({
   sender_name: z.string().trim()
@@ -18,6 +19,12 @@ const messageSchema = z.object({
     .max(500, 'Messaggio troppo lungo (massimo 500 caratteri)'),
 });
 
+interface OnlineUser {
+  session_id: string;
+  name: string;
+  conversation_id: string;
+}
+
 const Messages: React.FC = () => {
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
@@ -27,7 +34,9 @@ const Messages: React.FC = () => {
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   const [activeTab, setActiveTab] = useState<'private' | 'public'>('private');
+  const [onlineUsers, setOnlineUsers] = useState<Map<string, OnlineUser[]>>(new Map());
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const presenceChannelRef = useRef<any>(null);
 
   const { 
     conversations, 
@@ -54,6 +63,53 @@ const Messages: React.FC = () => {
       setName(savedName);
     }
   }, []);
+
+  // Presence tracking for online users
+  useEffect(() => {
+    if (!selectedConversation || !userSessionId || !name.trim()) return;
+
+    const channelName = `presence:${selectedConversation.id}`;
+    const channel = supabase.channel(channelName);
+
+    channel
+      .on('presence', { event: 'sync' }, () => {
+        const state = channel.presenceState();
+        const users: OnlineUser[] = [];
+        
+        Object.values(state).forEach((presences: any) => {
+          presences.forEach((presence: any) => {
+            if (presence.session_id !== userSessionId) {
+              users.push({
+                session_id: presence.session_id,
+                name: presence.name,
+                conversation_id: selectedConversation.id,
+              });
+            }
+          });
+        });
+        
+        setOnlineUsers(prev => {
+          const next = new Map(prev);
+          next.set(selectedConversation.id, users);
+          return next;
+        });
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          await channel.track({
+            session_id: userSessionId,
+            name: name,
+            online_at: new Date().toISOString(),
+          });
+        }
+      });
+
+    presenceChannelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedConversation?.id, userSessionId, name]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -231,7 +287,7 @@ const Messages: React.FC = () => {
                 </Button>
               </Link>
             )}
-            <div>
+            <div className="flex-1">
               <h1 className="font-display text-xl md:text-2xl font-bold neon-text-cyan">
                 {selectedConversation 
                   ? (selectedConversation.is_group 
@@ -247,6 +303,24 @@ const Messages: React.FC = () => {
                   : 'Messaggi privati e gruppi pubblici'}
               </p>
             </div>
+            
+            {/* Online users indicator */}
+            {selectedConversation && (
+              <div className="flex items-center gap-1">
+                {(() => {
+                  const online = onlineUsers.get(selectedConversation.id) || [];
+                  if (online.length === 0) return null;
+                  return (
+                    <div className="flex items-center gap-1 bg-secondary/20 px-2 py-1 rounded-full">
+                      <Circle className="w-2 h-2 fill-secondary text-secondary" />
+                      <span className="text-xs text-secondary">
+                        {online.length} online
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -439,56 +513,100 @@ const Messages: React.FC = () => {
                     id="name-public"
                     type="text"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    onChange={(e) => {
+                      setName(e.target.value);
+                      localStorage.setItem('user_name', e.target.value);
+                    }}
                     placeholder="Come ti chiami?"
                     className="bg-muted border-border focus:border-secondary focus:ring-secondary"
                     disabled={isBlocked}
                   />
                 </div>
 
-                {publicGroups.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Globe className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                    <p className="text-muted-foreground">
-                      Nessun gruppo pubblico disponibile
-                    </p>
-                  </div>
-                ) : (
-                  publicGroups.map((conv) => (
-                    <div
-                      key={conv.id}
-                      className="glass-card p-4 neon-border-cyan border"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full flex items-center justify-center bg-secondary/20">
-                          <Globe className="w-5 h-5 text-secondary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-foreground">
-                              {conv.name}
-                            </span>
+                {/* User's joined public groups */}
+                {userConversations.filter(c => c.is_group && c.is_public).length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="font-display text-sm font-semibold text-secondary flex items-center gap-2">
+                      <Users className="w-4 h-4" />
+                      I tuoi gruppi
+                    </h3>
+                    {userConversations.filter(c => c.is_group && c.is_public).map((conv) => (
+                      <button
+                        key={conv.id}
+                        onClick={() => setSelectedConversation(conv)}
+                        className="w-full glass-card p-4 text-left hover:border-secondary transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
+                            <Globe className="w-5 h-5 text-secondary" />
                           </div>
-                          <p className="text-xs text-muted-foreground">
-                            {conv.participants?.length || 0} partecipanti • {conv.messages?.length || 0} messaggi
-                          </p>
-                          {conv.last_message && (
-                            <p className="text-sm text-muted-foreground truncate mt-1">
-                              {conv.last_message.sender_name}: {conv.last_message.message_text}
-                            </p>
-                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-foreground">{conv.name}</span>
+                              <span className="text-xs bg-secondary/20 text-secondary px-2 py-0.5 rounded">Iscritto</span>
+                            </div>
+                            {conv.last_message && (
+                              <p className="text-sm text-muted-foreground truncate">
+                                {conv.last_message.sender_name}: {conv.last_message.message_text}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                        <Button
-                          onClick={() => handleJoinGroup(conv)}
-                          disabled={!name.trim() || isBlocked}
-                          className="neon-button-cyan"
-                        >
-                          Entra
-                        </Button>
-                      </div>
-                    </div>
-                  ))
+                      </button>
+                    ))}
+                  </div>
                 )}
+
+                {/* Available public groups to join */}
+                <div className="space-y-3">
+                  <h3 className="font-display text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                    <Globe className="w-4 h-4" />
+                    Gruppi disponibili
+                  </h3>
+                  {publicGroups.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Globe className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                      <p className="text-sm text-muted-foreground">
+                        Nessun nuovo gruppo disponibile
+                      </p>
+                    </div>
+                  ) : (
+                    publicGroups.map((conv) => (
+                      <div
+                        key={conv.id}
+                        className="glass-card p-4 neon-border-cyan border"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full flex items-center justify-center bg-secondary/20">
+                            <Globe className="w-5 h-5 text-secondary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-foreground">
+                                {conv.name}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              {conv.participants?.length || 0} partecipanti • {conv.messages?.length || 0} messaggi
+                            </p>
+                            {conv.last_message && (
+                              <p className="text-sm text-muted-foreground truncate mt-1">
+                                {conv.last_message.sender_name}: {conv.last_message.message_text}
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            onClick={() => handleJoinGroup(conv)}
+                            disabled={!name.trim() || isBlocked}
+                            className="neon-button-cyan"
+                          >
+                            Entra
+                          </Button>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             )}
           </div>
