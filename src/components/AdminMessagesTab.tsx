@@ -13,7 +13,8 @@ import {
   Globe,
   Lock,
   MoreVertical,
-  Undo2,
+  Ban,
+  UserX,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -44,6 +45,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -66,6 +74,8 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     adminRenameGroup,
     adminSetGroupVisibility,
     adminBulkDeleteConversations,
+    adminBlockUser,
+    adminUnblockUser,
     getUnreadConversations,
     getReadConversations,
   } = useConversations();

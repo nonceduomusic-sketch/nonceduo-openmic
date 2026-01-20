@@ -263,6 +263,58 @@ serve(async (req: Request): Promise<Response> => {
         break;
       }
 
+      case 'blockUser': {
+        const { session_id, reason, expires_in_hours } = body;
+        if (!session_id) {
+          return new Response(
+            JSON.stringify({ error: 'Session ID richiesto' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const expiresAt = expires_in_hours 
+          ? new Date(Date.now() + expires_in_hours * 60 * 60 * 1000).toISOString()
+          : null;
+
+        result = await supabase
+          .from('blocked_users')
+          .upsert([{
+            session_id,
+            blocked_by: user.id,
+            reason: reason || 'Violazione regole',
+            expires_at: expiresAt,
+          }], { onConflict: 'session_id' });
+        break;
+      }
+
+      case 'unblockUser': {
+        const { session_id } = body;
+        if (!session_id) {
+          return new Response(
+            JSON.stringify({ error: 'Session ID richiesto' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        result = await supabase
+          .from('blocked_users')
+          .delete()
+          .eq('session_id', session_id);
+        break;
+      }
+
+      case 'getBlockedUsers': {
+        const { data, error } = await supabase
+          .from('blocked_users')
+          .select('*')
+          .order('blocked_at', { ascending: false });
+        
+        return new Response(
+          JSON.stringify({ success: true, data }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: 'Unknown action' }),
