@@ -295,14 +295,17 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
   };
 
   const handleDeleteConversation = async (conv: Conversation) => {
+    // Store if this was the selected conversation before deleting
+    const wasSelected = selectedConversation?.id === conv.id;
+    
     const deletedConv = await adminDeleteConversation(conv.id);
     
     if (deletedConv) {
-      if (selectedConversation?.id === conv.id) {
+      if (wasSelected) {
         setSelectedConversation(null);
       }
       
-      // Show toast with undo option
+      // Show toast with undo option - restore WITHOUT selecting
       toast({
         title: conv.is_group ? 'Gruppo eliminato' : 'Conversazione eliminata',
         description: conv.is_group ? conv.name : getParticipantNames(conv),
@@ -311,7 +314,9 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
             variant="outline"
             size="sm"
             onClick={async () => {
+              // Just restore, don't select
               await adminRestoreConversation(deletedConv);
+              // Don't set selectedConversation here!
             }}
           >
             Annulla

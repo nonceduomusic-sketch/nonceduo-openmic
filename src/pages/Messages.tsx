@@ -147,20 +147,17 @@ const Messages: React.FC = () => {
     setIsSubmitting(true);
     localStorage.setItem('user_name', validation.data.sender_name);
     
-    const conversationId = await startConversation(
+    // startConversation now returns the full conversation object
+    const newConversation = await startConversation(
       validation.data.sender_name,
       validation.data.message_text,
       userSessionId
     );
     
-    if (conversationId) {
+    if (newConversation) {
       setMessage('');
-      // The conversation list is now refreshed in startConversation
-      // Find and select it immediately from the updated list
-      const newConv = conversations.find(c => c.id === conversationId);
-      if (newConv) {
-        setSelectedConversation(newConv);
-      }
+      // Directly use the returned conversation object
+      setSelectedConversation(newConversation);
     }
     
     setIsSubmitting(false);
