@@ -266,6 +266,10 @@ export const useConversations = (sessionId?: string) => {
 
       if (error) throw error;
       toast.success('Sei entrato nel gruppo!');
+      
+      // Refresh conversations to include the newly joined group
+      await fetchConversations();
+      
       return true;
     } catch (error) {
       console.error('Error joining group:', error);
