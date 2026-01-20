@@ -49,16 +49,60 @@ const Messages: React.FC = () => {
     loading 
   } = useConversations(userSessionId);
 
-  // Generate unique session ID
+  // Generate unique session ID (safe for older mobile browsers)
   useEffect(() => {
-    let sessionId = localStorage.getItem('user_session_id');
+    const safeGet = (key: string) => {
+      try {
+        return localStorage.getItem(key);
+      } catch {
+        return null;
+      }
+    };
+
+    const safeSet = (key: string, value: string) => {
+      try {
+        localStorage.setItem(key, value);
+      } catch {
+        // ignore (private mode / storage disabled)
+      }
+    };
+
+    const generateId = () => {
+      // Prefer native UUID when available
+      try {
+        const randomUUID = (crypto as any)?.randomUUID as undefined | (() => string);
+        if (typeof randomUUID === 'function') return randomUUID();
+      } catch {
+        // ignore
+      }
+
+      // Fallback: RFC4122-ish v4 using getRandomValues
+      try {
+        if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
+          const bytes = new Uint8Array(16);
+          crypto.getRandomValues(bytes);
+          bytes[6] = (bytes[6] & 0x0f) | 0x40;
+          bytes[8] = (bytes[8] & 0x3f) | 0x80;
+          const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+          return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+        }
+      } catch {
+        // ignore
+      }
+
+      // Last resort
+      return `${Date.now()}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`;
+    };
+
+    let sessionId = safeGet('user_session_id');
     if (!sessionId) {
-      sessionId = crypto.randomUUID();
-      localStorage.setItem('user_session_id', sessionId);
+      sessionId = generateId();
+      safeSet('user_session_id', sessionId);
     }
+
     setUserSessionId(sessionId);
-    
-    const savedName = localStorage.getItem('user_name');
+
+    const savedName = safeGet('user_name');
     if (savedName) {
       setName(savedName);
     }
@@ -214,12 +258,22 @@ const Messages: React.FC = () => {
     if (success) {
       // After joining, set the conversation directly and switch to private tab
       // The conversation should now be in the conversations list after fetch
+      const safeTempId = (() => {
+        try {
+          const randomUUID = (crypto as any)?.randomUUID as undefined | (() => string);
+          if (typeof randomUUID === 'function') return randomUUID();
+        } catch {
+          // ignore
+        }
+        return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      })();
+
       setSelectedConversation({
         ...conv,
         participants: [
           ...(conv.participants || []),
           {
-            id: crypto.randomUUID(),
+            id: safeTempId,
             conversation_id: conv.id,
             participant_name: name,
             session_id: userSessionId,
