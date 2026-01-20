@@ -15,6 +15,7 @@ import {
   Ban,
   UserX,
   UserPlus,
+  Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -56,6 +57,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface AdminMessagesTabProps {
   onUnreadCountChange?: (count: number) => void;
@@ -71,6 +73,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     adminDeleteMessage,
     adminDeleteConversation,
     adminCreateGroup,
+    adminCreateEmptyGroup,
     adminAddToGroup,
     adminRemoveFromGroup,
     adminRenameGroup,
@@ -94,6 +97,12 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
   const [selectedForAction, setSelectedForAction] = useState<Set<string>>(new Set());
   const [showGroupDialog, setShowGroupDialog] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
+  const [newGroupIsPublic, setNewGroupIsPublic] = useState(false);
+  
+  // Empty group creation (no conversation selection needed)
+  const [showNewGroupDialog, setShowNewGroupDialog] = useState(false);
+  const [emptyGroupName, setEmptyGroupName] = useState('');
+  const [emptyGroupIsPublic, setEmptyGroupIsPublic] = useState(false);
   
   // Target group for adding participants
   const [targetGroupId, setTargetGroupId] = useState<string | null>(null);
@@ -212,7 +221,8 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
 
     const success = await adminCreateGroup(
       Array.from(selectedForAction),
-      newGroupName || 'Gruppo'
+      newGroupName || 'Gruppo',
+      newGroupIsPublic
     );
 
     if (success) {
@@ -220,6 +230,26 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
       setSelectedForAction(new Set());
       setShowGroupDialog(false);
       setNewGroupName('');
+      setNewGroupIsPublic(false);
+    }
+  };
+
+  const handleCreateEmptyGroup = async () => {
+    if (!emptyGroupName.trim()) {
+      toast({
+        title: 'Errore',
+        description: 'Inserisci un nome per il gruppo',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const success = await adminCreateEmptyGroup(emptyGroupName, emptyGroupIsPublic);
+
+    if (success) {
+      setShowNewGroupDialog(false);
+      setEmptyGroupName('');
+      setEmptyGroupIsPublic(false);
     }
   };
 
@@ -553,12 +583,21 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
             <Button
               variant="outline"
               size="sm"
+              onClick={() => setShowNewGroupDialog(true)}
+              className="border-accent text-accent-foreground bg-accent/20 hover:bg-accent hover:text-accent-foreground"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Nuovo Gruppo
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setSelectionMode('createGroup')}
               className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
               disabled={conversations.length < 2}
             >
               <Users className="w-4 h-4 mr-2" />
-              Crea Gruppo
+              Unisci in Gruppo
             </Button>
             {existingGroups.length > 0 && (
               <Button
@@ -857,21 +896,89 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
         )}
       </div>
 
-      {/* Create Group dialog */}
-      <Dialog open={showGroupDialog} onOpenChange={setShowGroupDialog}>
+      {/* New Empty Group dialog */}
+      <Dialog open={showNewGroupDialog} onOpenChange={setShowNewGroupDialog}>
         <DialogContent className="glass-card">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Users className="w-5 h-5 text-secondary" />
-              Crea Gruppo
+              <Plus className="w-5 h-5 text-primary" />
+              Nuovo Gruppo
             </DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
             <div>
-              <label className="text-sm font-medium mb-2 block">
+              <Label className="text-sm font-medium mb-2 block">
                 Nome del gruppo
-              </label>
+              </Label>
+              <Input
+                value={emptyGroupName}
+                onChange={(e) => setEmptyGroupName(e.target.value)}
+                placeholder="Es: Cena 20 gennaio"
+                className="bg-muted border-border"
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium">Gruppo Pubblico</Label>
+                <p className="text-xs text-muted-foreground">
+                  {emptyGroupIsPublic 
+                    ? 'Tutti potranno vedere e partecipare a questo gruppo'
+                    : 'Solo tu potrai aggiungere persone al gruppo'}
+                </p>
+              </div>
+              <Switch
+                checked={emptyGroupIsPublic}
+                onCheckedChange={setEmptyGroupIsPublic}
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowNewGroupDialog(false);
+              setEmptyGroupName('');
+              setEmptyGroupIsPublic(false);
+            }}>
+              Annulla
+            </Button>
+            <Button 
+              onClick={handleCreateEmptyGroup} 
+              disabled={!emptyGroupName.trim()}
+              className={emptyGroupIsPublic ? "neon-button-cyan" : "neon-button-pink"}
+            >
+              {emptyGroupIsPublic ? (
+                <>
+                  <Globe className="w-4 h-4 mr-2" />
+                  Crea Pubblico
+                </>
+              ) : (
+                <>
+                  <Lock className="w-4 h-4 mr-2" />
+                  Crea Privato
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Group from conversations dialog */}
+      <Dialog open={showGroupDialog} onOpenChange={setShowGroupDialog}>
+        <DialogContent className="glass-card">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-secondary" />
+              Unisci in Gruppo
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div>
+              <Label className="text-sm font-medium mb-2 block">
+                Nome del gruppo
+              </Label>
               <Input
                 value={newGroupName}
                 onChange={(e) => setNewGroupName(e.target.value)}
@@ -879,6 +986,22 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                 className="bg-muted border-border"
               />
             </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium">Gruppo Pubblico</Label>
+                <p className="text-xs text-muted-foreground">
+                  {newGroupIsPublic 
+                    ? 'Tutti potranno vedere e partecipare'
+                    : 'Solo i partecipanti selezionati'}
+                </p>
+              </div>
+              <Switch
+                checked={newGroupIsPublic}
+                onCheckedChange={setNewGroupIsPublic}
+              />
+            </div>
+            
             <p className="text-sm text-muted-foreground">
               Verrà creato un nuovo gruppo con {selectedForAction.size} partecipanti.
               Le conversazioni private rimarranno separate.
@@ -886,12 +1009,28 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowGroupDialog(false)}>
+            <Button variant="outline" onClick={() => {
+              setShowGroupDialog(false);
+              setNewGroupName('');
+              setNewGroupIsPublic(false);
+            }}>
               Annulla
             </Button>
-            <Button onClick={handleCreateGroup} className="neon-button-cyan">
-              <Users className="w-4 h-4 mr-2" />
-              Crea Gruppo
+            <Button 
+              onClick={handleCreateGroup} 
+              className={newGroupIsPublic ? "neon-button-cyan" : "neon-button-pink"}
+            >
+              {newGroupIsPublic ? (
+                <>
+                  <Globe className="w-4 h-4 mr-2" />
+                  Crea Pubblico
+                </>
+              ) : (
+                <>
+                  <Users className="w-4 h-4 mr-2" />
+                  Crea Privato
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
