@@ -343,6 +343,85 @@ serve(async (req: Request): Promise<Response> => {
         break;
       }
 
+      case 'restoreConversation': {
+        // Restore a deleted conversation with all its data
+        const { conversation, participants, messages } = body;
+        
+        if (!conversation) {
+          return new Response(
+            JSON.stringify({ error: 'Dati conversazione mancanti' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Re-insert the conversation
+        const { data: newConv, error: convError } = await supabase
+          .from('conversations')
+          .insert([{
+            id: conversation.id,
+            name: conversation.name,
+            is_group: conversation.is_group,
+            is_public: conversation.is_public ?? false,
+            allowed_participants: conversation.allowed_participants ?? [],
+            created_at: conversation.created_at,
+            updated_at: conversation.updated_at,
+          }])
+          .select()
+          .single();
+
+        if (convError) {
+          console.error('Error restoring conversation:', convError);
+          return new Response(
+            JSON.stringify({ error: 'Errore nel ripristino della conversazione' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Re-insert participants if any
+        if (participants && participants.length > 0) {
+          const participantsToInsert = participants.map((p: any) => ({
+            id: p.id,
+            conversation_id: conversation.id,
+            participant_name: p.participant_name,
+            session_id: p.session_id,
+            joined_at: p.joined_at,
+          }));
+
+          const { error: partError } = await supabase
+            .from('conversation_participants')
+            .insert(participantsToInsert);
+
+          if (partError) {
+            console.error('Error restoring participants:', partError);
+          }
+        }
+
+        // Re-insert messages if any
+        if (messages && messages.length > 0) {
+          const messagesToInsert = messages.map((m: any) => ({
+            id: m.id,
+            conversation_id: conversation.id,
+            sender_type: m.sender_type,
+            sender_name: m.sender_name,
+            sender_session_id: m.sender_session_id,
+            message_text: m.message_text,
+            edited_at: m.edited_at,
+            created_at: m.created_at,
+          }));
+
+          const { error: msgError } = await supabase
+            .from('chat_messages')
+            .insert(messagesToInsert);
+
+          if (msgError) {
+            console.error('Error restoring messages:', msgError);
+          }
+        }
+
+        result = { data: newConv, error: null };
+        break;
+      }
+
       case 'blockUser': {
         const { session_id, reason, expires_in_hours } = body;
         if (!session_id) {
