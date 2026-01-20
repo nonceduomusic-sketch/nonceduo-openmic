@@ -9,15 +9,57 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// In-memory rate limiting (resets when function cold starts)
+const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    // Rate limit: max 3 requests per IP per hour
+    const clientIP = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const now = Date.now();
+    const rateLimit = rateLimitMap.get(clientIP);
+    
+    if (rateLimit) {
+      if (now < rateLimit.resetTime) {
+        if (rateLimit.count >= 3) {
+          console.log(`Rate limit exceeded for IP: ${clientIP}`);
+          return new Response(
+            JSON.stringify({ error: "Troppi tentativi. Riprova più tardi." }),
+            { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+        rateLimit.count++;
+      } else {
+        rateLimitMap.set(clientIP, { count: 1, resetTime: now + 3600000 });
+      }
+    } else {
+      rateLimitMap.set(clientIP, { count: 1, resetTime: now + 3600000 });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Cooldown: Check if email sent in last 15 minutes
+    const { data: recentTokens } = await supabase
+      .from("password_reset_tokens")
+      .select("created_at")
+      .gte("created_at", new Date(Date.now() - 15 * 60 * 1000).toISOString())
+      .limit(1);
+
+    if (recentTokens && recentTokens.length > 0) {
+      console.log("Reset email already sent recently, enforcing cooldown");
+      return new Response(
+        JSON.stringify({ 
+          error: "Email già inviata. Controlla la tua casella o riprova tra 15 minuti." 
+        }),
+        { status: 429, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
 
     // Generate a secure token
     const token = crypto.randomUUID() + "-" + crypto.randomUUID();
