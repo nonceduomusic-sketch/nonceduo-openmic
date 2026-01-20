@@ -194,11 +194,12 @@ export const useConversations = (sessionId?: string) => {
   }, [fetchConversations, sessionId, checkIfBlocked]);
 
   // Start a new conversation (for users)
+  // Returns the full conversation object for immediate UI selection
   const startConversation = async (
     senderName: string,
     messageText: string,
     senderSessionId: string
-  ): Promise<string | null> => {
+  ): Promise<Conversation | null> => {
     try {
       // Create conversation
       const { data: convData, error: convError } = await supabase
@@ -210,18 +211,20 @@ export const useConversations = (sessionId?: string) => {
       if (convError) throw convError;
 
       // Add participant
-      const { error: partError } = await supabase
+      const { data: partData, error: partError } = await supabase
         .from('conversation_participants')
         .insert([{
           conversation_id: convData.id,
           participant_name: senderName,
           session_id: senderSessionId,
-        }]);
+        }])
+        .select()
+        .single();
 
       if (partError) throw partError;
 
       // Add initial message
-      const { error: msgError } = await supabase
+      const { data: msgData, error: msgError } = await supabase
         .from('chat_messages')
         .insert([{
           conversation_id: convData.id,
@@ -229,16 +232,32 @@ export const useConversations = (sessionId?: string) => {
           sender_name: senderName,
           sender_session_id: senderSessionId,
           message_text: messageText,
-        }]);
+        }])
+        .select()
+        .single();
 
       if (msgError) throw msgError;
 
       toast.success('Messaggio inviato!');
       
-      // Refresh conversations to include the newly created conversation
-      await fetchConversations();
+      // Build the full conversation object to return immediately
+      const newConversation: Conversation = {
+        id: convData.id,
+        name: convData.name,
+        is_group: convData.is_group,
+        is_public: convData.is_public,
+        allowed_participants: convData.allowed_participants,
+        created_at: convData.created_at,
+        updated_at: convData.updated_at,
+        participants: [partData as Participant],
+        messages: [msgData as ChatMessage],
+        last_message: msgData as ChatMessage,
+      };
       
-      return convData.id;
+      // Refresh conversations in background
+      fetchConversations();
+      
+      return newConversation;
     } catch (error) {
       console.error('Error starting conversation:', error);
       toast.error('Errore nell\'invio del messaggio');
