@@ -35,6 +35,36 @@ export type Database = {
         }
         Relationships: []
       }
+      messages: {
+        Row: {
+          admin_reply: string | null
+          created_at: string
+          id: string
+          is_read: boolean
+          message_text: string
+          replied_at: string | null
+          sender_name: string
+        }
+        Insert: {
+          admin_reply?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message_text: string
+          replied_at?: string | null
+          sender_name: string
+        }
+        Update: {
+          admin_reply?: string | null
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message_text?: string
+          replied_at?: string | null
+          sender_name?: string
+        }
+        Relationships: []
+      }
       password_reset_tokens: {
         Row: {
           admin_user_id: string

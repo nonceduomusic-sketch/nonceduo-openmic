@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Mic2, Settings, Home, ArrowLeft } from 'lucide-react';
+import { Mic2, Settings, Home, ArrowLeft, MessageCircle } from 'lucide-react';
 import { songs, Song } from '@/data/songs';
 import { SongCard } from '@/components/SongCard';
 import { SearchBar } from '@/components/SearchBar';
@@ -78,7 +78,7 @@ const OpenMic: React.FC = () => {
       </header>
 
       {/* Song List */}
-      <main className="container py-4 pb-8">
+      <main className="container py-4 pb-24">
         {/* Description */}
         <div className="mb-4 p-3 rounded-lg bg-muted/30 border border-border">
           <p className="text-sm text-muted-foreground text-center leading-relaxed">
@@ -111,6 +111,18 @@ const OpenMic: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Fixed CTA for Messages */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-t border-border p-4">
+        <div className="container">
+          <Link to="/messaggi">
+            <Button className="w-full neon-button-cyan h-12 font-display font-semibold">
+              <MessageCircle className="w-5 h-5 mr-2" />
+              💬 Scrivi a Noi
+            </Button>
+          </Link>
+        </div>
+      </div>
 
       {/* Booking Modal */}
       {selectedSong && (
