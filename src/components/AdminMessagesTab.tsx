@@ -71,6 +71,9 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     adminReply,
     adminEditMessage,
     adminDeleteMessage,
+    adminRestoreMessage,
+    adminBulkDeleteMessages,
+    adminBulkRestoreMessages,
     adminDeleteConversation,
     adminRestoreConversation,
     adminCreateGroup,
@@ -123,6 +126,11 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
   // Delete confirmation dialog (for direct delete from list)
   const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  
+  // Message selection mode (WhatsApp-style)
+  const [messageSelectionMode, setMessageSelectionMode] = useState(false);
+  const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
+  const longPressTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   const unreadConversations = getUnreadConversations();
   const readConversations = getReadConversations();
@@ -196,7 +204,94 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
   };
 
   const handleDeleteMessage = async (msgId: string) => {
-    await adminDeleteMessage(msgId);
+    if (!selectedConversation) return;
+    
+    const deletedMsg = await adminDeleteMessage(msgId, selectedConversation.id);
+    
+    if (deletedMsg) {
+      toast({
+        title: 'Messaggio eliminato',
+        description: `${deletedMsg.sender_name}: ${deletedMsg.message_text.substring(0, 30)}${deletedMsg.message_text.length > 30 ? '...' : ''}`,
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              await adminRestoreMessage(deletedMsg);
+            }}
+          >
+            Annulla
+          </Button>
+        ),
+      });
+    }
+  };
+
+  const handleBulkDeleteMessages = async () => {
+    if (!selectedConversation || selectedMessages.size === 0) return;
+    
+    const msgIds = Array.from(selectedMessages);
+    const deletedMsgs = await adminBulkDeleteMessages(msgIds, selectedConversation.id);
+    
+    if (deletedMsgs.length > 0) {
+      setMessageSelectionMode(false);
+      setSelectedMessages(new Set());
+      
+      toast({
+        title: `${deletedMsgs.length} messaggi eliminati`,
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              await adminBulkRestoreMessages(deletedMsgs);
+            }}
+          >
+            Annulla
+          </Button>
+        ),
+      });
+    }
+  };
+
+  const handleToggleMessageSelect = (msgId: string) => {
+    setSelectedMessages(prev => {
+      const next = new Set(prev);
+      if (next.has(msgId)) {
+        next.delete(msgId);
+      } else {
+        next.add(msgId);
+      }
+      if (next.size === 0) {
+        setMessageSelectionMode(false);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAllMessages = () => {
+    if (!selectedConversation?.messages) return;
+    const allIds = new Set(selectedConversation.messages.map(m => m.id));
+    setSelectedMessages(allIds);
+  };
+
+  const handleLongPressStart = (msgId: string) => {
+    longPressTimerRef.current = setTimeout(() => {
+      setMessageSelectionMode(true);
+      setSelectedMessages(new Set([msgId]));
+    }, 500);
+  };
+
+  const handleLongPressEnd = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const exitMessageSelectionMode = () => {
+    setMessageSelectionMode(false);
+    setSelectedMessages(new Set());
   };
 
   const handleDeleteConversation = async (conv: Conversation) => {
@@ -376,125 +471,218 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setSelectedConversation(null)}
+              onClick={() => {
+                if (messageSelectionMode) {
+                  exitMessageSelectionMode();
+                } else {
+                  setSelectedConversation(null);
+                }
+              }}
             >
               <X className="w-5 h-5" />
             </Button>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-              selectedConversation.is_group ? 'bg-secondary/20' : 'bg-primary/20'
-            }`}>
-              {selectedConversation.is_group ? (
-                <Users className="w-5 h-5 text-secondary" />
-              ) : (
-                <MessageCircle className="w-5 h-5 text-primary" />
-              )}
-            </div>
-            <div>
+            
+            {messageSelectionMode ? (
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-foreground">
-                  {selectedConversation.is_group 
-                    ? selectedConversation.name 
-                    : getParticipantNames(selectedConversation)}
-                </h3>
-                {selectedConversation.is_group && (
-                  selectedConversation.is_public ? (
-                    <Globe className="w-4 h-4 text-secondary" />
-                  ) : (
-                    <Lock className="w-4 h-4 text-muted-foreground" />
-                  )
-                )}
+                <span className="font-semibold text-foreground">
+                  {selectedMessages.size} selezionati
+                </span>
               </div>
-              {selectedConversation.is_group && (
-                <p className="text-xs text-muted-foreground">
-                  {getParticipantNames(selectedConversation)}
-                </p>
-              )}
-            </div>
+            ) : (
+              <>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  selectedConversation.is_group ? 'bg-secondary/20' : 'bg-primary/20'
+                }`}>
+                  {selectedConversation.is_group ? (
+                    <Users className="w-5 h-5 text-secondary" />
+                  ) : (
+                    <MessageCircle className="w-5 h-5 text-primary" />
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-foreground">
+                      {selectedConversation.is_group 
+                        ? selectedConversation.name 
+                        : getParticipantNames(selectedConversation)}
+                    </h3>
+                    {selectedConversation.is_group && (
+                      selectedConversation.is_public ? (
+                        <Globe className="w-4 h-4 text-secondary" />
+                      ) : (
+                        <Lock className="w-4 h-4 text-muted-foreground" />
+                      )
+                    )}
+                  </div>
+                  {selectedConversation.is_group && (
+                    <p className="text-xs text-muted-foreground">
+                      {getParticipantNames(selectedConversation)}
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
           </div>
           
           <div className="flex items-center gap-2">
-            {/* Group management dropdown */}
-            {selectedConversation.is_group && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <MoreVertical className="w-4 h-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => {
-                    setRenameTarget(selectedConversation);
-                    setRenameGroupName(selectedConversation.name || '');
-                    setShowRenameDialog(true);
-                  }}>
-                    <Edit2 className="w-4 h-4 mr-2" />
-                    Rinomina gruppo
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => {
-                    setVisibilityTarget(selectedConversation);
-                    setShowVisibilityDialog(true);
-                  }}>
-                    {selectedConversation.is_public ? (
-                      <>
-                        <Lock className="w-4 h-4 mr-2" />
-                        Rendi privato
-                      </>
-                    ) : (
-                      <>
-                        <Globe className="w-4 h-4 mr-2" />
-                        Rendi pubblico
-                      </>
-                    )}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-            
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-destructive">
-                  <Trash2 className="w-4 h-4" />
+            {messageSelectionMode ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSelectAllMessages}
+                  className="text-xs"
+                >
+                  Tutti ({selectedConversation.messages?.length || 0})
                 </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="glass-card border-destructive">
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                    <AlertTriangle className="w-5 h-5" />
-                    Elimina Conversazione
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Sei sicuro di voler eliminare questa conversazione e tutti i suoi messaggi?
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Annulla</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => handleDeleteConversation(selectedConversation)}
-                    className="bg-destructive text-destructive-foreground"
-                  >
-                    Elimina
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={selectedMessages.size === 0}
+                      className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Elimina ({selectedMessages.size})
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="glass-card border-destructive">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                        <AlertTriangle className="w-5 h-5" />
+                        Elimina Messaggi
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Eliminare {selectedMessages.size} messaggi selezionati?
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annulla</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={handleBulkDeleteMessages}
+                        className="bg-destructive text-destructive-foreground"
+                      >
+                        Elimina
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
+            ) : (
+              <>
+                {/* Group management dropdown */}
+                {selectedConversation.is_group && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => {
+                        setRenameTarget(selectedConversation);
+                        setRenameGroupName(selectedConversation.name || '');
+                        setShowRenameDialog(true);
+                      }}>
+                        <Edit2 className="w-4 h-4 mr-2" />
+                        Rinomina gruppo
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => {
+                        setVisibilityTarget(selectedConversation);
+                        setShowVisibilityDialog(true);
+                      }}>
+                        {selectedConversation.is_public ? (
+                          <>
+                            <Lock className="w-4 h-4 mr-2" />
+                            Rendi privato
+                          </>
+                        ) : (
+                          <>
+                            <Globe className="w-4 h-4 mr-2" />
+                            Rendi pubblico
+                          </>
+                        )}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="text-destructive">
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="glass-card border-destructive">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                        <AlertTriangle className="w-5 h-5" />
+                        Elimina Conversazione
+                      </AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Sei sicuro di voler eliminare questa conversazione e tutti i suoi messaggi?
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Annulla</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleDeleteConversation(selectedConversation)}
+                        className="bg-destructive text-destructive-foreground"
+                      >
+                        Elimina
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </>
+            )}
           </div>
         </div>
 
         {/* Messages */}
         <ScrollArea className="flex-1 mb-4">
           <div className="space-y-3 pr-4">
+            {/* Hint for long-press selection */}
+            {!messageSelectionMode && selectedConversation.messages && selectedConversation.messages.length > 0 && (
+              <p className="text-xs text-muted-foreground text-center mb-2">
+                Tieni premuto un messaggio per selezionarlo
+              </p>
+            )}
+            
             {selectedConversation.messages?.slice().reverse().map((msg) => (
               <div
                 key={msg.id}
                 className={`flex ${msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
+                onMouseDown={() => handleLongPressStart(msg.id)}
+                onMouseUp={handleLongPressEnd}
+                onMouseLeave={handleLongPressEnd}
+                onTouchStart={() => handleLongPressStart(msg.id)}
+                onTouchEnd={handleLongPressEnd}
               >
                 <div
-                  className={`max-w-[80%] rounded-lg p-3 ${
-                    msg.sender_type === 'admin'
-                      ? 'bg-secondary/20 border border-secondary/30'
-                      : 'bg-muted border border-border'
+                  className={`max-w-[80%] rounded-lg p-3 cursor-pointer transition-all ${
+                    selectedMessages.has(msg.id) 
+                      ? 'ring-2 ring-primary bg-primary/10'
+                      : msg.sender_type === 'admin'
+                        ? 'bg-secondary/20 border border-secondary/30'
+                        : 'bg-muted border border-border'
                   }`}
+                  onClick={() => {
+                    if (messageSelectionMode) {
+                      handleToggleMessageSelect(msg.id);
+                    }
+                  }}
                 >
+                  {messageSelectionMode && (
+                    <div className="flex items-center gap-2 mb-1">
+                      <Checkbox
+                        checked={selectedMessages.has(msg.id)}
+                        onCheckedChange={() => handleToggleMessageSelect(msg.id)}
+                      />
+                    </div>
+                  )}
+                  
                   <p className={`text-xs font-medium mb-1 ${
                     msg.sender_type === 'admin' ? 'text-secondary' : 'text-primary'
                   }`}>
@@ -530,44 +718,50 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                           })}
                           {msg.edited_at && ' (modificato)'}
                         </span>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleStartEdit(msg)}
-                            className="h-6 px-2"
-                          >
-                            <Edit2 className="w-3 h-3" />
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-destructive"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent className="glass-card">
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>Elimina Messaggio</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Vuoi eliminare questo messaggio?
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>Annulla</AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() => handleDeleteMessage(msg.id)}
-                                  className="bg-destructive text-destructive-foreground"
+                        {!messageSelectionMode && (
+                          <div className="flex gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleStartEdit(msg);
+                              }}
+                              className="h-6 px-2"
+                            >
+                              <Edit2 className="w-3 h-3" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 px-2 text-destructive"
+                                  onClick={(e) => e.stopPropagation()}
                                 >
-                                  Elimina
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent className="glass-card">
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Elimina Messaggio</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Vuoi eliminare questo messaggio?
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteMessage(msg.id)}
+                                    className="bg-destructive text-destructive-foreground"
+                                  >
+                                    Elimina
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        )}
                       </div>
                     </>
                   )}

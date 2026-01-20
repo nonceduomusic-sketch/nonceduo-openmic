@@ -372,15 +372,62 @@ export const useConversations = (sessionId?: string) => {
     }
   };
 
-  // Admin: Delete message
-  const adminDeleteMessage = async (messageId: string): Promise<boolean> => {
+  // Admin: Delete message (returns the message for undo)
+  const adminDeleteMessage = async (messageId: string, conversationId: string): Promise<ChatMessage | null> => {
     try {
+      // Find the message before deleting for potential restore
+      const conv = conversations.find(c => c.id === conversationId);
+      const msgToDelete = conv?.messages?.find(m => m.id === messageId);
+      
       await callAdminChatApi('deleteMessage', { message_id: messageId });
-      toast.success('Messaggio eliminato');
-      return true;
+      
+      return msgToDelete || null;
     } catch (error) {
       console.error('Error deleting message:', error);
       toast.error('Errore nell\'eliminazione');
+      return null;
+    }
+  };
+
+  // Admin: Restore a deleted message
+  const adminRestoreMessage = async (message: ChatMessage): Promise<boolean> => {
+    try {
+      await callAdminChatApi('restoreMessage', { message });
+      toast.success('Messaggio ripristinato!');
+      return true;
+    } catch (error) {
+      console.error('Error restoring message:', error);
+      toast.error('Errore nel ripristino');
+      return false;
+    }
+  };
+
+  // Admin: Bulk delete messages (returns deleted messages for undo)
+  const adminBulkDeleteMessages = async (messageIds: string[], conversationId: string): Promise<ChatMessage[]> => {
+    try {
+      // Find messages before deleting for potential restore
+      const conv = conversations.find(c => c.id === conversationId);
+      const msgsToDelete = conv?.messages?.filter(m => messageIds.includes(m.id)) || [];
+      
+      await callAdminChatApi('bulkDeleteMessages', { message_ids: messageIds });
+      
+      return msgsToDelete;
+    } catch (error) {
+      console.error('Error bulk deleting messages:', error);
+      toast.error('Errore nell\'eliminazione');
+      return [];
+    }
+  };
+
+  // Admin: Bulk restore messages
+  const adminBulkRestoreMessages = async (messages: ChatMessage[]): Promise<boolean> => {
+    try {
+      await callAdminChatApi('bulkRestoreMessages', { messages });
+      toast.success(`${messages.length} messaggi ripristinati!`);
+      return true;
+    } catch (error) {
+      console.error('Error restoring messages:', error);
+      toast.error('Errore nel ripristino');
       return false;
     }
   };
@@ -626,6 +673,9 @@ export const useConversations = (sessionId?: string) => {
     adminReply,
     adminEditMessage,
     adminDeleteMessage,
+    adminRestoreMessage,
+    adminBulkDeleteMessages,
+    adminBulkRestoreMessages,
     adminDeleteConversation,
     adminRestoreConversation,
     adminCreateGroup,
