@@ -110,23 +110,29 @@ export type Database = {
       }
       conversations: {
         Row: {
+          allowed_participants: string[] | null
           created_at: string
           id: string
           is_group: boolean
+          is_public: boolean | null
           name: string | null
           updated_at: string
         }
         Insert: {
+          allowed_participants?: string[] | null
           created_at?: string
           id?: string
           is_group?: boolean
+          is_public?: boolean | null
           name?: string | null
           updated_at?: string
         }
         Update: {
+          allowed_participants?: string[] | null
           created_at?: string
           id?: string
           is_group?: boolean
+          is_public?: boolean | null
           name?: string | null
           updated_at?: string
         }

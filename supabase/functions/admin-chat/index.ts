@@ -234,6 +234,35 @@ serve(async (req: Request): Promise<Response> => {
         break;
       }
 
+      case 'setVisibility': {
+        const { conversation_id, is_public, allowed_participants } = body;
+        result = await supabase
+          .from('conversations')
+          .update({ 
+            is_public: is_public ?? false,
+            allowed_participants: allowed_participants ?? []
+          })
+          .eq('id', conversation_id)
+          .eq('is_group', true); // Only groups can have visibility settings
+        break;
+      }
+
+      case 'bulkDeleteConversations': {
+        const { conversation_ids } = body;
+        if (!conversation_ids || conversation_ids.length === 0) {
+          return new Response(
+            JSON.stringify({ error: 'Nessuna conversazione selezionata' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        result = await supabase
+          .from('conversations')
+          .delete()
+          .in('id', conversation_ids);
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: 'Unknown action' }),
