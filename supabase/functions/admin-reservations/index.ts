@@ -41,18 +41,25 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Verify user is admin via user_metadata
-    const isAdmin = user.user_metadata?.is_admin === true;
-    if (!isAdmin) {
+    // Use service role for database operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Verify admin role via user_roles table (not user_metadata which is client-controllable)
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+
+    if (roleError || !roleData) {
+      console.error('Role check failed:', roleError);
       return new Response(
         JSON.stringify({ error: "Accesso negato - Solo admin" }),
         { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
 
-    // Use service role for database operations
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
     const { action, id, ids, status, filter, reservation } = await req.json();
     console.log(`Admin reservation action: ${action} by ${user.email}`);
 

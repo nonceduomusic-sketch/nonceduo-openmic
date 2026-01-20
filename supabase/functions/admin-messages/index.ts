@@ -42,17 +42,24 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    // Check if user is admin
-    const isAdmin = user.user_metadata?.is_admin === true;
-    if (!isAdmin) {
+    // Create service role client for database operations
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Verify admin role via user_roles table (not user_metadata which is client-controllable)
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('role')
+      .eq('user_id', user.id)
+      .eq('role', 'admin')
+      .maybeSingle();
+
+    if (roleError || !roleData) {
+      console.error('Role check failed:', roleError);
       return new Response(
         JSON.stringify({ error: 'Not authorized' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Create service role client for database operations
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Parse request body
     const { action, id, ids, reply, message } = await req.json();
