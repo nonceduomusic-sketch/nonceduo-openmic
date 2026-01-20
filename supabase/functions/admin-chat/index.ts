@@ -117,22 +117,24 @@ serve(async (req: Request): Promise<Response> => {
         break;
       }
 
-      case 'mergeConversations': {
+      case 'createGroup': {
+        // Create a new empty group and add participants from selected conversations
         const { conversation_ids, group_name } = body;
         
         if (!conversation_ids || conversation_ids.length < 2) {
           return new Response(
-            JSON.stringify({ error: 'Servono almeno 2 conversazioni' }),
+            JSON.stringify({ error: 'Seleziona almeno 2 conversazioni' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        // Create new group conversation
+        // Create new group conversation (empty, no messages copied)
         const { data: newConv, error: convError } = await supabase
           .from('conversations')
           .insert([{ 
             name: group_name || 'Gruppo', 
-            is_group: true 
+            is_group: true,
+            is_public: false
           }])
           .select()
           .single();
@@ -145,7 +147,7 @@ serve(async (req: Request): Promise<Response> => {
           );
         }
 
-        // Get all participants from conversations to merge
+        // Get all participants from selected conversations
         const { data: existingParticipants, error: partError } = await supabase
           .from('conversation_participants')
           .select('*')
@@ -181,53 +183,127 @@ serve(async (req: Request): Promise<Response> => {
           }
         }
 
-        // Get all messages from conversations to merge
-        const { data: existingMessages, error: msgError } = await supabase
-          .from('chat_messages')
-          .select('*')
-          .in('conversation_id', conversation_ids)
-          .order('created_at', { ascending: true });
+        // DO NOT copy messages - the group starts empty
+        // The original individual conversations remain untouched
 
-        if (msgError) {
-          console.error('Error fetching messages:', msgError);
+        result = { data: newConv, error: null };
+        break;
+      }
+
+      case 'addToGroup': {
+        // Add participants from conversations to an existing group
+        const { group_id, conversation_ids } = body;
+        
+        if (!group_id) {
           return new Response(
-            JSON.stringify({ error: msgError.message }),
+            JSON.stringify({ error: 'ID gruppo richiesto' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (!conversation_ids || conversation_ids.length === 0) {
+          return new Response(
+            JSON.stringify({ error: 'Seleziona almeno una conversazione' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Verify the target is a group
+        const { data: groupData, error: groupError } = await supabase
+          .from('conversations')
+          .select('*')
+          .eq('id', group_id)
+          .eq('is_group', true)
+          .single();
+
+        if (groupError || !groupData) {
+          return new Response(
+            JSON.stringify({ error: 'Gruppo non trovato' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get existing group participants
+        const { data: existingGroupParticipants } = await supabase
+          .from('conversation_participants')
+          .select('session_id')
+          .eq('conversation_id', group_id);
+
+        const existingSessionIds = new Set((existingGroupParticipants || []).map(p => p.session_id));
+
+        // Get participants from selected conversations
+        const { data: newParticipants, error: partError } = await supabase
+          .from('conversation_participants')
+          .select('*')
+          .in('conversation_id', conversation_ids);
+
+        if (partError) {
+          console.error('Error fetching participants:', partError);
+          return new Response(
+            JSON.stringify({ error: partError.message }),
             { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        // Copy messages to new conversation (without id to get new ids)
-        if (existingMessages && existingMessages.length > 0) {
-          const messagesToInsert = existingMessages.map(m => ({
-            conversation_id: newConv.id,
-            sender_type: m.sender_type,
-            sender_name: m.sender_name,
-            sender_session_id: m.sender_session_id,
-            message_text: m.message_text,
-            edited_at: m.edited_at,
-            created_at: m.created_at, // Preserve original timestamp
-          }));
-
-          const { error: insertMsgError } = await supabase
-            .from('chat_messages')
-            .insert(messagesToInsert);
-
-          if (insertMsgError) {
-            console.error('Error copying messages:', insertMsgError);
+        // Add only new participants (not already in group)
+        const participantsToAdd = [];
+        const addedSessionIds = new Set<string>();
+        
+        for (const p of newParticipants || []) {
+          if (!existingSessionIds.has(p.session_id) && !addedSessionIds.has(p.session_id)) {
+            addedSessionIds.add(p.session_id);
+            participantsToAdd.push({
+              conversation_id: group_id,
+              participant_name: p.participant_name,
+              session_id: p.session_id,
+            });
           }
         }
 
-        // Delete old conversations
-        const { error: deleteError } = await supabase
-          .from('conversations')
-          .delete()
-          .in('id', conversation_ids);
+        if (participantsToAdd.length > 0) {
+          const { error: insertError } = await supabase
+            .from('conversation_participants')
+            .insert(participantsToAdd);
 
-        if (deleteError) {
-          console.error('Error deleting old conversations:', deleteError);
+          if (insertError) {
+            console.error('Error adding participants:', insertError);
+            return new Response(
+              JSON.stringify({ error: insertError.message }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
         }
 
-        result = { data: newConv, error: null };
+        result = { data: { added: participantsToAdd.length }, error: null };
+        break;
+      }
+
+      case 'removeFromGroup': {
+        // Remove a participant from a group
+        const { group_id, session_id } = body;
+        
+        if (!group_id || !session_id) {
+          return new Response(
+            JSON.stringify({ error: 'ID gruppo e session_id richiesti' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { error } = await supabase
+          .from('conversation_participants')
+          .delete()
+          .eq('conversation_id', group_id)
+          .eq('session_id', session_id);
+
+        if (error) {
+          console.error('Error removing participant:', error);
+          return new Response(
+            JSON.stringify({ error: error.message }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        result = { data: { removed: true }, error: null };
         break;
       }
 
