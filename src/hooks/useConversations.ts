@@ -234,6 +234,10 @@ export const useConversations = (sessionId?: string) => {
       if (msgError) throw msgError;
 
       toast.success('Messaggio inviato!');
+      
+      // Refresh conversations to include the newly created conversation
+      await fetchConversations();
+      
       return convData.id;
     } catch (error) {
       console.error('Error starting conversation:', error);
