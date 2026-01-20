@@ -12,6 +12,7 @@ import {
   Home,
   Undo2,
   MessageCircle,
+  Ban,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAdmin } from '@/contexts/AdminContext';
@@ -21,6 +22,7 @@ import { ReservationCard } from './ReservationCard';
 import { NotificationPopup } from './NotificationPopup';
 import { MessageNotificationPopup } from './MessageNotificationPopup';
 import { AdminMessagesTab } from './AdminMessagesTab';
+import { AdminBlockedUsersTab } from './AdminBlockedUsersTab';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -61,7 +63,7 @@ export const AdminDashboard: React.FC = () => {
 
   const [reservationNotifications, setReservationNotifications] = useState<Reservation[]>([]);
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
-  const [mainTab, setMainTab] = useState<'openmic' | 'messages'>('openmic');
+  const [mainTab, setMainTab] = useState<'openmic' | 'messages' | 'blocked'>('openmic');
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -488,7 +490,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Main Tabs: Open Mic / Messages */}
+          {/* Main Tabs: Open Mic / Messages / Blocked */}
           <div className="flex gap-2 mt-4">
             <button
               onClick={() => setMainTab('openmic')}
@@ -516,6 +518,17 @@ export const AdminDashboard: React.FC = () => {
                   {unreadMessageCount}
                 </span>
               )}
+            </button>
+            <button
+              onClick={() => setMainTab('blocked')}
+              className={`flex-1 py-3 px-4 rounded-lg font-medium text-sm transition-all ${
+                mainTab === 'blocked'
+                  ? 'bg-gradient-to-r from-destructive to-destructive/70 text-destructive-foreground shadow-lg'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              <Ban className="w-4 h-4 inline-block mr-2" />
+              Bloccati
             </button>
           </div>
 
@@ -599,8 +612,10 @@ export const AdminDashboard: React.FC = () => {
               )}
             </div>
           )
-        ) : (
+        ) : mainTab === 'messages' ? (
           <AdminMessagesTab onUnreadCountChange={setUnreadMessageCount} />
+        ) : (
+          <AdminBlockedUsersTab />
         )}
       </main>
     </div>
