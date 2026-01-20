@@ -3,7 +3,7 @@ import { X, Send, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Song } from '@/data/songs';
-import { getWhatsAppUrl, formatWhatsAppMessage } from '@/lib/whatsapp';
+import { openWhatsApp, formatWhatsAppMessage } from '@/lib/whatsapp';
 import { useReservations } from '@/hooks/useReservations';
 import { z } from 'zod';
 import { toast } from 'sonner';
@@ -43,8 +43,8 @@ export const BookingModal: React.FC<BookingModalProps> = ({ song, onClose }) => 
     const success = await createReservation(validation.data.customer_name, song.title, song.artist);
     
     if (success) {
-      // Open WhatsApp
-      window.open(getWhatsAppUrl(validation.data.customer_name, song.title, song.artist), '_blank');
+      // Open WhatsApp with iOS-compatible function
+      openWhatsApp(validation.data.customer_name, song.title, song.artist);
       onClose();
     }
     
