@@ -16,9 +16,10 @@ import {
 import { Button } from '@/components/ui/button';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useReservations, Reservation } from '@/hooks/useReservations';
-import { useMessages } from '@/hooks/useMessages';
+import { useMessages, Message } from '@/hooks/useMessages';
 import { ReservationCard } from './ReservationCard';
 import { NotificationPopup } from './NotificationPopup';
+import { MessageNotificationPopup } from './MessageNotificationPopup';
 import { AdminMessagesTab } from './AdminMessagesTab';
 import {
   AlertDialog,
@@ -58,7 +59,8 @@ export const AdminDashboard: React.FC = () => {
   
   const { unreadMessages } = useMessages();
 
-  const [notifications, setNotifications] = useState<Reservation[]>([]);
+  const [reservationNotifications, setReservationNotifications] = useState<Reservation[]>([]);
+  const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
   const [mainTab, setMainTab] = useState<'openmic' | 'messages'>('openmic');
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [selectionMode, setSelectionMode] = useState(false);
@@ -69,9 +71,10 @@ export const AdminDashboard: React.FC = () => {
   const currentReservations =
     activeTab === 'active' ? activeReservations : completedReservations;
 
+  // Listen for new reservation notifications
   useEffect(() => {
     const handleNewReservation = (event: CustomEvent<Reservation>) => {
-      setNotifications((prev) => [...prev, event.detail]);
+      setReservationNotifications((prev) => [...prev, event.detail]);
     };
 
     window.addEventListener(
@@ -87,6 +90,25 @@ export const AdminDashboard: React.FC = () => {
     };
   }, []);
 
+  // Listen for new message notifications
+  useEffect(() => {
+    const handleNewMessage = (event: CustomEvent<Message>) => {
+      setMessageNotifications((prev) => [...prev, event.detail]);
+    };
+
+    window.addEventListener(
+      'new-message',
+      handleNewMessage as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        'new-message',
+        handleNewMessage as EventListener
+      );
+    };
+  }, []);
+
   // Update unread count from messages
   useEffect(() => {
     setUnreadMessageCount(unreadMessages.length);
@@ -98,8 +120,12 @@ export const AdminDashboard: React.FC = () => {
     setSelectionMode(false);
   }, [activeTab, mainTab]);
 
-  const removeNotification = (id: string) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  const removeReservationNotification = (id: string) => {
+    setReservationNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const removeMessageNotification = (id: string) => {
+    setMessageNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
   const handleSelect = (id: string, checked: boolean) => {
@@ -272,12 +298,21 @@ export const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Notifications */}
-      {notifications.map((notification) => (
+      {/* Reservation Notifications */}
+      {reservationNotifications.map((notification) => (
         <NotificationPopup
           key={notification.id}
           reservation={notification}
-          onClose={() => removeNotification(notification.id)}
+          onClose={() => removeReservationNotification(notification.id)}
+        />
+      ))}
+
+      {/* Message Notifications */}
+      {messageNotifications.map((notification) => (
+        <MessageNotificationPopup
+          key={notification.id}
+          message={notification}
+          onClose={() => removeMessageNotification(notification.id)}
         />
       ))}
 
