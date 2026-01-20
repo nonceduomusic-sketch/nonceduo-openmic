@@ -259,7 +259,7 @@ const Home: React.FC = () => {
 
             <div className="flex justify-center gap-6">
               <a 
-                href="https://www.instagram.com/nonceduo/" 
+                href="https://www.instagram.com/nonceduo.music/" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="p-4 rounded-full bg-card border border-border hover:border-primary transition-colors"
