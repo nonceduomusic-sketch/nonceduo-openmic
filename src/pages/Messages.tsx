@@ -160,14 +160,22 @@ const Messages: React.FC = () => {
     localStorage.setItem('user_name', name);
     const success = await joinPublicGroup(conv.id, name, userSessionId);
     if (success) {
-      // After joining, the conversation will appear in user's list
-      setTimeout(() => {
-        const joined = conversations.find(c => c.id === conv.id);
-        if (joined) {
-          setSelectedConversation(joined);
-          setActiveTab('private');
-        }
-      }, 500);
+      // After joining, set the conversation directly and switch to private tab
+      // The conversation should now be in the conversations list after fetch
+      setSelectedConversation({
+        ...conv,
+        participants: [
+          ...(conv.participants || []),
+          {
+            id: crypto.randomUUID(),
+            conversation_id: conv.id,
+            participant_name: name,
+            session_id: userSessionId,
+            joined_at: new Date().toISOString(),
+          }
+        ]
+      });
+      setActiveTab('private');
     }
   };
 
@@ -337,6 +345,31 @@ const Messages: React.FC = () => {
                     </Button>
                   </form>
                 </div>
+
+                {/* Public groups banner */}
+                {publicGroups.length > 0 && (
+                  <button
+                    onClick={() => setActiveTab('public')}
+                    className="w-full glass-card p-4 neon-border-cyan border text-left hover:border-secondary transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
+                        <Globe className="w-5 h-5 text-secondary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-semibold text-foreground">
+                          {publicGroups.length} gruppo{publicGroups.length > 1 ? 'i' : ''} pubblico{publicGroups.length > 1 ? 'i' : ''} disponibile{publicGroups.length > 1 ? 'i' : ''}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          Clicca per vedere e partecipare
+                        </p>
+                      </div>
+                      <div className="text-secondary font-medium">
+                        Vai →
+                      </div>
+                    </div>
+                  </button>
+                )}
 
                 {/* Existing conversations */}
                 {userConversations.length > 0 && (
@@ -555,6 +588,21 @@ const Messages: React.FC = () => {
                 <div className="flex items-center justify-center gap-2 text-destructive py-2">
                   <Ban className="w-4 h-4" />
                   <span className="text-sm">Non puoi inviare messaggi</span>
+                </div>
+              ) : !name.trim() ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Inserisci il tuo nome per scrivere:</p>
+                  <div className="flex gap-2">
+                    <Input
+                      value={name}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        localStorage.setItem('user_name', e.target.value);
+                      }}
+                      placeholder="Il tuo nome..."
+                      className="bg-muted border-border"
+                    />
+                  </div>
                 </div>
               ) : (
                 <div className="flex gap-2">
