@@ -25,6 +25,8 @@ export interface Conversation {
   id: string;
   name: string | null;
   is_group: boolean;
+  is_public?: boolean;
+  allowed_participants?: string[];
   created_at: string;
   updated_at: string;
   participants?: Participant[];
@@ -348,6 +350,42 @@ export const useConversations = (sessionId?: string) => {
     }
   };
 
+  // Admin: Set group visibility
+  const adminSetGroupVisibility = async (
+    conversationId: string,
+    isPublic: boolean,
+    allowedParticipants?: string[]
+  ): Promise<boolean> => {
+    try {
+      await callAdminChatApi('setVisibility', {
+        conversation_id: conversationId,
+        is_public: isPublic,
+        allowed_participants: allowedParticipants || [],
+      });
+      toast.success(isPublic ? 'Gruppo reso pubblico' : 'Gruppo reso privato');
+      return true;
+    } catch (error) {
+      console.error('Error setting visibility:', error);
+      toast.error('Errore nel cambiare visibilità');
+      return false;
+    }
+  };
+
+  // Admin: Bulk delete conversations
+  const adminBulkDeleteConversations = async (conversationIds: string[]): Promise<boolean> => {
+    try {
+      await callAdminChatApi('bulkDeleteConversations', {
+        conversation_ids: conversationIds,
+      });
+      toast.success(`${conversationIds.length} conversazioni eliminate`);
+      return true;
+    } catch (error) {
+      console.error('Error bulk deleting conversations:', error);
+      toast.error('Errore nell\'eliminazione');
+      return false;
+    }
+  };
+
   // Get conversations with unread messages (messages from users without admin reply after)
   const getUnreadConversations = () => {
     return conversations.filter(conv => {
@@ -378,6 +416,8 @@ export const useConversations = (sessionId?: string) => {
     adminDeleteConversation,
     adminMergeConversations,
     adminRenameGroup,
+    adminSetGroupVisibility,
+    adminBulkDeleteConversations,
     getUnreadConversations,
     getReadConversations,
     refetch: fetchConversations,

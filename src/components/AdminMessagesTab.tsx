@@ -10,8 +10,10 @@ import {
   Check,
   X,
   Merge,
-  CheckSquare,
-  Square,
+  Globe,
+  Lock,
+  MoreVertical,
+  Undo2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,9 +37,17 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
 
 interface AdminMessagesTabProps {
   onUnreadCountChange?: (count: number) => void;
@@ -54,6 +64,8 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     adminDeleteConversation,
     adminMergeConversations,
     adminRenameGroup,
+    adminSetGroupVisibility,
+    adminBulkDeleteConversations,
     getUnreadConversations,
     getReadConversations,
   } = useConversations();
@@ -65,11 +77,24 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   
-  // Merge mode
-  const [mergeMode, setMergeMode] = useState(false);
-  const [selectedForMerge, setSelectedForMerge] = useState<Set<string>>(new Set());
+  // Selection mode (for merge or delete)
+  const [selectionMode, setSelectionMode] = useState<'none' | 'merge' | 'delete'>('none');
+  const [selectedForAction, setSelectedForAction] = useState<Set<string>>(new Set());
   const [showMergeDialog, setShowMergeDialog] = useState(false);
   const [mergeGroupName, setMergeGroupName] = useState('');
+  
+  // Rename dialog
+  const [showRenameDialog, setShowRenameDialog] = useState(false);
+  const [renameTarget, setRenameTarget] = useState<Conversation | null>(null);
+  const [newGroupName, setNewGroupName] = useState('');
+  
+  // Visibility dialog
+  const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
+  const [visibilityTarget, setVisibilityTarget] = useState<Conversation | null>(null);
+  
+  // Undo state for bulk delete
+  const [lastDeletedIds, setLastDeletedIds] = useState<string[]>([]);
+  const [showUndoToast, setShowUndoToast] = useState(false);
 
   const unreadConversations = getUnreadConversations();
   const readConversations = getReadConversations();
@@ -93,10 +118,10 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     }
   }, [conversations, selectedConversation?.id]);
 
-  // Clear merge selection when changing tabs
+  // Clear selection when changing tabs
   React.useEffect(() => {
-    setSelectedForMerge(new Set());
-    setMergeMode(false);
+    setSelectedForAction(new Set());
+    setSelectionMode('none');
   }, [activeSubTab]);
 
   const getParticipantNames = (conv: Conversation): string => {
@@ -148,8 +173,8 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     }
   };
 
-  const handleToggleMergeSelect = (convId: string) => {
-    setSelectedForMerge(prev => {
+  const handleToggleSelect = (convId: string) => {
+    setSelectedForAction(prev => {
       const next = new Set(prev);
       if (next.has(convId)) {
         next.delete(convId);
@@ -161,7 +186,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
   };
 
   const handleMerge = async () => {
-    if (selectedForMerge.size < 2) {
+    if (selectedForAction.size < 2) {
       toast({
         title: 'Errore',
         description: 'Seleziona almeno 2 conversazioni da unire',
@@ -171,16 +196,62 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     }
 
     const success = await adminMergeConversations(
-      Array.from(selectedForMerge),
+      Array.from(selectedForAction),
       mergeGroupName || 'Gruppo'
     );
 
     if (success) {
-      setMergeMode(false);
-      setSelectedForMerge(new Set());
+      setSelectionMode('none');
+      setSelectedForAction(new Set());
       setShowMergeDialog(false);
       setMergeGroupName('');
     }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedForAction.size === 0) {
+      toast({
+        title: 'Errore',
+        description: 'Seleziona almeno 1 conversazione da eliminare',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const idsToDelete = Array.from(selectedForAction);
+    const success = await adminBulkDeleteConversations(idsToDelete);
+
+    if (success) {
+      setLastDeletedIds(idsToDelete);
+      setSelectionMode('none');
+      setSelectedForAction(new Set());
+    }
+  };
+  
+  const handleRenameGroup = async () => {
+    if (!renameTarget || !newGroupName.trim()) return;
+    
+    const success = await adminRenameGroup(renameTarget.id, newGroupName.trim());
+    if (success) {
+      setShowRenameDialog(false);
+      setRenameTarget(null);
+      setNewGroupName('');
+    }
+  };
+  
+  const handleSetVisibility = async (isPublic: boolean) => {
+    if (!visibilityTarget) return;
+    
+    const success = await adminSetGroupVisibility(visibilityTarget.id, isPublic);
+    if (success) {
+      setShowVisibilityDialog(false);
+      setVisibilityTarget(null);
+    }
+  };
+
+  const exitSelectionMode = () => {
+    setSelectionMode('none');
+    setSelectedForAction(new Set());
   };
 
   if (loading) {
@@ -216,11 +287,20 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
               )}
             </div>
             <div>
-              <h3 className="font-semibold text-foreground">
-                {selectedConversation.is_group 
-                  ? selectedConversation.name 
-                  : getParticipantNames(selectedConversation)}
-              </h3>
+              <div className="flex items-center gap-2">
+                <h3 className="font-semibold text-foreground">
+                  {selectedConversation.is_group 
+                    ? selectedConversation.name 
+                    : getParticipantNames(selectedConversation)}
+                </h3>
+                {selectedConversation.is_group && (
+                  selectedConversation.is_public ? (
+                    <Globe className="w-4 h-4 text-secondary" />
+                  ) : (
+                    <Lock className="w-4 h-4 text-muted-foreground" />
+                  )
+                )}
+              </div>
               {selectedConversation.is_group && (
                 <p className="text-xs text-muted-foreground">
                   {getParticipantNames(selectedConversation)}
@@ -229,33 +309,72 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
             </div>
           </div>
           
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-destructive">
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="glass-card border-destructive">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                  <AlertTriangle className="w-5 h-5" />
-                  Elimina Conversazione
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  Sei sicuro di voler eliminare questa conversazione e tutti i suoi messaggi?
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Annulla</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() => handleDeleteConversation(selectedConversation.id)}
-                  className="bg-destructive text-destructive-foreground"
-                >
-                  Elimina
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <div className="flex items-center gap-2">
+            {/* Group management dropdown */}
+            {selectedConversation.is_group && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreVertical className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => {
+                    setRenameTarget(selectedConversation);
+                    setNewGroupName(selectedConversation.name || '');
+                    setShowRenameDialog(true);
+                  }}>
+                    <Edit2 className="w-4 h-4 mr-2" />
+                    Rinomina gruppo
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => {
+                    setVisibilityTarget(selectedConversation);
+                    setShowVisibilityDialog(true);
+                  }}>
+                    {selectedConversation.is_public ? (
+                      <>
+                        <Lock className="w-4 h-4 mr-2" />
+                        Rendi privato
+                      </>
+                    ) : (
+                      <>
+                        <Globe className="w-4 h-4 mr-2" />
+                        Rendi pubblico
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+            
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="text-destructive">
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="glass-card border-destructive">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                    <AlertTriangle className="w-5 h-5" />
+                    Elimina Conversazione
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Sei sicuro di voler eliminare questa conversazione e tutti i suoi messaggi?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => handleDeleteConversation(selectedConversation.id)}
+                    className="bg-destructive text-destructive-foreground"
+                  >
+                    Elimina
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         </div>
 
         {/* Messages */}
@@ -276,7 +395,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                   <p className={`text-xs font-medium mb-1 ${
                     msg.sender_type === 'admin' ? 'text-secondary' : 'text-primary'
                   }`}>
-                    {msg.sender_type === 'admin' ? msg.sender_name : msg.sender_name}
+                    {msg.sender_name}
                   </p>
                   
                   {editingMessageId === msg.id ? (
@@ -386,41 +505,88 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
   // Conversation list view
   return (
     <div>
-      {/* Header with merge controls */}
-      <div className="flex items-center justify-between gap-2 mb-4">
-        {!mergeMode ? (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setMergeMode(true)}
-            className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
-            disabled={conversations.length < 2}
-          >
-            <Merge className="w-4 h-4 mr-2" />
-            Unisci in Gruppo
-          </Button>
-        ) : (
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">
-              {selectedForMerge.size} selezionate
-            </span>
+      {/* Header with action controls */}
+      <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+        {selectionMode === 'none' ? (
+          <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setShowMergeDialog(true)}
-              disabled={selectedForMerge.size < 2}
+              onClick={() => setSelectionMode('merge')}
               className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+              disabled={conversations.length < 2}
             >
               <Merge className="w-4 h-4 mr-2" />
-              Crea Gruppo
+              Unisci
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => {
-                setMergeMode(false);
-                setSelectedForMerge(new Set());
-              }}
+              onClick={() => setSelectionMode('delete')}
+              className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              disabled={conversations.length === 0}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Elimina
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-muted-foreground">
+              {selectedForAction.size} selezionate
+            </span>
+            {selectionMode === 'merge' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowMergeDialog(true)}
+                disabled={selectedForAction.size < 2}
+                className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+              >
+                <Merge className="w-4 h-4 mr-2" />
+                Crea Gruppo
+              </Button>
+            )}
+            {selectionMode === 'delete' && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={selectedForAction.size === 0}
+                    className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Elimina ({selectedForAction.size})
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="glass-card border-destructive">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                      <AlertTriangle className="w-5 h-5" />
+                      Elimina Conversazioni
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Sei sicuro di voler eliminare {selectedForAction.size} conversazioni? 
+                      Questa azione non può essere annullata.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annulla</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleBulkDelete}
+                      className="bg-destructive text-destructive-foreground"
+                    >
+                      Elimina Tutto
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={exitSelectionMode}
             >
               <X className="w-4 h-4" />
             </Button>
@@ -470,22 +636,22 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
             <div
               key={conv.id}
               className={`glass-card p-4 neon-border-pink border cursor-pointer hover:border-primary transition-colors ${
-                mergeMode && selectedForMerge.has(conv.id) ? 'ring-2 ring-secondary' : ''
+                selectionMode !== 'none' && selectedForAction.has(conv.id) ? 'ring-2 ring-secondary' : ''
               }`}
               onClick={() => {
-                if (mergeMode) {
-                  handleToggleMergeSelect(conv.id);
+                if (selectionMode !== 'none') {
+                  handleToggleSelect(conv.id);
                 } else {
                   setSelectedConversation(conv);
                 }
               }}
             >
               <div className="flex items-start gap-3">
-                {mergeMode && (
+                {selectionMode !== 'none' && (
                   <div className="pt-1">
                     <Checkbox
-                      checked={selectedForMerge.has(conv.id)}
-                      onCheckedChange={() => handleToggleMergeSelect(conv.id)}
+                      checked={selectedForAction.has(conv.id)}
+                      onCheckedChange={() => handleToggleSelect(conv.id)}
                     />
                   </div>
                 )}
@@ -502,9 +668,18 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
-                    <span className="font-display font-semibold text-foreground">
-                      {conv.is_group ? conv.name : getParticipantNames(conv)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-display font-semibold text-foreground">
+                        {conv.is_group ? conv.name : getParticipantNames(conv)}
+                      </span>
+                      {conv.is_group && (
+                        conv.is_public ? (
+                          <Globe className="w-3 h-3 text-secondary" />
+                        ) : (
+                          <Lock className="w-3 h-3 text-muted-foreground" />
+                        )
+                      )}
+                    </div>
                     {conv.last_message && (
                       <span className="text-xs text-muted-foreground">
                         {new Date(conv.last_message.created_at).toLocaleString('it-IT')}
@@ -532,44 +707,83 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                   </div>
                 </div>
 
-                {!mergeMode && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
+                {selectionMode === 'none' && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="text-destructive hover:bg-destructive/20"
+                        className="h-8 w-8"
                         onClick={(e) => e.stopPropagation()}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <MoreVertical className="w-4 h-4" />
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="glass-card border-destructive">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                          <AlertTriangle className="w-5 h-5" />
-                          Elimina Conversazione
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Questa azione eliminerà la conversazione e tutti i messaggi.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel onClick={(e) => e.stopPropagation()}>
-                          Annulla
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={(e) => {
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {conv.is_group && (
+                        <>
+                          <DropdownMenuItem onClick={(e) => {
                             e.stopPropagation();
-                            handleDeleteConversation(conv.id);
-                          }}
-                          className="bg-destructive text-destructive-foreground"
-                        >
-                          Elimina
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                            setRenameTarget(conv);
+                            setNewGroupName(conv.name || '');
+                            setShowRenameDialog(true);
+                          }}>
+                            <Edit2 className="w-4 h-4 mr-2" />
+                            Rinomina
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation();
+                            setVisibilityTarget(conv);
+                            setShowVisibilityDialog(true);
+                          }}>
+                            {conv.is_public ? (
+                              <>
+                                <Lock className="w-4 h-4 mr-2" />
+                                Rendi privato
+                              </>
+                            ) : (
+                              <>
+                                <Globe className="w-4 h-4 mr-2" />
+                                Rendi pubblico
+                              </>
+                            )}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </>
+                      )}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem 
+                            className="text-destructive"
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Elimina
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="glass-card border-destructive">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                              <AlertTriangle className="w-5 h-5" />
+                              Elimina Conversazione
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Questa azione eliminerà la conversazione e tutti i messaggi.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annulla</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteConversation(conv.id)}
+                              className="bg-destructive text-destructive-foreground"
+                            >
+                              Elimina
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </div>
             </div>
@@ -600,7 +814,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
               />
             </div>
             <p className="text-sm text-muted-foreground">
-              Verranno unite {selectedForMerge.size} conversazioni in un unico gruppo.
+              Verranno unite {selectedForAction.size} conversazioni in un unico gruppo.
               Tutti i messaggi verranno conservati.
             </p>
           </div>
@@ -612,6 +826,104 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
             <Button onClick={handleMerge} className="neon-button-cyan">
               <Merge className="w-4 h-4 mr-2" />
               Crea Gruppo
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename dialog */}
+      <Dialog open={showRenameDialog} onOpenChange={setShowRenameDialog}>
+        <DialogContent className="glass-card">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Edit2 className="w-5 h-5 text-primary" />
+              Rinomina Gruppo
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">
+                Nuovo nome
+              </label>
+              <Input
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                placeholder="Nome del gruppo"
+                className="bg-muted border-border"
+              />
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowRenameDialog(false);
+              setRenameTarget(null);
+              setNewGroupName('');
+            }}>
+              Annulla
+            </Button>
+            <Button onClick={handleRenameGroup} className="neon-button-pink">
+              <Check className="w-4 h-4 mr-2" />
+              Salva
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Visibility dialog */}
+      <Dialog open={showVisibilityDialog} onOpenChange={setShowVisibilityDialog}>
+        <DialogContent className="glass-card">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {visibilityTarget?.is_public ? (
+                <>
+                  <Lock className="w-5 h-5 text-muted-foreground" />
+                  Rendi Privato
+                </>
+              ) : (
+                <>
+                  <Globe className="w-5 h-5 text-secondary" />
+                  Rendi Pubblico
+                </>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {visibilityTarget?.is_public ? (
+              <p className="text-sm text-muted-foreground">
+                Rendendo il gruppo privato, solo i partecipanti attuali potranno vedere e partecipare.
+              </p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Rendendo il gruppo pubblico, tutti gli utenti potranno vederlo e partecipare alla conversazione.
+              </p>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowVisibilityDialog(false);
+              setVisibilityTarget(null);
+            }}>
+              Annulla
+            </Button>
+            <Button 
+              onClick={() => handleSetVisibility(!visibilityTarget?.is_public)}
+              className={visibilityTarget?.is_public ? "" : "neon-button-cyan"}
+            >
+              {visibilityTarget?.is_public ? (
+                <>
+                  <Lock className="w-4 h-4 mr-2" />
+                  Rendi Privato
+                </>
+              ) : (
+                <>
+                  <Globe className="w-4 h-4 mr-2" />
+                  Rendi Pubblico
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
