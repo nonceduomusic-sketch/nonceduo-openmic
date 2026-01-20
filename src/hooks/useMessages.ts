@@ -17,15 +17,27 @@ const callAdminApi = async (action: string, data: Record<string, unknown>) => {
   const { data: { session } } = await supabase.auth.getSession();
   
   if (!session) {
+    console.error('Admin API call failed: No session');
     throw new Error('Non autenticato');
   }
+
+  console.log('Admin API call:', action, data);
 
   const response = await supabase.functions.invoke('admin-messages', {
     body: { action, ...data },
   });
 
+  console.log('Admin API response:', response);
+
   if (response.error) {
+    console.error('Admin API error:', response.error);
     throw new Error(response.error.message);
+  }
+
+  // Check if the response data indicates an error
+  if (response.data?.error) {
+    console.error('Admin API returned error:', response.data.error);
+    throw new Error(response.data.error);
   }
 
   return response.data;
