@@ -859,6 +859,23 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
             <span className="text-sm text-muted-foreground">
               {selectedForAction.size} selezionate
             </span>
+            {/* Select All / Deselect All button */}
+            {currentConversations.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if (selectedForAction.size === currentConversations.length) {
+                    setSelectedForAction(new Set());
+                  } else {
+                    setSelectedForAction(new Set(currentConversations.map(c => c.id)));
+                  }
+                }}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                {selectedForAction.size === currentConversations.length ? 'Deseleziona tutti' : 'Seleziona tutti'}
+              </Button>
+            )}
             {selectionMode === 'createGroup' && (
               <Button
                 variant="outline"
