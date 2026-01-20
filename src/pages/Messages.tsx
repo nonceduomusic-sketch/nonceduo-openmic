@@ -155,13 +155,12 @@ const Messages: React.FC = () => {
     
     if (conversationId) {
       setMessage('');
-      // Find and select the new conversation
-      setTimeout(() => {
-        const newConv = conversations.find(c => c.id === conversationId);
-        if (newConv) {
-          setSelectedConversation(newConv);
-        }
-      }, 500);
+      // The conversation list is now refreshed in startConversation
+      // Find and select it immediately from the updated list
+      const newConv = conversations.find(c => c.id === conversationId);
+      if (newConv) {
+        setSelectedConversation(newConv);
+      }
     }
     
     setIsSubmitting(false);

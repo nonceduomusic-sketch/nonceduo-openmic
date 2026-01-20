@@ -293,6 +293,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_session_participant: {
+        Args: { conv_id: string; session: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
