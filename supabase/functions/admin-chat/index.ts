@@ -107,6 +107,99 @@ serve(async (req: Request): Promise<Response> => {
         break;
       }
 
+      case 'restoreMessage': {
+        // Restore a deleted message
+        const { message } = body;
+        
+        if (!message) {
+          return new Response(
+            JSON.stringify({ error: 'Dati messaggio mancanti' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data, error } = await supabase
+          .from('chat_messages')
+          .insert([{
+            id: message.id,
+            conversation_id: message.conversation_id,
+            sender_type: message.sender_type,
+            sender_name: message.sender_name,
+            sender_session_id: message.sender_session_id,
+            message_text: message.message_text,
+            edited_at: message.edited_at,
+            created_at: message.created_at,
+          }])
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Error restoring message:', error);
+          return new Response(
+            JSON.stringify({ error: 'Errore nel ripristino del messaggio' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        result = { data, error: null };
+        break;
+      }
+
+      case 'bulkDeleteMessages': {
+        // Delete multiple messages at once
+        const { message_ids } = body;
+        if (!message_ids || message_ids.length === 0) {
+          return new Response(
+            JSON.stringify({ error: 'Nessun messaggio selezionato' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        result = await supabase
+          .from('chat_messages')
+          .delete()
+          .in('id', message_ids);
+        break;
+      }
+
+      case 'bulkRestoreMessages': {
+        // Restore multiple deleted messages
+        const { messages: messagesToRestore } = body;
+        
+        if (!messagesToRestore || messagesToRestore.length === 0) {
+          return new Response(
+            JSON.stringify({ error: 'Nessun messaggio da ripristinare' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const messagesToInsert = messagesToRestore.map((m: any) => ({
+          id: m.id,
+          conversation_id: m.conversation_id,
+          sender_type: m.sender_type,
+          sender_name: m.sender_name,
+          sender_session_id: m.sender_session_id,
+          message_text: m.message_text,
+          edited_at: m.edited_at,
+          created_at: m.created_at,
+        }));
+
+        const { data, error } = await supabase
+          .from('chat_messages')
+          .insert(messagesToInsert);
+
+        if (error) {
+          console.error('Error restoring messages:', error);
+          return new Response(
+            JSON.stringify({ error: 'Errore nel ripristino dei messaggi' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        result = { data: { restored: messagesToRestore.length }, error: null };
+        break;
+      }
+
       case 'deleteConversation': {
         const { conversation_id } = body;
         // This will cascade delete messages and participants
