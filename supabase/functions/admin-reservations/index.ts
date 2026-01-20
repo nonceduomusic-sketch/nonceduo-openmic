@@ -25,21 +25,26 @@ serve(async (req: Request): Promise<Response> => {
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     
-    // Verify the user's JWT token
+    // Extract JWT token from Authorization header
+    const token = authHeader.replace('Bearer ', '');
+    
+    // Use getClaims to verify JWT locally (more reliable than getUser which requires network call)
     const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
       auth: { persistSession: false },
-      global: { headers: { Authorization: authHeader } }
     });
     
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
     
-    if (userError || !user) {
-      console.error("Auth error:", userError);
+    if (claimsError || !claimsData?.claims) {
+      console.error('Auth error:', claimsError);
       return new Response(
-        JSON.stringify({ error: "Token non valido" }),
+        JSON.stringify({ error: 'Token non valido' }),
         { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );
     }
+
+    const userId = claimsData.claims.sub;
+    const userEmail = claimsData.claims.email || 'unknown';
 
     // Use service role for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -48,7 +53,7 @@ serve(async (req: Request): Promise<Response> => {
     const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
-      .eq('user_id', user.id)
+      .eq('user_id', userId)
       .eq('role', 'admin')
       .maybeSingle();
 
@@ -61,7 +66,7 @@ serve(async (req: Request): Promise<Response> => {
     }
 
     const { action, id, ids, status, filter, reservation } = await req.json();
-    console.log(`Admin reservation action: ${action} by ${user.email}`);
+    console.log(`Admin reservation action: ${action} by ${userEmail}`);
 
     switch (action) {
       case "complete": {
