@@ -10,10 +10,10 @@ import { toast } from 'sonner';
 
 const messageSchema = z.object({
   sender_name: z.string().trim()
-    .min(2, 'Nome troppo corto (minimo 2 caratteri)')
+    .min(1, 'Inserisci il tuo nome')
     .max(50, 'Nome troppo lungo (massimo 50 caratteri)'),
   message_text: z.string().trim()
-    .min(5, 'Messaggio troppo corto (minimo 5 caratteri)')
+    .min(1, 'Inserisci un messaggio')
     .max(500, 'Messaggio troppo lungo (massimo 500 caratteri)'),
 });
 
