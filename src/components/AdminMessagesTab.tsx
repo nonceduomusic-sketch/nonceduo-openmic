@@ -72,6 +72,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     adminEditMessage,
     adminDeleteMessage,
     adminDeleteConversation,
+    adminRestoreConversation,
     adminCreateGroup,
     adminCreateEmptyGroup,
     adminAddToGroup,
@@ -80,7 +81,6 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     adminSetGroupVisibility,
     adminBulkDeleteConversations,
     adminBlockUser,
-    adminUnblockUser,
     getUnreadConversations,
     getReadConversations,
   } = useConversations();
@@ -119,6 +119,10 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
   
   // Undo state for bulk delete
   const [lastDeletedIds, setLastDeletedIds] = useState<string[]>([]);
+  
+  // Delete confirmation dialog (for direct delete from list)
+  const [deleteTarget, setDeleteTarget] = useState<Conversation | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const unreadConversations = getUnreadConversations();
   const readConversations = getReadConversations();
@@ -195,11 +199,34 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     await adminDeleteMessage(msgId);
   };
 
-  const handleDeleteConversation = async (convId: string) => {
-    const success = await adminDeleteConversation(convId);
-    if (success && selectedConversation?.id === convId) {
-      setSelectedConversation(null);
+  const handleDeleteConversation = async (conv: Conversation) => {
+    const deletedConv = await adminDeleteConversation(conv.id);
+    
+    if (deletedConv) {
+      if (selectedConversation?.id === conv.id) {
+        setSelectedConversation(null);
+      }
+      
+      // Show toast with undo option
+      toast({
+        title: conv.is_group ? 'Gruppo eliminato' : 'Conversazione eliminata',
+        description: conv.is_group ? conv.name : getParticipantNames(conv),
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              await adminRestoreConversation(deletedConv);
+            }}
+          >
+            Annulla
+          </Button>
+        ),
+      });
     }
+    
+    setShowDeleteDialog(false);
+    setDeleteTarget(null);
   };
 
   const handleToggleSelect = (convId: string) => {
@@ -442,7 +469,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                 <AlertDialogFooter>
                   <AlertDialogCancel>Annulla</AlertDialogCancel>
                   <AlertDialogAction
-                    onClick={() => handleDeleteConversation(selectedConversation.id)}
+                    onClick={() => handleDeleteConversation(selectedConversation)}
                     className="bg-destructive text-destructive-foreground"
                   >
                     Elimina
@@ -840,82 +867,94 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                 </div>
 
                 {selectionMode === 'none' && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {conv.is_group && (
-                        <>
-                          <DropdownMenuItem onClick={(e) => {
-                            e.stopPropagation();
-                            setRenameTarget(conv);
-                            setRenameGroupName(conv.name || '');
-                            setShowRenameDialog(true);
-                          }}>
-                            <Edit2 className="w-4 h-4 mr-2" />
-                            Rinomina
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => {
-                            e.stopPropagation();
-                            setVisibilityTarget(conv);
-                            setShowVisibilityDialog(true);
-                          }}>
-                            {conv.is_public ? (
-                              <>
-                                <Lock className="w-4 h-4 mr-2" />
-                                Rendi privato
-                              </>
-                            ) : (
-                              <>
-                                <Globe className="w-4 h-4 mr-2" />
-                                Rendi pubblico
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                        </>
-                      )}
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <DropdownMenuItem 
-                            className="text-destructive"
-                            onSelect={(e) => e.preventDefault()}
+                  <div className="flex items-center gap-1">
+                    {/* Direct delete button */}
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="glass-card border-destructive">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                            <AlertTriangle className="w-5 h-5" />
+                            Elimina {conv.is_group ? 'Gruppo' : 'Conversazione'}
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            {conv.is_group 
+                              ? `Eliminare il gruppo "${conv.name}"?`
+                              : `Eliminare la conversazione con ${getParticipantNames(conv)}?`}
+                            <br />
+                            Potrai annullare l'operazione subito dopo.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Annulla</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteConversation(conv);
+                            }}
+                            className="bg-destructive text-destructive-foreground"
                           >
-                            <Trash2 className="w-4 h-4 mr-2" />
                             Elimina
-                          </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent className="glass-card border-destructive">
-                          <AlertDialogHeader>
-                            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                              <AlertTriangle className="w-5 h-5" />
-                              Elimina Conversazione
-                            </AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Questa azione eliminerà la conversazione e tutti i messaggi.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Annulla</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteConversation(conv.id)}
-                              className="bg-destructive text-destructive-foreground"
-                            >
-                              Elimina
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                    
+                    {/* More options menu */}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {conv.is_group && (
+                          <>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              setRenameTarget(conv);
+                              setRenameGroupName(conv.name || '');
+                              setShowRenameDialog(true);
+                            }}>
+                              <Edit2 className="w-4 h-4 mr-2" />
+                              Rinomina
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              setVisibilityTarget(conv);
+                              setShowVisibilityDialog(true);
+                            }}>
+                              {conv.is_public ? (
+                                <>
+                                  <Lock className="w-4 h-4 mr-2" />
+                                  Rendi privato
+                                </>
+                              ) : (
+                                <>
+                                  <Globe className="w-4 h-4 mr-2" />
+                                  Rendi pubblico
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 )}
               </div>
             </div>

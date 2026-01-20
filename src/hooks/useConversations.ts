@@ -377,15 +377,44 @@ export const useConversations = (sessionId?: string) => {
     }
   };
 
-  // Admin: Delete conversation
-  const adminDeleteConversation = async (conversationId: string): Promise<boolean> => {
+  // Admin: Delete conversation (returns the deleted conversation for undo)
+  const adminDeleteConversation = async (conversationId: string): Promise<Conversation | null> => {
     try {
+      // First, get the full conversation data for potential restore
+      const convToDelete = conversations.find(c => c.id === conversationId);
+      
       await callAdminChatApi('deleteConversation', { conversation_id: conversationId });
-      toast.success('Conversazione eliminata');
-      return true;
+      
+      // Return the deleted conversation data (for undo)
+      return convToDelete || null;
     } catch (error) {
       console.error('Error deleting conversation:', error);
       toast.error('Errore nell\'eliminazione');
+      return null;
+    }
+  };
+
+  // Admin: Restore a deleted conversation
+  const adminRestoreConversation = async (conversation: Conversation): Promise<boolean> => {
+    try {
+      await callAdminChatApi('restoreConversation', {
+        conversation: {
+          id: conversation.id,
+          name: conversation.name,
+          is_group: conversation.is_group,
+          is_public: conversation.is_public,
+          allowed_participants: conversation.allowed_participants,
+          created_at: conversation.created_at,
+          updated_at: conversation.updated_at,
+        },
+        participants: conversation.participants || [],
+        messages: conversation.messages || [],
+      });
+      toast.success('Conversazione ripristinata!');
+      return true;
+    } catch (error) {
+      console.error('Error restoring conversation:', error);
+      toast.error('Errore nel ripristino');
       return false;
     }
   };
@@ -590,6 +619,7 @@ export const useConversations = (sessionId?: string) => {
     adminEditMessage,
     adminDeleteMessage,
     adminDeleteConversation,
+    adminRestoreConversation,
     adminCreateGroup,
     adminCreateEmptyGroup,
     adminAddToGroup,
