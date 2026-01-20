@@ -13,14 +13,18 @@ import {
   Undo2,
   MessageCircle,
   Ban,
+  Bell,
+  BellOff,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useReservations, Reservation } from '@/hooks/useReservations';
 import { useMessages, Message } from '@/hooks/useMessages';
+import { useConversations, ChatMessage, Conversation } from '@/hooks/useConversations';
 import { ReservationCard } from './ReservationCard';
 import { NotificationPopup } from './NotificationPopup';
 import { MessageNotificationPopup } from './MessageNotificationPopup';
+import { ChatNotificationPopup } from './ChatNotificationPopup';
 import { AdminMessagesTab } from './AdminMessagesTab';
 import { AdminBlockedUsersTab } from './AdminBlockedUsersTab';
 import {
@@ -60,15 +64,20 @@ export const AdminDashboard: React.FC = () => {
   } = useReservations();
   
   const { unreadMessages } = useMessages();
+  const { conversations } = useConversations();
 
   const [reservationNotifications, setReservationNotifications] = useState<Reservation[]>([]);
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
+  const [chatNotifications, setChatNotifications] = useState<{ message: ChatMessage; conversation?: Conversation }[]>([]);
   const [mainTab, setMainTab] = useState<'openmic' | 'messages' | 'blocked'>('openmic');
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastAction, setLastAction] = useState<UndoAction | null>(null);
   const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(
+    typeof Notification !== 'undefined' ? Notification.permission : 'default'
+  );
 
   const currentReservations =
     activeTab === 'active' ? activeReservations : completedReservations;
@@ -111,6 +120,35 @@ export const AdminDashboard: React.FC = () => {
     };
   }, []);
 
+  // Listen for new chat messages (groups and private chats)
+  useEffect(() => {
+    const handleNewChatMessage = (event: CustomEvent<ChatMessage>) => {
+      const msg = event.detail;
+      // Skip messages sent by admin
+      if (msg.sender_type === 'admin') return;
+      
+      // Find the conversation for context
+      const conv = conversations.find(c => c.id === msg.conversation_id);
+      
+      setChatNotifications(prev => [...prev, { message: msg, conversation: conv }]);
+
+      // Also trigger push notification if permission granted
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const title = conv?.is_group 
+          ? `${conv.name || 'Gruppo'}: ${msg.sender_name}`
+          : `Nuovo messaggio da ${msg.sender_name}`;
+        const body = msg.message_text.slice(0, 100);
+        new Notification(title, { body, icon: '/favicon.ico', tag: msg.id });
+      }
+    };
+
+    window.addEventListener('new-chat-message', handleNewChatMessage as EventListener);
+
+    return () => {
+      window.removeEventListener('new-chat-message', handleNewChatMessage as EventListener);
+    };
+  }, [conversations]);
+
   // Update unread count from messages
   useEffect(() => {
     setUnreadMessageCount(unreadMessages.length);
@@ -128,6 +166,42 @@ export const AdminDashboard: React.FC = () => {
 
   const removeMessageNotification = (id: string) => {
     setMessageNotifications((prev) => prev.filter((n) => n.id !== id));
+  };
+
+  const removeChatNotification = (id: string) => {
+    setChatNotifications((prev) => prev.filter((n) => n.message.id !== id));
+  };
+
+  const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+      toast({
+        title: 'Notifiche non supportate',
+        description: 'Il tuo browser non supporta le notifiche push.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const permission = await Notification.requestPermission();
+    setNotificationPermission(permission);
+
+    if (permission === 'granted') {
+      toast({
+        title: 'Notifiche attivate',
+        description: 'Riceverai notifiche push per nuovi messaggi.',
+      });
+      // Test notification
+      new Notification('Notifiche attivate! 🔔', {
+        body: 'Riceverai avvisi per nuovi messaggi nelle chat.',
+        icon: '/favicon.ico',
+      });
+    } else if (permission === 'denied') {
+      toast({
+        title: 'Notifiche bloccate',
+        description: 'Puoi abilitarle dalle impostazioni del browser.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleSelect = (id: string, checked: boolean) => {
@@ -318,6 +392,17 @@ export const AdminDashboard: React.FC = () => {
         />
       ))}
 
+      {/* Chat Notifications (groups and private chats) */}
+      {chatNotifications.map((notification) => (
+        <ChatNotificationPopup
+          key={notification.message.id}
+          message={notification.message}
+          conversationName={notification.conversation?.is_group ? notification.conversation.name || undefined : undefined}
+          isGroup={notification.conversation?.is_group}
+          onClose={() => removeChatNotification(notification.message.id)}
+        />
+      ))}
+
       {/* Header */}
       <header className="sticky top-0 z-40 bg-card/90 backdrop-blur-md border-b border-border">
         <div className="container py-4">
@@ -332,6 +417,26 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
+              {/* Notification permission button */}
+              {typeof Notification !== 'undefined' && notificationPermission !== 'granted' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={requestNotificationPermission}
+                  className="border-accent text-accent hover:bg-accent hover:text-accent-foreground"
+                  title="Attiva notifiche push"
+                >
+                  <Bell className="w-4 h-4 md:mr-2" />
+                  <span className="hidden md:inline">Notifiche</span>
+                </Button>
+              )}
+              {typeof Notification !== 'undefined' && notificationPermission === 'granted' && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground px-2">
+                  <Bell className="w-3 h-3" />
+                  <span className="hidden md:inline">On</span>
+                </div>
+              )}
+
               {/* Home button - always visible */}
               <Button
                 variant="outline"
@@ -349,7 +454,7 @@ export const AdminDashboard: React.FC = () => {
                   variant="outline"
                   size="sm"
                   onClick={handleUndoAction}
-                  className="border-amber-500 text-amber-500 hover:bg-amber-500 hover:text-white animate-pulse"
+                  className="border-warning text-warning hover:bg-warning hover:text-warning-foreground animate-pulse"
                   title={`Annulla: ${lastAction.description}`}
                 >
                   <Undo2 className="w-4 h-4 md:mr-2" />
