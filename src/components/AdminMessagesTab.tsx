@@ -1,20 +1,22 @@
 import React, { useState } from 'react';
 import {
-  Mail,
-  MailOpen,
+  MessageCircle,
+  Users,
   Trash2,
   Reply,
   AlertTriangle,
-  Undo2,
   Eye,
-  EyeOff,
+  Edit2,
+  Check,
+  X,
+  Merge,
   CheckSquare,
   Square,
-  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { useMessages, Message } from '@/hooks/useMessages';
+import { Input } from '@/components/ui/input';
+import { useConversations, Conversation, ChatMessage } from '@/hooks/useConversations';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,12 +37,7 @@ import {
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
-
-interface UndoMessageAction {
-  type: 'delete' | 'deleteMultiple' | 'markRead' | 'markUnread';
-  messages: Message[];
-  description: string;
-}
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface AdminMessagesTabProps {
   onUnreadCountChange?: (count: number) => void;
@@ -49,252 +46,381 @@ interface AdminMessagesTabProps {
 export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCountChange }) => {
   const { toast } = useToast();
   const {
-    unreadMessages,
-    readMessages,
+    conversations,
     loading,
-    markAsRead,
-    markAsUnread,
-    replyToMessage,
-    deleteMessage,
-    restoreMessage,
-  } = useMessages();
+    adminReply,
+    adminEditMessage,
+    adminDeleteMessage,
+    adminDeleteConversation,
+    adminMergeConversations,
+    adminRenameGroup,
+    getUnreadConversations,
+    getReadConversations,
+  } = useConversations();
 
   const [activeSubTab, setActiveSubTab] = useState<'unread' | 'read'>('unread');
-  const [lastAction, setLastAction] = useState<UndoMessageAction | null>(null);
-  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [replyText, setReplyText] = useState('');
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
-  const [selectionMode, setSelectionMode] = useState(false);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  
+  // Merge mode
+  const [mergeMode, setMergeMode] = useState(false);
+  const [selectedForMerge, setSelectedForMerge] = useState<Set<string>>(new Set());
+  const [showMergeDialog, setShowMergeDialog] = useState(false);
+  const [mergeGroupName, setMergeGroupName] = useState('');
 
-  // Report unread count to parent
-  React.useEffect(() => {
-    onUnreadCountChange?.(unreadMessages.length);
-  }, [unreadMessages.length, onUnreadCountChange]);
+  const unreadConversations = getUnreadConversations();
+  const readConversations = getReadConversations();
+  
+  const currentConversations = activeSubTab === 'unread' ? unreadConversations : readConversations;
 
-  // Clear selection when changing tabs
+  // Report unread count
   React.useEffect(() => {
-    setSelectedIds(new Set());
-    setSelectionMode(false);
+    onUnreadCountChange?.(unreadConversations.length);
+  }, [unreadConversations.length, onUnreadCountChange]);
+
+  // Update selected conversation when data changes
+  React.useEffect(() => {
+    if (selectedConversation) {
+      const updated = conversations.find(c => c.id === selectedConversation.id);
+      if (updated) {
+        setSelectedConversation(updated);
+      } else {
+        setSelectedConversation(null);
+      }
+    }
+  }, [conversations, selectedConversation?.id]);
+
+  // Clear merge selection when changing tabs
+  React.useEffect(() => {
+    setSelectedForMerge(new Set());
+    setMergeMode(false);
   }, [activeSubTab]);
 
-  const currentMessages = activeSubTab === 'unread' ? unreadMessages : readMessages;
-
-  const getDisplayName = (senderName: string) => {
-    return senderName.split('||')[0];
+  const getParticipantNames = (conv: Conversation): string => {
+    if (!conv.participants || conv.participants.length === 0) return 'Sconosciuto';
+    return conv.participants.map(p => p.participant_name).join(', ');
   };
 
-  const handleMarkAsRead = async (message: Message) => {
-    const success = await markAsRead(message.id);
-    if (success) {
-      setLastAction({
-        type: 'markRead',
-        messages: [message],
-        description: `Messaggio di "${getDisplayName(message.sender_name)}" segnato come letto`,
-      });
-    }
-  };
-
-  const handleMarkAsUnread = async (message: Message) => {
-    const success = await markAsUnread(message.id);
-    if (success) {
-      setLastAction({
-        type: 'markUnread',
-        messages: [message],
-        description: `Messaggio di "${getDisplayName(message.sender_name)}" segnato come non letto`,
-      });
-    }
-  };
-
-  const handleDelete = async (message: Message) => {
-    const success = await deleteMessage(message.id);
-    if (success) {
-      setLastAction({
-        type: 'delete',
-        messages: [message],
-        description: `Messaggio di "${getDisplayName(message.sender_name)}" eliminato`,
-      });
-    }
-  };
-
-  const handleDeleteSelected = async () => {
-    if (selectedIds.size === 0) return;
-
-    const messagesToDelete = currentMessages.filter(m => selectedIds.has(m.id));
-    let allSuccess = true;
-
-    for (const message of messagesToDelete) {
-      const success = await deleteMessage(message.id);
-      if (!success) {
-        allSuccess = false;
-        break;
-      }
-    }
-
-    if (allSuccess) {
-      setLastAction({
-        type: 'deleteMultiple',
-        messages: messagesToDelete,
-        description: `${messagesToDelete.length} messaggi eliminati`,
-      });
-      setSelectedIds(new Set());
-      setSelectionMode(false);
-    }
-  };
-
-  const handleUndo = async () => {
-    if (!lastAction) return;
-
-    let success = true;
-
-    if (lastAction.type === 'delete' || lastAction.type === 'deleteMultiple') {
-      for (const message of lastAction.messages) {
-        const result = await restoreMessage(message);
-        if (!result) {
-          success = false;
-          break;
-        }
-      }
-    } else if (lastAction.type === 'markRead') {
-      success = await markAsUnread(lastAction.messages[0].id);
-    } else if (lastAction.type === 'markUnread') {
-      success = await markAsRead(lastAction.messages[0].id);
-    }
-
-    if (success) {
-      toast({
-        title: 'Operazione annullata',
-        description: `Ripristinato: ${lastAction.description}`,
-      });
-      setLastAction(null);
-    }
-  };
-
-  const handleOpenReply = (message: Message) => {
-    setReplyingTo(message);
-    setReplyText(message.admin_reply || '');
-  };
-
-  const handleSubmitReply = async () => {
-    if (!replyingTo || !replyText.trim()) return;
+  const handleSendReply = async () => {
+    if (!selectedConversation || !replyText.trim()) return;
 
     setIsSubmittingReply(true);
-    const success = await replyToMessage(replyingTo.id, replyText.trim());
+    const success = await adminReply(selectedConversation.id, replyText.trim());
     
     if (success) {
-      setReplyingTo(null);
       setReplyText('');
     }
     
     setIsSubmittingReply(false);
   };
 
-  const handleSelect = (id: string, checked: boolean) => {
-    setSelectedIds((prev) => {
+  const handleStartEdit = (msg: ChatMessage) => {
+    setEditingMessageId(msg.id);
+    setEditText(msg.message_text);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditText('');
+  };
+
+  const handleSaveEdit = async (msgId: string) => {
+    if (!editText.trim()) return;
+    
+    const success = await adminEditMessage(msgId, editText.trim());
+    if (success) {
+      setEditingMessageId(null);
+      setEditText('');
+    }
+  };
+
+  const handleDeleteMessage = async (msgId: string) => {
+    await adminDeleteMessage(msgId);
+  };
+
+  const handleDeleteConversation = async (convId: string) => {
+    const success = await adminDeleteConversation(convId);
+    if (success && selectedConversation?.id === convId) {
+      setSelectedConversation(null);
+    }
+  };
+
+  const handleToggleMergeSelect = (convId: string) => {
+    setSelectedForMerge(prev => {
       const next = new Set(prev);
-      if (checked) {
-        next.add(id);
+      if (next.has(convId)) {
+        next.delete(convId);
       } else {
-        next.delete(id);
+        next.add(convId);
       }
       return next;
     });
   };
 
-  const handleSelectAll = () => {
-    if (selectedIds.size === currentMessages.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(currentMessages.map((m) => m.id)));
+  const handleMerge = async () => {
+    if (selectedForMerge.size < 2) {
+      toast({
+        title: 'Errore',
+        description: 'Seleziona almeno 2 conversazioni da unire',
+        variant: 'destructive',
+      });
+      return;
     }
-  };
 
-  const exitSelectionMode = () => {
-    setSelectionMode(false);
-    setSelectedIds(new Set());
+    const success = await adminMergeConversations(
+      Array.from(selectedForMerge),
+      mergeGroupName || 'Gruppo'
+    );
+
+    if (success) {
+      setMergeMode(false);
+      setSelectedForMerge(new Set());
+      setShowMergeDialog(false);
+      setMergeGroupName('');
+    }
   };
 
   if (loading) {
     return (
       <div className="text-center py-12">
-        <Mail className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50 animate-pulse" />
-        <p className="text-muted-foreground">Caricamento messaggi...</p>
+        <MessageCircle className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50 animate-pulse" />
+        <p className="text-muted-foreground">Caricamento conversazioni...</p>
       </div>
     );
   }
 
+  // Chat view when a conversation is selected
+  if (selectedConversation) {
+    return (
+      <div className="flex flex-col h-[calc(100vh-200px)]">
+        {/* Chat header */}
+        <div className="flex items-center justify-between mb-4 pb-4 border-b border-border">
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setSelectedConversation(null)}
+            >
+              <X className="w-5 h-5" />
+            </Button>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+              selectedConversation.is_group ? 'bg-secondary/20' : 'bg-primary/20'
+            }`}>
+              {selectedConversation.is_group ? (
+                <Users className="w-5 h-5 text-secondary" />
+              ) : (
+                <MessageCircle className="w-5 h-5 text-primary" />
+              )}
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">
+                {selectedConversation.is_group 
+                  ? selectedConversation.name 
+                  : getParticipantNames(selectedConversation)}
+              </h3>
+              {selectedConversation.is_group && (
+                <p className="text-xs text-muted-foreground">
+                  {getParticipantNames(selectedConversation)}
+                </p>
+              )}
+            </div>
+          </div>
+          
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="text-destructive">
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent className="glass-card border-destructive">
+              <AlertDialogHeader>
+                <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle className="w-5 h-5" />
+                  Elimina Conversazione
+                </AlertDialogTitle>
+                <AlertDialogDescription>
+                  Sei sicuro di voler eliminare questa conversazione e tutti i suoi messaggi?
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annulla</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => handleDeleteConversation(selectedConversation.id)}
+                  className="bg-destructive text-destructive-foreground"
+                >
+                  Elimina
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+
+        {/* Messages */}
+        <ScrollArea className="flex-1 mb-4">
+          <div className="space-y-3 pr-4">
+            {selectedConversation.messages?.slice().reverse().map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex ${msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-lg p-3 ${
+                    msg.sender_type === 'admin'
+                      ? 'bg-secondary/20 border border-secondary/30'
+                      : 'bg-muted border border-border'
+                  }`}
+                >
+                  <p className={`text-xs font-medium mb-1 ${
+                    msg.sender_type === 'admin' ? 'text-secondary' : 'text-primary'
+                  }`}>
+                    {msg.sender_type === 'admin' ? msg.sender_name : msg.sender_name}
+                  </p>
+                  
+                  {editingMessageId === msg.id ? (
+                    <div className="space-y-2">
+                      <Textarea
+                        value={editText}
+                        onChange={(e) => setEditText(e.target.value)}
+                        className="min-h-[60px] bg-background"
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => handleSaveEdit(msg.id)} className="h-8">
+                          <Check className="w-4 h-4" />
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={handleCancelEdit} className="h-8">
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      <p className="text-foreground whitespace-pre-wrap break-words">
+                        {msg.message_text}
+                      </p>
+                      <div className="flex items-center justify-between mt-1 gap-2">
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(msg.created_at).toLocaleTimeString('it-IT', { 
+                            hour: '2-digit', 
+                            minute: '2-digit' 
+                          })}
+                          {msg.edited_at && ' (modificato)'}
+                        </span>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleStartEdit(msg)}
+                            className="h-6 px-2"
+                          >
+                            <Edit2 className="w-3 h-3" />
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-6 px-2 text-destructive"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent className="glass-card">
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Elimina Messaggio</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Vuoi eliminare questo messaggio?
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteMessage(msg.id)}
+                                  className="bg-destructive text-destructive-foreground"
+                                >
+                                  Elimina
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+
+        {/* Reply input */}
+        <div className="glass-card p-4 border border-border">
+          <div className="flex gap-2">
+            <Textarea
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              placeholder="Scrivi una risposta..."
+              className="min-h-[44px] max-h-[120px] bg-muted border-border resize-none"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendReply();
+                }
+              }}
+            />
+            <Button
+              onClick={handleSendReply}
+              disabled={!replyText.trim() || isSubmittingReply}
+              className="neon-button-pink h-auto"
+            >
+              <Reply className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Conversation list view
   return (
     <div>
-      {/* Header with selection controls */}
+      {/* Header with merge controls */}
       <div className="flex items-center justify-between gap-2 mb-4">
-        {!selectionMode ? (
+        {!mergeMode ? (
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setSelectionMode(true)}
-            className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-            disabled={currentMessages.length === 0}
+            onClick={() => setMergeMode(true)}
+            className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+            disabled={conversations.length < 2}
           >
-            <CheckSquare className="w-4 h-4 mr-2" />
-            Seleziona
+            <Merge className="w-4 h-4 mr-2" />
+            Unisci in Gruppo
           </Button>
         ) : (
           <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              {selectedForMerge.size} selezionate
+            </span>
             <Button
               variant="outline"
               size="sm"
-              onClick={handleSelectAll}
+              onClick={() => setShowMergeDialog(true)}
+              disabled={selectedForMerge.size < 2}
               className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
             >
-              {selectedIds.size === currentMessages.length ? (
-                <Square className="w-4 h-4 mr-2" />
-              ) : (
-                <CheckSquare className="w-4 h-4 mr-2" />
-              )}
-              {selectedIds.size === currentMessages.length ? 'Deseleziona' : 'Seleziona tutto'}
+              <Merge className="w-4 h-4 mr-2" />
+              Crea Gruppo
             </Button>
-
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                  disabled={selectedIds.size === 0}
-                >
-                  <Trash2 className="w-4 h-4 mr-2" />
-                  Elimina ({selectedIds.size})
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent className="glass-card border-destructive">
-                <AlertDialogHeader>
-                  <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                    <AlertTriangle className="w-5 h-5" />
-                    Elimina Selezionati
-                  </AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Sei sicuro di voler eliminare {selectedIds.size} messaggi selezionati?
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel className="border-border">
-                    Annulla
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleDeleteSelected}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Conferma Eliminazione
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-
             <Button
               variant="outline"
               size="sm"
-              onClick={exitSelectionMode}
-              className="border-muted-foreground text-muted-foreground hover:bg-muted"
+              onClick={() => {
+                setMergeMode(false);
+                setSelectedForMerge(new Set());
+              }}
             >
               <X className="w-4 h-4" />
             </Button>
@@ -312,8 +438,8 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
               : 'bg-muted text-muted-foreground hover:bg-muted/80'
           }`}
         >
-          <Mail className="w-4 h-4 inline-block mr-2" />
-          Da leggere ({unreadMessages.length})
+          <MessageCircle className="w-4 h-4 inline-block mr-2" />
+          Da leggere ({unreadConversations.length})
         </button>
         <button
           onClick={() => setActiveSubTab('read')}
@@ -323,156 +449,127 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
               : 'bg-muted text-muted-foreground hover:bg-muted/80'
           }`}
         >
-          <MailOpen className="w-4 h-4 inline-block mr-2" />
-          Letti ({readMessages.length})
+          <Eye className="w-4 h-4 inline-block mr-2" />
+          Risposto ({readConversations.length})
         </button>
       </div>
 
-      {/* Undo button */}
-      {lastAction && (
-        <div className="mb-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleUndo}
-            className="border-amber-500 text-amber-500 hover:bg-amber-500 hover:text-white animate-pulse w-full"
-          >
-            <Undo2 className="w-4 h-4 mr-2" />
-            Annulla: {lastAction.description}
-          </Button>
-        </div>
-      )}
-
-      {/* Messages list */}
+      {/* Conversations list */}
       <div className="space-y-4">
-        {currentMessages.length === 0 ? (
+        {currentConversations.length === 0 ? (
           <div className="text-center py-12">
-            {activeSubTab === 'unread' ? (
-              <>
-                <Mail className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                <p className="text-muted-foreground">
-                  Nessun messaggio da leggere
-                </p>
-              </>
-            ) : (
-              <>
-                <MailOpen className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-                <p className="text-muted-foreground">
-                  Nessun messaggio letto
-                </p>
-              </>
-            )}
+            <MessageCircle className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+            <p className="text-muted-foreground">
+              {activeSubTab === 'unread' 
+                ? 'Nessuna conversazione da leggere' 
+                : 'Nessuna conversazione con risposta'}
+            </p>
           </div>
         ) : (
-          currentMessages.map((message) => (
+          currentConversations.map((conv) => (
             <div
-              key={message.id}
-              className={`glass-card p-4 neon-border-pink border ${
-                selectionMode && selectedIds.has(message.id) ? 'ring-2 ring-primary' : ''
+              key={conv.id}
+              className={`glass-card p-4 neon-border-pink border cursor-pointer hover:border-primary transition-colors ${
+                mergeMode && selectedForMerge.has(conv.id) ? 'ring-2 ring-secondary' : ''
               }`}
+              onClick={() => {
+                if (mergeMode) {
+                  handleToggleMergeSelect(conv.id);
+                } else {
+                  setSelectedConversation(conv);
+                }
+              }}
             >
-              <div className="flex items-start justify-between gap-4">
-                {selectionMode && (
+              <div className="flex items-start gap-3">
+                {mergeMode && (
                   <div className="pt-1">
                     <Checkbox
-                      checked={selectedIds.has(message.id)}
-                      onCheckedChange={(checked) => handleSelect(message.id, checked as boolean)}
+                      checked={selectedForMerge.has(conv.id)}
+                      onCheckedChange={() => handleToggleMergeSelect(conv.id)}
                     />
                   </div>
                 )}
                 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-display font-semibold text-foreground">
-                      {getDisplayName(message.sender_name)}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(message.created_at).toLocaleString('it-IT')}
-                    </span>
-                  </div>
-                  <p className="text-foreground whitespace-pre-wrap break-words">
-                    {message.message_text}
-                  </p>
-                  
-                  {message.admin_reply && (
-                    <div className="mt-3 pl-3 border-l-2 border-secondary bg-secondary/10 p-2 rounded-r">
-                      <p className="text-xs text-muted-foreground mb-1">
-                        La tua risposta • {new Date(message.replied_at!).toLocaleString('it-IT')}
-                      </p>
-                      <p className="text-sm text-foreground">{message.admin_reply}</p>
-                    </div>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  conv.is_group ? 'bg-secondary/20' : 'bg-primary/20'
+                }`}>
+                  {conv.is_group ? (
+                    <Users className="w-5 h-5 text-secondary" />
+                  ) : (
+                    <MessageCircle className="w-5 h-5 text-primary" />
                   )}
                 </div>
-
-                {!selectionMode && (
-                  <div className="flex flex-col gap-2">
-                    {activeSubTab === 'unread' ? (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleMarkAsRead(message)}
-                        className="text-secondary hover:text-secondary hover:bg-secondary/20"
-                        title="Segna come letto"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleMarkAsUnread(message)}
-                        className="text-muted-foreground hover:text-foreground"
-                        title="Segna come non letto"
-                      >
-                        <EyeOff className="w-4 h-4" />
-                      </Button>
+                
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="font-display font-semibold text-foreground">
+                      {conv.is_group ? conv.name : getParticipantNames(conv)}
+                    </span>
+                    {conv.last_message && (
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(conv.last_message.created_at).toLocaleString('it-IT')}
+                      </span>
                     )}
-
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleOpenReply(message)}
-                      className="text-primary hover:text-primary hover:bg-primary/20"
-                      title="Rispondi"
-                    >
-                      <Reply className="w-4 h-4" />
-                    </Button>
-
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/20"
-                          title="Elimina"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent className="glass-card border-destructive">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                            <AlertTriangle className="w-5 h-5" />
-                            Elimina Messaggio
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Sei sicuro di voler eliminare questo messaggio di "{getDisplayName(message.sender_name)}"?
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel className="border-border">
-                            Annulla
-                          </AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => handleDelete(message)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                          >
-                            Elimina
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
                   </div>
+                  
+                  {conv.is_group && (
+                    <p className="text-xs text-muted-foreground">
+                      {getParticipantNames(conv)}
+                    </p>
+                  )}
+                  
+                  {conv.last_message && (
+                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">
+                      {conv.last_message.sender_type === 'admin' && 'Tu: '}
+                      {conv.last_message.message_text}
+                    </p>
+                  )}
+                  
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="text-xs text-muted-foreground">
+                      {conv.messages?.length || 0} messaggi
+                    </span>
+                  </div>
+                </div>
+
+                {!mergeMode && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:bg-destructive/20"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="glass-card border-destructive">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                          <AlertTriangle className="w-5 h-5" />
+                          Elimina Conversazione
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Questa azione eliminerà la conversazione e tutti i messaggi.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel onClick={(e) => e.stopPropagation()}>
+                          Annulla
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteConversation(conv.id);
+                          }}
+                          className="bg-destructive text-destructive-foreground"
+                        >
+                          Elimina
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 )}
               </div>
             </div>
@@ -480,45 +577,41 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
         )}
       </div>
 
-      {/* Reply Dialog */}
-      <Dialog open={!!replyingTo} onOpenChange={(open) => !open && setReplyingTo(null)}>
+      {/* Merge dialog */}
+      <Dialog open={showMergeDialog} onOpenChange={setShowMergeDialog}>
         <DialogContent className="glass-card">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Reply className="w-5 h-5 text-primary" />
-              Rispondi a {replyingTo && getDisplayName(replyingTo.sender_name)}
+              <Users className="w-5 h-5 text-secondary" />
+              Crea Gruppo
             </DialogTitle>
           </DialogHeader>
           
-          {replyingTo && (
-            <div className="space-y-4">
-              <div className="bg-muted/50 p-3 rounded-lg">
-                <p className="text-xs text-muted-foreground mb-1">Messaggio originale:</p>
-                <p className="text-sm">{replyingTo.message_text}</p>
-              </div>
-              
-              <Textarea
-                value={replyText}
-                onChange={(e) => setReplyText(e.target.value)}
-                placeholder="Scrivi la tua risposta..."
-                className="min-h-[100px]"
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">
+                Nome del gruppo
+              </label>
+              <Input
+                value={mergeGroupName}
+                onChange={(e) => setMergeGroupName(e.target.value)}
+                placeholder="Es: Amici del karaoke"
+                className="bg-muted border-border"
               />
             </div>
-          )}
+            <p className="text-sm text-muted-foreground">
+              Verranno unite {selectedForMerge.size} conversazioni in un unico gruppo.
+              Tutti i messaggi verranno conservati.
+            </p>
+          </div>
           
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setReplyingTo(null)}
-            >
+            <Button variant="outline" onClick={() => setShowMergeDialog(false)}>
               Annulla
             </Button>
-            <Button
-              onClick={handleSubmitReply}
-              disabled={!replyText.trim() || isSubmittingReply}
-              className="neon-button-pink"
-            >
-              {isSubmittingReply ? 'Invio...' : 'Invia Risposta'}
+            <Button onClick={handleMerge} className="neon-button-cyan">
+              <Merge className="w-4 h-4 mr-2" />
+              Crea Gruppo
             </Button>
           </DialogFooter>
         </DialogContent>
