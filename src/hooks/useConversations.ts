@@ -193,6 +193,32 @@ export const useConversations = (sessionId?: string) => {
     };
   }, [fetchConversations, sessionId, checkIfBlocked]);
 
+  // User chat API calls (avoids device-specific storage quirks)
+  const callUserChatApi = useCallback(async <T,>(action: string, data: Record<string, unknown>): Promise<T> => {
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/user-chat`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      },
+      body: JSON.stringify({ action, ...data }),
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error((json as any)?.error || `HTTP ${res.status}`);
+    }
+
+    if ((json as any)?.error) {
+      throw new Error((json as any).error);
+    }
+
+    return json as T;
+  }, []);
+
   // Start a new conversation (for users)
   // Returns the full conversation object for immediate UI selection
   const startConversation = async (
@@ -201,66 +227,32 @@ export const useConversations = (sessionId?: string) => {
     senderSessionId: string
   ): Promise<Conversation | null> => {
     try {
-      // Create conversation
-      const { data: convData, error: convError } = await supabase
-        .from('conversations')
-        .insert([{ is_group: false }])
-        .select()
-        .single();
-
-      if (convError) throw convError;
-
-      // Add participant
-      const { data: partData, error: partError } = await supabase
-        .from('conversation_participants')
-        .insert([{
-          conversation_id: convData.id,
-          participant_name: senderName,
-          session_id: senderSessionId,
-        }])
-        .select()
-        .single();
-
-      if (partError) throw partError;
-
-      // Add initial message
-      const { data: msgData, error: msgError } = await supabase
-        .from('chat_messages')
-        .insert([{
-          conversation_id: convData.id,
-          sender_type: 'user',
-          sender_name: senderName,
-          sender_session_id: senderSessionId,
-          message_text: messageText,
-        }])
-        .select()
-        .single();
-
-      if (msgError) throw msgError;
+      const { conversation, participant, message } = await callUserChatApi<{
+        conversation: Conversation;
+        participant: Participant;
+        message: ChatMessage;
+      }>('startConversation', {
+        sender_name: senderName,
+        message_text: messageText,
+        session_id: senderSessionId,
+      });
 
       toast.success('Messaggio inviato!');
-      
-      // Build the full conversation object to return immediately
+
       const newConversation: Conversation = {
-        id: convData.id,
-        name: convData.name,
-        is_group: convData.is_group,
-        is_public: convData.is_public,
-        allowed_participants: convData.allowed_participants,
-        created_at: convData.created_at,
-        updated_at: convData.updated_at,
-        participants: [partData as Participant],
-        messages: [msgData as ChatMessage],
-        last_message: msgData as ChatMessage,
+        ...conversation,
+        participants: [participant],
+        messages: [message],
+        last_message: message,
       };
-      
+
       // Refresh conversations in background
       fetchConversations();
-      
+
       return newConversation;
     } catch (error) {
       console.error('Error starting conversation:', error);
-      toast.error('Errore nell\'invio del messaggio');
+      toast.error(error instanceof Error ? error.message : 'Errore nell\'invio del messaggio');
       return null;
     }
   };
@@ -289,10 +281,10 @@ export const useConversations = (sessionId?: string) => {
 
       if (error) throw error;
       toast.success('Sei entrato nel gruppo!');
-      
+
       // Refresh conversations to include the newly joined group
       await fetchConversations();
-      
+
       return true;
     } catch (error) {
       console.error('Error joining group:', error);
@@ -309,21 +301,17 @@ export const useConversations = (sessionId?: string) => {
     senderSessionId: string
   ): Promise<boolean> => {
     try {
-      const { error } = await supabase
-        .from('chat_messages')
-        .insert([{
-          conversation_id: conversationId,
-          sender_type: 'user',
-          sender_name: senderName,
-          sender_session_id: senderSessionId,
-          message_text: messageText,
-        }]);
+      await callUserChatApi<{ message: ChatMessage }>('sendMessage', {
+        conversation_id: conversationId,
+        sender_name: senderName,
+        message_text: messageText,
+        session_id: senderSessionId,
+      });
 
-      if (error) throw error;
       return true;
     } catch (error) {
       console.error('Error sending message:', error);
-      toast.error('Errore nell\'invio del messaggio');
+      toast.error(error instanceof Error ? error.message : 'Errore nell\'invio del messaggio');
       return false;
     }
   };
