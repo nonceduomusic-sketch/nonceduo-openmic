@@ -85,7 +85,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     getReadConversations,
   } = useConversations();
 
-  const [activeSubTab, setActiveSubTab] = useState<'unread' | 'read'>('unread');
+  const [activeSubTab, setActiveSubTab] = useState<'unread' | 'read' | 'groups'>('unread');
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [replyText, setReplyText] = useState('');
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
@@ -122,8 +122,13 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
 
   const unreadConversations = getUnreadConversations();
   const readConversations = getReadConversations();
+  const groupConversations = conversations.filter(c => c.is_group);
   
-  const currentConversations = activeSubTab === 'unread' ? unreadConversations : readConversations;
+  const currentConversations = activeSubTab === 'unread' 
+    ? unreadConversations 
+    : activeSubTab === 'read' 
+      ? readConversations 
+      : groupConversations;
 
   // Report unread count
   React.useEffect(() => {
@@ -723,18 +728,40 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
           <Eye className="w-4 h-4 inline-block mr-2" />
           Risposto ({readConversations.length})
         </button>
+        <button
+          onClick={() => setActiveSubTab('groups')}
+          className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
+            activeSubTab === 'groups'
+              ? 'bg-accent text-accent-foreground'
+              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+          }`}
+        >
+          <Users className="w-4 h-4 inline-block mr-2" />
+          Gruppi ({groupConversations.length})
+        </button>
       </div>
 
       {/* Conversations list */}
       <div className="space-y-4">
         {currentConversations.length === 0 ? (
           <div className="text-center py-12">
-            <MessageCircle className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <p className="text-muted-foreground">
-              {activeSubTab === 'unread' 
-                ? 'Nessuna conversazione da leggere' 
-                : 'Nessuna conversazione con risposta'}
-            </p>
+            {activeSubTab === 'groups' ? (
+              <>
+                <Users className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                <p className="text-muted-foreground">
+                  Nessun gruppo creato. Clicca su "Nuovo Gruppo" per crearne uno.
+                </p>
+              </>
+            ) : (
+              <>
+                <MessageCircle className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                <p className="text-muted-foreground">
+                  {activeSubTab === 'unread' 
+                    ? 'Nessuna conversazione da leggere' 
+                    : 'Nessuna conversazione con risposta'}
+                </p>
+              </>
+            )}
           </div>
         ) : (
           currentConversations.map((conv) => (
