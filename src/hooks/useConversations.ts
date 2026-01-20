@@ -390,21 +390,60 @@ export const useConversations = (sessionId?: string) => {
     }
   };
 
-  // Admin: Merge conversations into a group
-  const adminMergeConversations = async (
+  // Admin: Create a new group from selected conversations (without copying messages)
+  const adminCreateGroup = async (
     conversationIds: string[],
     groupName: string
   ): Promise<boolean> => {
     try {
-      await callAdminChatApi('mergeConversations', {
+      await callAdminChatApi('createGroup', {
         conversation_ids: conversationIds,
         group_name: groupName,
       });
-      toast.success('Conversazioni unite in gruppo!');
+      toast.success('Gruppo creato! I partecipanti sono stati aggiunti.');
       return true;
     } catch (error) {
-      console.error('Error merging conversations:', error);
+      console.error('Error creating group:', error);
       toast.error('Errore nella creazione del gruppo');
+      return false;
+    }
+  };
+
+  // Admin: Add participants to an existing group
+  const adminAddToGroup = async (
+    groupId: string,
+    conversationIds: string[]
+  ): Promise<boolean> => {
+    try {
+      const result = await callAdminChatApi('addToGroup', {
+        group_id: groupId,
+        conversation_ids: conversationIds,
+      });
+      const added = result?.data?.added || 0;
+      toast.success(`${added} partecipanti aggiunti al gruppo!`);
+      return true;
+    } catch (error) {
+      console.error('Error adding to group:', error);
+      toast.error('Errore nell\'aggiungere al gruppo');
+      return false;
+    }
+  };
+
+  // Admin: Remove participant from group
+  const adminRemoveFromGroup = async (
+    groupId: string,
+    sessionId: string
+  ): Promise<boolean> => {
+    try {
+      await callAdminChatApi('removeFromGroup', {
+        group_id: groupId,
+        session_id: sessionId,
+      });
+      toast.success('Partecipante rimosso dal gruppo');
+      return true;
+    } catch (error) {
+      console.error('Error removing from group:', error);
+      toast.error('Errore nella rimozione');
       return false;
     }
   };
@@ -529,7 +568,9 @@ export const useConversations = (sessionId?: string) => {
     adminEditMessage,
     adminDeleteMessage,
     adminDeleteConversation,
-    adminMergeConversations,
+    adminCreateGroup,
+    adminAddToGroup,
+    adminRemoveFromGroup,
     adminRenameGroup,
     adminSetGroupVisibility,
     adminBulkDeleteConversations,

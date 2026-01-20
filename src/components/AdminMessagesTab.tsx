@@ -9,12 +9,12 @@ import {
   Edit2,
   Check,
   X,
-  Merge,
   Globe,
   Lock,
   MoreVertical,
   Ban,
   UserX,
+  UserPlus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -70,7 +70,9 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     adminEditMessage,
     adminDeleteMessage,
     adminDeleteConversation,
-    adminMergeConversations,
+    adminCreateGroup,
+    adminAddToGroup,
+    adminRemoveFromGroup,
     adminRenameGroup,
     adminSetGroupVisibility,
     adminBulkDeleteConversations,
@@ -87,16 +89,20 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
   
-  // Selection mode (for merge or delete)
-  const [selectionMode, setSelectionMode] = useState<'none' | 'merge' | 'delete'>('none');
+  // Selection mode (for group creation, adding to group, or delete)
+  const [selectionMode, setSelectionMode] = useState<'none' | 'createGroup' | 'addToGroup' | 'delete'>('none');
   const [selectedForAction, setSelectedForAction] = useState<Set<string>>(new Set());
-  const [showMergeDialog, setShowMergeDialog] = useState(false);
-  const [mergeGroupName, setMergeGroupName] = useState('');
+  const [showGroupDialog, setShowGroupDialog] = useState(false);
+  const [newGroupName, setNewGroupName] = useState('');
+  
+  // Target group for adding participants
+  const [targetGroupId, setTargetGroupId] = useState<string | null>(null);
+  const [showAddToGroupDialog, setShowAddToGroupDialog] = useState(false);
   
   // Rename dialog
   const [showRenameDialog, setShowRenameDialog] = useState(false);
   const [renameTarget, setRenameTarget] = useState<Conversation | null>(null);
-  const [newGroupName, setNewGroupName] = useState('');
+  const [renameGroupName, setRenameGroupName] = useState('');
   
   // Visibility dialog
   const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
@@ -104,7 +110,6 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
   
   // Undo state for bulk delete
   const [lastDeletedIds, setLastDeletedIds] = useState<string[]>([]);
-  const [showUndoToast, setShowUndoToast] = useState(false);
 
   const unreadConversations = getUnreadConversations();
   const readConversations = getReadConversations();
@@ -195,28 +200,54 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     });
   };
 
-  const handleMerge = async () => {
+  const handleCreateGroup = async () => {
     if (selectedForAction.size < 2) {
       toast({
         title: 'Errore',
-        description: 'Seleziona almeno 2 conversazioni da unire',
+        description: 'Seleziona almeno 2 conversazioni',
         variant: 'destructive',
       });
       return;
     }
 
-    const success = await adminMergeConversations(
+    const success = await adminCreateGroup(
       Array.from(selectedForAction),
-      mergeGroupName || 'Gruppo'
+      newGroupName || 'Gruppo'
     );
 
     if (success) {
       setSelectionMode('none');
       setSelectedForAction(new Set());
-      setShowMergeDialog(false);
-      setMergeGroupName('');
+      setShowGroupDialog(false);
+      setNewGroupName('');
     }
   };
+
+  const handleAddToGroup = async () => {
+    if (!targetGroupId || selectedForAction.size === 0) {
+      toast({
+        title: 'Errore',
+        description: 'Seleziona almeno una conversazione da aggiungere',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const success = await adminAddToGroup(
+      targetGroupId,
+      Array.from(selectedForAction)
+    );
+
+    if (success) {
+      setSelectionMode('none');
+      setSelectedForAction(new Set());
+      setShowAddToGroupDialog(false);
+      setTargetGroupId(null);
+    }
+  };
+
+  // Get list of groups for "add to group" functionality
+  const existingGroups = conversations.filter(c => c.is_group);
 
   const handleBulkDelete = async () => {
     if (selectedForAction.size === 0) {
@@ -239,13 +270,13 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
   };
   
   const handleRenameGroup = async () => {
-    if (!renameTarget || !newGroupName.trim()) return;
+    if (!renameTarget || !renameGroupName.trim()) return;
     
-    const success = await adminRenameGroup(renameTarget.id, newGroupName.trim());
+    const success = await adminRenameGroup(renameTarget.id, renameGroupName.trim());
     if (success) {
       setShowRenameDialog(false);
       setRenameTarget(null);
-      setNewGroupName('');
+      setRenameGroupName('');
     }
   };
   
@@ -331,7 +362,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={() => {
                     setRenameTarget(selectedConversation);
-                    setNewGroupName(selectedConversation.name || '');
+                    setRenameGroupName(selectedConversation.name || '');
                     setShowRenameDialog(true);
                   }}>
                     <Edit2 className="w-4 h-4 mr-2" />
@@ -518,17 +549,30 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
       {/* Header with action controls */}
       <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
         {selectionMode === 'none' ? (
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setSelectionMode('merge')}
+              onClick={() => setSelectionMode('createGroup')}
               className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
               disabled={conversations.length < 2}
             >
-              <Merge className="w-4 h-4 mr-2" />
-              Unisci
+              <Users className="w-4 h-4 mr-2" />
+              Crea Gruppo
             </Button>
+            {existingGroups.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowAddToGroupDialog(true);
+                }}
+                className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Aggiungi a Gruppo
+              </Button>
+            )}
             <Button
               variant="outline"
               size="sm"
@@ -545,16 +589,28 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
             <span className="text-sm text-muted-foreground">
               {selectedForAction.size} selezionate
             </span>
-            {selectionMode === 'merge' && (
+            {selectionMode === 'createGroup' && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setShowMergeDialog(true)}
+                onClick={() => setShowGroupDialog(true)}
                 disabled={selectedForAction.size < 2}
                 className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
               >
-                <Merge className="w-4 h-4 mr-2" />
-                Crea Gruppo
+                <Users className="w-4 h-4 mr-2" />
+                Crea Gruppo ({selectedForAction.size})
+              </Button>
+            )}
+            {selectionMode === 'addToGroup' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAddToGroup}
+                disabled={selectedForAction.size === 0}
+                className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+              >
+                <UserPlus className="w-4 h-4 mr-2" />
+                Aggiungi ({selectedForAction.size})
               </Button>
             )}
             {selectionMode === 'delete' && (
@@ -735,7 +791,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                           <DropdownMenuItem onClick={(e) => {
                             e.stopPropagation();
                             setRenameTarget(conv);
-                            setNewGroupName(conv.name || '');
+                            setRenameGroupName(conv.name || '');
                             setShowRenameDialog(true);
                           }}>
                             <Edit2 className="w-4 h-4 mr-2" />
@@ -801,8 +857,8 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
         )}
       </div>
 
-      {/* Merge dialog */}
-      <Dialog open={showMergeDialog} onOpenChange={setShowMergeDialog}>
+      {/* Create Group dialog */}
+      <Dialog open={showGroupDialog} onOpenChange={setShowGroupDialog}>
         <DialogContent className="glass-card">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
@@ -817,26 +873,90 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                 Nome del gruppo
               </label>
               <Input
-                value={mergeGroupName}
-                onChange={(e) => setMergeGroupName(e.target.value)}
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
                 placeholder="Es: Amici del karaoke"
                 className="bg-muted border-border"
               />
             </div>
             <p className="text-sm text-muted-foreground">
-              Verranno unite {selectedForAction.size} conversazioni in un unico gruppo.
-              Tutti i messaggi verranno conservati.
+              Verrà creato un nuovo gruppo con {selectedForAction.size} partecipanti.
+              Le conversazioni private rimarranno separate.
             </p>
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowMergeDialog(false)}>
+            <Button variant="outline" onClick={() => setShowGroupDialog(false)}>
               Annulla
             </Button>
-            <Button onClick={handleMerge} className="neon-button-cyan">
-              <Merge className="w-4 h-4 mr-2" />
+            <Button onClick={handleCreateGroup} className="neon-button-cyan">
+              <Users className="w-4 h-4 mr-2" />
               Crea Gruppo
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add to Group dialog */}
+      <Dialog open={showAddToGroupDialog} onOpenChange={(open) => {
+        setShowAddToGroupDialog(open);
+        if (!open) {
+          setTargetGroupId(null);
+          setSelectionMode('none');
+          setSelectedForAction(new Set());
+        }
+      }}>
+        <DialogContent className="glass-card">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-primary" />
+              Aggiungi a Gruppo
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">
+                Seleziona il gruppo
+              </label>
+              <Select value={targetGroupId || ''} onValueChange={(value) => {
+                setTargetGroupId(value);
+                setSelectionMode('addToGroup');
+              }}>
+                <SelectTrigger className="bg-muted border-border">
+                  <SelectValue placeholder="Scegli un gruppo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {existingGroups.map((group) => (
+                    <SelectItem key={group.id} value={group.id}>
+                      {group.name || 'Gruppo senza nome'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {targetGroupId && (
+              <p className="text-sm text-muted-foreground">
+                Dopo aver selezionato il gruppo, seleziona le conversazioni da cui vuoi aggiungere i partecipanti.
+              </p>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowAddToGroupDialog(false);
+              setTargetGroupId(null);
+              setSelectionMode('none');
+              setSelectedForAction(new Set());
+            }}>
+              Annulla
+            </Button>
+            {targetGroupId && (
+              <Button onClick={() => setShowAddToGroupDialog(false)} className="neon-button-pink">
+                <Check className="w-4 h-4 mr-2" />
+                Seleziona Conversazioni
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -857,8 +977,8 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                 Nuovo nome
               </label>
               <Input
-                value={newGroupName}
-                onChange={(e) => setNewGroupName(e.target.value)}
+                value={renameGroupName}
+                onChange={(e) => setRenameGroupName(e.target.value)}
                 placeholder="Nome del gruppo"
                 className="bg-muted border-border"
               />
@@ -869,7 +989,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
             <Button variant="outline" onClick={() => {
               setShowRenameDialog(false);
               setRenameTarget(null);
-              setNewGroupName('');
+              setRenameGroupName('');
             }}>
               Annulla
             </Button>
