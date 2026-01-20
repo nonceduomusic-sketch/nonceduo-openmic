@@ -36,6 +36,10 @@
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
+    /* Warning (Amber) */
+    --warning: 45 100% 50%;
+    --warning-foreground: 0 0% 10%;
+
     --border: 240 10% 20%;
     --input: 240 10% 15%;
     --ring: 330 100% 60%;
@@ -80,6 +84,8 @@
     --accent-foreground: 0 0% 100%;
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
+    --warning: 45 100% 50%;
+    --warning-foreground: 0 0% 10%;
     --border: 240 10% 20%;
     --input: 240 10% 15%;
     --ring: 330 100% 60%;
