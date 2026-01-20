@@ -390,20 +390,42 @@ export const useConversations = (sessionId?: string) => {
     }
   };
 
-  // Admin: Create a new group from selected conversations (without copying messages)
+  // Admin: Create a new group (optionally from selected conversations)
   const adminCreateGroup = async (
     conversationIds: string[],
-    groupName: string
+    groupName: string,
+    isPublic: boolean = false
   ): Promise<boolean> => {
     try {
       await callAdminChatApi('createGroup', {
         conversation_ids: conversationIds,
         group_name: groupName,
+        is_public: isPublic,
       });
-      toast.success('Gruppo creato! I partecipanti sono stati aggiunti.');
+      toast.success(isPublic ? 'Gruppo pubblico creato!' : 'Gruppo privato creato!');
       return true;
     } catch (error) {
       console.error('Error creating group:', error);
+      toast.error('Errore nella creazione del gruppo');
+      return false;
+    }
+  };
+
+  // Admin: Create empty group directly
+  const adminCreateEmptyGroup = async (
+    groupName: string,
+    isPublic: boolean = false
+  ): Promise<boolean> => {
+    try {
+      await callAdminChatApi('createGroup', {
+        conversation_ids: [],
+        group_name: groupName,
+        is_public: isPublic,
+      });
+      toast.success(isPublic ? 'Gruppo pubblico creato!' : 'Gruppo privato creato!');
+      return true;
+    } catch (error) {
+      console.error('Error creating empty group:', error);
       toast.error('Errore nella creazione del gruppo');
       return false;
     }
@@ -569,6 +591,7 @@ export const useConversations = (sessionId?: string) => {
     adminDeleteMessage,
     adminDeleteConversation,
     adminCreateGroup,
+    adminCreateEmptyGroup,
     adminAddToGroup,
     adminRemoveFromGroup,
     adminRenameGroup,

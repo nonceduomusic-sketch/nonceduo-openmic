@@ -118,15 +118,11 @@ serve(async (req: Request): Promise<Response> => {
       }
 
       case 'createGroup': {
-        // Create a new empty group and add participants from selected conversations
-        const { conversation_ids, group_name } = body;
+        // Create a new empty group - optionally add participants from selected conversations
+        const { conversation_ids, group_name, is_public } = body;
         
-        if (!conversation_ids || conversation_ids.length < 2) {
-          return new Response(
-            JSON.stringify({ error: 'Seleziona almeno 2 conversazioni' }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
+        // conversation_ids is now optional - can create empty group
+        const convIds = conversation_ids || [];
 
         // Create new group conversation (empty, no messages copied)
         const { data: newConv, error: convError } = await supabase
@@ -134,7 +130,7 @@ serve(async (req: Request): Promise<Response> => {
           .insert([{ 
             name: group_name || 'Gruppo', 
             is_group: true,
-            is_public: false
+            is_public: is_public ?? false
           }])
           .select()
           .single();
@@ -147,39 +143,41 @@ serve(async (req: Request): Promise<Response> => {
           );
         }
 
-        // Get all participants from selected conversations
-        const { data: existingParticipants, error: partError } = await supabase
-          .from('conversation_participants')
-          .select('*')
-          .in('conversation_id', conversation_ids);
-
-        if (partError) {
-          console.error('Error fetching participants:', partError);
-          return new Response(
-            JSON.stringify({ error: partError.message }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        // Add unique participants to new group (dedupe by session_id)
-        const uniqueParticipants = new Map();
-        for (const p of existingParticipants || []) {
-          if (!uniqueParticipants.has(p.session_id)) {
-            uniqueParticipants.set(p.session_id, {
-              conversation_id: newConv.id,
-              participant_name: p.participant_name,
-              session_id: p.session_id,
-            });
-          }
-        }
-
-        if (uniqueParticipants.size > 0) {
-          const { error: insertPartError } = await supabase
+        // If conversation_ids provided, get all participants from those conversations
+        if (convIds.length > 0) {
+          const { data: existingParticipants, error: partError } = await supabase
             .from('conversation_participants')
-            .insert(Array.from(uniqueParticipants.values()));
+            .select('*')
+            .in('conversation_id', convIds);
 
-          if (insertPartError) {
-            console.error('Error adding participants:', insertPartError);
+          if (partError) {
+            console.error('Error fetching participants:', partError);
+            return new Response(
+              JSON.stringify({ error: partError.message }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          // Add unique participants to new group (dedupe by session_id)
+          const uniqueParticipants = new Map();
+          for (const p of existingParticipants || []) {
+            if (!uniqueParticipants.has(p.session_id)) {
+              uniqueParticipants.set(p.session_id, {
+                conversation_id: newConv.id,
+                participant_name: p.participant_name,
+                session_id: p.session_id,
+              });
+            }
+          }
+
+          if (uniqueParticipants.size > 0) {
+            const { error: insertPartError } = await supabase
+              .from('conversation_participants')
+              .insert(Array.from(uniqueParticipants.values()));
+
+            if (insertPartError) {
+              console.error('Error adding participants:', insertPartError);
+            }
           }
         }
 
