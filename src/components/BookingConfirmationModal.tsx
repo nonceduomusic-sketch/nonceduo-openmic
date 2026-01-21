@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, Music, Loader2, Users, FileText } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, CheckCircle, Music, Loader2, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Song } from '@/data/songs';
@@ -18,13 +18,11 @@ const reservationSchema = z.object({
 interface BookingConfirmationModalProps {
   song: Song;
   onClose: () => void;
-  queuePosition?: number;
 }
 
 export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> = ({ 
   song, 
-  onClose,
-  queuePosition = 0
+  onClose
 }) => {
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -54,15 +52,6 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
     setIsSubmitting(false);
   };
 
-  // Auto-close after confirmation
-  useEffect(() => {
-    if (isConfirmed) {
-      const timer = setTimeout(() => {
-        onClose();
-      }, 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [isConfirmed, onClose]);
 
   if (isConfirmed) {
     return (
@@ -72,27 +61,20 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
             <CheckCircle className="w-10 h-10 text-secondary-foreground" />
           </div>
           
-          <h2 className="font-display text-2xl font-bold neon-text-cyan mb-4">
-            Prenotazione Confermata!
+          <h2 className="font-display text-2xl font-bold neon-text-cyan mb-2">
+            {name}, sei in lista! 🎤
           </h2>
           
-          <div className="mb-4 p-4 rounded-lg bg-muted/50">
+          <p className="text-muted-foreground mb-4">
+            Preparati a salire sul palco!
+          </p>
+          
+          <div className="mb-6 p-4 rounded-lg bg-muted/50">
             <p className="text-foreground font-semibold text-lg">
               {song.title}
             </p>
             <p className="text-secondary">{song.artist}</p>
           </div>
-          
-          <p className="text-muted-foreground mb-6">
-            Ti chiameremo quando sarà il tuo turno. 🎤
-          </p>
-
-          {queuePosition > 0 && (
-            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground mb-4">
-              <Users className="w-4 h-4" />
-              <span>Ci sono {queuePosition} {queuePosition === 1 ? 'persona' : 'persone'} prima di te</span>
-            </div>
-          )}
           
           <div className="flex flex-col gap-3">
             <Button
@@ -150,14 +132,6 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
           </div>
         </div>
 
-        {queuePosition > 0 && (
-          <div className="mb-4 p-3 rounded-lg bg-accent/20 border border-accent/30 flex items-center gap-2">
-            <Users className="w-4 h-4 text-accent" />
-            <span className="text-sm text-foreground">
-              {queuePosition} {queuePosition === 1 ? 'prenotazione' : 'prenotazioni'} in coda prima di te
-            </span>
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

@@ -39,9 +39,6 @@ const OpenMic: React.FC = () => {
     setSelectedSong(song);
   };
 
-  // Calculate queue position for selected song
-  const queuePosition = activeCount;
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -174,7 +171,6 @@ const OpenMic: React.FC = () => {
         <BookingConfirmationModal
           song={selectedSong}
           onClose={() => setSelectedSong(null)}
-          queuePosition={queuePosition}
         />
       )}
     </div>
