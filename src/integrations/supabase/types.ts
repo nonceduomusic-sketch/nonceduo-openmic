@@ -230,6 +230,47 @@ export type Database = {
           },
         ]
       }
+      reservation_statuses: {
+        Row: {
+          created_at: string
+          id: string
+          reservation_id: string
+          song_artist: string
+          song_key: string
+          song_title: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reservation_id: string
+          song_artist: string
+          song_key: string
+          song_title: string
+          status: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reservation_id?: string
+          song_artist?: string
+          song_key?: string
+          song_title?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reservation_statuses_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: true
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       reservations: {
         Row: {
           completed_at: string | null
@@ -237,6 +278,7 @@ export type Database = {
           customer_name: string
           id: string
           song_artist: string
+          song_key: string | null
           song_title: string
           status: string
         }
@@ -246,6 +288,7 @@ export type Database = {
           customer_name: string
           id?: string
           song_artist: string
+          song_key?: string | null
           song_title: string
           status?: string
         }
@@ -255,6 +298,7 @@ export type Database = {
           customer_name?: string
           id?: string
           song_artist?: string
+          song_key?: string | null
           song_title?: string
           status?: string
         }
@@ -297,6 +341,7 @@ export type Database = {
         Args: { conv_id: string; session: string }
         Returns: boolean
       }
+      normalize_song_text: { Args: { t: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

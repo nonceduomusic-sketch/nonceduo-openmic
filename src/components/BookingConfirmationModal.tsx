@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, Music, Loader2, Users } from 'lucide-react';
+import { X, CheckCircle, Music, Loader2, Users, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Song } from '@/data/songs';
 import { useReservations } from '@/hooks/useReservations';
 import { z } from 'zod';
 import { toast } from 'sonner';
+import { LyricsDialog } from '@/components/LyricsDialog';
 
 const reservationSchema = z.object({
   customer_name: z.string().trim()
@@ -28,6 +29,7 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
+  const [showLyrics, setShowLyrics] = useState(false);
   const { createReservation } = useReservations();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -92,12 +94,30 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
             </div>
           )}
           
-          <Button
-            onClick={onClose}
-            className="neon-button-cyan h-11 font-display font-semibold"
-          >
-            Torna alle Canzoni
-          </Button>
+          <div className="flex flex-col gap-3">
+            <Button
+              onClick={() => setShowLyrics(true)}
+              className="neon-button-pink h-11 font-display font-semibold"
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Cerca Testo
+            </Button>
+            
+            <Button
+              onClick={onClose}
+              variant="outline"
+              className="h-11 font-display font-semibold border-muted-foreground"
+            >
+              Torna alle Canzoni
+            </Button>
+          </div>
+          
+          <LyricsDialog
+            open={showLyrics}
+            onOpenChange={setShowLyrics}
+            songTitle={song.title}
+            songArtist={song.artist}
+          />
         </div>
       </div>
     );
