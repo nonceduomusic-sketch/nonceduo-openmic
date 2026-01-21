@@ -8,6 +8,7 @@ import { BookingConfirmationModal } from '@/components/BookingConfirmationModal'
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useReservationStatuses } from '@/hooks/useReservationStatuses';
+import { SEO } from '@/components/SEO';
 
 const OpenMic: React.FC = () => {
   const [search, setSearch] = useState('');
@@ -41,6 +42,12 @@ const OpenMic: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO 
+        title="Open Mic | Karaoke Live by Non C'è Duo"
+        description="Il karaoke live dove TU sei la star! Prenota la tua canzone e sali sul palco con la band."
+        image="https://nonceduo-openmic.lovable.app/og-openmic.jpg"
+        url="https://nonceduo-openmic.lovable.app/openmic"
+      />
       {/* Header */}
       <header className="sticky top-0 z-40 bg-card/90 backdrop-blur-md border-b border-border">
         <div className="container py-4">

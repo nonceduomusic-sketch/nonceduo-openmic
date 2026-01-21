@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { Music, Phone, Mail, Instagram, PartyPopper, Users, Sparkles, Volume2, ArrowLeft, ChevronDown, Mic2, Zap, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SEO } from '@/components/SEO';
 
 const PartyBand: React.FC = () => {
   const scrollToSection = (id: string) => {
@@ -10,6 +11,12 @@ const PartyBand: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <SEO 
+        title="Non C'è Band | Formazione Completa per Grandi Eventi"
+        description="Quando il duo non basta, alziamo il volume. Batteria, basso, tastiere per un sound potente e travolgente."
+        image="https://nonceduo-openmic.lovable.app/og-partyband.jpg"
+        url="https://nonceduo-openmic.lovable.app/partyband"
+      />
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto px-4 py-4">
