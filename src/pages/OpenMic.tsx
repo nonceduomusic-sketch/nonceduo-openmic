@@ -7,40 +7,15 @@ import { ArtistFilter } from '@/components/ArtistFilter';
 import { BookingConfirmationModal } from '@/components/BookingConfirmationModal';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useReservations } from '@/hooks/useReservations';
+import { useReservationStatuses } from '@/hooks/useReservationStatuses';
 
 const OpenMic: React.FC = () => {
   const [search, setSearch] = useState('');
   const [artistFilter, setArtistFilter] = useState('all');
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   
-  const { activeReservations, completedReservations, loading } = useReservations();
-
-  // Normalize text for comparison (handle different apostrophe characters)
-  const normalizeText = (text: string) => {
-    return text.replace(/[''`´]/g, "'").toLowerCase().trim();
-  };
-
-  const getSongKey = (title: string, artist: string) => {
-    return `${normalizeText(title)}__${normalizeText(artist)}`;
-  };
-
-  // Create maps for quick lookup of booked/completed songs
-  const bookedSongs = useMemo(() => {
-    const set = new Set<string>();
-    activeReservations.forEach(res => {
-      set.add(getSongKey(res.song_title, res.song_artist));
-    });
-    return set;
-  }, [activeReservations]);
-
-  const completedSongs = useMemo(() => {
-    const set = new Set<string>();
-    completedReservations.forEach(res => {
-      set.add(getSongKey(res.song_title, res.song_artist));
-    });
-    return set;
-  }, [completedReservations]);
+  // Use the public statuses hook for real-time updates (no auth required)
+  const { isSongBooked, isSongCompleted, activeCount, loading, bookedSongKeys } = useReservationStatuses();
 
   const filteredSongs = useMemo(() => {
     return songs.filter((song) => {
@@ -56,24 +31,16 @@ const OpenMic: React.FC = () => {
     });
   }, [search, artistFilter]);
 
-  const isSongBooked = (song: Song) => {
-    return bookedSongs.has(getSongKey(song.title, song.artist));
-  };
-
-  const isSongCompleted = (song: Song) => {
-    return completedSongs.has(getSongKey(song.title, song.artist)) && !isSongBooked(song);
-  };
-
   const handleBookSong = (song: Song) => {
-    // Check if song is already booked
-    if (isSongBooked(song)) {
+    // Check if song is already booked (use latest status from hook)
+    if (isSongBooked(song.title, song.artist)) {
       return; // Don't open modal for booked songs
     }
     setSelectedSong(song);
   };
 
   // Calculate queue position for selected song
-  const queuePosition = activeReservations.length;
+  const queuePosition = activeCount;
 
   return (
     <div className="min-h-screen bg-background">
@@ -125,13 +92,13 @@ const OpenMic: React.FC = () => {
           </div>
 
           {/* Queue indicator */}
-          {activeReservations.length > 0 && (
+          {activeCount > 0 && (
             <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-accent/20 border border-accent/30">
               <Users className="w-4 h-4 text-accent" />
               <span className="text-sm text-foreground">
-                {activeReservations.length === 1 
+                {activeCount === 1 
                   ? 'C\'è 1 persona in coda' 
-                  : `Ci sono ${activeReservations.length} persone in coda`}
+                  : `Ci sono ${activeCount} persone in coda`}
               </span>
             </div>
           )}
@@ -147,9 +114,9 @@ const OpenMic: React.FC = () => {
             <p className="text-xs text-muted-foreground">
               {filteredSongs.length} canzoni
             </p>
-            {bookedSongs.size > 0 && (
+            {bookedSongKeys.size > 0 && (
               <p className="text-xs text-warning">
-                {bookedSongs.size} prenotate
+                {bookedSongKeys.size} prenotate
               </p>
             )}
           </div>
@@ -181,8 +148,8 @@ const OpenMic: React.FC = () => {
                   key={`${song.title}-${song.artist}-${index}`}
                   song={song}
                   onBook={handleBookSong}
-                  isBooked={isSongBooked(song)}
-                  isCompleted={isSongCompleted(song)}
+                  isBooked={isSongBooked(song.title, song.artist)}
+                  isCompleted={isSongCompleted(song.title, song.artist)}
                 />
               ))}
             </div>
