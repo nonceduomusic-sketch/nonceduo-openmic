@@ -18,6 +18,10 @@ import {
   Bell,
   ExternalLink,
   RotateCcw,
+  MoreVertical,
+  Mic,
+  MessageSquare,
+  Database,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAdmin } from '@/contexts/AdminContext';
@@ -43,6 +47,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 
 // Type for tracking undo operations
@@ -64,6 +75,9 @@ export const AdminDashboard: React.FC = () => {
     resetActiveReservations,
     resetCompletedReservations,
     resetEverything,
+    resetOpenMic,
+    resetMessages,
+    resetSongStatuses,
     deleteReservation,
     deleteMultipleReservations,
     restoreReservation,
@@ -80,8 +94,9 @@ export const AdminDashboard: React.FC = () => {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastAction, setLastAction] = useState<UndoAction | null>(null);
-  const [showResetConfirmStep2, setShowResetConfirmStep2] = useState(false);
-  const [isResettingEverything, setIsResettingEverything] = useState(false);
+  const [showResetDialog, setShowResetDialog] = useState(false);
+  const [resetOption, setResetOption] = useState<'openmic' | 'messages' | 'songs' | 'all' | null>(null);
+  const [isResetting, setIsResetting] = useState(false);
   // unreadConvCount is calculated via useMemo from conversations
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
@@ -461,33 +476,93 @@ export const AdminDashboard: React.FC = () => {
                 <ExternalLink className="w-3 h-3 ml-1 opacity-60" />
               </Button>
 
-              {/* Reset Serata button - always visible */}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
+              {/* Reset Serata button with options */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
                     className="border-warning text-warning hover:bg-warning hover:text-warning-foreground"
-                    title="Reset totale per nuova serata"
+                    title="Reset serata"
                   >
                     <RotateCcw className="w-4 h-4 md:mr-2" />
-                    <span className="hidden md:inline">Reset Serata</span>
+                    <span className="hidden md:inline">Reset</span>
                   </Button>
-                </AlertDialogTrigger>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setResetOption('openmic');
+                      setShowResetDialog(true);
+                    }}
+                  >
+                    <Mic className="w-4 h-4 mr-2" />
+                    Solo Open Mic
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setResetOption('messages');
+                      setShowResetDialog(true);
+                    }}
+                  >
+                    <MessageSquare className="w-4 h-4 mr-2" />
+                    Solo Messaggi
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setResetOption('songs');
+                      setShowResetDialog(true);
+                    }}
+                  >
+                    <ListMusic className="w-4 h-4 mr-2" />
+                    Ripristina Canzoni
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => {
+                      setResetOption('all');
+                      setShowResetDialog(true);
+                    }}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Database className="w-4 h-4 mr-2" />
+                    Reset Totale
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Reset confirmation dialog */}
+              <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
                 <AlertDialogContent className="glass-card border-warning">
                   <AlertDialogHeader>
                     <AlertDialogTitle className="flex items-center gap-2 text-warning">
                       <AlertTriangle className="w-5 h-5" />
-                      Reset Serata
+                      {resetOption === 'openmic' && 'Reset Open Mic'}
+                      {resetOption === 'messages' && 'Reset Messaggi'}
+                      {resetOption === 'songs' && 'Ripristina Canzoni'}
+                      {resetOption === 'all' && 'Reset Totale Serata'}
                     </AlertDialogTitle>
                     <AlertDialogDescription asChild>
                       <div>
-                        <p>Stai per cancellare <strong>TUTTO</strong>:</p>
-                        <ul className="list-disc list-inside mt-2 space-y-1">
-                          <li>Tutte le prenotazioni (Open Mic)</li>
-                          <li>Tutti i messaggi e le chat</li>
-                          <li>Tutti gli stati delle canzoni</li>
-                        </ul>
+                        {resetOption === 'openmic' && (
+                          <p>Verranno cancellate tutte le prenotazioni Open Mic (in corso e completate).</p>
+                        )}
+                        {resetOption === 'messages' && (
+                          <p>Verranno cancellati tutti i messaggi, le chat e le conversazioni.</p>
+                        )}
+                        {resetOption === 'songs' && (
+                          <p>Tutte le canzoni torneranno prenotabili (gli stati "prenotata/completata" verranno rimossi).</p>
+                        )}
+                        {resetOption === 'all' && (
+                          <>
+                            <p>Verranno cancellati <strong>TUTTI</strong> i dati:</p>
+                            <ul className="list-disc list-inside mt-2 space-y-1">
+                              <li>Tutte le prenotazioni (Open Mic)</li>
+                              <li>Tutti i messaggi e le chat</li>
+                              <li>Tutti gli stati delle canzoni</li>
+                            </ul>
+                          </>
+                        )}
                         <p className="mt-3 text-destructive font-medium">
                           Questa azione è irreversibile!
                         </p>
@@ -495,52 +570,35 @@ export const AdminDashboard: React.FC = () => {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Annulla</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={() => setShowResetConfirmStep2(true)}
-                      className="bg-warning hover:bg-warning/90 text-warning-foreground"
-                    >
-                      Continua
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-
-              {/* Second confirmation dialog (controlled) */}
-              <AlertDialog open={showResetConfirmStep2} onOpenChange={setShowResetConfirmStep2}>
-                <AlertDialogContent className="glass-card border-destructive">
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                      <AlertTriangle className="w-5 h-5" />
-                      Conferma Finale
-                    </AlertDialogTitle>
-                    <AlertDialogDescription asChild>
-                      <div>
-                        <p className="text-lg font-semibold text-foreground mb-2">
-                          Sei ASSOLUTAMENTE sicuro?
-                        </p>
-                        <p>
-                          Tutti i dati della serata verranno eliminati permanentemente.
-                          Non sarà possibile recuperarli.
-                        </p>
-                      </div>
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setShowResetConfirmStep2(false)}>
-                      No, torna indietro
+                    <AlertDialogCancel onClick={() => setShowResetDialog(false)}>
+                      Annulla
                     </AlertDialogCancel>
                     <AlertDialogAction
                       onClick={async () => {
-                        setIsResettingEverything(true);
-                        await resetEverything();
-                        setIsResettingEverything(false);
-                        setShowResetConfirmStep2(false);
+                        setIsResetting(true);
+                        let success = false;
+                        
+                        if (resetOption === 'openmic') {
+                          success = await resetOpenMic();
+                        } else if (resetOption === 'messages') {
+                          success = await resetMessages();
+                        } else if (resetOption === 'songs') {
+                          success = await resetSongStatuses();
+                        } else if (resetOption === 'all') {
+                          success = await resetEverything();
+                        }
+                        
+                        setIsResetting(false);
+                        setShowResetDialog(false);
+                        setResetOption(null);
                       }}
-                      disabled={isResettingEverything}
-                      className="bg-destructive hover:bg-destructive/90"
+                      disabled={isResetting}
+                      className={resetOption === 'all' 
+                        ? "bg-destructive hover:bg-destructive/90"
+                        : "bg-warning hover:bg-warning/90 text-warning-foreground"
+                      }
                     >
-                      {isResettingEverything ? 'Reset in corso...' : 'Sì, resetta tutto'}
+                      {isResetting ? 'Reset in corso...' : 'Conferma'}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
@@ -559,58 +617,43 @@ export const AdminDashboard: React.FC = () => {
                 </Button>
               )}
 
-              {mainTab === 'openmic' && !selectionMode ? (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setSelectionMode(true)}
-                    className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-                    disabled={currentReservations.length === 0}
-                  >
-                    <CheckSquare className="w-4 h-4 md:mr-2" />
-                    <span className="hidden md:inline">Seleziona</span>
-                  </Button>
+              {mainTab === 'openmic' && !selectionMode && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                    >
+                      <MoreVertical className="w-4 h-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => setSelectionMode(true)}
+                      disabled={currentReservations.length === 0}
+                    >
+                      <CheckSquare className="w-4 h-4 mr-2" />
+                      Seleziona multipli
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        if (currentReservations.length === 0) return;
+                        // Trigger reset dialog
+                        handleResetCurrent();
+                      }}
+                      disabled={currentReservations.length === 0}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Reset {activeTab === 'active' ? 'In Corso' : 'Completate'}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
 
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                        disabled={currentReservations.length === 0}
-                      >
-                        <Trash2 className="w-4 h-4 md:mr-2" />
-                        <span className="hidden md:inline">Reset</span>
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="glass-card border-destructive">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                          <AlertTriangle className="w-5 h-5" />
-                          Reset {activeTab === 'active' ? 'In Corso' : 'Completate'}
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Sei sicuro di voler cancellare tutte le prenotazioni{' '}
-                          {activeTab === 'active' ? 'in corso' : 'completate'}? Questa
-                          azione non può essere annullata.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel className="border-border">
-                          Annulla
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleResetCurrent}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Conferma Reset
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </>
-              ) : mainTab === 'openmic' && selectionMode ? (
+              {mainTab === 'openmic' && selectionMode && (
                 <>
                   <Button
                     variant="outline"
@@ -625,8 +668,8 @@ export const AdminDashboard: React.FC = () => {
                     )}
                     <span className="hidden md:inline">
                       {selectedIds.size === currentReservations.length
-                        ? 'Deseleziona'
-                        : 'Seleziona tutto'}
+                        ? 'Nessuno'
+                        : 'Tutti'}
                     </span>
                   </Button>
 
@@ -640,7 +683,7 @@ export const AdminDashboard: React.FC = () => {
                       >
                         <Trash2 className="w-4 h-4 md:mr-2" />
                         <span className="hidden md:inline">
-                          Elimina ({selectedIds.size})
+                          ({selectedIds.size})
                         </span>
                       </Button>
                     </AlertDialogTrigger>
@@ -652,7 +695,7 @@ export const AdminDashboard: React.FC = () => {
                         </AlertDialogTitle>
                         <AlertDialogDescription>
                           Sei sicuro di voler eliminare {selectedIds.size} prenotazioni
-                          selezionate? Questa azione non può essere annullata.
+                          selezionate?
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
@@ -663,7 +706,7 @@ export const AdminDashboard: React.FC = () => {
                           onClick={handleDeleteSelected}
                           className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
-                          Conferma Eliminazione
+                          Elimina
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -678,7 +721,7 @@ export const AdminDashboard: React.FC = () => {
                     <X className="w-4 h-4" />
                   </Button>
                 </>
-              ) : null}
+              )}
 
               <Button
                 variant="outline"
