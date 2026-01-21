@@ -34,7 +34,7 @@ export const SongCardWithStatus = forwardRef<HTMLDivElement, SongCardWithStatusP
         {isBooked && (
           <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-full bg-warning/20 border border-warning/40 text-warning text-xs font-medium">
             <Lock className="w-3 h-3" />
-            <span>In coda</span>
+            <span>Prenotata</span>
           </div>
         )}
         {isCompleted && (
@@ -80,7 +80,7 @@ export const SongCardWithStatus = forwardRef<HTMLDivElement, SongCardWithStatusP
                 variant="outline"
               >
                 <Lock className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 flex-shrink-0" />
-                <span>Già Prenotata</span>
+                <span>Prenotata</span>
               </Button>
             ) : isCompleted ? (
               <Button
@@ -89,7 +89,7 @@ export const SongCardWithStatus = forwardRef<HTMLDivElement, SongCardWithStatusP
                 variant="outline"
               >
                 <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 flex-shrink-0" />
-                <span>Già Cantata</span>
+                <span>Cantata</span>
               </Button>
             ) : (
               <Button

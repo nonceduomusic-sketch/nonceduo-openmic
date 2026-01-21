@@ -67,7 +67,7 @@ export const AdminDashboard: React.FC = () => {
   } = useReservations();
   
   const { unreadMessages } = useMessages();
-  const { conversations } = useConversations();
+  const { conversations, getUnreadConversations } = useConversations();
 
   const [reservationNotifications, setReservationNotifications] = useState<Reservation[]>([]);
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
@@ -152,10 +152,11 @@ export const AdminDashboard: React.FC = () => {
     };
   }, [conversations]);
 
-  // Update unread count from messages
+  // Update unread count from conversations (use the correct count from useConversations)
   useEffect(() => {
-    setUnreadMessageCount(unreadMessages.length);
-  }, [unreadMessages.length]);
+    const unreadConvs = getUnreadConversations();
+    setUnreadMessageCount(unreadConvs.length);
+  }, [conversations, getUnreadConversations]);
 
   // Clear selection when changing tabs
   useEffect(() => {

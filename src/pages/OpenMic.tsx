@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Mic2, Home, MessageCircle, Users, Music } from 'lucide-react';
+import { Mic2, Home, MessageCircle, Users, Music, Settings } from 'lucide-react';
 import { songs, Song } from '@/data/songs';
 import { SongCardWithStatus } from '@/components/SongCardWithStatus';
 import { SearchBar } from '@/components/SearchBar';
@@ -91,16 +91,28 @@ const OpenMic: React.FC = () => {
               </div>
             </div>
 
-            <Link to="/messaggi">
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
-              >
-                <MessageCircle className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Dediche</span>
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link to="/messaggi">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+                >
+                  <MessageCircle className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Chat</span>
+                </Button>
+              </Link>
+              <Link to="/admin">
+                <Button 
+                  variant="ghost" 
+                  size="icon"
+                  className="text-muted-foreground hover:text-foreground"
+                  title="Area Admin"
+                >
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {/* Queue indicator */}
@@ -136,7 +148,7 @@ const OpenMic: React.FC = () => {
       </header>
 
       {/* Song List */}
-      <main className="container py-4 pb-24">
+      <main className="container py-4 pb-8">
         {/* Description */}
         <div className="mb-4 p-3 rounded-lg bg-muted/30 border border-border">
           <p className="text-sm text-muted-foreground text-center leading-relaxed">
@@ -180,18 +192,6 @@ const OpenMic: React.FC = () => {
           </>
         )}
       </main>
-
-      {/* Fixed CTA for Messages */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-card/95 backdrop-blur-md border-t border-border p-4">
-        <div className="container">
-          <Link to="/messaggi">
-            <Button className="w-full neon-button-cyan h-12 font-display font-semibold">
-              <MessageCircle className="w-5 h-5 mr-2" />
-              💬 Invia una Dedica
-            </Button>
-          </Link>
-        </div>
-      </div>
 
       {/* Booking Modal */}
       {selectedSong && (
