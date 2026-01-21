@@ -599,6 +599,58 @@ serve(async (req: Request): Promise<Response> => {
         break;
       }
 
+      case 'markMessagesAsRead': {
+        // Mark all messages in a conversation as read by admin
+        const { conversation_id } = body;
+        if (!conversation_id) {
+          return new Response(
+            JSON.stringify({ error: 'ID conversazione richiesto' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Mark user messages as read (admin viewing them)
+        result = await supabase
+          .from('chat_messages')
+          .update({ 
+            status: 'read',
+            read_at: new Date().toISOString()
+          })
+          .eq('conversation_id', conversation_id)
+          .eq('sender_type', 'user')
+          .neq('status', 'read');
+        break;
+      }
+
+      case 'updateMessageStatus': {
+        // Update the status of specific messages
+        const { message_ids, status } = body;
+        if (!message_ids || message_ids.length === 0) {
+          return new Response(
+            JSON.stringify({ error: 'ID messaggi richiesti' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        
+        if (!['sent', 'delivered', 'read'].includes(status)) {
+          return new Response(
+            JSON.stringify({ error: 'Stato non valido' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const updateData: any = { status };
+        if (status === 'read') {
+          updateData.read_at = new Date().toISOString();
+        }
+
+        result = await supabase
+          .from('chat_messages')
+          .update(updateData)
+          .in('id', message_ids);
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: 'Unknown action' }),

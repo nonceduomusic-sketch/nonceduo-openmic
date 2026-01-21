@@ -69,9 +69,11 @@ export type Database = {
           edited_at: string | null
           id: string
           message_text: string
+          read_at: string | null
           sender_name: string
           sender_session_id: string | null
           sender_type: string
+          status: string
         }
         Insert: {
           conversation_id: string
@@ -79,9 +81,11 @@ export type Database = {
           edited_at?: string | null
           id?: string
           message_text: string
+          read_at?: string | null
           sender_name: string
           sender_session_id?: string | null
           sender_type: string
+          status?: string
         }
         Update: {
           conversation_id?: string
@@ -89,9 +93,11 @@ export type Database = {
           edited_at?: string | null
           id?: string
           message_text?: string
+          read_at?: string | null
           sender_name?: string
           sender_session_id?: string | null
           sender_type?: string
+          status?: string
         }
         Relationships: [
           {
@@ -307,6 +313,41 @@ export type Database = {
         }
         Relationships: []
       }
+      typing_indicators: {
+        Row: {
+          conversation_id: string
+          expires_at: string
+          id: string
+          session_id: string
+          started_at: string
+          user_name: string
+        }
+        Insert: {
+          conversation_id: string
+          expires_at?: string
+          id?: string
+          session_id: string
+          started_at?: string
+          user_name: string
+        }
+        Update: {
+          conversation_id?: string
+          expires_at?: string
+          id?: string
+          session_id?: string
+          started_at?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "typing_indicators_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -333,6 +374,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_typing_indicators: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

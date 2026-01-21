@@ -11,6 +11,8 @@ export interface ChatMessage {
   message_text: string;
   edited_at: string | null;
   created_at: string;
+  status: 'sent' | 'delivered' | 'read';
+  read_at: string | null;
 }
 
 export interface Participant {
@@ -219,6 +221,18 @@ export const useConversations = (sessionId?: string) => {
 
     return json as T;
   }, []);
+
+  // Mark messages in a conversation as read (for user)
+  const markMessagesAsRead = useCallback(async (conversationId: string, userSessionId: string) => {
+    try {
+      await callUserChatApi('markMessagesAsRead', {
+        conversation_id: conversationId,
+        session_id: userSessionId,
+      });
+    } catch (error) {
+      console.error('Error marking messages as read:', error);
+    }
+  }, [callUserChatApi]);
 
   // Start a new conversation (for users)
   // Returns the full conversation object for immediate UI selection
@@ -710,6 +724,7 @@ export const useConversations = (sessionId?: string) => {
     sendMessage,
     editMessage,
     joinPublicGroup,
+    markMessagesAsRead,
     adminReply,
     adminEditMessage,
     adminDeleteMessage,
