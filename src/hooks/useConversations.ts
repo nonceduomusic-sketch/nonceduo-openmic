@@ -129,7 +129,7 @@ export const useConversations = (sessionId?: string) => {
           };
         });
 
-      // Separate public groups from user's conversations
+      // Separate user's conversations from available groups
       const userConvs = processedConversations.filter((conv: Conversation) => {
         if (sessionId) {
           return conv.participants?.some(p => p.session_id === sessionId);
@@ -137,13 +137,29 @@ export const useConversations = (sessionId?: string) => {
         return true;
       });
 
-      const pubGroups = processedConversations.filter((conv: Conversation) => {
-        return conv.is_group && conv.is_public && 
-          (!sessionId || !conv.participants?.some(p => p.session_id === sessionId));
+      // Groups available to join:
+      // 1. Public groups where user is not already a participant
+      // 2. Private groups where user is in allowed_participants but not yet a participant
+      const availableGroups = processedConversations.filter((conv: Conversation) => {
+        if (!conv.is_group) return false;
+        
+        // Already a participant? Don't show in available groups
+        const isParticipant = sessionId && conv.participants?.some(p => p.session_id === sessionId);
+        if (isParticipant) return false;
+        
+        // Public groups are visible to everyone
+        if (conv.is_public) return true;
+        
+        // Private groups: check if user is in allowed_participants
+        if (sessionId && conv.allowed_participants && conv.allowed_participants.length > 0) {
+          return conv.allowed_participants.includes(sessionId);
+        }
+        
+        return false;
       });
 
       setConversations(userConvs);
-      setPublicGroups(pubGroups);
+      setPublicGroups(availableGroups);
     } catch (error) {
       console.error('Error fetching conversations:', error);
       toast.error('Errore nel caricamento delle conversazioni');

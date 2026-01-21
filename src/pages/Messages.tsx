@@ -736,14 +736,16 @@ const Messages: React.FC = () => {
           Nuova Dedica
         </Button>
 
-        {/* Public groups available */}
+        {/* Available groups (public + private where user is allowed) */}
         {publicGroups.length > 0 && (
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
-              Gruppi pubblici
+              Gruppi disponibili
             </p>
             {publicGroups.map((group) => {
               const isJoined = group.participants?.some(p => p.session_id === userSessionId);
+              const isPrivateInvite = !group.is_public && group.allowed_participants?.includes(userSessionId);
+              
               return (
                 <button
                   key={group.id}
@@ -751,8 +753,14 @@ const Messages: React.FC = () => {
                   className="w-full glass-card p-4 text-left hover:border-secondary transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center relative">
-                      <Globe className="w-5 h-5 text-secondary" />
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center relative ${
+                      isPrivateInvite ? 'bg-primary/20' : 'bg-secondary/20'
+                    }`}>
+                      {isPrivateInvite ? (
+                        <Users className="w-5 h-5 text-primary" />
+                      ) : (
+                        <Globe className="w-5 h-5 text-secondary" />
+                      )}
                       {group.password_hash && (
                         <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-background border border-secondary flex items-center justify-center">
                           <Lock className="w-2.5 h-2.5 text-secondary" />
@@ -768,10 +776,13 @@ const Messages: React.FC = () => {
                           )}
                         </span>
                         {!isJoined && (
-                          <span className="text-xs text-secondary font-medium">Unisciti →</span>
+                          <span className={`text-xs font-medium ${isPrivateInvite ? 'text-primary' : 'text-secondary'}`}>
+                            {isPrivateInvite ? 'Invitato →' : 'Unisciti →'}
+                          </span>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">
+                        {isPrivateInvite ? 'Gruppo privato • ' : ''}
                         {group.participants?.length || 0} partecipanti
                       </p>
                     </div>
