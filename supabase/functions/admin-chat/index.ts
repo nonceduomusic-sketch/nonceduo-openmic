@@ -74,6 +74,8 @@ serve(async (req: Request): Promise<Response> => {
     switch (action) {
       case 'sendMessage': {
         const { conversation_id, message_text } = body;
+        
+        // Insert the message with 'delivered' status
         result = await supabase
           .from('chat_messages')
           .insert([{
@@ -82,7 +84,26 @@ serve(async (req: Request): Promise<Response> => {
             sender_name: claimsData.claims.user_metadata?.username || 'Staff',
             sender_session_id: null,
             message_text,
+            status: 'delivered', // Admin messages start as delivered
           }]);
+        
+        // Also mark conversation as read (admin is responding)
+        await supabase
+          .from('conversations')
+          .update({ is_read: true })
+          .eq('id', conversation_id);
+        
+        // Mark user messages as read (admin has seen them)
+        await supabase
+          .from('chat_messages')
+          .update({ 
+            status: 'read',
+            read_at: new Date().toISOString()
+          })
+          .eq('conversation_id', conversation_id)
+          .eq('sender_type', 'user')
+          .neq('status', 'read');
+        
         break;
       }
 
