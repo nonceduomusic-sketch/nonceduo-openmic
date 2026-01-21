@@ -138,7 +138,7 @@ const SocialAuth: React.FC = () => {
     try {
       const redirectUrl = `${window.location.origin}/social/dashboard`;
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
         password,
         options: {
@@ -164,13 +164,31 @@ const SocialAuth: React.FC = () => {
             variant: 'destructive',
           });
         }
-      } else {
+      } else if (data.user) {
+        // Create profile manually since trigger may not work
+        const username = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + data.user.id.substring(0, 4);
+        
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            user_id: data.user.id,
+            display_name: displayName.trim(),
+            username: username,
+            is_online: true,
+            last_seen_at: new Date().toISOString(),
+          }, { onConflict: 'user_id' });
+        
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+        }
+        
         toast({
           title: 'Account creato!',
           description: 'Benvenuto nella community!',
         });
       }
     } catch (err) {
+      console.error('Signup error:', err);
       toast({
         title: 'Errore',
         description: 'Si è verificato un errore. Riprova.',

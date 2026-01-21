@@ -66,36 +66,66 @@ const SocialDashboard: React.FC = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Fetch profile
+  // Fetch or create profile
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchOrCreateProfile = async () => {
       if (!user) return;
       
       try {
-        const { data, error } = await supabase
+        // Try to fetch existing profile
+        let { data, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
         
-        if (error) throw error;
-        setProfile(data);
+        // If no profile exists, create one
+        if (!data && !error) {
+          const username = (user.email?.split('@')[0] || 'user').toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + user.id.substring(0, 4);
+          const displayName = user.user_metadata?.display_name || user.email?.split('@')[0] || 'Utente';
+          
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert({
+              user_id: user.id,
+              display_name: displayName,
+              username: username,
+              is_online: true,
+              last_seen_at: new Date().toISOString(),
+            })
+            .select()
+            .single();
+          
+          if (createError) {
+            console.error('Error creating profile:', createError);
+          } else {
+            data = newProfile;
+          }
+        } else if (error) {
+          console.error('Error fetching profile:', error);
+        }
         
-        // Update online status
-        await supabase
-          .from('profiles')
-          .update({ is_online: true, last_seen_at: new Date().toISOString() })
-          .eq('user_id', user.id);
+        if (data) {
+          setProfile(data as Profile);
+          
+          // Update online status
+          await supabase
+            .from('profiles')
+            .update({ is_online: true, last_seen_at: new Date().toISOString() })
+            .eq('user_id', user.id);
+        }
           
       } catch (error) {
-        console.error('Error fetching profile:', error);
+        console.error('Error in profile management:', error);
       } finally {
         setLoading(false);
       }
     };
 
     if (user) {
-      fetchProfile();
+      fetchOrCreateProfile();
+    } else {
+      setLoading(false);
     }
     
     // Set offline on unmount
