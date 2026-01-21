@@ -6,7 +6,7 @@ import { Song } from '@/data/songs';
 import { useReservations } from '@/hooks/useReservations';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { LyricsDialog } from '@/components/LyricsDialog';
+import { getLyricsSearchUrl } from '@/lib/whatsapp';
 
 const reservationSchema = z.object({
   customer_name: z.string().trim()
@@ -27,8 +27,11 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
   const [name, setName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
-  const [showLyrics, setShowLyrics] = useState(false);
   const { createReservation } = useReservations();
+
+  const handleSearchLyrics = () => {
+    window.open(getLyricsSearchUrl(song.title, song.artist), '_blank');
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +81,7 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
           
           <div className="flex flex-col gap-3">
             <Button
-              onClick={() => setShowLyrics(true)}
+              onClick={handleSearchLyrics}
               className="neon-button-pink h-11 font-display font-semibold"
             >
               <FileText className="w-4 h-4 mr-2" />
@@ -93,13 +96,6 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
               Torna alle Canzoni
             </Button>
           </div>
-          
-          <LyricsDialog
-            open={showLyrics}
-            onOpenChange={setShowLyrics}
-            songTitle={song.title}
-            songArtist={song.artist}
-          />
         </div>
       </div>
     );
