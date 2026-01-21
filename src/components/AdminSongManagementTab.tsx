@@ -1,0 +1,312 @@
+import React, { useState, useMemo } from 'react';
+import { 
+  Music, 
+  Lock, 
+  Unlock, 
+  CheckCircle, 
+  RefreshCw, 
+  Search,
+  AlertTriangle,
+  RotateCcw
+} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useReservations, Reservation } from '@/hooks/useReservations';
+import { songs } from '@/data/songs';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
+import { cn } from '@/lib/utils';
+
+export const AdminSongManagementTab: React.FC = () => {
+  const { toast } = useToast();
+  const { 
+    activeReservations, 
+    completedReservations,
+    completeReservation,
+    deleteReservation,
+    resetAllReservations,
+    loading 
+  } = useReservations();
+  
+  const [search, setSearch] = useState('');
+  const [filter, setFilter] = useState<'all' | 'booked' | 'available'>('all');
+
+  // Create a map of booked and completed songs
+  const songStatusMap = useMemo(() => {
+    const map = new Map<string, { status: 'booked' | 'completed'; reservation: Reservation }>();
+    
+    activeReservations.forEach(res => {
+      const key = `${res.song_title}__${res.song_artist}`;
+      map.set(key, { status: 'booked', reservation: res });
+    });
+    
+    completedReservations.forEach(res => {
+      const key = `${res.song_title}__${res.song_artist}`;
+      // Only mark as completed if not actively booked
+      if (!map.has(key)) {
+        map.set(key, { status: 'completed', reservation: res });
+      }
+    });
+    
+    return map;
+  }, [activeReservations, completedReservations]);
+
+  // Filter and enrich songs with status
+  const enrichedSongs = useMemo(() => {
+    return songs.map(song => {
+      const key = `${song.title}__${song.artist}`;
+      const statusInfo = songStatusMap.get(key);
+      return {
+        ...song,
+        status: statusInfo?.status || 'available',
+        reservation: statusInfo?.reservation,
+      };
+    }).filter(song => {
+      const searchLower = search.toLowerCase();
+      const matchesSearch = 
+        song.title.toLowerCase().includes(searchLower) ||
+        song.artist.toLowerCase().includes(searchLower);
+      
+      const matchesFilter = 
+        filter === 'all' || 
+        (filter === 'booked' && (song.status === 'booked' || song.status === 'completed')) ||
+        (filter === 'available' && song.status === 'available');
+      
+      return matchesSearch && matchesFilter;
+    });
+  }, [songs, songStatusMap, search, filter]);
+
+  const bookedCount = activeReservations.length;
+  const completedCount = completedReservations.length;
+
+  const handleUnlockSong = async (reservation: Reservation) => {
+    // Complete the reservation to unlock the song
+    const success = await completeReservation(reservation.id);
+    if (success) {
+      toast({
+        title: 'Canzone sbloccata',
+        description: `"${reservation.song_title}" è ora disponibile.`,
+      });
+    }
+  };
+
+  const handleReleaseSong = async (reservation: Reservation) => {
+    // Delete the reservation entirely
+    const success = await deleteReservation(reservation.id);
+    if (success) {
+      toast({
+        title: 'Prenotazione annullata',
+        description: `"${reservation.song_title}" è di nuovo disponibile.`,
+      });
+    }
+  };
+
+  const handleResetAll = async () => {
+    const success = await resetAllReservations();
+    if (success) {
+      toast({
+        title: 'Reset completato',
+        description: 'Tutte le canzoni sono ora disponibili.',
+      });
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div>
+          <h2 className="font-display text-xl font-bold text-foreground">
+            Gestione Canzoni
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {bookedCount} in coda • {completedCount} completate • {songs.length - bookedCount} disponibili
+          </p>
+        </div>
+        
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button
+              variant="outline"
+              className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+              disabled={bookedCount === 0 && completedCount === 0}
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Reset Globale
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent className="glass-card border-destructive">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="w-5 h-5" />
+                Reset Globale
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Sei sicuro di voler cancellare tutte le prenotazioni? 
+                Tutte le canzoni torneranno disponibili. 
+                Questa azione non può essere annullata.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="border-border">Annulla</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleResetAll}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Conferma Reset
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+
+      {/* Search and filters */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Cerca canzone o artista..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        
+        <div className="flex gap-2">
+          <Button
+            variant={filter === 'all' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilter('all')}
+            className={filter === 'all' ? 'neon-button-pink' : ''}
+          >
+            Tutte
+          </Button>
+          <Button
+            variant={filter === 'booked' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilter('booked')}
+            className={cn(
+              filter === 'booked' && 'bg-warning text-warning-foreground hover:bg-warning/90'
+            )}
+          >
+            <Lock className="w-3 h-3 mr-1" />
+            Prenotate ({bookedCount + completedCount})
+          </Button>
+          <Button
+            variant={filter === 'available' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setFilter('available')}
+            className={filter === 'available' ? 'neon-button-cyan' : ''}
+          >
+            Disponibili
+          </Button>
+        </div>
+      </div>
+
+      {/* Song list */}
+      <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+        {enrichedSongs.length === 0 ? (
+          <div className="text-center py-12">
+            <Music className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+            <p className="text-muted-foreground">Nessuna canzone trovata</p>
+          </div>
+        ) : (
+          enrichedSongs.map((song, index) => (
+            <div
+              key={`${song.title}-${song.artist}-${index}`}
+              className={cn(
+                "flex items-center justify-between p-3 rounded-lg border transition-colors",
+                song.status === 'available' && "bg-card border-border",
+                song.status === 'booked' && "bg-warning/10 border-warning/30",
+                song.status === 'completed' && "bg-secondary/10 border-secondary/30"
+              )}
+            >
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className={cn(
+                  "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
+                  song.status === 'available' && "bg-muted",
+                  song.status === 'booked' && "bg-warning/20",
+                  song.status === 'completed' && "bg-secondary/20"
+                )}>
+                  {song.status === 'booked' && <Lock className="w-4 h-4 text-warning" />}
+                  {song.status === 'completed' && <CheckCircle className="w-4 h-4 text-secondary" />}
+                  {song.status === 'available' && <Music className="w-4 h-4 text-muted-foreground" />}
+                </div>
+                
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-foreground truncate text-sm">
+                    {song.title}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {song.artist}
+                    {song.reservation && (
+                      <span className="ml-2 text-warning">
+                        • Prenotata da {song.reservation.customer_name}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              {song.status !== 'available' && song.reservation && (
+                <div className="flex gap-2 ml-2">
+                  {song.status === 'booked' && (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleUnlockSong(song.reservation!)}
+                        className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground h-8 text-xs"
+                      >
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        Completa
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleReleaseSong(song.reservation!)}
+                        className="border-warning text-warning hover:bg-warning hover:text-warning-foreground h-8 text-xs"
+                      >
+                        <Unlock className="w-3 h-3 mr-1" />
+                        Sblocca
+                      </Button>
+                    </>
+                  )}
+                  {song.status === 'completed' && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleReleaseSong(song.reservation!)}
+                      className="border-muted-foreground text-muted-foreground hover:bg-muted h-8 text-xs"
+                    >
+                      <Unlock className="w-3 h-3 mr-1" />
+                      Rimuovi
+                    </Button>
+                  )}
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  );
+};

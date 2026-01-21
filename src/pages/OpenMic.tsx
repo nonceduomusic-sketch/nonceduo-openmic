@@ -1,17 +1,37 @@
 import React, { useState, useMemo } from 'react';
-import { Mic2, Settings, Home, ArrowLeft, MessageCircle } from 'lucide-react';
+import { Mic2, Home, MessageCircle, Users, Music } from 'lucide-react';
 import { songs, Song } from '@/data/songs';
-import { SongCard } from '@/components/SongCard';
+import { SongCardWithStatus } from '@/components/SongCardWithStatus';
 import { SearchBar } from '@/components/SearchBar';
 import { ArtistFilter } from '@/components/ArtistFilter';
-import { BookingModal } from '@/components/BookingModal';
+import { BookingConfirmationModal } from '@/components/BookingConfirmationModal';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useReservations } from '@/hooks/useReservations';
 
 const OpenMic: React.FC = () => {
   const [search, setSearch] = useState('');
   const [artistFilter, setArtistFilter] = useState('all');
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  
+  const { activeReservations, completedReservations, loading } = useReservations();
+
+  // Create maps for quick lookup of booked/completed songs
+  const bookedSongs = useMemo(() => {
+    const set = new Set<string>();
+    activeReservations.forEach(res => {
+      set.add(`${res.song_title}__${res.song_artist}`);
+    });
+    return set;
+  }, [activeReservations]);
+
+  const completedSongs = useMemo(() => {
+    const set = new Set<string>();
+    completedReservations.forEach(res => {
+      set.add(`${res.song_title}__${res.song_artist}`);
+    });
+    return set;
+  }, [completedReservations]);
 
   const filteredSongs = useMemo(() => {
     return songs.filter((song) => {
@@ -27,6 +47,25 @@ const OpenMic: React.FC = () => {
     });
   }, [search, artistFilter]);
 
+  const isSongBooked = (song: Song) => {
+    return bookedSongs.has(`${song.title}__${song.artist}`);
+  };
+
+  const isSongCompleted = (song: Song) => {
+    return completedSongs.has(`${song.title}__${song.artist}`) && !isSongBooked(song);
+  };
+
+  const handleBookSong = (song: Song) => {
+    // Check if song is already booked
+    if (isSongBooked(song)) {
+      return; // Don't open modal for booked songs
+    }
+    setSelectedSong(song);
+  };
+
+  // Calculate queue position for selected song
+  const queuePosition = activeReservations.length;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -35,38 +74,46 @@ const OpenMic: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
               <Link to="/">
-                <Button variant="ghost" size="icon" className="mr-2">
-                  <ArrowLeft className="w-5 h-5" />
+                <Button variant="ghost" size="icon" className="mr-1">
+                  <Home className="w-5 h-5" />
                 </Button>
               </Link>
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center animate-neon-pulse">
-                <Mic2 className="w-6 h-6 text-primary-foreground" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center animate-neon-pulse">
+                <Mic2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="font-display text-xl md:text-2xl font-bold neon-text-pink">
-                  Non C'è Duo
-                </h1>
-                <p className="text-xs md:text-sm text-secondary font-medium">
+                <h1 className="font-display text-lg sm:text-xl md:text-2xl font-bold neon-text-pink">
                   Open Mic
+                </h1>
+                <p className="text-xs sm:text-sm text-secondary font-medium">
+                  Non C'è Duo
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Link to="/">
-                <Button variant="ghost" size="icon" title="Torna al sito">
-                  <Home className="w-5 h-5 text-muted-foreground" />
-                </Button>
-              </Link>
-              <Link
-                to="/admin"
-                className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
-                title="Admin"
+            <Link to="/messaggi">
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
               >
-                <Settings className="w-5 h-5 text-muted-foreground" />
-              </Link>
-            </div>
+                <MessageCircle className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Dediche</span>
+              </Button>
+            </Link>
           </div>
+
+          {/* Queue indicator */}
+          {activeReservations.length > 0 && (
+            <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-accent/20 border border-accent/30">
+              <Users className="w-4 h-4 text-accent" />
+              <span className="text-sm text-foreground">
+                {activeReservations.length === 1 
+                  ? 'C\'è 1 persona in coda' 
+                  : `Ci sono ${activeReservations.length} persone in coda`}
+              </span>
+            </div>
+          )}
 
           {/* Search & Filter */}
           <div className="space-y-3">
@@ -74,6 +121,17 @@ const OpenMic: React.FC = () => {
             <ArtistFilter value={artistFilter} onChange={setArtistFilter} />
           </div>
 
+          {/* Results count */}
+          <div className="flex items-center justify-between mt-3">
+            <p className="text-xs text-muted-foreground">
+              {filteredSongs.length} canzoni
+            </p>
+            {bookedSongs.size > 0 && (
+              <p className="text-xs text-warning">
+                {bookedSongs.size} prenotate
+              </p>
+            )}
+          </div>
         </div>
       </header>
 
@@ -83,32 +141,43 @@ const OpenMic: React.FC = () => {
         <div className="mb-4 p-3 rounded-lg bg-muted/30 border border-border">
           <p className="text-sm text-muted-foreground text-center leading-relaxed">
             🎤 Cerca la tua canzone preferita.<br />
-            👉 Clicca su <strong className="text-primary">Prenota</strong> per inviarci la richiesta su WhatsApp.<br />
-            📄 Clicca su <strong className="text-secondary">Testo</strong> per aprire il testo della canzone online.
+            👉 Clicca su <strong className="text-primary">Prenota</strong> per metterti in coda.<br />
+            📄 Clicca su <strong className="text-secondary">Testo</strong> per cercare il testo online.
           </p>
         </div>
 
-        {/* Mobile: 1 col, Tablet: 2 cols with better spacing, Desktop: 3 cols */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-3">
-          {filteredSongs.map((song, index) => (
-            <SongCard
-              key={`${song.title}-${song.artist}-${index}`}
-              song={song}
-              onBook={setSelectedSong}
-            />
-          ))}
-        </div>
-
-        {filteredSongs.length === 0 && (
+        {loading ? (
           <div className="text-center py-12">
-            <Mic2 className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <p className="text-muted-foreground">
-              Nessuna canzone trovata
-            </p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Prova a modificare i filtri di ricerca
-            </p>
+            <Music className="w-12 h-12 text-primary animate-pulse mx-auto mb-3" />
+            <p className="text-muted-foreground">Caricamento...</p>
           </div>
+        ) : (
+          <>
+            {/* Song grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-3">
+              {filteredSongs.map((song, index) => (
+                <SongCardWithStatus
+                  key={`${song.title}-${song.artist}-${index}`}
+                  song={song}
+                  onBook={handleBookSong}
+                  isBooked={isSongBooked(song)}
+                  isCompleted={isSongCompleted(song)}
+                />
+              ))}
+            </div>
+
+            {filteredSongs.length === 0 && (
+              <div className="text-center py-12">
+                <Mic2 className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+                <p className="text-muted-foreground">
+                  Nessuna canzone trovata
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Prova a modificare i filtri di ricerca
+                </p>
+              </div>
+            )}
+          </>
         )}
       </main>
 
@@ -118,7 +187,7 @@ const OpenMic: React.FC = () => {
           <Link to="/messaggi">
             <Button className="w-full neon-button-cyan h-12 font-display font-semibold">
               <MessageCircle className="w-5 h-5 mr-2" />
-              💬 Scrivi a Noi
+              💬 Invia una Dedica
             </Button>
           </Link>
         </div>
@@ -126,9 +195,10 @@ const OpenMic: React.FC = () => {
 
       {/* Booking Modal */}
       {selectedSong && (
-        <BookingModal
+        <BookingConfirmationModal
           song={selectedSong}
           onClose={() => setSelectedSong(null)}
+          queuePosition={queuePosition}
         />
       )}
     </div>
