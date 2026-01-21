@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Lock, User, LogIn, Eye, EyeOff } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Lock, User, LogIn, Eye, EyeOff, Home, Music, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
@@ -67,7 +68,34 @@ export const AdminLogin: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
+      {/* Navigation links */}
+      <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+        <Link 
+          to="/" 
+          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <Home className="w-4 h-4" />
+          <span className="hidden sm:inline">Home</span>
+        </Link>
+        <div className="flex items-center gap-4">
+          <Link 
+            to="/openmic" 
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Music className="w-4 h-4" />
+            <span className="hidden sm:inline">Open Mic</span>
+          </Link>
+          <Link 
+            to="/social/auth" 
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-secondary transition-colors"
+          >
+            <Users className="w-4 h-4" />
+            <span className="hidden sm:inline">Community</span>
+          </Link>
+        </div>
+      </div>
+      
       <div className="w-full max-w-sm glass-card p-8 neon-border-cyan border-2">
         <div className="text-center mb-8">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center animate-neon-pulse">

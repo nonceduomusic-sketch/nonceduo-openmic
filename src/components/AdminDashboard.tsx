@@ -25,6 +25,7 @@ import {
   Crown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Users } from 'lucide-react';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useReservations, Reservation } from '@/hooks/useReservations';
 import { useMessages, Message } from '@/hooks/useMessages';
@@ -38,6 +39,7 @@ import { AdminBlockedUsersTab } from './AdminBlockedUsersTab';
 import { AdminSettingsTab } from './AdminSettingsTab';
 import { AdminSongManagementTab } from './AdminSongManagementTab';
 import { AdminPermissionsTab } from './AdminPermissionsTab';
+import { AdminUsersTab } from './AdminUsersTab';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -94,7 +96,7 @@ export const AdminDashboard: React.FC = () => {
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
   const [chatNotifications, setChatNotifications] = useState<{ message: ChatMessage; conversation?: Conversation }[]>([]);
   const [unreadConvCount, setUnreadConvCount] = useState(0);
-  const [mainTab, setMainTab] = useState<'openmic' | 'messages' | 'blocked' | 'songs' | 'permissions' | 'settings'>('openmic');
+  const [mainTab, setMainTab] = useState<'openmic' | 'messages' | 'users' | 'blocked' | 'songs' | 'permissions' | 'settings'>('openmic');
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -791,6 +793,17 @@ export const AdminDashboard: React.FC = () => {
               <span className="hidden sm:inline">Canzoni</span>
             </button>
             <button
+              onClick={() => setMainTab('users')}
+              className={`flex-1 min-w-0 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-all ${
+                mainTab === 'users'
+                  ? 'bg-gradient-to-r from-secondary to-accent text-secondary-foreground shadow-lg'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              <Users className="w-4 h-4 inline-block sm:mr-1" />
+              <span className="hidden sm:inline">Utenti</span>
+            </button>
+            <button
               onClick={() => setMainTab('blocked')}
               className={`flex-1 min-w-0 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-all ${
                 mainTab === 'blocked'
@@ -906,6 +919,8 @@ export const AdminDashboard: React.FC = () => {
           )
         ) : mainTab === 'messages' ? (
           <AdminMessagesTab onUnreadCountChange={handleUnreadCountChange} />
+        ) : mainTab === 'users' ? (
+          <AdminUsersTab />
         ) : mainTab === 'songs' ? (
           <AdminSongManagementTab />
         ) : mainTab === 'settings' ? (
