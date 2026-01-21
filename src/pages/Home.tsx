@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Music, MapPin, PartyPopper, Heart, Users, Phone, Mail, Instagram, ChevronDown, Mic2, Settings } from 'lucide-react';
+import { Music, MapPin, PartyPopper, Heart, Users, Phone, Mail, Instagram, ChevronDown, Mic2, Settings, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SocialCTA } from '@/components/SocialCTA';
 
 import duoPhoto1 from '@/assets/duo-photo-1.png';
 import duoPhoto2 from '@/assets/duo-photo-2.png';
@@ -43,13 +44,13 @@ const Home: React.FC = () => {
                   Open Mic
                 </Button>
               </Link>
+              <SocialCTA />
               <Link to="/admin">
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" title="Area Admin">
                   <Settings className="w-4 h-4" />
                 </Button>
               </Link>
             </div>
-
             <div className="flex items-center gap-2 md:hidden">
               <Link to="/partyband">
                 <Button variant="outline" size="sm" className="border-secondary text-secondary">
