@@ -8,6 +8,7 @@ import OpenMic from "./pages/OpenMic";
 import Messages from "./pages/Messages";
 import Admin from "./pages/Admin";
 import AdminReset from "./pages/AdminReset";
+import JoinChat from "./pages/JoinChat";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/" element={<Home />} />
           <Route path="/openmic" element={<OpenMic />} />
           <Route path="/messaggi" element={<Messages />} />
+          <Route path="/join/:code" element={<JoinChat />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/reset" element={<AdminReset />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

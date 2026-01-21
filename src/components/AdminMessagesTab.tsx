@@ -19,6 +19,9 @@ import {
   Plus,
   Mail,
   MailOpen,
+  Link2,
+  Copy,
+  ExternalLink,
 } from 'lucide-react';
 import { MessageStatusIndicator } from '@/components/MessageStatusIndicator';
 import { TypingIndicator } from '@/components/TypingIndicator';
@@ -93,6 +96,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     adminBlockUser,
     adminMarkAsRead,
     adminMarkAsUnread,
+    adminCreateInviteLink,
     getUnreadConversations,
     getReadConversations,
   } = useConversations();
@@ -697,6 +701,21 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                             Rendi pubblico
                           </>
                         )}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={async () => {
+                        const result = await adminCreateInviteLink(selectedConversation.id);
+                        if (result?.invite_code) {
+                          const link = `${window.location.origin}/join/${result.invite_code}`;
+                          await navigator.clipboard.writeText(link);
+                          toast({
+                            title: 'Link copiato!',
+                            description: 'Il link di invito è stato copiato negli appunti',
+                          });
+                        }
+                      }}>
+                        <Link2 className="w-4 h-4 mr-2" />
+                        Crea link invito
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

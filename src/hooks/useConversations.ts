@@ -717,6 +717,52 @@ export const useConversations = (sessionId?: string) => {
     }
   };
 
+  // Admin: Create invite link
+  const adminCreateInviteLink = async (
+    conversationId: string,
+    expiresInHours?: number,
+    maxUses?: number
+  ): Promise<{ invite_code: string } | null> => {
+    try {
+      const result = await callAdminChatApi('createInviteLink', {
+        conversation_id: conversationId,
+        expires_in_hours: expiresInHours,
+        max_uses: maxUses,
+      });
+      return result?.data || null;
+    } catch (error) {
+      console.error('Error creating invite link:', error);
+      toast.error('Errore nella creazione del link');
+      return null;
+    }
+  };
+
+  // Admin: Get invite links for a conversation
+  const adminGetInviteLinks = async (conversationId: string): Promise<any[]> => {
+    try {
+      const result = await callAdminChatApi('getInviteLinks', {
+        conversation_id: conversationId,
+      });
+      return result?.data || [];
+    } catch (error) {
+      console.error('Error getting invite links:', error);
+      return [];
+    }
+  };
+
+  // Admin: Revoke invite link
+  const adminRevokeInviteLink = async (inviteId: string): Promise<boolean> => {
+    try {
+      await callAdminChatApi('revokeInviteLink', { invite_id: inviteId });
+      toast.success('Link revocato');
+      return true;
+    } catch (error) {
+      console.error('Error revoking invite link:', error);
+      toast.error('Errore nella revoca');
+      return false;
+    }
+  };
+
   // Get conversations with unread messages (is_read = false)
   const getUnreadConversations = () => {
     return conversations.filter(conv => {
@@ -772,6 +818,9 @@ export const useConversations = (sessionId?: string) => {
     adminUnblockUser,
     adminMarkAsRead,
     adminMarkAsUnread,
+    adminCreateInviteLink,
+    adminGetInviteLinks,
+    adminRevokeInviteLink,
     getUnreadConversations,
     getReadConversations,
     refetch: fetchConversations,
