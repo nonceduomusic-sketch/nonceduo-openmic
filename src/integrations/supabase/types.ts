@@ -142,6 +142,7 @@ export type Database = {
           id: string
           is_group: boolean
           is_public: boolean | null
+          is_read: boolean | null
           name: string | null
           updated_at: string
         }
@@ -151,6 +152,7 @@ export type Database = {
           id?: string
           is_group?: boolean
           is_public?: boolean | null
+          is_read?: boolean | null
           name?: string | null
           updated_at?: string
         }
@@ -160,6 +162,7 @@ export type Database = {
           id?: string
           is_group?: boolean
           is_public?: boolean | null
+          is_read?: boolean | null
           name?: string | null
           updated_at?: string
         }

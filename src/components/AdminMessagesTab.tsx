@@ -6,6 +6,7 @@ import {
   Reply,
   AlertTriangle,
   Eye,
+  EyeOff,
   Edit2,
   Check,
   X,
@@ -16,6 +17,8 @@ import {
   UserX,
   UserPlus,
   Plus,
+  Mail,
+  MailOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -84,6 +87,8 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     adminSetGroupVisibility,
     adminBulkDeleteConversations,
     adminBlockUser,
+    adminMarkAsRead,
+    adminMarkAsUnread,
     getUnreadConversations,
     getReadConversations,
   } = useConversations();
@@ -969,7 +974,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
           }`}
         >
           <Eye className="w-4 h-4 inline-block mr-2" />
-          Risposto ({readConversations.length})
+          Letti ({readConversations.length})
         </button>
         <button
           onClick={() => setActiveSubTab('groups')}
@@ -1001,7 +1006,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                 <p className="text-muted-foreground">
                   {activeSubTab === 'unread' 
                     ? 'Nessuna conversazione da leggere' 
-                    : 'Nessuna conversazione con risposta'}
+                    : 'Nessuna conversazione letta'}
                 </p>
               </>
             )}
@@ -1013,10 +1018,14 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
               className={`glass-card p-4 neon-border-pink border cursor-pointer hover:border-primary transition-colors ${
                 selectionMode !== 'none' && selectedForAction.has(conv.id) ? 'ring-2 ring-secondary' : ''
               }`}
-              onClick={() => {
+              onClick={async () => {
                 if (selectionMode !== 'none') {
                   handleToggleSelect(conv.id);
                 } else {
+                  // Auto-mark as read when opening
+                  if (conv.is_read === false) {
+                    await adminMarkAsRead(conv.id);
+                  }
                   setSelectedConversation(conv);
                 }
               }}
@@ -1166,8 +1175,35 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                                 </>
                               )}
                             </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                           </>
                         )}
+                        {/* Mark as read/unread */}
+                        {activeSubTab === 'unread' ? (
+                          <DropdownMenuItem onClick={async (e) => {
+                            e.stopPropagation();
+                            await adminMarkAsRead(conv.id);
+                            toast({
+                              title: 'Segnato come letto',
+                              description: conv.is_group ? conv.name : getParticipantNames(conv),
+                            });
+                          }}>
+                            <MailOpen className="w-4 h-4 mr-2" />
+                            Segna come letto
+                          </DropdownMenuItem>
+                        ) : activeSubTab === 'read' ? (
+                          <DropdownMenuItem onClick={async (e) => {
+                            e.stopPropagation();
+                            await adminMarkAsUnread(conv.id);
+                            toast({
+                              title: 'Segnato come da leggere',
+                              description: conv.is_group ? conv.name : getParticipantNames(conv),
+                            });
+                          }}>
+                            <Mail className="w-4 h-4 mr-2" />
+                            Segna come da leggere
+                          </DropdownMenuItem>
+                        ) : null}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>

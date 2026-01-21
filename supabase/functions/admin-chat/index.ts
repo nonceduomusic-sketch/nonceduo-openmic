@@ -567,6 +567,38 @@ serve(async (req: Request): Promise<Response> => {
         );
       }
 
+      case 'markAsRead': {
+        const { conversation_id } = body;
+        if (!conversation_id) {
+          return new Response(
+            JSON.stringify({ error: 'ID conversazione richiesto' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        result = await supabase
+          .from('conversations')
+          .update({ is_read: true })
+          .eq('id', conversation_id);
+        break;
+      }
+
+      case 'markAsUnread': {
+        const { conversation_id } = body;
+        if (!conversation_id) {
+          return new Response(
+            JSON.stringify({ error: 'ID conversazione richiesto' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        result = await supabase
+          .from('conversations')
+          .update({ is_read: false })
+          .eq('id', conversation_id);
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: 'Unknown action' }),
