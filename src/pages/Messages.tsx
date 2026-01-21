@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Send, MessageCircle, Edit2, Check, X, Users, Globe, Ban, Circle, Plus } from 'lucide-react';
+import { ArrowLeft, Send, MessageCircle, Edit2, Check, X, Users, Globe, Ban, Circle, Plus, Bell, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,6 +35,8 @@ const Messages: React.FC = () => {
   const [editText, setEditText] = useState('');
   const [showNewMessageForm, setShowNewMessageForm] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Map<string, OnlineUser[]>>(new Map());
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationsSupported, setNotificationsSupported] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const presenceChannelRef = useRef<any>(null);
 
@@ -104,6 +106,56 @@ const Messages: React.FC = () => {
       setName(savedName);
     }
   }, []);
+
+  // Check notification support and permission
+  useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationsSupported(true);
+      setNotificationsEnabled(Notification.permission === 'granted');
+    }
+  }, []);
+
+  // Listen for new messages and send notifications
+  useEffect(() => {
+    if (!notificationsEnabled || !userSessionId) return;
+
+    const handleNewMessage = (payload: any) => {
+      const newMsg = payload.new;
+      // Only notify if message is from someone else
+      if (newMsg.sender_session_id !== userSessionId && newMsg.sender_type === 'admin') {
+        // Check if page is not focused
+        if (document.hidden) {
+          const notification = new Notification('Nuovo messaggio dallo Staff', {
+            body: newMsg.message_text.substring(0, 100),
+            icon: '/favicon.ico',
+            tag: 'chat-message',
+          });
+          
+          notification.onclick = () => {
+            window.focus();
+            notification.close();
+          };
+        }
+      }
+    };
+
+    const channel = supabase
+      .channel('user-chat-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages',
+        },
+        handleNewMessage
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [notificationsEnabled, userSessionId]);
 
   // Presence tracking for online users
   useEffect(() => {
@@ -690,23 +742,59 @@ const Messages: React.FC = () => {
               </p>
             </div>
             
-            {/* Online users indicator */}
-            {selectedConversation && (
-              <div className="flex items-center gap-1">
-                {(() => {
-                  const online = onlineUsers.get(selectedConversation.id) || [];
-                  if (online.length === 0) return null;
-                  return (
-                    <div className="flex items-center gap-1 bg-secondary/20 px-2 py-1 rounded-full">
-                      <Circle className="w-2 h-2 fill-secondary text-secondary" />
-                      <span className="text-xs text-secondary">
-                        {online.length} online
-                      </span>
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
+            {/* Notification button and Online users indicator */}
+            <div className="flex items-center gap-2">
+              {/* Online users indicator */}
+              {selectedConversation && (
+                <>
+                  {(() => {
+                    const online = onlineUsers.get(selectedConversation.id) || [];
+                    if (online.length === 0) return null;
+                    return (
+                      <div className="flex items-center gap-1 bg-secondary/20 px-2 py-1 rounded-full">
+                        <Circle className="w-2 h-2 fill-secondary text-secondary" />
+                        <span className="text-xs text-secondary">
+                          {online.length} online
+                        </span>
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
+              
+              {/* Notification toggle button */}
+              {notificationsSupported && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={async () => {
+                    if (notificationsEnabled) {
+                      // Can't programmatically revoke, just inform user
+                      toast.info('Per disattivare le notifiche, usa le impostazioni del browser');
+                    } else {
+                      const permission = await Notification.requestPermission();
+                      if (permission === 'granted') {
+                        setNotificationsEnabled(true);
+                        toast.success('Notifiche attivate! Riceverai avvisi per nuovi messaggi');
+                      } else if (permission === 'denied') {
+                        toast.error('Permesso negato. Abilita le notifiche dalle impostazioni del browser');
+                      }
+                    }
+                  }}
+                  className={`relative ${notificationsEnabled ? 'text-secondary' : 'text-muted-foreground hover:text-foreground'}`}
+                  title={notificationsEnabled ? 'Notifiche attive' : 'Attiva notifiche'}
+                >
+                  {notificationsEnabled ? (
+                    <Bell className="w-5 h-5" />
+                  ) : (
+                    <BellOff className="w-5 h-5" />
+                  )}
+                  {notificationsEnabled && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-secondary rounded-full" />
+                  )}
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </header>
