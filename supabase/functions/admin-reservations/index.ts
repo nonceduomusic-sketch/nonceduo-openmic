@@ -262,6 +262,100 @@ serve(async (req: Request): Promise<Response> => {
         break;
       }
 
+      case "resetOpenMic": {
+        // Reset only Open Mic: reservations (and reservation_statuses via trigger)
+        console.log("Resetting Open Mic reservations only...");
+        
+        const { error } = await supabase
+          .from("reservations")
+          .delete()
+          .gte("id", "00000000-0000-0000-0000-000000000000");
+        
+        if (error) {
+          console.error("Error resetting reservations:", error);
+          return new Response(
+            JSON.stringify({ error: "Errore nel reset prenotazioni" }),
+            { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+        
+        console.log("Open Mic reset completed");
+        break;
+      }
+
+      case "resetMessages": {
+        // Reset only Messages: conversations, chat_messages, conversation_participants, messages
+        console.log("Resetting all messages and conversations...");
+        
+        // Delete all chat messages
+        const { error: chatMessagesError } = await supabase
+          .from("chat_messages")
+          .delete()
+          .gte("id", "00000000-0000-0000-0000-000000000000");
+        
+        if (chatMessagesError) {
+          console.error("Error resetting chat messages:", chatMessagesError);
+          return new Response(
+            JSON.stringify({ error: "Errore nel reset messaggi chat" }),
+            { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+
+        // Delete all conversation participants
+        const { error: participantsError } = await supabase
+          .from("conversation_participants")
+          .delete()
+          .gte("id", "00000000-0000-0000-0000-000000000000");
+        
+        if (participantsError) {
+          console.error("Error resetting conversation participants:", participantsError);
+        }
+
+        // Delete all conversations
+        const { error: conversationsError } = await supabase
+          .from("conversations")
+          .delete()
+          .gte("id", "00000000-0000-0000-0000-000000000000");
+        
+        if (conversationsError) {
+          console.error("Error resetting conversations:", conversationsError);
+        }
+
+        // Delete all legacy messages
+        const { error: messagesError } = await supabase
+          .from("messages")
+          .delete()
+          .gte("id", "00000000-0000-0000-0000-000000000000");
+        
+        if (messagesError) {
+          console.error("Error resetting messages:", messagesError);
+        }
+
+        console.log("Messages reset completed");
+        break;
+      }
+
+      case "resetSongStatuses": {
+        // Reset only song statuses (make all songs bookable again)
+        console.log("Resetting song statuses only...");
+        
+        const { error } = await supabase
+          .from("reservation_statuses")
+          .delete()
+          .gte("id", "00000000-0000-0000-0000-000000000000");
+        
+        if (error) {
+          console.error("Error resetting song statuses:", error);
+          return new Response(
+            JSON.stringify({ error: "Errore nel reset stati canzoni" }),
+            { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+          );
+        }
+        
+        console.log("Song statuses reset completed");
+        break;
+      }
+
       case "resetActive": {
         const { error } = await supabase
           .from("reservations")

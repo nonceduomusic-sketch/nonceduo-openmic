@@ -181,7 +181,7 @@ export const useReservations = () => {
         console.error('Error resetting completed reservations:', error);
       }
       toast.error('Errore nel reset delle prenotazioni completate');
-      return false;
+    return false;
     }
   };
 
@@ -195,6 +195,48 @@ export const useReservations = () => {
         console.error('Error resetting everything:', error);
       }
       toast.error('Errore nel reset totale');
+      return false;
+    }
+  };
+
+  const resetOpenMic = async () => {
+    try {
+      await callAdminApi('resetOpenMic');
+      toast.success('Prenotazioni Open Mic cancellate');
+      return true;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error resetting open mic:', error);
+      }
+      toast.error('Errore nel reset Open Mic');
+      return false;
+    }
+  };
+
+  const resetMessages = async () => {
+    try {
+      await callAdminApi('resetMessages');
+      toast.success('Messaggi e chat cancellate');
+      return true;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error resetting messages:', error);
+      }
+      toast.error('Errore nel reset messaggi');
+      return false;
+    }
+  };
+
+  const resetSongStatuses = async () => {
+    try {
+      await callAdminApi('resetSongStatuses');
+      toast.success('Tutte le canzoni sono ora prenotabili');
+      return true;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error resetting song statuses:', error);
+      }
+      toast.error('Errore nel reset stati canzoni');
       return false;
     }
   };
@@ -259,6 +301,9 @@ export const useReservations = () => {
     resetActiveReservations,
     resetCompletedReservations,
     resetEverything,
+    resetOpenMic,
+    resetMessages,
+    resetSongStatuses,
     deleteReservation,
     deleteMultipleReservations,
     restoreReservation,
