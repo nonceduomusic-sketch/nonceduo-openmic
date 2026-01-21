@@ -236,6 +236,57 @@ export type Database = {
         }
         Relationships: []
       }
+      friendships: {
+        Row: {
+          addressee_id: string
+          created_at: string
+          id: string
+          requester_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          addressee_id: string
+          created_at?: string
+          id?: string
+          requester_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          addressee_id?: string
+          created_at?: string
+          id?: string
+          requester_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      message_requests: {
+        Row: {
+          created_at: string
+          id: string
+          recipient_id: string
+          sender_id: string
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          recipient_id: string
+          sender_id: string
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          recipient_id?: string
+          sender_id?: string
+          status?: string
+        }
+        Relationships: []
+      }
       messages: {
         Row: {
           admin_reply: string | null
@@ -684,6 +735,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_message_user: {
+        Args: { recipient: string; sender: string }
+        Returns: boolean
+      }
       cleanup_expired_typing_indicators: { Args: never; Returns: undefined }
       has_permission: {
         Args: { _permission_name: string; _user_id: string }
