@@ -164,16 +164,44 @@ export const useConversations = (sessionId?: string) => {
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'chat_messages' },
+        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
         (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const newMessage = payload.new as ChatMessage;
-            window.dispatchEvent(
-              new CustomEvent('new-chat-message', { detail: newMessage })
-            );
-          }
+          const newMessage = payload.new as ChatMessage;
+          window.dispatchEvent(
+            new CustomEvent('new-chat-message', { detail: newMessage })
+          );
           fetchConversations();
         }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'chat_messages' },
+        (payload) => {
+          // Real-time status update without full refetch
+          const updatedMessage = payload.new as ChatMessage;
+          setConversations(prev => prev.map(conv => {
+            if (conv.messages?.some(m => m.id === updatedMessage.id)) {
+              return {
+                ...conv,
+                messages: conv.messages?.map(m => 
+                  m.id === updatedMessage.id 
+                    ? { ...m, status: updatedMessage.status, read_at: updatedMessage.read_at, edited_at: updatedMessage.edited_at, message_text: updatedMessage.message_text }
+                    : m
+                ),
+              };
+            }
+            return conv;
+          }));
+          // Dispatch event for UI updates
+          window.dispatchEvent(
+            new CustomEvent('chat-message-updated', { detail: updatedMessage })
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'chat_messages' },
+        () => fetchConversations()
       )
       .on(
         'postgres_changes',

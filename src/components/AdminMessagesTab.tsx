@@ -175,17 +175,39 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     onUnreadCountChange?.(unreadConversations.length);
   }, [unreadConversations.length, onUnreadCountChange]);
 
-  // Update selected conversation when data changes
+  // Track which messages admin has seen (local state for visual distinction)
+  const [viewedMessageIds, setViewedMessageIds] = useState<Set<string>>(new Set());
+  
+  // Update selected conversation when data changes (real-time sync)
   React.useEffect(() => {
     if (selectedConversation) {
       const updated = conversations.find(c => c.id === selectedConversation.id);
       if (updated) {
-        setSelectedConversation(updated);
+        // Deep compare to detect any message status changes
+        const hasChanges = 
+          JSON.stringify(updated.messages?.map(m => ({ id: m.id, status: m.status }))) !== 
+          JSON.stringify(selectedConversation.messages?.map(m => ({ id: m.id, status: m.status })));
+        
+        if (hasChanges || updated.is_read !== selectedConversation.is_read) {
+          setSelectedConversation(updated);
+        }
       } else {
         setSelectedConversation(null);
       }
     }
-  }, [conversations, selectedConversation?.id]);
+  }, [conversations]);
+  
+  // When admin opens a conversation, mark which messages they've now seen
+  React.useEffect(() => {
+    if (selectedConversation?.messages) {
+      const currentIds = new Set(selectedConversation.messages.map(m => m.id));
+      setViewedMessageIds(prev => {
+        const newSet = new Set(prev);
+        currentIds.forEach(id => newSet.add(id));
+        return newSet;
+      });
+    }
+  }, [selectedConversation?.id]);
 
   // Check if admin is at bottom of scroll area
   const checkIfAtBottom = useCallback(() => {
@@ -726,30 +748,43 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
               </p>
             )}
             
-            {selectedConversation.messages?.slice().reverse().map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex ${msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
-                onMouseDown={() => handleLongPressStart(msg.id)}
-                onMouseUp={handleLongPressEnd}
-                onMouseLeave={handleLongPressEnd}
-                onTouchStart={() => handleLongPressStart(msg.id)}
-                onTouchEnd={handleLongPressEnd}
-              >
+            {selectedConversation.messages?.slice().reverse().map((msg) => {
+              const isNewUserMessage = msg.sender_type === 'user' && !viewedMessageIds.has(msg.id);
+              
+              return (
                 <div
-                  className={`max-w-[80%] rounded-lg p-3 cursor-pointer transition-all ${
-                    selectedMessages.has(msg.id) 
-                      ? 'ring-2 ring-primary bg-primary/10'
-                      : msg.sender_type === 'admin'
-                        ? 'bg-secondary/20 border border-secondary/30'
-                        : 'bg-muted border border-border'
-                  }`}
-                  onClick={() => {
-                    if (messageSelectionMode) {
-                      handleToggleMessageSelect(msg.id);
-                    }
-                  }}
+                  key={msg.id}
+                  className={`flex ${msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
+                  onMouseDown={() => handleLongPressStart(msg.id)}
+                  onMouseUp={handleLongPressEnd}
+                  onMouseLeave={handleLongPressEnd}
+                  onTouchStart={() => handleLongPressStart(msg.id)}
+                  onTouchEnd={handleLongPressEnd}
                 >
+                  <div className="flex flex-col">
+                    {/* Show "new message" indicator for unread user messages */}
+                    {isNewUserMessage && (
+                      <div className="flex items-center gap-1 mb-1">
+                        <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                        <span className="text-[10px] text-primary font-medium">Nuovo</span>
+                      </div>
+                    )}
+                    <div
+                      className={`max-w-[80%] rounded-lg p-3 cursor-pointer transition-all ${
+                        selectedMessages.has(msg.id) 
+                          ? 'ring-2 ring-primary bg-primary/10'
+                          : msg.sender_type === 'admin'
+                            ? 'bg-secondary/20 border border-secondary/30'
+                            : isNewUserMessage
+                              ? 'bg-primary/5 border-2 border-primary/30 shadow-sm shadow-primary/20'
+                              : 'bg-muted border border-border'
+                      }`}
+                      onClick={() => {
+                        if (messageSelectionMode) {
+                          handleToggleMessageSelect(msg.id);
+                        }
+                      }}
+                    >
                   {messageSelectionMode && (
                     <div className="flex items-center gap-2 mb-1">
                       <Checkbox
@@ -847,9 +882,11 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                       </div>
                     </>
                   )}
+                    </div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
             <div ref={messagesEndRef} />
           </div>
         </ScrollArea>

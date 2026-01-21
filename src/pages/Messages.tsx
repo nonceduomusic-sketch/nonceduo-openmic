@@ -264,15 +264,22 @@ const Messages: React.FC = () => {
     }
   }, [selectedConversation?.messages?.length]);
 
-  // Update selected conversation when conversations change
+  // Update selected conversation when conversations change (real-time sync for status updates)
   useEffect(() => {
     if (selectedConversation) {
       const updated = conversations.find(c => c.id === selectedConversation.id);
       if (updated) {
-        setSelectedConversation(updated);
+        // Deep compare to detect any message status changes
+        const hasChanges = 
+          JSON.stringify(updated.messages?.map(m => ({ id: m.id, status: m.status }))) !== 
+          JSON.stringify(selectedConversation.messages?.map(m => ({ id: m.id, status: m.status })));
+        
+        if (hasChanges || updated.messages?.length !== selectedConversation.messages?.length) {
+          setSelectedConversation(updated);
+        }
       }
     }
-  }, [conversations, selectedConversation?.id]);
+  }, [conversations]);
 
   // Mark messages as read when opening a conversation
   useEffect(() => {
