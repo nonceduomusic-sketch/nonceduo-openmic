@@ -117,6 +117,7 @@ export type Database = {
           sender_name: string
           sender_session_id: string | null
           sender_type: string
+          sender_user_id: string | null
           status: string
         }
         Insert: {
@@ -129,6 +130,7 @@ export type Database = {
           sender_name: string
           sender_session_id?: string | null
           sender_type: string
+          sender_user_id?: string | null
           status?: string
         }
         Update: {
@@ -141,6 +143,7 @@ export type Database = {
           sender_name?: string
           sender_session_id?: string | null
           sender_type?: string
+          sender_user_id?: string | null
           status?: string
         }
         Relationships: [
@@ -160,6 +163,7 @@ export type Database = {
           joined_at: string
           participant_name: string
           session_id: string
+          user_id: string | null
         }
         Insert: {
           conversation_id: string
@@ -167,6 +171,7 @@ export type Database = {
           joined_at?: string
           participant_name: string
           session_id: string
+          user_id?: string | null
         }
         Update: {
           conversation_id?: string
@@ -174,6 +179,7 @@ export type Database = {
           joined_at?: string
           participant_name?: string
           session_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -189,10 +195,12 @@ export type Database = {
         Row: {
           allowed_participants: string[] | null
           created_at: string
+          created_by_user_id: string | null
           id: string
           is_group: boolean
           is_public: boolean | null
           is_read: boolean | null
+          is_registered_only: boolean | null
           name: string | null
           password_hash: string | null
           password_hint: string | null
@@ -201,10 +209,12 @@ export type Database = {
         Insert: {
           allowed_participants?: string[] | null
           created_at?: string
+          created_by_user_id?: string | null
           id?: string
           is_group?: boolean
           is_public?: boolean | null
           is_read?: boolean | null
+          is_registered_only?: boolean | null
           name?: string | null
           password_hash?: string | null
           password_hint?: string | null
@@ -213,10 +223,12 @@ export type Database = {
         Update: {
           allowed_participants?: string[] | null
           created_at?: string
+          created_by_user_id?: string | null
           id?: string
           is_group?: boolean
           is_public?: boolean | null
           is_read?: boolean | null
+          is_registered_only?: boolean | null
           name?: string | null
           password_hash?: string | null
           password_hint?: string | null
@@ -307,6 +319,48 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          is_online: boolean | null
+          last_seen_at: string | null
+          settings: Json | null
+          updated_at: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_online?: boolean | null
+          last_seen_at?: string | null
+          settings?: Json | null
+          updated_at?: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          is_online?: boolean | null
+          last_seen_at?: string | null
+          settings?: Json | null
+          updated_at?: string
+          user_id?: string
+          username?: string | null
         }
         Relationships: []
       }

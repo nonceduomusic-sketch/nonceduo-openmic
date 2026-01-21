@@ -10,6 +10,9 @@ import Admin from "./pages/Admin";
 import AdminReset from "./pages/AdminReset";
 import JoinChat from "./pages/JoinChat";
 import PartyBand from "./pages/PartyBand";
+import Social from "./pages/Social";
+import SocialAuth from "./pages/SocialAuth";
+import SocialDashboard from "./pages/SocialDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -28,6 +31,10 @@ const App = () => (
           <Route path="/join/:code" element={<JoinChat />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/admin/reset" element={<AdminReset />} />
+          {/* Social Platform Routes */}
+          <Route path="/social" element={<Social />} />
+          <Route path="/social/auth" element={<SocialAuth />} />
+          <Route path="/social/dashboard" element={<SocialDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

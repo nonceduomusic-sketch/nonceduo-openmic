@@ -13,6 +13,7 @@ import { MessageStatusIndicator } from '@/components/MessageStatusIndicator';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { ChatScrollIndicator } from '@/components/ChatScrollIndicator';
+import { SocialCTA } from '@/components/SocialCTA';
 
 const messageSchema = z.object({
   sender_name: z.string().trim()
@@ -696,6 +697,9 @@ const Messages: React.FC = () => {
     // Conversations list view (default)
     return (
       <div className="space-y-4">
+        {/* Social CTA Banner */}
+        <SocialCTA variant="banner" className="mb-2" />
+
         {/* New message CTA */}
         <Button
           onClick={() => setShowNewMessageForm(true)}
@@ -703,7 +707,7 @@ const Messages: React.FC = () => {
           disabled={isBlocked}
         >
           <Plus className="w-5 h-5 mr-2" />
-          Nuovo Messaggio
+          Nuova Dedica
         </Button>
 
         {/* Public groups available */}
