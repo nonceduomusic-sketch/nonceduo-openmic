@@ -217,6 +217,7 @@ serve(async (req: Request): Promise<Response> => {
       const inviteCode = asTrimmedString(body.invite_code);
       const participantName = asTrimmedString(body.participant_name);
       const sessionId = asTrimmedString(body.session_id);
+      const password = asTrimmedString(body.password);
 
       if (!inviteCode) return json(400, { error: "Codice invito mancante" });
       if (!participantName) return json(400, { error: "Inserisci il tuo nome" });
@@ -267,6 +268,68 @@ serve(async (req: Request): Promise<Response> => {
         return json(200, { conversation: conv, already_member: true });
       }
 
+      // Get conversation to check for password
+      const { data: convData } = await supabase
+        .from("conversations")
+        .select("password_hash, password_hint")
+        .eq("id", inviteLink.conversation_id)
+        .single();
+
+      // If password protected, verify password
+      if (convData?.password_hash) {
+        if (!password) {
+          return json(401, { 
+            error: "Password richiesta", 
+            requires_password: true,
+            password_hint: convData.password_hint 
+          });
+        }
+
+        // Verify password (PBKDF2)
+        const parts = convData.password_hash.split(':');
+        if (parts.length !== 4 || parts[0] !== 'pbkdf2') {
+          return json(500, { error: "Errore nella verifica della password" });
+        }
+
+        const iterations = parseInt(parts[1], 10);
+        const saltHex = parts[2];
+        const storedHashHex = parts[3];
+
+        // Convert hex to bytes
+        const salt = new Uint8Array(saltHex.match(/.{2}/g)!.map((byte: string) => parseInt(byte, 16)));
+
+        const encoder = new TextEncoder();
+        const keyMaterial = await crypto.subtle.importKey(
+          'raw',
+          encoder.encode(password),
+          'PBKDF2',
+          false,
+          ['deriveBits']
+        );
+
+        const derivedBits = await crypto.subtle.deriveBits(
+          {
+            name: 'PBKDF2',
+            salt,
+            iterations,
+            hash: 'SHA-256',
+          },
+          keyMaterial,
+          256
+        );
+
+        const hashArray = Array.from(new Uint8Array(derivedBits));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+        if (hashHex !== storedHashHex) {
+          return json(401, { 
+            error: "Password errata", 
+            requires_password: true,
+            password_hint: convData.password_hint 
+          });
+        }
+      }
+
       // Add participant
       const { data: partData, error: partError } = await supabase
         .from("conversation_participants")
@@ -297,6 +360,118 @@ serve(async (req: Request): Promise<Response> => {
         .single();
 
       return json(200, { conversation: conv, participant: partData });
+    }
+
+    if (action === "joinPublicGroup") {
+      const conversationId = asTrimmedString(body.conversation_id);
+      const participantName = asTrimmedString(body.participant_name);
+      const sessionId = asTrimmedString(body.session_id);
+      const password = asTrimmedString(body.password);
+
+      if (!conversationId) return json(400, { error: "ID gruppo mancante" });
+      if (!participantName) return json(400, { error: "Inserisci il tuo nome" });
+      if (!sessionId) return json(400, { error: "Sessione non valida" });
+
+      if (await isSessionBlocked(supabase, sessionId)) {
+        return json(403, { error: "Il tuo account è sospeso" });
+      }
+
+      // Check if group is public
+      const { data: convData, error: convError } = await supabase
+        .from("conversations")
+        .select("is_public, is_group, password_hash, password_hint")
+        .eq("id", conversationId)
+        .single();
+
+      if (convError || !convData) {
+        return json(404, { error: "Gruppo non trovato" });
+      }
+
+      if (!convData.is_group || !convData.is_public) {
+        return json(403, { error: "Questo gruppo non è pubblico" });
+      }
+
+      // Check if already a participant
+      const { data: existingPart } = await supabase
+        .from("conversation_participants")
+        .select("id")
+        .eq("conversation_id", conversationId)
+        .eq("session_id", sessionId)
+        .maybeSingle();
+
+      if (existingPart) {
+        return json(200, { already_member: true });
+      }
+
+      // If password protected, verify password
+      if (convData.password_hash) {
+        if (!password) {
+          return json(401, { 
+            error: "Password richiesta", 
+            requires_password: true,
+            password_hint: convData.password_hint 
+          });
+        }
+
+        // Verify password (PBKDF2)
+        const parts = convData.password_hash.split(':');
+        if (parts.length !== 4 || parts[0] !== 'pbkdf2') {
+          return json(500, { error: "Errore nella verifica della password" });
+        }
+
+        const iterations = parseInt(parts[1], 10);
+        const saltHex = parts[2];
+        const storedHashHex = parts[3];
+
+        const salt = new Uint8Array(saltHex.match(/.{2}/g)!.map((byte: string) => parseInt(byte, 16)));
+
+        const encoder = new TextEncoder();
+        const keyMaterial = await crypto.subtle.importKey(
+          'raw',
+          encoder.encode(password),
+          'PBKDF2',
+          false,
+          ['deriveBits']
+        );
+
+        const derivedBits = await crypto.subtle.deriveBits(
+          {
+            name: 'PBKDF2',
+            salt,
+            iterations,
+            hash: 'SHA-256',
+          },
+          keyMaterial,
+          256
+        );
+
+        const hashArray = Array.from(new Uint8Array(derivedBits));
+        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+        if (hashHex !== storedHashHex) {
+          return json(401, { 
+            error: "Password errata", 
+            requires_password: true,
+            password_hint: convData.password_hint 
+          });
+        }
+      }
+
+      // Add participant
+      const { error: partError } = await supabase
+        .from("conversation_participants")
+        .insert([{
+          conversation_id: conversationId,
+          participant_name: participantName,
+          session_id: sessionId,
+        }]);
+
+      if (partError) {
+        console.error("joinPublicGroup participant insert error:", partError);
+        return json(500, { error: "Errore nell'unirsi al gruppo" });
+      }
+
+      return json(200, { success: true });
     }
 
     if (action === "getInviteInfo") {

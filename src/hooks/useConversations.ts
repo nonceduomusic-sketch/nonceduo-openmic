@@ -30,12 +30,18 @@ export interface Conversation {
   is_public?: boolean;
   is_read?: boolean;
   allowed_participants?: string[];
+  password_hash?: string | null;
+  password_hint?: string | null;
   created_at: string;
   updated_at: string;
   participants?: Participant[];
   messages?: ChatMessage[];
   last_message?: ChatMessage;
   unread_count?: number;
+}
+
+export interface GroupMember extends Participant {
+  is_blocked: boolean;
 }
 
 // Helper for admin API calls
@@ -754,7 +760,6 @@ export const useConversations = (sessionId?: string) => {
   const adminRevokeInviteLink = async (inviteId: string): Promise<boolean> => {
     try {
       await callAdminChatApi('revokeInviteLink', { invite_id: inviteId });
-      toast.success('Link revocato');
       return true;
     } catch (error) {
       console.error('Error revoking invite link:', error);
@@ -763,7 +768,108 @@ export const useConversations = (sessionId?: string) => {
     }
   };
 
-  // Get conversations with unread messages (is_read = false)
+  // Admin: Set or remove group password
+  const adminSetGroupPassword = async (
+    conversationId: string,
+    password: string | null,
+    passwordHint?: string
+  ): Promise<boolean> => {
+    try {
+      await callAdminChatApi('setGroupPassword', {
+        conversation_id: conversationId,
+        password,
+        password_hint: passwordHint,
+      });
+      toast.success(password ? 'Password impostata!' : 'Password rimossa!');
+      return true;
+    } catch (error) {
+      console.error('Error setting group password:', error);
+      toast.error('Errore nell\'impostare la password');
+      return false;
+    }
+  };
+
+  // Admin: Get group members
+  const adminGetGroupMembers = async (conversationId: string): Promise<GroupMember[]> => {
+    try {
+      const result = await callAdminChatApi('getGroupMembers', {
+        conversation_id: conversationId,
+      });
+      return result?.data || [];
+    } catch (error) {
+      console.error('Error getting group members:', error);
+      return [];
+    }
+  };
+
+  // Admin: Start private chat with a user
+  const adminStartPrivateChat = async (
+    participantName: string,
+    sessionId: string,
+    initialMessage?: string
+  ): Promise<Conversation | null> => {
+    try {
+      const result = await callAdminChatApi('startPrivateChat', {
+        participant_name: participantName,
+        session_id: sessionId,
+        initial_message: initialMessage,
+      });
+      if (result?.data?.is_new) {
+        toast.success('Chat privata creata!');
+      }
+      await fetchConversations();
+      return result?.data?.conversation || null;
+    } catch (error) {
+      console.error('Error starting private chat:', error);
+      toast.error('Errore nella creazione della chat');
+      return null;
+    }
+  };
+
+  // Join public group with optional password (user)
+  const joinPublicGroupWithPassword = async (
+    conversationId: string,
+    participantName: string,
+    participantSessionId: string,
+    password?: string
+  ): Promise<{ success: boolean; requires_password?: boolean; password_hint?: string }> => {
+    try {
+      const result = await callUserChatApi<{ 
+        success?: boolean; 
+        already_member?: boolean;
+        requires_password?: boolean;
+        password_hint?: string;
+        error?: string;
+      }>('joinPublicGroup', {
+        conversation_id: conversationId,
+        participant_name: participantName,
+        session_id: participantSessionId,
+        password,
+      });
+
+      if (result.requires_password) {
+        return { success: false, requires_password: true, password_hint: result.password_hint };
+      }
+
+      if (result.already_member) {
+        toast.info('Sei già in questo gruppo');
+      } else {
+        toast.success('Sei entrato nel gruppo!');
+      }
+
+      await fetchConversations();
+      return { success: true };
+    } catch (error: any) {
+      if (error.message?.includes('Password')) {
+        return { success: false, requires_password: true };
+      }
+      console.error('Error joining group:', error);
+      toast.error(error.message || 'Errore nell\'unirsi al gruppo');
+      return { success: false };
+    }
+  };
+
+  // Get unread conversations
   const getUnreadConversations = () => {
     return conversations.filter(conv => {
       if (!conv.messages || conv.messages.length === 0) return false;
@@ -798,6 +904,7 @@ export const useConversations = (sessionId?: string) => {
     sendMessage,
     editMessage,
     joinPublicGroup,
+    joinPublicGroupWithPassword,
     markMessagesAsRead,
     adminReply,
     adminEditMessage,
@@ -821,6 +928,9 @@ export const useConversations = (sessionId?: string) => {
     adminCreateInviteLink,
     adminGetInviteLinks,
     adminRevokeInviteLink,
+    adminSetGroupPassword,
+    adminGetGroupMembers,
+    adminStartPrivateChat,
     getUnreadConversations,
     getReadConversations,
     refetch: fetchConversations,

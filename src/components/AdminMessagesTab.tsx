@@ -22,11 +22,14 @@ import {
   Link2,
   Copy,
   ExternalLink,
+  Key,
 } from 'lucide-react';
 import { MessageStatusIndicator } from '@/components/MessageStatusIndicator';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { ChatScrollIndicator } from '@/components/ChatScrollIndicator';
+import { GroupMembersDialog } from '@/components/GroupMembersDialog';
+import { GroupPasswordDialog } from '@/components/GroupPasswordDialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -94,9 +97,13 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     adminSetGroupVisibility,
     adminBulkDeleteConversations,
     adminBlockUser,
+    adminUnblockUser,
     adminMarkAsRead,
     adminMarkAsUnread,
     adminCreateInviteLink,
+    adminSetGroupPassword,
+    adminGetGroupMembers,
+    adminStartPrivateChat,
     getUnreadConversations,
     getReadConversations,
   } = useConversations();
@@ -132,6 +139,12 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
   // Visibility dialog
   const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
   const [visibilityTarget, setVisibilityTarget] = useState<Conversation | null>(null);
+  
+  // Group members dialog
+  const [showMembersDialog, setShowMembersDialog] = useState(false);
+  
+  // Password dialog
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   
   // Undo state for bulk delete
   const [lastDeletedIds, setLastDeletedIds] = useState<string[]>([]);
@@ -701,6 +714,15 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                             Rendi pubblico
                           </>
                         )}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => setShowMembersDialog(true)}>
+                        <Users className="w-4 h-4 mr-2" />
+                        Gestisci membri
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setShowPasswordDialog(true)}>
+                        <Key className="w-4 h-4 mr-2" />
+                        {selectedConversation.password_hash ? 'Modifica password' : 'Imposta password'}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={async () => {
@@ -1682,6 +1704,30 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Group Members Dialog */}
+      {selectedConversation && (
+        <GroupMembersDialog
+          open={showMembersDialog}
+          onOpenChange={setShowMembersDialog}
+          conversation={selectedConversation}
+          onGetMembers={adminGetGroupMembers}
+          onBlockUser={adminBlockUser}
+          onUnblockUser={adminUnblockUser}
+          onRemoveFromGroup={adminRemoveFromGroup}
+          onStartPrivateChat={adminStartPrivateChat}
+        />
+      )}
+
+      {/* Group Password Dialog */}
+      {selectedConversation && (
+        <GroupPasswordDialog
+          open={showPasswordDialog}
+          onOpenChange={setShowPasswordDialog}
+          conversation={selectedConversation}
+          onSetPassword={adminSetGroupPassword}
+        />
+      )}
     </div>
   );
 };

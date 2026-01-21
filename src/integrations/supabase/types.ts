@@ -194,6 +194,8 @@ export type Database = {
           is_public: boolean | null
           is_read: boolean | null
           name: string | null
+          password_hash: string | null
+          password_hint: string | null
           updated_at: string
         }
         Insert: {
@@ -204,6 +206,8 @@ export type Database = {
           is_public?: boolean | null
           is_read?: boolean | null
           name?: string | null
+          password_hash?: string | null
+          password_hint?: string | null
           updated_at?: string
         }
         Update: {
@@ -214,6 +218,8 @@ export type Database = {
           is_public?: boolean | null
           is_read?: boolean | null
           name?: string | null
+          password_hash?: string | null
+          password_hint?: string | null
           updated_at?: string
         }
         Relationships: []
