@@ -26,6 +26,7 @@ export interface Conversation {
   name: string | null;
   is_group: boolean;
   is_public?: boolean;
+  is_read?: boolean;
   allowed_participants?: string[];
   created_at: string;
   updated_at: string;
@@ -650,19 +651,51 @@ export const useConversations = (sessionId?: string) => {
     }
   };
 
-  // Get conversations with unread messages (messages from users without admin reply after)
+  // Admin: Mark conversation as read
+  const adminMarkAsRead = async (conversationId: string): Promise<boolean> => {
+    try {
+      await callAdminChatApi('markAsRead', { conversation_id: conversationId });
+      return true;
+    } catch (error) {
+      console.error('Error marking as read:', error);
+      toast.error('Errore nel segnare come letto');
+      return false;
+    }
+  };
+
+  // Admin: Mark conversation as unread
+  const adminMarkAsUnread = async (conversationId: string): Promise<boolean> => {
+    try {
+      await callAdminChatApi('markAsUnread', { conversation_id: conversationId });
+      return true;
+    } catch (error) {
+      console.error('Error marking as unread:', error);
+      toast.error('Errore nel segnare come da leggere');
+      return false;
+    }
+  };
+
+  // Get conversations with unread messages (is_read = false)
   const getUnreadConversations = () => {
     return conversations.filter(conv => {
       if (!conv.messages || conv.messages.length === 0) return false;
+      // Use is_read column if available, fallback to sender_type check
+      if ('is_read' in conv) {
+        return conv.is_read === false;
+      }
       const lastMessage = conv.messages[0]; // Already sorted by date desc
       return lastMessage.sender_type === 'user';
     });
   };
 
-  // Get conversations with all messages read (last message is from admin)
+  // Get conversations marked as read (is_read = true)
   const getReadConversations = () => {
     return conversations.filter(conv => {
       if (!conv.messages || conv.messages.length === 0) return false;
+      // Use is_read column if available, fallback to sender_type check
+      if ('is_read' in conv) {
+        return conv.is_read === true;
+      }
       const lastMessage = conv.messages[0];
       return lastMessage.sender_type === 'admin';
     });
@@ -694,6 +727,8 @@ export const useConversations = (sessionId?: string) => {
     adminBulkDeleteConversations,
     adminBlockUser,
     adminUnblockUser,
+    adminMarkAsRead,
+    adminMarkAsUnread,
     getUnreadConversations,
     getReadConversations,
     refetch: fetchConversations,
