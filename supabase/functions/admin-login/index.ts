@@ -179,21 +179,42 @@ serve(async (req) => {
       
       authUser = newUser.user;
       
-      // Add admin role to user_roles table (use service role to bypass RLS)
+      // Determine role: Iacopo is owner, others are admin
+      const userRole = adminUser.username.toLowerCase() === 'iacopo' ? 'owner' : 'admin';
+      
+      // Add role to user_roles table (use service role to bypass RLS)
       const { error: roleError } = await supabaseAdmin
         .from("user_roles")
-        .upsert({ user_id: authUser.id, role: "admin" }, { onConflict: 'user_id,role' });
+        .upsert({ user_id: authUser.id, role: userRole }, { onConflict: 'user_id,role' });
       
       if (roleError) {
-        console.error("Error adding admin role:", roleError);
+        console.error("Error adding role:", roleError);
       } else {
-        console.log("Admin role added for user:", authUser.id);
+        console.log(`Role '${userRole}' added for user:`, authUser.id);
       }
     } else {
       // Update password if it changed
       await supabaseAdmin.auth.admin.updateUserById(authUser.id, {
         password: password
       });
+      
+      // Ensure Iacopo has owner role (upgrade existing admin to owner)
+      if (adminUser.username.toLowerCase() === 'iacopo') {
+        // Remove admin role if exists, add owner
+        await supabaseAdmin
+          .from("user_roles")
+          .delete()
+          .eq('user_id', authUser.id)
+          .eq('role', 'admin');
+          
+        const { error: ownerError } = await supabaseAdmin
+          .from("user_roles")
+          .upsert({ user_id: authUser.id, role: 'owner' }, { onConflict: 'user_id,role' });
+          
+        if (!ownerError) {
+          console.log("Upgraded Iacopo to owner role");
+        }
+      }
     }
     
     console.log(`Admin ${username} authenticated successfully`);

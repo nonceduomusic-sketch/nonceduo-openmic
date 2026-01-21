@@ -22,6 +22,7 @@ import {
   Mic,
   MessageSquare,
   Database,
+  Crown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAdmin } from '@/contexts/AdminContext';
@@ -36,6 +37,7 @@ import { AdminMessagesTab } from './AdminMessagesTab';
 import { AdminBlockedUsersTab } from './AdminBlockedUsersTab';
 import { AdminSettingsTab } from './AdminSettingsTab';
 import { AdminSongManagementTab } from './AdminSongManagementTab';
+import { AdminPermissionsTab } from './AdminPermissionsTab';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -92,7 +94,7 @@ export const AdminDashboard: React.FC = () => {
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
   const [chatNotifications, setChatNotifications] = useState<{ message: ChatMessage; conversation?: Conversation }[]>([]);
   const [unreadConvCount, setUnreadConvCount] = useState(0);
-  const [mainTab, setMainTab] = useState<'openmic' | 'messages' | 'blocked' | 'songs' | 'settings'>('openmic');
+  const [mainTab, setMainTab] = useState<'openmic' | 'messages' | 'blocked' | 'songs' | 'permissions' | 'settings'>('openmic');
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -800,6 +802,17 @@ export const AdminDashboard: React.FC = () => {
               <span className="hidden sm:inline">Bloccati</span>
             </button>
             <button
+              onClick={() => setMainTab('permissions')}
+              className={`flex-1 min-w-0 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-all ${
+                mainTab === 'permissions'
+                  ? 'bg-gradient-to-r from-accent to-primary text-accent-foreground shadow-lg'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              <Crown className="w-4 h-4 inline-block sm:mr-1" />
+              <span className="hidden sm:inline">Permessi</span>
+            </button>
+            <button
               onClick={() => setMainTab('settings')}
               className={`py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-all ${
                 mainTab === 'settings'
@@ -897,6 +910,8 @@ export const AdminDashboard: React.FC = () => {
           <AdminSongManagementTab />
         ) : mainTab === 'settings' ? (
           <AdminSettingsTab />
+        ) : mainTab === 'permissions' ? (
+          <AdminPermissionsTab />
         ) : (
           <AdminBlockedUsersTab />
         )}
