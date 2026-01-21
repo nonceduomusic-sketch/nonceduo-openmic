@@ -5,3 +5,9 @@ verify_jwt = false
 
 [functions.admin-chat]
 verify_jwt = false
+
+[functions.send-welcome-email]
+verify_jwt = false
+
+[functions.social-password-reset]
+verify_jwt = false

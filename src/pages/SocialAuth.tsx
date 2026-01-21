@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,9 @@ import {
   Sparkles,
   Eye,
   EyeOff,
-  Loader2
+  Loader2,
+  CheckCircle,
+  KeyRound
 } from 'lucide-react';
 
 // Validation schemas
@@ -28,21 +30,37 @@ const displayNameSchema = z.string().min(2, 'Il nome deve avere almeno 2 caratte
 const SocialAuth: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [searchParams] = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [confirmationPending, setConfirmationPending] = useState(false);
+  const [isResetMode, setIsResetMode] = useState(false);
   
   // Form states
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string; confirmPassword?: string }>({});
+
+  // Check for password reset mode (from email link)
+  useEffect(() => {
+    const accessToken = searchParams.get('access_token');
+    const type = searchParams.get('type');
+    
+    if (type === 'recovery' && accessToken) {
+      setIsResetMode(true);
+    }
+  }, [searchParams]);
 
   // Check if user is already logged in
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+      if (session && !isResetMode) {
         navigate('/social/dashboard');
       }
     };
@@ -50,13 +68,15 @@ const SocialAuth: React.FC = () => {
     checkAuth();
     
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsResetMode(true);
+      } else if (session && !isResetMode) {
         navigate('/social/dashboard');
       }
     });
     
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, isResetMode]);
 
   const validateForm = (isSignup: boolean): boolean => {
     const newErrors: typeof errors = {};
@@ -110,6 +130,12 @@ const SocialAuth: React.FC = () => {
             description: 'Email o password errati. Riprova.',
             variant: 'destructive',
           });
+        } else if (error.message.includes('Email not confirmed')) {
+          toast({
+            title: 'Email non confermata',
+            description: 'Controlla la tua casella email e clicca sul link di conferma.',
+            variant: 'destructive',
+          });
         } else {
           toast({
             title: 'Errore',
@@ -136,7 +162,7 @@ const SocialAuth: React.FC = () => {
     setIsLoading(true);
     
     try {
-      const redirectUrl = `${window.location.origin}/social/dashboard`;
+      const redirectUrl = `${window.location.origin}/social/auth`;
       
       const { data, error } = await supabase.auth.signUp({
         email: email.trim(),
@@ -165,7 +191,7 @@ const SocialAuth: React.FC = () => {
           });
         }
       } else if (data.user) {
-        // Create profile manually since trigger may not work
+        // Create profile manually
         const username = email.split('@')[0].toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + data.user.id.substring(0, 4);
         
         const { error: profileError } = await supabase
@@ -174,7 +200,7 @@ const SocialAuth: React.FC = () => {
             user_id: data.user.id,
             display_name: displayName.trim(),
             username: username,
-            is_online: true,
+            is_online: false,
             last_seen_at: new Date().toISOString(),
           }, { onConflict: 'user_id' });
         
@@ -182,10 +208,21 @@ const SocialAuth: React.FC = () => {
           console.error('Error creating profile:', profileError);
         }
         
-        toast({
-          title: 'Account creato!',
-          description: 'Benvenuto nella community!',
-        });
+        // Try to send welcome email (non-blocking)
+        try {
+          await supabase.functions.invoke('send-welcome-email', {
+            body: {
+              email: email.trim(),
+              displayName: displayName.trim(),
+              username: username,
+            },
+          });
+        } catch (emailErr) {
+          console.log('Welcome email not sent:', emailErr);
+        }
+        
+        // Show confirmation pending state
+        setConfirmationPending(true);
       }
     } catch (err) {
       console.error('Signup error:', err);
@@ -199,6 +236,306 @@ const SocialAuth: React.FC = () => {
     }
   };
 
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!email.trim()) {
+      setErrors({ email: 'Inserisci la tua email' });
+      return;
+    }
+    
+    try {
+      emailSchema.parse(email);
+    } catch {
+      setErrors({ email: 'Email non valida' });
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: `${window.location.origin}/social/auth?type=recovery`,
+      });
+      
+      if (error) {
+        toast({
+          title: 'Errore',
+          description: error.message,
+          variant: 'destructive',
+        });
+      } else {
+        setEmailSent(true);
+        toast({
+          title: 'Email inviata',
+          description: 'Se l\'email è registrata, riceverai un link per reimpostare la password.',
+        });
+      }
+    } catch (err) {
+      toast({
+        title: 'Errore',
+        description: 'Si è verificato un errore. Riprova.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (password.length < 6) {
+      setErrors({ password: 'La password deve avere almeno 6 caratteri' });
+      return;
+    }
+    
+    if (password !== confirmPassword) {
+      setErrors({ confirmPassword: 'Le password non corrispondono' });
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      const { error } = await supabase.auth.updateUser({ password });
+      
+      if (error) {
+        toast({
+          title: 'Errore',
+          description: error.message,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Password aggiornata!',
+          description: 'La tua password è stata cambiata con successo.',
+        });
+        setIsResetMode(false);
+        navigate('/social/dashboard');
+      }
+    } catch (err) {
+      toast({
+        title: 'Errore',
+        description: 'Si è verificato un errore. Riprova.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Confirmation pending screen
+  if (confirmationPending) {
+    return (
+      <>
+        <SEO title="Conferma Email | Community Non Ce Duo" description="Conferma la tua email" />
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+          <Card className="w-full max-w-md bg-card/80 backdrop-blur-xl border-border/50">
+            <CardContent className="pt-8 pb-8 text-center">
+              <div className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-6">
+                <Mail className="w-10 h-10 text-green-500" />
+              </div>
+              <h2 className="text-2xl font-bold mb-3">Controlla la tua email! 📬</h2>
+              <p className="text-muted-foreground mb-6">
+                Ti abbiamo inviato un link di conferma a<br />
+                <strong className="text-foreground">{email}</strong>
+              </p>
+              <p className="text-sm text-muted-foreground mb-6">
+                Clicca sul link nell'email per attivare il tuo account e accedere alla community.
+              </p>
+              <div className="space-y-3">
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => {
+                    setConfirmationPending(false);
+                    setActiveTab('login');
+                  }}
+                >
+                  Ho confermato, vai al login
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  Non hai ricevuto l'email? Controlla la cartella spam.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </>
+    );
+  }
+
+  // Password reset mode
+  if (isResetMode) {
+    return (
+      <>
+        <SEO title="Nuova Password | Community Non Ce Duo" description="Imposta la tua nuova password" />
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+          <Card className="w-full max-w-md bg-card/80 backdrop-blur-xl border-border/50">
+            <CardHeader className="text-center">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mx-auto mb-4">
+                <KeyRound className="w-8 h-8 text-white" />
+              </div>
+              <CardTitle className="text-2xl">Nuova Password</CardTitle>
+              <CardDescription>Scegli una nuova password sicura</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-password">Nuova Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="new-password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Minimo 6 caratteri"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pl-11 pr-11"
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                  {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="confirm-password">Conferma Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                    <Input
+                      id="confirm-password"
+                      type={showPassword ? 'text' : 'password'}
+                      placeholder="Ripeti la password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="pl-11"
+                      disabled={isLoading}
+                    />
+                  </div>
+                  {errors.confirmPassword && <p className="text-sm text-destructive">{errors.confirmPassword}</p>}
+                </div>
+                
+                <Button 
+                  type="submit" 
+                  className="w-full bg-gradient-to-r from-primary to-accent"
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                      Aggiornamento...
+                    </>
+                  ) : (
+                    'Salva Nuova Password'
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      </>
+    );
+  }
+
+  // Forgot password form
+  if (showForgotPassword) {
+    return (
+      <>
+        <SEO title="Recupera Password | Community Non Ce Duo" description="Recupera la tua password" />
+        <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4 relative overflow-hidden">
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/20 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
+          </div>
+
+          <button 
+            onClick={() => setShowForgotPassword(false)}
+            className="absolute top-6 left-6 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>Torna al login</span>
+          </button>
+
+          <Card className="w-full max-w-md relative z-10 bg-card/80 backdrop-blur-xl border-border/50">
+            <CardHeader className="text-center">
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mx-auto mb-4">
+                <KeyRound className="w-8 h-8 text-white" />
+              </div>
+              <CardTitle className="text-2xl">Password dimenticata?</CardTitle>
+              <CardDescription>
+                Inserisci la tua email e ti invieremo un link per reimpostare la password
+              </CardDescription>
+            </CardHeader>
+            
+            <CardContent>
+              {emailSent ? (
+                <div className="text-center py-4">
+                  <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                  <h3 className="font-medium text-lg mb-2">Email inviata!</h3>
+                  <p className="text-muted-foreground text-sm mb-4">
+                    Se l'email è registrata, riceverai un link per reimpostare la password.
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setShowForgotPassword(false);
+                      setEmailSent(false);
+                    }}
+                  >
+                    Torna al login
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleForgotPassword} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="reset-email">Email</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                      <Input
+                        id="reset-email"
+                        type="email"
+                        placeholder="la-tua@email.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        className="pl-11"
+                        disabled={isLoading}
+                      />
+                    </div>
+                    {errors.email && <p className="text-sm text-destructive">{errors.email}</p>}
+                  </div>
+                  
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-to-r from-primary to-accent"
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Invio in corso...
+                      </>
+                    ) : (
+                      'Invia link di recupero'
+                    )}
+                  </Button>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </>
+    );
+  }
+
+  // Main login/signup form
   return (
     <>
       <SEO 
@@ -268,7 +605,16 @@ const SocialAuth: React.FC = () => {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="login-password">Password</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="login-password">Password</Label>
+                      <button
+                        type="button"
+                        onClick={() => setShowForgotPassword(true)}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Password dimenticata?
+                      </button>
+                    </div>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                       <Input
@@ -382,6 +728,10 @@ const SocialAuth: React.FC = () => {
                       'Crea Account'
                     )}
                   </Button>
+                  
+                  <p className="text-xs text-center text-muted-foreground">
+                    📧 Riceverai un'email di conferma per attivare il tuo account
+                  </p>
                 </form>
               </TabsContent>
             </Tabs>
