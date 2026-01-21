@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Send, MessageCircle, Edit2, Check, X, Users, Globe, Ban, Circle, Plus, Bell, BellOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { MessageStatusIndicator } from '@/components/MessageStatusIndicator';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
+import { ChatScrollIndicator } from '@/components/ChatScrollIndicator';
 
 const messageSchema = z.object({
   sender_name: z.string().trim()
@@ -41,7 +42,11 @@ const Messages: React.FC = () => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [notificationsSupported, setNotificationsSupported] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const presenceChannelRef = useRef<any>(null);
+  const [showScrollIndicator, setShowScrollIndicator] = useState(false);
+  const [newMessagesCount, setNewMessagesCount] = useState(0);
+  const isAtBottomRef = useRef(true);
 
   // Typing indicator hook
   const {
@@ -220,10 +225,44 @@ const Messages: React.FC = () => {
     };
   }, [selectedConversation?.id, userSessionId, name]);
 
-  // Scroll to bottom when messages change
-  useEffect(() => {
+  // Check if user is at bottom of scroll area
+  const checkIfAtBottom = useCallback(() => {
+    const scrollElement = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (scrollElement) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollElement;
+      const atBottom = scrollHeight - scrollTop - clientHeight < 100;
+      isAtBottomRef.current = atBottom;
+      if (atBottom) {
+        setShowScrollIndicator(false);
+        setNewMessagesCount(0);
+      }
+    }
+  }, []);
+
+  // Scroll to bottom helper
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [selectedConversation?.messages]);
+    setShowScrollIndicator(false);
+    setNewMessagesCount(0);
+    isAtBottomRef.current = true;
+  }, []);
+
+  // Track new messages when not at bottom
+  useEffect(() => {
+    if (!selectedConversation?.messages) return;
+    
+    const messages = selectedConversation.messages;
+    const lastMessage = messages[0]; // messages are sorted desc
+    
+    if (lastMessage && lastMessage.sender_type === 'admin' && !isAtBottomRef.current) {
+      // New admin message arrived while not at bottom
+      setNewMessagesCount(prev => prev + 1);
+      setShowScrollIndicator(true);
+    } else if (isAtBottomRef.current) {
+      // Auto-scroll when user is at bottom
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [selectedConversation?.messages?.length]);
 
   // Update selected conversation when conversations change
   useEffect(() => {
@@ -400,9 +439,13 @@ const Messages: React.FC = () => {
       const online = onlineUsers.get(selectedConversation.id) || [];
 
       return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full relative">
           {/* Messages area */}
-          <ScrollArea className="flex-1 px-4">
+          <ScrollArea 
+            ref={scrollAreaRef} 
+            className="flex-1 px-4"
+            onScrollCapture={checkIfAtBottom}
+          >
             <div className="space-y-4 py-4">
               {messages.length === 0 ? (
                 <div className="text-center py-8">
@@ -506,6 +549,13 @@ const Messages: React.FC = () => {
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
+
+          {/* WhatsApp-style scroll down indicator */}
+          <ChatScrollIndicator
+            unreadCount={newMessagesCount}
+            onClick={scrollToBottom}
+            visible={showScrollIndicator}
+          />
 
           {/* Typing indicator */}
           {isAnyoneTyping && (
