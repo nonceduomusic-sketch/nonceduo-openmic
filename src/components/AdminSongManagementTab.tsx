@@ -41,17 +41,26 @@ export const AdminSongManagementTab: React.FC = () => {
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'booked' | 'available'>('all');
 
+  // Normalize text for comparison (handle different apostrophe characters)
+  const normalizeText = (text: string) => {
+    return text.replace(/[''`´]/g, "'").toLowerCase().trim();
+  };
+
+  const getSongKey = (title: string, artist: string) => {
+    return `${normalizeText(title)}__${normalizeText(artist)}`;
+  };
+
   // Create a map of booked and completed songs
   const songStatusMap = useMemo(() => {
     const map = new Map<string, { status: 'booked' | 'completed'; reservation: Reservation }>();
     
     activeReservations.forEach(res => {
-      const key = `${res.song_title}__${res.song_artist}`;
+      const key = getSongKey(res.song_title, res.song_artist);
       map.set(key, { status: 'booked', reservation: res });
     });
     
     completedReservations.forEach(res => {
-      const key = `${res.song_title}__${res.song_artist}`;
+      const key = getSongKey(res.song_title, res.song_artist);
       // Only mark as completed if not actively booked
       if (!map.has(key)) {
         map.set(key, { status: 'completed', reservation: res });
@@ -61,10 +70,9 @@ export const AdminSongManagementTab: React.FC = () => {
     return map;
   }, [activeReservations, completedReservations]);
 
-  // Filter and enrich songs with status
   const enrichedSongs = useMemo(() => {
     return songs.map(song => {
-      const key = `${song.title}__${song.artist}`;
+      const key = getSongKey(song.title, song.artist);
       const statusInfo = songStatusMap.get(key);
       return {
         ...song,
