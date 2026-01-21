@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Send, MessageCircle, Edit2, Check, X, Users, Globe, Ban, Circle, Plus, Bell, BellOff } from 'lucide-react';
+import { ArrowLeft, Send, MessageCircle, Edit2, Check, X, Users, Globe, Ban, Circle, Plus, Bell, BellOff, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -14,6 +14,7 @@ import { TypingIndicator } from '@/components/TypingIndicator';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { ChatScrollIndicator } from '@/components/ChatScrollIndicator';
 import { SocialCTA } from '@/components/SocialCTA';
+import { JoinGroupPasswordDialog } from '@/components/JoinGroupPasswordDialog';
 
 const messageSchema = z.object({
   sender_name: z.string().trim()
@@ -55,6 +56,11 @@ const Messages: React.FC = () => {
   const [showScrollIndicator, setShowScrollIndicator] = useState(false);
   const [newMessagesCount, setNewMessagesCount] = useState(0);
   const isAtBottomRef = useRef(true);
+  
+  // Password dialog state
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [passwordDialogGroup, setPasswordDialogGroup] = useState<Conversation | null>(null);
+  const [passwordHint, setPasswordHint] = useState<string | undefined>(undefined);
 
   // Typing indicator hook
   const {
@@ -75,6 +81,7 @@ const Messages: React.FC = () => {
     sendMessage: sendChatMessage, 
     editMessage,
     joinPublicGroup,
+    joinPublicGroupWithPassword,
     markMessagesAsRead,
     isBlocked,
     loading 
@@ -390,20 +397,31 @@ const Messages: React.FC = () => {
     setIsSubmitting(false);
   };
 
-  const handleJoinGroup = async (conv: Conversation) => {
+  const handleJoinGroup = async (conv: Conversation, password?: string) => {
     if (isBlocked) {
       toast.error('Il tuo account è stato sospeso. Contatta lo staff per maggiori informazioni.');
-      return;
+      return false;
     }
 
     if (!name.trim()) {
       toast.error('Inserisci il tuo nome prima di unirti al gruppo');
-      return;
+      return false;
     }
 
     localStorage.setItem('user_name', name);
-    const success = await joinPublicGroup(conv.id, name, userSessionId);
-    if (success) {
+    
+    // Use password-aware function
+    const result = await joinPublicGroupWithPassword(conv.id, name, userSessionId, password);
+    
+    if (result.requires_password) {
+      // Show password dialog
+      setPasswordDialogGroup(conv);
+      setPasswordHint(result.password_hint);
+      setShowPasswordDialog(true);
+      return false;
+    }
+    
+    if (result.success) {
       const safeTempId = (() => {
         try {
           const randomUUID = (crypto as any)?.randomUUID as undefined | (() => string);
@@ -427,7 +445,15 @@ const Messages: React.FC = () => {
           }
         ]
       });
+      return true;
     }
+    return false;
+  };
+
+  const handlePasswordSubmit = async (password: string): Promise<boolean> => {
+    if (!passwordDialogGroup) return false;
+    const success = await handleJoinGroup(passwordDialogGroup, password);
+    return success;
   };
 
   const handleStartEdit = (msg: ChatMessage) => {
@@ -725,12 +751,22 @@ const Messages: React.FC = () => {
                   className="w-full glass-card p-4 text-left hover:border-secondary transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center relative">
                       <Globe className="w-5 h-5 text-secondary" />
+                      {group.password_hash && (
+                        <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-background border border-secondary flex items-center justify-center">
+                          <Lock className="w-2.5 h-2.5 text-secondary" />
+                        </div>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-foreground">{group.name}</span>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-foreground flex items-center gap-1.5">
+                          {group.name}
+                          {group.password_hash && (
+                            <Lock className="w-3 h-3 text-muted-foreground" />
+                          )}
+                        </span>
                         {!isJoined && (
                           <span className="text-xs text-secondary font-medium">Unisciti →</span>
                         )}
@@ -960,6 +996,15 @@ const Messages: React.FC = () => {
       <main className="flex-1 container py-6 max-w-lg mx-auto flex flex-col">
         {renderMainContent()}
       </main>
+
+      {/* Password Dialog for joining protected groups */}
+      <JoinGroupPasswordDialog
+        open={showPasswordDialog}
+        onOpenChange={setShowPasswordDialog}
+        conversation={passwordDialogGroup}
+        passwordHint={passwordHint}
+        onSubmit={handlePasswordSubmit}
+      />
     </div>
   );
 };

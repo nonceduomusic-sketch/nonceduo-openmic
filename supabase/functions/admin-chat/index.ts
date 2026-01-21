@@ -50,11 +50,12 @@ serve(async (req: Request): Promise<Response> => {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Verify admin role via user_roles table (not user_metadata which is client-controllable)
+    // Accept owner, admin, or moderator roles
     const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', userId)
-      .eq('role', 'admin')
+      .in('role', ['owner', 'admin', 'moderator'])
       .maybeSingle();
 
     if (roleError || !roleData) {
@@ -64,6 +65,8 @@ serve(async (req: Request): Promise<Response> => {
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    const userRole = roleData.role;
 
     const body = await req.json();
     const { action } = body;
