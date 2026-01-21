@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   MessageCircle,
   Users,
@@ -23,6 +23,7 @@ import {
 import { MessageStatusIndicator } from '@/components/MessageStatusIndicator';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
+import { ChatScrollIndicator } from '@/components/ChatScrollIndicator';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -139,6 +140,13 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
   const [messageSelectionMode, setMessageSelectionMode] = useState(false);
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
   const longPressTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  
+  // Scroll tracking for WhatsApp-style scroll indicator
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [showScrollIndicator, setShowScrollIndicator] = useState(false);
+  const [newMessagesCount, setNewMessagesCount] = useState(0);
+  const isAtBottomRef = useRef(true);
 
   // Typing indicator for admin
   const {
@@ -179,8 +187,47 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     }
   }, [conversations, selectedConversation?.id]);
 
+  // Check if admin is at bottom of scroll area
+  const checkIfAtBottom = useCallback(() => {
+    const scrollElement = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (scrollElement) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollElement;
+      const atBottom = scrollHeight - scrollTop - clientHeight < 100;
+      isAtBottomRef.current = atBottom;
+      if (atBottom) {
+        setShowScrollIndicator(false);
+        setNewMessagesCount(0);
+      }
+    }
+  }, []);
+
+  // Scroll to bottom helper
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    setShowScrollIndicator(false);
+    setNewMessagesCount(0);
+    isAtBottomRef.current = true;
+  }, []);
+
+  // Track new messages when not at bottom
+  useEffect(() => {
+    if (!selectedConversation?.messages) return;
+    
+    const messages = selectedConversation.messages;
+    const lastMessage = messages[0]; // messages are sorted desc
+    
+    if (lastMessage && lastMessage.sender_type === 'user' && !isAtBottomRef.current) {
+      // New user message arrived while not at bottom
+      setNewMessagesCount(prev => prev + 1);
+      setShowScrollIndicator(true);
+    } else if (isAtBottomRef.current) {
+      // Auto-scroll when admin is at bottom
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [selectedConversation?.messages?.length]);
+
   // Clear selection when changing tabs
-  React.useEffect(() => {
+  useEffect(() => {
     setSelectedForAction(new Set());
     setSelectionMode('none');
   }, [activeSubTab]);
@@ -489,7 +536,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
   // Chat view when a conversation is selected
   if (selectedConversation) {
     return (
-      <div className="flex flex-col h-[calc(100vh-200px)]">
+      <div className="flex flex-col h-[calc(100vh-200px)] relative">
         {/* Chat header */}
         <div className="flex items-center justify-between mb-4 pb-4 border-b border-border">
           <div className="flex items-center gap-3">
@@ -666,7 +713,11 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
         </div>
 
         {/* Messages */}
-        <ScrollArea className="flex-1 mb-4">
+        <ScrollArea 
+          ref={scrollAreaRef} 
+          className="flex-1 mb-4"
+          onScrollCapture={checkIfAtBottom}
+        >
           <div className="space-y-3 pr-4">
             {/* Hint for long-press selection */}
             {!messageSelectionMode && selectedConversation.messages && selectedConversation.messages.length > 0 && (
@@ -799,8 +850,16 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                 </div>
               </div>
             ))}
+            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
+
+        {/* WhatsApp-style scroll down indicator */}
+        <ChatScrollIndicator
+          unreadCount={newMessagesCount}
+          onClick={scrollToBottom}
+          visible={showScrollIndicator}
+        />
 
         {/* Typing indicator */}
         {isAnyoneTyping && (
