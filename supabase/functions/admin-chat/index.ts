@@ -761,6 +761,201 @@ serve(async (req: Request): Promise<Response> => {
         break;
       }
 
+      case 'setGroupPassword': {
+        // Set or remove password protection for a group
+        const { conversation_id, password, password_hint } = body;
+        
+        if (!conversation_id) {
+          return new Response(
+            JSON.stringify({ error: 'ID conversazione richiesto' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Verify it's a group
+        const { data: convCheck, error: convCheckError } = await supabase
+          .from('conversations')
+          .select('is_group')
+          .eq('id', conversation_id)
+          .single();
+
+        if (convCheckError || !convCheck?.is_group) {
+          return new Response(
+            JSON.stringify({ error: 'Solo i gruppi possono avere una password' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        let passwordHash: string | null = null;
+        
+        if (password && password.trim()) {
+          // Hash the password using PBKDF2 (same as admin passwords)
+          const encoder = new TextEncoder();
+          const data = encoder.encode(password);
+          const salt = crypto.getRandomValues(new Uint8Array(16));
+          
+          const keyMaterial = await crypto.subtle.importKey(
+            'raw',
+            data,
+            'PBKDF2',
+            false,
+            ['deriveBits']
+          );
+          
+          const derivedBits = await crypto.subtle.deriveBits(
+            {
+              name: 'PBKDF2',
+              salt,
+              iterations: 100000,
+              hash: 'SHA-256',
+            },
+            keyMaterial,
+            256
+          );
+          
+          const hashArray = Array.from(new Uint8Array(derivedBits));
+          const saltArray = Array.from(salt);
+          const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+          const saltHex = saltArray.map(b => b.toString(16).padStart(2, '0')).join('');
+          
+          passwordHash = `pbkdf2:100000:${saltHex}:${hashHex}`;
+        }
+
+        const { error: updateError } = await supabase
+          .from('conversations')
+          .update({ 
+            password_hash: passwordHash,
+            password_hint: password_hint || null
+          })
+          .eq('id', conversation_id);
+
+        if (updateError) {
+          console.error('Error setting group password:', updateError);
+          return new Response(
+            JSON.stringify({ error: 'Errore nell\'impostare la password' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        result = { data: { password_set: !!passwordHash }, error: null };
+        break;
+      }
+
+      case 'getGroupMembers': {
+        // Get all members of a group with their details
+        const { conversation_id } = body;
+        
+        if (!conversation_id) {
+          return new Response(
+            JSON.stringify({ error: 'ID conversazione richiesto' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: participants, error: partError } = await supabase
+          .from('conversation_participants')
+          .select('*')
+          .eq('conversation_id', conversation_id)
+          .order('joined_at', { ascending: true });
+
+        if (partError) {
+          console.error('Error fetching group members:', partError);
+          return new Response(
+            JSON.stringify({ error: 'Errore nel recupero dei membri' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check if each participant is blocked
+        const sessionIds = participants?.map(p => p.session_id) || [];
+        const { data: blockedData } = await supabase
+          .from('blocked_users')
+          .select('session_id')
+          .in('session_id', sessionIds);
+
+        const blockedSessionIds = new Set(blockedData?.map(b => b.session_id) || []);
+
+        const membersWithStatus = (participants || []).map(p => ({
+          ...p,
+          is_blocked: blockedSessionIds.has(p.session_id),
+        }));
+
+        result = { data: membersWithStatus, error: null };
+        break;
+      }
+
+      case 'startPrivateChat': {
+        // Admin starts a private chat with a specific user (by session_id)
+        const { participant_name, session_id, initial_message } = body;
+        
+        if (!session_id) {
+          return new Response(
+            JSON.stringify({ error: 'Session ID richiesto' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Check if a private conversation already exists with this user
+        const { data: existingConv } = await supabase
+          .from('conversations')
+          .select(`
+            *,
+            participants:conversation_participants(*)
+          `)
+          .eq('is_group', false);
+
+        const existingPrivateChat = existingConv?.find(conv => 
+          conv.participants?.length === 1 && 
+          conv.participants[0].session_id === session_id
+        );
+
+        if (existingPrivateChat) {
+          // Return existing conversation
+          result = { data: { conversation: existingPrivateChat, is_new: false }, error: null };
+        } else {
+          // Create new private conversation
+          const { data: newConv, error: convError } = await supabase
+            .from('conversations')
+            .insert([{ is_group: false, is_public: false, is_read: true }])
+            .select()
+            .single();
+
+          if (convError) {
+            console.error('Error creating private chat:', convError);
+            return new Response(
+              JSON.stringify({ error: 'Errore nella creazione della chat' }),
+              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+
+          // Add the user as participant
+          await supabase
+            .from('conversation_participants')
+            .insert([{
+              conversation_id: newConv.id,
+              participant_name: participant_name || 'Utente',
+              session_id: session_id,
+            }]);
+
+          // If initial message provided, send it
+          if (initial_message && initial_message.trim()) {
+            await supabase
+              .from('chat_messages')
+              .insert([{
+                conversation_id: newConv.id,
+                sender_type: 'admin',
+                sender_name: claimsData.claims.user_metadata?.username || 'Staff',
+                sender_session_id: null,
+                message_text: initial_message.trim(),
+                status: 'delivered',
+              }]);
+          }
+
+          result = { data: { conversation: newConv, is_new: true }, error: null };
+        }
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: 'Unknown action' }),
