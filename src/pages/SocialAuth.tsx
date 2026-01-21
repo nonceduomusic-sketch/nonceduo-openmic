@@ -550,14 +550,30 @@ const SocialAuth: React.FC = () => {
           <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-secondary/20 rounded-full blur-3xl" />
         </div>
 
-        {/* Back button */}
-        <Link 
-          to="/social" 
-          className="absolute top-6 left-6 flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span>Indietro</span>
-        </Link>
+        {/* Navigation links */}
+        <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
+          <Link 
+            to="/" 
+            className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span>Home</span>
+          </Link>
+          <div className="flex items-center gap-4">
+            <Link 
+              to="/openmic" 
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Open Mic
+            </Link>
+            <Link 
+              to="/messaggi" 
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Dediche
+            </Link>
+          </div>
+        </div>
 
         {/* Auth Card */}
         <Card className="w-full max-w-md relative z-10 bg-card/80 backdrop-blur-xl border-border/50">
