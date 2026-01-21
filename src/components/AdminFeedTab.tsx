@@ -42,7 +42,12 @@ interface Post {
   likes_count: number;
   comments_count: number;
   created_at: string;
+  updated_at: string;
   author?: PostAuthor;
+}
+
+interface DeletedPost extends Post {
+  deletedAt: number;
 }
 
 export const AdminFeedTab: React.FC = () => {
@@ -51,6 +56,7 @@ export const AdminFeedTab: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
+  const [deletedPosts, setDeletedPosts] = useState<DeletedPost[]>([]);
 
   useEffect(() => {
     fetchPosts();
@@ -93,7 +99,74 @@ export const AdminFeedTab: React.FC = () => {
     }
   };
 
+  const restorePost = async (post: DeletedPost) => {
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .insert({
+          id: post.id,
+          user_id: post.user_id,
+          content: post.content,
+          likes_count: post.likes_count,
+          comments_count: post.comments_count,
+          created_at: post.created_at,
+          updated_at: post.updated_at,
+        });
+
+      if (error) throw error;
+
+      // Re-add to local state with author
+      setPosts(prev => [{ ...post }, ...prev].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      ));
+      
+      // Remove from deleted list
+      setDeletedPosts(prev => prev.filter(p => p.id !== post.id));
+      
+      toast.success('Post ripristinato');
+    } catch (error) {
+      console.error('Error restoring post:', error);
+      toast.error('Errore nel ripristino del post');
+    }
+  };
+
+  const restoreMultiplePosts = async (postsToRestore: DeletedPost[]) => {
+    try {
+      for (const post of postsToRestore) {
+        await supabase
+          .from('posts')
+          .insert({
+            id: post.id,
+            user_id: post.user_id,
+            content: post.content,
+            likes_count: post.likes_count,
+            comments_count: post.comments_count,
+            created_at: post.created_at,
+            updated_at: post.updated_at,
+          });
+      }
+
+      // Re-add to local state
+      setPosts(prev => [...postsToRestore, ...prev].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      ));
+      
+      // Remove from deleted list
+      const restoredIds = new Set(postsToRestore.map(p => p.id));
+      setDeletedPosts(prev => prev.filter(p => !restoredIds.has(p.id)));
+      
+      toast.success(`${postsToRestore.length} post ripristinati`);
+    } catch (error) {
+      console.error('Error restoring posts:', error);
+      toast.error('Errore nel ripristino dei post');
+    }
+  };
+
   const deletePost = async (postId: string) => {
+    // Find the post before deleting
+    const postToDelete = posts.find(p => p.id === postId);
+    if (!postToDelete) return;
+
     setIsDeleting(true);
     try {
       // First delete related comments and likes
@@ -107,8 +180,19 @@ export const AdminFeedTab: React.FC = () => {
 
       if (error) throw error;
 
+      // Store deleted post for undo
+      const deletedPost: DeletedPost = { ...postToDelete, deletedAt: Date.now() };
+      setDeletedPosts(prev => [...prev, deletedPost]);
+
       setPosts(prev => prev.filter(p => p.id !== postId));
-      toast.success('Post eliminato');
+      
+      toast.success('Post eliminato', {
+        action: {
+          label: 'Annulla',
+          onClick: () => restorePost(deletedPost),
+        },
+        duration: 8000,
+      });
     } catch (error) {
       console.error('Error deleting post:', error);
       toast.error('Errore durante l\'eliminazione');
@@ -118,6 +202,9 @@ export const AdminFeedTab: React.FC = () => {
   };
 
   const deleteAllPosts = async () => {
+    // Store all posts for undo
+    const postsToBackup = posts.map(p => ({ ...p, deletedAt: Date.now() } as DeletedPost));
+    
     setIsResetting(true);
     try {
       // Delete all comments first
@@ -144,8 +231,17 @@ export const AdminFeedTab: React.FC = () => {
 
       if (error) throw error;
 
+      // Store for undo
+      setDeletedPosts(prev => [...prev, ...postsToBackup]);
+
       setPosts([]);
-      toast.success('Bacheca resettata con successo');
+      toast.success(`Bacheca resettata (${postsToBackup.length} post eliminati)`, {
+        action: {
+          label: 'Annulla',
+          onClick: () => restoreMultiplePosts(postsToBackup),
+        },
+        duration: 10000,
+      });
     } catch (error) {
       console.error('Error resetting feed:', error);
       toast.error('Errore durante il reset della bacheca');
