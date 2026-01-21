@@ -185,6 +185,20 @@ export const useReservations = () => {
     }
   };
 
+  const resetEverything = async () => {
+    try {
+      await callAdminApi('resetEverything');
+      toast.success('Reset completo effettuato! Pronto per la prossima serata');
+      return true;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error resetting everything:', error);
+      }
+      toast.error('Errore nel reset totale');
+      return false;
+    }
+  };
+
   const deleteReservation = async (id: string) => {
     try {
       await callAdminApi('delete', { id });
@@ -244,6 +258,7 @@ export const useReservations = () => {
     resetAllReservations,
     resetActiveReservations,
     resetCompletedReservations,
+    resetEverything,
     deleteReservation,
     deleteMultipleReservations,
     restoreReservation,
