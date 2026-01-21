@@ -90,16 +90,13 @@ const PartyBand: React.FC = () => {
           {/* Stats inline */}
           <div className="flex flex-wrap justify-center gap-8 mb-12">
             <div className="text-center">
-              <div className="font-display text-4xl md:text-5xl font-bold neon-text-cyan">2-6</div>
-              <div className="text-sm text-muted-foreground mt-1">Musicisti</div>
+              <div className="font-display text-4xl md:text-5xl font-bold neon-text-pink">2</div>
+              <div className="text-sm text-muted-foreground mt-1">Duo</div>
             </div>
+            <div className="text-center text-3xl text-muted-foreground self-center">→</div>
             <div className="text-center">
-              <div className="font-display text-4xl md:text-5xl font-bold neon-text-pink">100%</div>
-              <div className="text-sm text-muted-foreground mt-1">Live</div>
-            </div>
-            <div className="text-center">
-              <div className="font-display text-4xl md:text-5xl font-bold neon-text-purple">∞</div>
-              <div className="text-sm text-muted-foreground mt-1">Energia</div>
+              <div className="font-display text-4xl md:text-5xl font-bold neon-text-cyan">4-6</div>
+              <div className="text-sm text-muted-foreground mt-1">Band</div>
             </div>
           </div>
 
@@ -146,66 +143,74 @@ const PartyBand: React.FC = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {/* Duo */}
-            <div className="group relative p-8 rounded-2xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10">
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Duo - The Star */}
+            <div className="group relative p-8 rounded-2xl bg-gradient-to-b from-primary/10 to-card border-2 border-primary/50 transition-all duration-300 hover:shadow-xl hover:shadow-primary/20">
               <div className="absolute top-4 right-4">
-                <span className="px-3 py-1 text-xs font-medium rounded-full bg-muted text-muted-foreground">Base</span>
-              </div>
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Mic2 className="w-8 h-8 text-primary" />
-              </div>
-              <h3 className="font-display text-2xl font-bold mb-2 text-foreground">Duo Acustico</h3>
-              <p className="text-3xl font-bold neon-text-pink mb-4">2</p>
-              <p className="text-muted-foreground text-sm mb-6">
-                Voce e chitarra per atmosfere intime, aperitivi, cene eleganti e momenti romantici.
-              </p>
-              <ul className="space-y-2 text-sm text-foreground/80">
-                <li className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> Atmosfera intima</li>
-                <li className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> Setup minimale</li>
-                <li className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> Versatilità massima</li>
-              </ul>
-            </div>
-
-            {/* Trio/Quartetto */}
-            <div className="group relative p-8 rounded-2xl bg-gradient-to-b from-primary/10 to-card border-2 border-primary/50 transition-all duration-300 hover:shadow-xl hover:shadow-primary/20 scale-105">
-              <div className="absolute top-4 right-4">
-                <span className="px-3 py-1 text-xs font-medium rounded-full bg-primary text-primary-foreground">Popolare</span>
+                <span className="px-3 py-1 text-xs font-medium rounded-full bg-primary text-primary-foreground">Il Nostro Cuore</span>
               </div>
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Users className="w-8 h-8 text-primary-foreground" />
+                <Mic2 className="w-8 h-8 text-primary-foreground" />
               </div>
-              <h3 className="font-display text-2xl font-bold mb-2 text-foreground">Party Band</h3>
-              <p className="text-3xl font-bold neon-text-cyan mb-4">3-4</p>
+              <h3 className="font-display text-2xl font-bold mb-2 text-foreground">Non C'è Duo</h3>
+              <p className="text-3xl font-bold neon-text-pink mb-4">2 musicisti</p>
               <p className="text-muted-foreground text-sm mb-6">
-                Aggiungiamo batteria e basso per feste, compleanni, eventi aziendali e serate danzanti.
+                Il nostro format originale. Voce e chitarra che creano magia: dalla ballata intima al rock che fa saltare tutti. <strong className="text-foreground">Funziona sempre.</strong>
               </p>
               <ul className="space-y-2 text-sm text-foreground/80">
-                <li className="flex items-center gap-2"><Zap className="w-4 h-4 text-secondary" /> Sound pieno</li>
-                <li className="flex items-center gap-2"><Zap className="w-4 h-4 text-secondary" /> Ritmo travolgente</li>
-                <li className="flex items-center gap-2"><Zap className="w-4 h-4 text-secondary" /> Perfetto per ballare</li>
+                <li className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> Versatilità totale</li>
+                <li className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> Setup veloce e leggero</li>
+                <li className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> Perfetto per ogni contesto</li>
+                <li className="flex items-center gap-2"><Sparkles className="w-4 h-4 text-primary" /> Interazione col pubblico</li>
               </ul>
+              <div className="mt-6 pt-6 border-t border-border">
+                <Link to="/">
+                  <Button variant="outline" className="w-full border-primary text-primary hover:bg-primary hover:text-primary-foreground">
+                    Scopri Non C'è Duo →
+                  </Button>
+                </Link>
+              </div>
             </div>
 
-            {/* Full Band */}
-            <div className="group relative p-8 rounded-2xl bg-card border border-border hover:border-accent/50 transition-all duration-300 hover:shadow-lg hover:shadow-accent/10">
+            {/* Party Band */}
+            <div className="group relative p-8 rounded-2xl bg-card border border-border hover:border-secondary/50 transition-all duration-300 hover:shadow-lg hover:shadow-secondary/10">
               <div className="absolute top-4 right-4">
-                <span className="px-3 py-1 text-xs font-medium rounded-full bg-accent/20 text-accent">Premium</span>
+                <span className="px-3 py-1 text-xs font-medium rounded-full bg-secondary/20 text-secondary">Extra Power</span>
               </div>
-              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-accent/20 to-primary/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                <Volume2 className="w-8 h-8 text-accent" />
+              <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-secondary/20 to-accent/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                <Volume2 className="w-8 h-8 text-secondary" />
               </div>
-              <h3 className="font-display text-2xl font-bold mb-2 text-foreground">Full Band</h3>
-              <p className="text-3xl font-bold neon-text-purple mb-4">5-6</p>
+              <h3 className="font-display text-2xl font-bold mb-2 text-foreground">Non C'è Band</h3>
+              <p className="text-3xl font-bold neon-text-cyan mb-4">4-6 musicisti</p>
               <p className="text-muted-foreground text-sm mb-6">
-                Formazione completa con tastiere, fiati e coriste per grandi eventi e matrimoni spettacolari.
+                Quando vuoi alzare il volume. Aggiungiamo batteria, basso, tastiere per un sound pieno e <strong className="text-foreground">travolgente</strong>.
               </p>
               <ul className="space-y-2 text-sm text-foreground/80">
-                <li className="flex items-center gap-2"><Heart className="w-4 h-4 text-accent" /> Spettacolo completo</li>
-                <li className="flex items-center gap-2"><Heart className="w-4 h-4 text-accent" /> Arrangiamenti ricchi</li>
-                <li className="flex items-center gap-2"><Heart className="w-4 h-4 text-accent" /> Impatto massimo</li>
+                <li className="flex items-center gap-2"><Zap className="w-4 h-4 text-secondary" /> Sound potente e pieno</li>
+                <li className="flex items-center gap-2"><Zap className="w-4 h-4 text-secondary" /> Batteria e basso live</li>
+                <li className="flex items-center gap-2"><Zap className="w-4 h-4 text-secondary" /> Perfetto per feste grandi</li>
+                <li className="flex items-center gap-2"><Zap className="w-4 h-4 text-secondary" /> Impatto massimo</li>
               </ul>
+              <div className="mt-6 pt-6 border-t border-border">
+                <a 
+                  href="https://wa.me/393807911941?text=Ciao!%20Vorrei%20info%20sulla%20formazione%20Party%20Band"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button className="w-full neon-button-cyan">
+                    <Phone className="w-4 h-4 mr-2" />
+                    Richiedi Info
+                  </Button>
+                </a>
+              </div>
             </div>
+          </div>
+
+          {/* Bottom note */}
+          <div className="mt-12 text-center">
+            <p className="text-muted-foreground">
+              💡 <strong className="text-foreground">Stesso repertorio, stessa energia</strong> — solo con più strumenti quando serve
+            </p>
           </div>
         </div>
       </section>

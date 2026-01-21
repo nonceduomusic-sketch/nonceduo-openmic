@@ -31,6 +31,12 @@ const Home: React.FC = () => {
               <button onClick={() => scrollToSection('services')} className="text-muted-foreground hover:text-foreground transition-colors">Dove Suoniamo</button>
               <button onClick={() => scrollToSection('gallery')} className="text-muted-foreground hover:text-foreground transition-colors">Gallery</button>
               <button onClick={() => scrollToSection('contact')} className="text-muted-foreground hover:text-foreground transition-colors">Contatti</button>
+              <Link to="/partyband">
+                <Button variant="outline" size="sm" className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground">
+                  <PartyPopper className="w-4 h-4 mr-2" />
+                  Party Band
+                </Button>
+              </Link>
               <Link to="/openmic">
                 <Button variant="outline" size="sm" className="border-primary text-primary hover:bg-primary hover:text-primary-foreground">
                   <Mic2 className="w-4 h-4 mr-2" />
@@ -45,6 +51,11 @@ const Home: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2 md:hidden">
+              <Link to="/partyband">
+                <Button variant="outline" size="sm" className="border-secondary text-secondary">
+                  <PartyPopper className="w-4 h-4" />
+                </Button>
+              </Link>
               <Link to="/openmic">
                 <Button variant="outline" size="sm" className="border-primary text-primary">
                   <Mic2 className="w-4 h-4" />
@@ -247,44 +258,37 @@ const Home: React.FC = () => {
             <div className="gradient-border rounded-2xl p-[2px] mb-10 max-w-2xl mx-auto">
               <div className="bg-card/90 backdrop-blur-sm rounded-2xl p-8">
                 <p className="text-lg text-foreground/90 leading-relaxed">
-                  Quando l'occasione richiede <strong className="text-primary">più potenza</strong>, 
-                  possiamo espanderci con batteria, basso e altri musicisti per creare 
-                  un <strong className="text-secondary">sound pieno e travolgente</strong>.
+                  Il duo funziona alla grande, ma quando vuoi <strong className="text-primary">alzare il volume</strong>, 
+                  possiamo espanderci a <strong className="text-secondary">4-6 musicisti</strong> con batteria, basso e tastiere 
+                  per un sound pieno e travolgente.
                 </p>
-                <div className="flex flex-wrap justify-center gap-4 mt-6 text-sm">
-                  <span className="px-3 py-1 rounded-full bg-primary/20 text-primary">🎸 Chitarre elettriche</span>
-                  <span className="px-3 py-1 rounded-full bg-secondary/20 text-secondary">🥁 Batteria live</span>
-                  <span className="px-3 py-1 rounded-full bg-accent/20 text-accent">🎹 Tastiere</span>
-                </div>
               </div>
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-3 gap-6 max-w-lg mx-auto mb-10">
+            <div className="flex flex-wrap justify-center gap-8 max-w-lg mx-auto mb-10">
               <div className="text-center">
-                <div className="font-display text-3xl md:text-4xl font-bold neon-text-cyan">2-6</div>
-                <div className="text-sm text-muted-foreground">Musicisti</div>
+                <div className="font-display text-3xl md:text-4xl font-bold neon-text-pink">2</div>
+                <div className="text-sm text-muted-foreground">Duo</div>
               </div>
+              <div className="text-center text-2xl text-muted-foreground self-center">→</div>
               <div className="text-center">
-                <div className="font-display text-3xl md:text-4xl font-bold neon-text-pink">100%</div>
-                <div className="text-sm text-muted-foreground">Live</div>
-              </div>
-              <div className="text-center">
-                <div className="font-display text-3xl md:text-4xl font-bold neon-text-purple">∞</div>
-                <div className="text-sm text-muted-foreground">Energia</div>
+                <div className="font-display text-3xl md:text-4xl font-bold neon-text-cyan">4-6</div>
+                <div className="text-sm text-muted-foreground">Band</div>
               </div>
             </div>
 
             {/* CTA */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                size="lg" 
-                className="neon-button-pink text-lg px-10 py-6 group"
-                onClick={() => scrollToSection('contact')}
-              >
-                <PartyPopper className="w-5 h-5 mr-2 group-hover:animate-bounce" />
-                Richiedi Party Band
-              </Button>
+              <Link to="/partyband">
+                <Button 
+                  size="lg" 
+                  className="neon-button-pink text-lg px-10 py-6 group w-full sm:w-auto"
+                >
+                  <PartyPopper className="w-5 h-5 mr-2 group-hover:animate-bounce" />
+                  Scopri Party Band
+                </Button>
+              </Link>
               <a 
                 href="https://wa.me/393807911941?text=Ciao!%20Vorrei%20info%20sulla%20formazione%20Party%20Band"
                 target="_blank"
@@ -293,7 +297,7 @@ const Home: React.FC = () => {
                 <Button 
                   size="lg" 
                   variant="outline"
-                  className="text-lg px-10 py-6 border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground w-full"
+                  className="text-lg px-10 py-6 border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground w-full sm:w-auto"
                 >
                   <Phone className="w-5 h-5 mr-2" />
                   WhatsApp Diretto
