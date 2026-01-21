@@ -77,7 +77,7 @@ export const AdminDashboard: React.FC = () => {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [lastAction, setLastAction] = useState<UndoAction | null>(null);
-  const [unreadMessageCount, setUnreadMessageCount] = useState(0);
+  // unreadConvCount is calculated via useMemo from conversations
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   );
@@ -152,11 +152,14 @@ export const AdminDashboard: React.FC = () => {
     };
   }, [conversations]);
 
-  // Update unread count from conversations (use the correct count from useConversations)
-  useEffect(() => {
-    const unreadConvs = getUnreadConversations();
-    setUnreadMessageCount(unreadConvs.length);
-  }, [conversations, getUnreadConversations]);
+  // Calculate unread count directly from conversations
+  const unreadConvCount = React.useMemo(() => {
+    return conversations.filter(conv => {
+      if (!conv.messages || conv.messages.length === 0) return false;
+      const lastMessage = conv.messages[0];
+      return lastMessage.sender_type === 'user';
+    }).length;
+  }, [conversations]);
 
   // Clear selection when changing tabs
   useEffect(() => {
@@ -627,9 +630,9 @@ export const AdminDashboard: React.FC = () => {
             >
               <MessageCircle className="w-4 h-4 inline-block sm:mr-1" />
               <span className="hidden sm:inline">Messaggi</span>
-              {unreadMessageCount > 0 && (
+              {unreadConvCount > 0 && (
                 <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-destructive text-destructive-foreground">
-                  {unreadMessageCount}
+                  {unreadConvCount}
                 </span>
               )}
             </button>
@@ -748,7 +751,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
           )
         ) : mainTab === 'messages' ? (
-          <AdminMessagesTab onUnreadCountChange={setUnreadMessageCount} />
+          <AdminMessagesTab />
         ) : mainTab === 'songs' ? (
           <AdminSongManagementTab />
         ) : mainTab === 'settings' ? (
