@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { SEO } from '@/components/SEO';
+import { UserLoginIndicator } from '@/components/UserLoginIndicator';
 import { 
   Users, 
   MessageCircle, 
@@ -61,11 +62,7 @@ const Social: React.FC = () => {
               <Link to="/" className="text-2xl font-bold font-orbitron neon-text-pink">
                 NON CE DUO
               </Link>
-              <Link to="/social/auth">
-                <Button variant="outline" size="sm" className="border-primary/50 hover:border-primary">
-                  Accedi
-                </Button>
-              </Link>
+              <UserLoginIndicator />
             </nav>
           </header>
 
