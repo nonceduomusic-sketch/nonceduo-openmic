@@ -8,6 +8,9 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { SEO } from '@/components/SEO';
 import { useToast } from '@/hooks/use-toast';
+import { SocialFeed } from '@/components/SocialFeed';
+import { UserSearch } from '@/components/UserSearch';
+import { FriendRequests } from '@/components/FriendRequests';
 import { 
   Home,
   MessageCircle, 
@@ -19,7 +22,9 @@ import {
   ExternalLink,
   Sparkles,
   RefreshCw,
-  Circle
+  Circle,
+  UserPlus,
+  Newspaper
 } from 'lucide-react';
 
 interface Profile {
@@ -42,7 +47,7 @@ const SocialDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Profile[]>([]);
-  const [activeTab, setActiveTab] = useState<'home' | 'members' | 'staff' | 'profile'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'feed' | 'members' | 'friends' | 'staff' | 'profile'>('home');
 
   // Auth state management
   useEffect(() => {
@@ -277,7 +282,7 @@ const SocialDashboard: React.FC = () => {
           <div className="flex items-center justify-around py-2">
             <button
               onClick={() => setActiveTab('home')}
-              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${
                 activeTab === 'home' ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
@@ -285,26 +290,35 @@ const SocialDashboard: React.FC = () => {
               <span className="text-xs">Home</span>
             </button>
             <button
+              onClick={() => setActiveTab('feed')}
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${
+                activeTab === 'feed' ? 'text-primary' : 'text-muted-foreground'
+              }`}
+            >
+              <Newspaper className="w-5 h-5" />
+              <span className="text-xs">Bacheca</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('friends')}
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${
+                activeTab === 'friends' ? 'text-primary' : 'text-muted-foreground'
+              }`}
+            >
+              <UserPlus className="w-5 h-5" />
+              <span className="text-xs">Amici</span>
+            </button>
+            <button
               onClick={() => setActiveTab('members')}
-              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${
                 activeTab === 'members' ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
               <Users className="w-5 h-5" />
-              <span className="text-xs">Membri</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('staff')}
-              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
-                activeTab === 'staff' ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              <MessageCircle className="w-5 h-5" />
-              <span className="text-xs">Staff</span>
+              <span className="text-xs">Cerca</span>
             </button>
             <button
               onClick={() => setActiveTab('profile')}
-              className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${
                 activeTab === 'profile' ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
@@ -333,6 +347,30 @@ const SocialDashboard: React.FC = () => {
                       <Sparkles className="w-4 h-4" />
                       <span>Home</span>
                     </button>
+
+                    <button
+                      onClick={() => setActiveTab('feed')}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${
+                        activeTab === 'feed'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'hover:bg-muted'
+                      }`}
+                    >
+                      <Newspaper className="w-4 h-4" />
+                      <span>Bacheca</span>
+                    </button>
+
+                    <button
+                      onClick={() => setActiveTab('friends')}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${
+                        activeTab === 'friends'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'hover:bg-muted'
+                      }`}
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      <span>Amici</span>
+                    </button>
                     
                     <button
                       onClick={() => setActiveTab('members')}
@@ -343,10 +381,7 @@ const SocialDashboard: React.FC = () => {
                       }`}
                     >
                       <Users className="w-4 h-4" />
-                      <span>Membri</span>
-                      <Badge variant="secondary" className="ml-auto text-xs">
-                        {onlineUsers.filter(u => u.is_online).length}
-                      </Badge>
+                      <span>Cerca utenti</span>
                     </button>
                     
                     <button
@@ -490,16 +525,39 @@ const SocialDashboard: React.FC = () => {
                 </>
               )}
 
-              {/* MEMBERS TAB */}
+              {/* FEED TAB */}
+              {activeTab === 'feed' && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <Newspaper className="w-5 h-5" />
+                    Bacheca
+                  </h2>
+                  <SocialFeed userId={user?.id} />
+                </div>
+              )}
+
+              {/* FRIENDS TAB */}
+              {activeTab === 'friends' && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <UserPlus className="w-5 h-5" />
+                    Amici e Richieste
+                  </h2>
+                  <FriendRequests userId={user?.id} />
+                </div>
+              )}
+
+              {/* MEMBERS TAB - Search */}
               {activeTab === 'members' && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Users className="w-5 h-5" />
-                      Membri della Community
+                      Cerca Utenti
                     </CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-4">
+                    <UserSearch currentUserId={user?.id} />
                     {onlineUsers.length === 0 ? (
                       <div className="text-center py-8">
                         <Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
