@@ -33,7 +33,9 @@ export const AdminSongManagementTab: React.FC = () => {
     activeReservations, 
     completedReservations,
     completeReservation,
+    reactivateReservation,
     deleteReservation,
+    restoreReservation,
     resetAllReservations,
     loading 
   } = useReservations();
@@ -97,24 +99,85 @@ export const AdminSongManagementTab: React.FC = () => {
   const bookedCount = activeReservations.length;
   const completedCount = completedReservations.length;
 
-  const handleUnlockSong = async (reservation: Reservation) => {
-    // Complete the reservation to unlock the song
+  const handleCompleteSong = async (reservation: Reservation) => {
+    const previousStatus = reservation.status;
     const success = await completeReservation(reservation.id);
+    if (success) {
+      toast({
+        title: 'Canzone completata',
+        description: `"${reservation.song_title}" segnata come cantata.`,
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              await reactivateReservation(reservation.id);
+              toast({
+                title: 'Ripristinato',
+                description: `"${reservation.song_title}" è di nuovo in coda.`,
+              });
+            }}
+            className="shrink-0"
+          >
+            Annulla
+          </Button>
+        ),
+      });
+    }
+  };
+
+  const handleUnlockSong = async (reservation: Reservation) => {
+    // Delete the reservation to unlock the song
+    const reservationCopy = { ...reservation };
+    const success = await deleteReservation(reservation.id);
     if (success) {
       toast({
         title: 'Canzone sbloccata',
         description: `"${reservation.song_title}" è ora disponibile.`,
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              await restoreReservation(reservationCopy);
+              toast({
+                title: 'Ripristinato',
+                description: `"${reservationCopy.song_title}" prenotazione ripristinata.`,
+              });
+            }}
+            className="shrink-0"
+          >
+            Annulla
+          </Button>
+        ),
       });
     }
   };
 
   const handleReleaseSong = async (reservation: Reservation) => {
     // Delete the reservation entirely
+    const reservationCopy = { ...reservation };
     const success = await deleteReservation(reservation.id);
     if (success) {
       toast({
-        title: 'Prenotazione annullata',
+        title: 'Prenotazione rimossa',
         description: `"${reservation.song_title}" è di nuovo disponibile.`,
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              await restoreReservation(reservationCopy);
+              toast({
+                title: 'Ripristinato',
+                description: `"${reservationCopy.song_title}" prenotazione ripristinata.`,
+              });
+            }}
+            className="shrink-0"
+          >
+            Annulla
+          </Button>
+        ),
       });
     }
   };
@@ -281,7 +344,7 @@ export const AdminSongManagementTab: React.FC = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => handleUnlockSong(song.reservation!)}
+                        onClick={() => handleCompleteSong(song.reservation!)}
                         className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground h-8 text-xs"
                       >
                         <CheckCircle className="w-3 h-3 mr-1" />
