@@ -168,10 +168,11 @@ serve(async (req: Request): Promise<Response> => {
       }
 
       case "resetAll": {
+        // Use gte with minimum UUID to delete all records (empty string is invalid for UUID)
         const { error } = await supabase
           .from("reservations")
           .delete()
-          .neq("id", "");
+          .gte("id", "00000000-0000-0000-0000-000000000000");
 
         if (error) {
           console.error("Error resetting all reservations:", error);
