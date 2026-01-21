@@ -9,6 +9,7 @@ import Messages from "./pages/Messages";
 import Admin from "./pages/Admin";
 import AdminReset from "./pages/AdminReset";
 import JoinChat from "./pages/JoinChat";
+import PartyBand from "./pages/PartyBand";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,6 +22,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/partyband" element={<PartyBand />} />
           <Route path="/openmic" element={<OpenMic />} />
           <Route path="/messaggi" element={<Messages />} />
           <Route path="/join/:code" element={<JoinChat />} />
