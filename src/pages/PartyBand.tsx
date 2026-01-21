@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Music, Phone, Mail, Instagram, PartyPopper, Users, Sparkles, Volume2, ArrowLeft, ChevronDown, Mic2, Zap, Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SEO } from '@/components/SEO';
+import { TestimonialsSection } from '@/components/TestimonialsSection';
 
 const PartyBand: React.FC = () => {
   const scrollToSection = (id: string) => {
@@ -252,6 +253,9 @@ const PartyBand: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {/* Testimonials Section */}
+      <TestimonialsSection variant="partyband" />
 
       {/* CTA Section */}
       <section id="contact" className="py-24 relative overflow-hidden">

@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Music, MapPin, PartyPopper, Heart, Users, Phone, Mail, Instagram, ChevronDown, Mic2, Settings, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SocialCTA } from '@/components/SocialCTA';
+import { TestimonialsSection } from '@/components/TestimonialsSection';
 
 import duoPhoto1 from '@/assets/duo-photo-1.png';
 import duoPhoto2 from '@/assets/duo-photo-2.png';
@@ -314,8 +315,11 @@ const Home: React.FC = () => {
         </div>
       </section>
 
+      {/* Testimonials Section */}
+      <TestimonialsSection />
+
       {/* Gallery Section */}
-      <section id="gallery" className="py-24 bg-card/30">
+      <section id="gallery" className="py-24">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 text-foreground">
