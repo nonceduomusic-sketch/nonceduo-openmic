@@ -16,6 +16,7 @@ import {
   Settings,
   ListMusic,
   Bell,
+  ExternalLink,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAdmin } from '@/contexts/AdminContext';
@@ -453,6 +454,7 @@ export const AdminDashboard: React.FC = () => {
               >
                 <Home className="w-4 h-4 md:mr-2" />
                 <span className="hidden md:inline">Open Mic</span>
+                <ExternalLink className="w-3 h-3 ml-1 opacity-60" />
               </Button>
 
               {/* Undo button - visible when there's an action to undo (only for Open Mic tab) */}
