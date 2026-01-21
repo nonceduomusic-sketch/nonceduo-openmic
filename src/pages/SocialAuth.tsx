@@ -355,6 +355,17 @@ const SocialAuth: React.FC = () => {
                 >
                   Ho confermato, vai al login
                 </Button>
+                <Button 
+                  variant="ghost" 
+                  className="w-full text-muted-foreground"
+                  onClick={() => {
+                    setConfirmationPending(false);
+                    setActiveTab('signup');
+                  }}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Email sbagliata? Torna indietro
+                </Button>
                 <p className="text-xs text-muted-foreground">
                   Non hai ricevuto l'email? Controlla la cartella spam.
                 </p>
