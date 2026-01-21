@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Send, MessageCircle, Edit2, Check, X, Users, Globe, Ban, Circle } from 'lucide-react';
+import { ArrowLeft, Send, MessageCircle, Edit2, Check, X, Users, Globe, Ban, Circle, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -33,7 +33,7 @@ const Messages: React.FC = () => {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
-  const [activeTab, setActiveTab] = useState<'private' | 'public'>('private');
+  const [showNewMessageForm, setShowNewMessageForm] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Map<string, OnlineUser[]>>(new Map());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const presenceChannelRef = useRef<any>(null);
@@ -68,7 +68,6 @@ const Messages: React.FC = () => {
     };
 
     const generateId = () => {
-      // Prefer native UUID when available
       try {
         const randomUUID = (crypto as any)?.randomUUID as undefined | (() => string);
         if (typeof randomUUID === 'function') return randomUUID();
@@ -76,7 +75,6 @@ const Messages: React.FC = () => {
         // ignore
       }
 
-      // Fallback: RFC4122-ish v4 using getRandomValues
       try {
         if (typeof crypto !== 'undefined' && 'getRandomValues' in crypto) {
           const bytes = new Uint8Array(16);
@@ -90,7 +88,6 @@ const Messages: React.FC = () => {
         // ignore
       }
 
-      // Last resort
       return `${Date.now()}-${Math.random().toString(16).slice(2)}-${Math.random().toString(16).slice(2)}`;
     };
 
@@ -170,6 +167,13 @@ const Messages: React.FC = () => {
     }
   }, [conversations, selectedConversation?.id]);
 
+  // If no conversations exist, show the new message form automatically
+  useEffect(() => {
+    if (!loading && conversations.length === 0 && publicGroups.length === 0) {
+      setShowNewMessageForm(true);
+    }
+  }, [loading, conversations.length, publicGroups.length]);
+
   const handleSubmitNew = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -191,7 +195,6 @@ const Messages: React.FC = () => {
     setIsSubmitting(true);
     localStorage.setItem('user_name', validation.data.sender_name);
     
-    // startConversation now returns the full conversation object
     const newConversation = await startConversation(
       validation.data.sender_name,
       validation.data.message_text,
@@ -200,7 +203,7 @@ const Messages: React.FC = () => {
     
     if (newConversation) {
       setMessage('');
-      // Directly use the returned conversation object
+      setShowNewMessageForm(false);
       setSelectedConversation(newConversation);
     }
     
@@ -256,8 +259,6 @@ const Messages: React.FC = () => {
     localStorage.setItem('user_name', name);
     const success = await joinPublicGroup(conv.id, name, userSessionId);
     if (success) {
-      // After joining, set the conversation directly and switch to private tab
-      // The conversation should now be in the conversations list after fetch
       const safeTempId = (() => {
         try {
           const randomUUID = (crypto as any)?.randomUUID as undefined | (() => string);
@@ -281,7 +282,6 @@ const Messages: React.FC = () => {
           }
         ]
       });
-      setActiveTab('private');
     }
   };
 
@@ -306,6 +306,8 @@ const Messages: React.FC = () => {
   };
 
   const userConversations = conversations;
+  const allConversations = [...userConversations];
+  const hasConversations = allConversations.length > 0 || publicGroups.length > 0;
 
   if (loading) {
     return (
@@ -315,18 +317,348 @@ const Messages: React.FC = () => {
     );
   }
 
+  // Determine what to show based on current state
+  const renderMainContent = () => {
+    // Chat view (selected conversation)
+    if (selectedConversation) {
+      const messages = [...(selectedConversation.messages || [])].reverse();
+      const online = onlineUsers.get(selectedConversation.id) || [];
+
+      return (
+        <div className="flex flex-col h-full">
+          {/* Messages area */}
+          <ScrollArea className="flex-1 px-4">
+            <div className="space-y-4 py-4">
+              {messages.length === 0 ? (
+                <div className="text-center py-8">
+                  <MessageCircle className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                  <p className="text-muted-foreground">Nessun messaggio</p>
+                </div>
+              ) : (
+                messages.map((msg) => {
+                  const isOwnMessage = msg.sender_session_id === userSessionId;
+                  const isAdmin = msg.sender_type === 'admin';
+                  const isEditing = editingMessageId === msg.id;
+                  
+                  return (
+                    <div
+                      key={msg.id}
+                      className={`flex ${isOwnMessage || isAdmin ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                          isAdmin
+                            ? 'bg-secondary text-secondary-foreground rounded-br-none'
+                            : isOwnMessage
+                              ? 'bg-primary text-primary-foreground rounded-br-none'
+                              : 'bg-muted text-foreground rounded-bl-none'
+                        }`}
+                      >
+                        {/* Sender name for group chats or admin */}
+                        {(selectedConversation.is_group || isAdmin) && !isOwnMessage && (
+                          <p className={`text-xs font-semibold mb-1 ${isAdmin ? 'text-secondary-foreground/70' : 'text-muted-foreground'}`}>
+                            {isAdmin ? '👤 Staff' : msg.sender_name}
+                          </p>
+                        )}
+                        {isAdmin && isOwnMessage && (
+                          <p className="text-xs font-semibold mb-1 text-secondary-foreground/70">
+                            👤 Staff
+                          </p>
+                        )}
+                        
+                        {isEditing ? (
+                          <div className="space-y-2">
+                            <Input
+                              value={editText}
+                              onChange={(e) => setEditText(e.target.value)}
+                              className="bg-background/50 text-foreground"
+                            />
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => handleSaveEdit(msg.id)}
+                                className="h-7"
+                              >
+                                <Check className="w-3 h-3" />
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={handleCancelEdit}
+                                className="h-7"
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="break-words">{msg.message_text}</p>
+                            <div className="flex items-center justify-end gap-2 mt-1">
+                              <span className={`text-[10px] ${
+                                isAdmin ? 'text-secondary-foreground/50' : 
+                                isOwnMessage ? 'text-primary-foreground/50' : 'text-muted-foreground'
+                              }`}>
+                                {new Date(msg.created_at).toLocaleTimeString('it-IT', { 
+                                  hour: '2-digit', 
+                                  minute: '2-digit' 
+                                })}
+                                {msg.edited_at && ' (modificato)'}
+                              </span>
+                              {isOwnMessage && !isAdmin && (
+                                <button
+                                  onClick={() => handleStartEdit(msg)}
+                                  className="opacity-50 hover:opacity-100 transition-opacity"
+                                >
+                                  <Edit2 className="w-3 h-3" />
+                                </button>
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </ScrollArea>
+
+          {/* Reply form */}
+          <div className="p-4 border-t border-border bg-card/50">
+            <form onSubmit={handleSendReply} className="flex gap-2">
+              <Input
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                placeholder="Scrivi un messaggio..."
+                className="flex-1 bg-muted border-border"
+                disabled={isBlocked || isSubmitting}
+              />
+              <Button
+                type="submit"
+                disabled={!message.trim() || isSubmitting || isBlocked}
+                className="neon-button-cyan"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    // New message form view
+    if (showNewMessageForm) {
+      return (
+        <div className="space-y-6">
+          <div className="glass-card p-6 neon-border-cyan border">
+            <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-secondary" />
+              Nuovo Messaggio
+            </h2>
+            
+            <form onSubmit={handleSubmitNew} className="space-y-4">
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium mb-2">
+                  Il tuo nome
+                </label>
+                <Input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Come ti chiami?"
+                  className="bg-muted border-border focus:border-secondary focus:ring-secondary"
+                  disabled={isBlocked}
+                />
+              </div>
+              
+              <div>
+                <label htmlFor="message" className="block text-sm font-medium mb-2">
+                  Il tuo messaggio
+                </label>
+                <Textarea
+                  id="message"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Scrivi qui il tuo messaggio..."
+                  className="bg-muted border-border focus:border-secondary focus:ring-secondary min-h-[120px]"
+                  disabled={isBlocked}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  {message.length}/500 caratteri
+                </p>
+              </div>
+              
+              <div className="flex gap-2">
+                {hasConversations && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setShowNewMessageForm(false)}
+                    className="flex-1"
+                  >
+                    Annulla
+                  </Button>
+                )}
+                <Button
+                  type="submit"
+                  disabled={!name.trim() || !message.trim() || isSubmitting || isBlocked}
+                  className={`neon-button-cyan h-12 font-display font-semibold ${hasConversations ? 'flex-1' : 'w-full'}`}
+                >
+                  <Send className="w-4 h-4 mr-2" />
+                  {isSubmitting ? 'Invio...' : 'Invia'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    // Conversations list view (default)
+    return (
+      <div className="space-y-4">
+        {/* New message CTA */}
+        <Button
+          onClick={() => setShowNewMessageForm(true)}
+          className="w-full neon-button-cyan h-12 font-display font-semibold"
+          disabled={isBlocked}
+        >
+          <Plus className="w-5 h-5 mr-2" />
+          Nuovo Messaggio
+        </Button>
+
+        {/* Public groups available */}
+        {publicGroups.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+              Gruppi pubblici
+            </p>
+            {publicGroups.map((group) => {
+              const isJoined = group.participants?.some(p => p.session_id === userSessionId);
+              return (
+                <button
+                  key={group.id}
+                  onClick={() => isJoined ? setSelectedConversation(group) : handleJoinGroup(group)}
+                  className="w-full glass-card p-4 text-left hover:border-secondary transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
+                      <Globe className="w-5 h-5 text-secondary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-foreground">{group.name}</span>
+                        {!isJoined && (
+                          <span className="text-xs text-secondary font-medium">Unisciti →</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {group.participants?.length || 0} partecipanti
+                      </p>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Existing conversations */}
+        {userConversations.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+              Le tue conversazioni
+            </p>
+            {userConversations.map((conv) => (
+              <button
+                key={conv.id}
+                onClick={() => setSelectedConversation(conv)}
+                className="w-full glass-card p-4 text-left hover:border-primary transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                    conv.is_group ? 'bg-secondary/20' : 'bg-primary/20'
+                  }`}>
+                    {conv.is_group ? (
+                      <Users className="w-5 h-5 text-secondary" />
+                    ) : (
+                      <MessageCircle className="w-5 h-5 text-primary" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-foreground">
+                          {conv.is_group ? conv.name : 'Chat con Staff'}
+                        </span>
+                        {conv.is_group && conv.is_public && (
+                          <Globe className="w-3 h-3 text-secondary" />
+                        )}
+                      </div>
+                      {conv.last_message && (
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(conv.last_message.created_at).toLocaleDateString('it-IT')}
+                        </span>
+                      )}
+                    </div>
+                    {conv.last_message && (
+                      <p className="text-sm text-muted-foreground truncate">
+                        {conv.last_message.sender_type === 'admin' ? 'Staff: ' : ''}
+                        {conv.last_message.message_text}
+                      </p>
+                    )}
+                  </div>
+                  {conv.last_message?.sender_type === 'admin' && (
+                    <div className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Empty state */}
+        {!hasConversations && !showNewMessageForm && (
+          <div className="text-center py-12">
+            <MessageCircle className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+            <p className="text-muted-foreground">
+              Nessuna conversazione ancora
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Clicca "Nuovo Messaggio" per iniziare
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Determine back navigation
+  const handleBack = () => {
+    if (selectedConversation) {
+      setSelectedConversation(null);
+    } else if (showNewMessageForm && hasConversations) {
+      setShowNewMessageForm(false);
+    }
+  };
+
+  const showBackToList = selectedConversation || (showNewMessageForm && hasConversations);
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-card/90 backdrop-blur-md border-b border-border">
         <div className="container py-4">
           <div className="flex items-center gap-4">
-            {selectedConversation ? (
+            {showBackToList ? (
               <Button 
                 variant="ghost" 
                 size="icon" 
                 className="text-muted-foreground hover:text-foreground"
-                onClick={() => setSelectedConversation(null)}
+                onClick={handleBack}
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
@@ -342,15 +674,19 @@ const Messages: React.FC = () => {
                 {selectedConversation 
                   ? (selectedConversation.is_group 
                       ? selectedConversation.name 
-                      : 'Chat con lo Staff')
-                  : 'Chat'}
+                      : 'Chat con Staff')
+                  : showNewMessageForm
+                    ? 'Nuovo Messaggio'
+                    : 'Messaggi'}
               </h1>
               <p className="text-sm text-muted-foreground">
                 {selectedConversation 
                   ? (selectedConversation.is_group && selectedConversation.participants
                       ? `${selectedConversation.participants.length} partecipanti`
                       : 'Conversazione attiva')
-                  : 'Messaggi privati e gruppi pubblici'}
+                  : showNewMessageForm
+                    ? 'Scrivi allo staff'
+                    : `${userConversations.length} conversazion${userConversations.length === 1 ? 'e' : 'i'}`}
               </p>
             </div>
             
@@ -388,416 +724,7 @@ const Messages: React.FC = () => {
       )}
 
       <main className="flex-1 container py-6 max-w-lg mx-auto flex flex-col">
-        {!selectedConversation ? (
-          // Conversation list view
-          <div className="space-y-6">
-            {/* Tabs */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setActiveTab('private')}
-                className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${
-                  activeTab === 'private'
-                    ? 'bg-primary text-primary-foreground neon-glow-pink'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                }`}
-              >
-                <MessageCircle className="w-4 h-4" />
-                Privato
-              </button>
-              <button
-                onClick={() => setActiveTab('public')}
-                className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${
-                  activeTab === 'public'
-                    ? 'bg-secondary text-secondary-foreground neon-glow-cyan'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                }`}
-              >
-                <Globe className="w-4 h-4" />
-                Pubblico ({publicGroups.length})
-              </button>
-            </div>
-
-            {activeTab === 'private' ? (
-              <>
-                {/* New message form */}
-                <div className="glass-card p-6 neon-border-cyan border">
-                  <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
-                    <MessageCircle className="w-5 h-5 text-secondary" />
-                    Scrivi allo Staff
-                  </h2>
-                  
-                  <form onSubmit={handleSubmitNew} className="space-y-4">
-                    <div>
-                      <label htmlFor="name" className="block text-sm font-medium mb-2">
-                        Il tuo nome o nickname
-                      </label>
-                      <Input
-                        id="name"
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Come ti chiami?"
-                        className="bg-muted border-border focus:border-secondary focus:ring-secondary"
-                        disabled={isBlocked}
-                      />
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="message" className="block text-sm font-medium mb-2">
-                        Il tuo messaggio
-                      </label>
-                      <Textarea
-                        id="message"
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        placeholder="Scrivi qui il tuo messaggio..."
-                        className="bg-muted border-border focus:border-secondary focus:ring-secondary min-h-[120px]"
-                        disabled={isBlocked}
-                      />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {message.length}/500 caratteri
-                      </p>
-                    </div>
-                    
-                    <Button
-                      type="submit"
-                      disabled={!name.trim() || !message.trim() || isSubmitting || isBlocked}
-                      className="w-full neon-button-cyan h-12 font-display font-semibold"
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      {isSubmitting ? 'Invio...' : 'Invia Messaggio'}
-                    </Button>
-                  </form>
-                </div>
-
-                {/* Public groups banner */}
-                {publicGroups.length > 0 && (
-                  <button
-                    onClick={() => setActiveTab('public')}
-                    className="w-full glass-card p-4 neon-border-cyan border text-left hover:border-secondary transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
-                        <Globe className="w-5 h-5 text-secondary" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-semibold text-foreground">
-                          {publicGroups.length} gruppo{publicGroups.length > 1 ? 'i' : ''} pubblico{publicGroups.length > 1 ? 'i' : ''} disponibile{publicGroups.length > 1 ? 'i' : ''}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                          Clicca per vedere e partecipare
-                        </p>
-                      </div>
-                      <div className="text-secondary font-medium">
-                        Vai →
-                      </div>
-                    </div>
-                  </button>
-                )}
-
-                {/* Existing conversations */}
-                {userConversations.length > 0 && (
-                  <div className="space-y-4">
-                    <h2 className="font-display text-lg font-semibold flex items-center gap-2">
-                      <MessageCircle className="w-5 h-5 text-primary" />
-                      Le tue conversazioni
-                    </h2>
-                    
-                    {userConversations.map((conv) => (
-                      <button
-                        key={conv.id}
-                        onClick={() => setSelectedConversation(conv)}
-                        className="w-full glass-card p-4 text-left hover:border-primary transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            conv.is_group ? 'bg-secondary/20' : 'bg-primary/20'
-                          }`}>
-                            {conv.is_group ? (
-                              <Users className="w-5 h-5 text-secondary" />
-                            ) : (
-                              <MessageCircle className="w-5 h-5 text-primary" />
-                            )}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2">
-                                <span className="font-semibold text-foreground">
-                                  {conv.is_group ? conv.name : 'Chat con Staff'}
-                                </span>
-                                {conv.is_group && conv.is_public && (
-                                  <Globe className="w-3 h-3 text-secondary" />
-                                )}
-                              </div>
-                              {conv.last_message && (
-                                <span className="text-xs text-muted-foreground">
-                                  {new Date(conv.last_message.created_at).toLocaleDateString('it-IT')}
-                                </span>
-                              )}
-                            </div>
-                            {conv.last_message && (
-                              <p className="text-sm text-muted-foreground truncate">
-                                {conv.last_message.sender_type === 'admin' ? 'Staff: ' : ''}
-                                {conv.last_message.message_text}
-                              </p>
-                            )}
-                          </div>
-                          {conv.last_message?.sender_type === 'admin' && (
-                            <div className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </>
-            ) : (
-              // Public groups tab
-              <div className="space-y-4">
-                {/* Name input for joining */}
-                <div className="glass-card p-4 neon-border-cyan border">
-                  <label htmlFor="name-public" className="block text-sm font-medium mb-2">
-                    Il tuo nome (per partecipare)
-                  </label>
-                  <Input
-                    id="name-public"
-                    type="text"
-                    value={name}
-                    onChange={(e) => {
-                      setName(e.target.value);
-                      localStorage.setItem('user_name', e.target.value);
-                    }}
-                    placeholder="Come ti chiami?"
-                    className="bg-muted border-border focus:border-secondary focus:ring-secondary"
-                    disabled={isBlocked}
-                  />
-                </div>
-
-                {/* User's joined public groups */}
-                {userConversations.filter(c => c.is_group && c.is_public).length > 0 && (
-                  <div className="space-y-3">
-                    <h3 className="font-display text-sm font-semibold text-secondary flex items-center gap-2">
-                      <Users className="w-4 h-4" />
-                      I tuoi gruppi
-                    </h3>
-                    {userConversations.filter(c => c.is_group && c.is_public).map((conv) => (
-                      <button
-                        key={conv.id}
-                        onClick={() => setSelectedConversation(conv)}
-                        className="w-full glass-card p-4 text-left hover:border-secondary transition-colors"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-secondary/20 flex items-center justify-center">
-                            <Globe className="w-5 h-5 text-secondary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-foreground">{conv.name}</span>
-                              <span className="text-xs bg-secondary/20 text-secondary px-2 py-0.5 rounded">Iscritto</span>
-                            </div>
-                            {conv.last_message && (
-                              <p className="text-sm text-muted-foreground truncate">
-                                {conv.last_message.sender_name}: {conv.last_message.message_text}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Available public groups to join */}
-                <div className="space-y-3">
-                  <h3 className="font-display text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                    <Globe className="w-4 h-4" />
-                    Gruppi disponibili
-                  </h3>
-                  {publicGroups.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Globe className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
-                      <p className="text-sm text-muted-foreground">
-                        Nessun nuovo gruppo disponibile
-                      </p>
-                    </div>
-                  ) : (
-                    publicGroups.map((conv) => (
-                      <div
-                        key={conv.id}
-                        className="glass-card p-4 neon-border-cyan border"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full flex items-center justify-center bg-secondary/20">
-                            <Globe className="w-5 h-5 text-secondary" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-foreground">
-                                {conv.name}
-                              </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {conv.participants?.length || 0} partecipanti • {conv.messages?.length || 0} messaggi
-                            </p>
-                            {conv.last_message && (
-                              <p className="text-sm text-muted-foreground truncate mt-1">
-                                {conv.last_message.sender_name}: {conv.last_message.message_text}
-                              </p>
-                            )}
-                          </div>
-                          <Button
-                            onClick={() => handleJoinGroup(conv)}
-                            disabled={!name.trim() || isBlocked}
-                            className="neon-button-cyan"
-                          >
-                            Entra
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        ) : (
-          // Chat view
-          <div className="flex-1 flex flex-col">
-            {/* Messages */}
-            <ScrollArea className="flex-1 mb-4">
-              <div className="space-y-4 pr-4">
-                {selectedConversation.messages?.slice().reverse().map((msg) => (
-                  <div
-                    key={msg.id}
-                    className={`flex ${msg.sender_type === 'user' && msg.sender_session_id === userSessionId ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-[80%] rounded-lg p-3 ${
-                        msg.sender_type === 'admin'
-                          ? 'bg-secondary/20 border border-secondary/30'
-                          : msg.sender_session_id === userSessionId
-                            ? 'bg-primary/20 border border-primary/30'
-                            : 'bg-muted border border-border'
-                      }`}
-                    >
-                      {/* Sender name for groups or admin */}
-                      {(selectedConversation.is_group || msg.sender_type === 'admin') && (
-                        <p className={`text-xs font-medium mb-1 ${
-                          msg.sender_type === 'admin' ? 'text-secondary' : 'text-primary'
-                        }`}>
-                          {msg.sender_type === 'admin' ? 'Staff' : msg.sender_name}
-                        </p>
-                      )}
-                      
-                      {editingMessageId === msg.id ? (
-                        // Edit mode
-                        <div className="space-y-2">
-                          <Textarea
-                            value={editText}
-                            onChange={(e) => setEditText(e.target.value)}
-                            className="min-h-[60px] bg-background"
-                          />
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => handleSaveEdit(msg.id)}
-                              className="h-8"
-                            >
-                              <Check className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={handleCancelEdit}
-                              className="h-8"
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      ) : (
-                        // Display mode
-                        <>
-                          <p className="text-foreground whitespace-pre-wrap break-words">
-                            {msg.message_text}
-                          </p>
-                          <div className="flex items-center justify-between mt-1 gap-2">
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(msg.created_at).toLocaleTimeString('it-IT', { 
-                                hour: '2-digit', 
-                                minute: '2-digit' 
-                              })}
-                              {msg.edited_at && ' (modificato)'}
-                            </span>
-                            {/* Edit button for user's own messages */}
-                            {msg.sender_type === 'user' && msg.sender_session_id === userSessionId && !isBlocked && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => handleStartEdit(msg)}
-                                className="h-6 px-2 text-muted-foreground hover:text-foreground"
-                              >
-                                <Edit2 className="w-3 h-3" />
-                              </Button>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-                <div ref={messagesEndRef} />
-              </div>
-            </ScrollArea>
-
-            {/* Reply input */}
-            <form onSubmit={handleSendReply} className="glass-card p-4 border border-border">
-              {isBlocked ? (
-                <div className="flex items-center justify-center gap-2 text-destructive py-2">
-                  <Ban className="w-4 h-4" />
-                  <span className="text-sm">Non puoi inviare messaggi</span>
-                </div>
-              ) : !name.trim() ? (
-                <div className="space-y-2">
-                  <p className="text-sm text-muted-foreground">Inserisci il tuo nome per scrivere:</p>
-                  <div className="flex gap-2">
-                    <Input
-                      value={name}
-                      onChange={(e) => {
-                        setName(e.target.value);
-                        localStorage.setItem('user_name', e.target.value);
-                      }}
-                      placeholder="Il tuo nome..."
-                      className="bg-muted border-border"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="flex gap-2">
-                  <Textarea
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Scrivi un messaggio..."
-                    className="min-h-[44px] max-h-[120px] bg-muted border-border resize-none"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        handleSendReply(e);
-                      }
-                    }}
-                  />
-                  <Button
-                    type="submit"
-                    disabled={!message.trim() || isSubmitting}
-                    className="neon-button-cyan h-auto"
-                  >
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
-              )}
-            </form>
-          </div>
-        )}
+        {renderMainContent()}
       </main>
     </div>
   );
