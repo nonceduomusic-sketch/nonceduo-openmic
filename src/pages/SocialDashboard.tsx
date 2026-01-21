@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { SocialFeed } from '@/components/SocialFeed';
 import { UserSearch } from '@/components/UserSearch';
 import { FriendRequests } from '@/components/FriendRequests';
+import { PublicGroupsList } from '@/components/PublicGroupsList';
 import { 
   Home,
   MessageCircle, 
@@ -24,7 +25,8 @@ import {
   RefreshCw,
   Circle,
   UserPlus,
-  Newspaper
+  Newspaper,
+  MessagesSquare
 } from 'lucide-react';
 
 interface Profile {
@@ -47,7 +49,7 @@ const SocialDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Profile[]>([]);
-  const [activeTab, setActiveTab] = useState<'home' | 'feed' | 'members' | 'friends' | 'staff' | 'profile'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'feed' | 'groups' | 'members' | 'friends' | 'staff' | 'profile'>('home');
 
   // Auth state management
   useEffect(() => {
@@ -299,6 +301,15 @@ const SocialDashboard: React.FC = () => {
               <span className="text-xs">Bacheca</span>
             </button>
             <button
+              onClick={() => setActiveTab('groups')}
+              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${
+                activeTab === 'groups' ? 'text-primary' : 'text-muted-foreground'
+              }`}
+            >
+              <MessagesSquare className="w-5 h-5" />
+              <span className="text-xs">Gruppi</span>
+            </button>
+            <button
               onClick={() => setActiveTab('friends')}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${
                 activeTab === 'friends' ? 'text-primary' : 'text-muted-foreground'
@@ -308,13 +319,13 @@ const SocialDashboard: React.FC = () => {
               <span className="text-xs">Amici</span>
             </button>
             <button
-              onClick={() => setActiveTab('members')}
+              onClick={() => setActiveTab('profile')}
               className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${
-                activeTab === 'members' ? 'text-primary' : 'text-muted-foreground'
+                activeTab === 'profile' ? 'text-primary' : 'text-muted-foreground'
               }`}
             >
-              <Users className="w-5 h-5" />
-              <span className="text-xs">Cerca</span>
+              <Settings className="w-5 h-5" />
+              <span className="text-xs">Profilo</span>
             </button>
             <button
               onClick={() => setActiveTab('profile')}
@@ -358,6 +369,18 @@ const SocialDashboard: React.FC = () => {
                     >
                       <Newspaper className="w-4 h-4" />
                       <span>Bacheca</span>
+                    </button>
+
+                    <button
+                      onClick={() => setActiveTab('groups')}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm ${
+                        activeTab === 'groups'
+                          ? 'bg-primary text-primary-foreground'
+                          : 'hover:bg-muted'
+                      }`}
+                    >
+                      <MessagesSquare className="w-4 h-4" />
+                      <span>Gruppi</span>
                     </button>
 
                     <button
@@ -457,7 +480,20 @@ const SocialDashboard: React.FC = () => {
                   </Card>
 
                   {/* Quick Actions */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <Card 
+                      className="cursor-pointer hover:border-secondary/50 transition-colors"
+                      onClick={() => setActiveTab('groups')}
+                    >
+                      <CardContent className="p-4 text-center">
+                        <MessagesSquare className="w-8 h-8 text-secondary mx-auto mb-2" />
+                        <p className="font-medium text-sm">Gruppi</p>
+                        <p className="text-xs text-muted-foreground">
+                          Chat pubbliche
+                        </p>
+                      </CardContent>
+                    </Card>
+                    
                     <Card 
                       className="cursor-pointer hover:border-primary/50 transition-colors"
                       onClick={() => setActiveTab('members')}
@@ -476,7 +512,7 @@ const SocialDashboard: React.FC = () => {
                       onClick={() => setActiveTab('staff')}
                     >
                       <CardContent className="p-4 text-center">
-                        <Send className="w-8 h-8 text-secondary mx-auto mb-2" />
+                        <Send className="w-8 h-8 text-accent-foreground mx-auto mb-2" />
                         <p className="font-medium text-sm">Scrivi allo Staff</p>
                         <p className="text-xs text-muted-foreground">
                           Invia un messaggio
@@ -533,6 +569,28 @@ const SocialDashboard: React.FC = () => {
                     Bacheca
                   </h2>
                   <SocialFeed userId={user?.id} />
+                </div>
+              )}
+
+              {/* GROUPS TAB */}
+              {activeTab === 'groups' && (
+                <div className="space-y-4">
+                  <h2 className="text-lg font-semibold flex items-center gap-2">
+                    <MessagesSquare className="w-5 h-5" />
+                    Gruppi
+                  </h2>
+                  <PublicGroupsList 
+                    userSessionId={(() => {
+                      try {
+                        return localStorage.getItem('user_session_id') || undefined;
+                      } catch {
+                        return undefined;
+                      }
+                    })()}
+                    onJoinGroup={() => {
+                      // Optionally navigate to messages page after joining
+                    }}
+                  />
                 </div>
               )}
 
