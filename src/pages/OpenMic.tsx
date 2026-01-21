@@ -16,11 +16,20 @@ const OpenMic: React.FC = () => {
   
   const { activeReservations, completedReservations, loading } = useReservations();
 
+  // Normalize text for comparison (handle different apostrophe characters)
+  const normalizeText = (text: string) => {
+    return text.replace(/[''`´]/g, "'").toLowerCase().trim();
+  };
+
+  const getSongKey = (title: string, artist: string) => {
+    return `${normalizeText(title)}__${normalizeText(artist)}`;
+  };
+
   // Create maps for quick lookup of booked/completed songs
   const bookedSongs = useMemo(() => {
     const set = new Set<string>();
     activeReservations.forEach(res => {
-      set.add(`${res.song_title}__${res.song_artist}`);
+      set.add(getSongKey(res.song_title, res.song_artist));
     });
     return set;
   }, [activeReservations]);
@@ -28,7 +37,7 @@ const OpenMic: React.FC = () => {
   const completedSongs = useMemo(() => {
     const set = new Set<string>();
     completedReservations.forEach(res => {
-      set.add(`${res.song_title}__${res.song_artist}`);
+      set.add(getSongKey(res.song_title, res.song_artist));
     });
     return set;
   }, [completedReservations]);
@@ -48,11 +57,11 @@ const OpenMic: React.FC = () => {
   }, [search, artistFilter]);
 
   const isSongBooked = (song: Song) => {
-    return bookedSongs.has(`${song.title}__${song.artist}`);
+    return bookedSongs.has(getSongKey(song.title, song.artist));
   };
 
   const isSongCompleted = (song: Song) => {
-    return completedSongs.has(`${song.title}__${song.artist}`) && !isSongBooked(song);
+    return completedSongs.has(getSongKey(song.title, song.artist)) && !isSongBooked(song);
   };
 
   const handleBookSong = (song: Song) => {
