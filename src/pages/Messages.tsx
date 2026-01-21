@@ -15,6 +15,7 @@ import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { ChatScrollIndicator } from '@/components/ChatScrollIndicator';
 import { SocialCTA } from '@/components/SocialCTA';
 import { JoinGroupPasswordDialog } from '@/components/JoinGroupPasswordDialog';
+import { UserLoginIndicator } from '@/components/UserLoginIndicator';
 
 const messageSchema = z.object({
   sender_name: z.string().trim()
@@ -917,9 +918,9 @@ const Messages: React.FC = () => {
               </p>
             </div>
             
-            {/* Notification button and Online users indicator */}
+            {/* Login indicator and Notification button and Online users indicator */}
             <div className="flex items-center gap-2">
-              {/* Online users indicator */}
+              <UserLoginIndicator compact />
               {selectedConversation && (
                 <>
                   {(() => {

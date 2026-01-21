@@ -4,6 +4,7 @@ import { Music, MapPin, PartyPopper, Heart, Users, Phone, Mail, Instagram, Chevr
 import { Button } from '@/components/ui/button';
 import { SocialCTA } from '@/components/SocialCTA';
 import { TestimonialsSection } from '@/components/TestimonialsSection';
+import { UserLoginIndicator } from '@/components/UserLoginIndicator';
 
 import duoPhoto1 from '@/assets/duo-photo-1.png';
 import duoPhoto2 from '@/assets/duo-photo-2.png';
@@ -46,6 +47,7 @@ const Home: React.FC = () => {
                 </Button>
               </Link>
               <SocialCTA />
+              <UserLoginIndicator />
               <Link to="/admin">
                 <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground" title="Area Admin">
                   <Settings className="w-4 h-4" />
@@ -53,6 +55,7 @@ const Home: React.FC = () => {
               </Link>
             </div>
             <div className="flex items-center gap-2 md:hidden">
+              <UserLoginIndicator compact />
               <Link to="/partyband">
                 <Button variant="outline" size="sm" className="border-secondary text-secondary">
                   <PartyPopper className="w-4 h-4" />

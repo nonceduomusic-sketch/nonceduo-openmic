@@ -9,6 +9,7 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useReservationStatuses } from '@/hooks/useReservationStatuses';
 import { SEO } from '@/components/SEO';
+import { UserLoginIndicator } from '@/components/UserLoginIndicator';
 
 const OpenMic: React.FC = () => {
   const [search, setSearch] = useState('');
@@ -72,6 +73,7 @@ const OpenMic: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
+              <UserLoginIndicator compact />
               <Link to="/messaggi">
                 <Button 
                   variant="outline" 
