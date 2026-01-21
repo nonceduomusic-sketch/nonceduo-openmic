@@ -23,6 +23,7 @@ import {
   MessageSquare,
   Database,
   Crown,
+  Newspaper,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Users } from 'lucide-react';
@@ -40,6 +41,7 @@ import { AdminSettingsTab } from './AdminSettingsTab';
 import { AdminSongManagementTab } from './AdminSongManagementTab';
 import { AdminPermissionsTab } from './AdminPermissionsTab';
 import { AdminUsersTab } from './AdminUsersTab';
+import { AdminFeedTab } from './AdminFeedTab';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -96,7 +98,7 @@ export const AdminDashboard: React.FC = () => {
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
   const [chatNotifications, setChatNotifications] = useState<{ message: ChatMessage; conversation?: Conversation }[]>([]);
   const [unreadConvCount, setUnreadConvCount] = useState(0);
-  const [mainTab, setMainTab] = useState<'openmic' | 'messages' | 'users' | 'blocked' | 'songs' | 'permissions' | 'settings'>('openmic');
+  const [mainTab, setMainTab] = useState<'openmic' | 'messages' | 'users' | 'feed' | 'blocked' | 'songs' | 'permissions' | 'settings'>('openmic');
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -804,6 +806,17 @@ export const AdminDashboard: React.FC = () => {
               <span className="hidden sm:inline">Utenti</span>
             </button>
             <button
+              onClick={() => setMainTab('feed')}
+              className={`flex-1 min-w-0 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-all ${
+                mainTab === 'feed'
+                  ? 'bg-gradient-to-r from-accent to-secondary text-accent-foreground shadow-lg'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              <Newspaper className="w-4 h-4 inline-block sm:mr-1" />
+              <span className="hidden sm:inline">Bacheca</span>
+            </button>
+            <button
               onClick={() => setMainTab('blocked')}
               className={`flex-1 min-w-0 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-all ${
                 mainTab === 'blocked'
@@ -921,15 +934,17 @@ export const AdminDashboard: React.FC = () => {
           <AdminMessagesTab onUnreadCountChange={handleUnreadCountChange} />
         ) : mainTab === 'users' ? (
           <AdminUsersTab />
+        ) : mainTab === 'feed' ? (
+          <AdminFeedTab />
         ) : mainTab === 'songs' ? (
           <AdminSongManagementTab />
         ) : mainTab === 'settings' ? (
           <AdminSettingsTab />
         ) : mainTab === 'permissions' ? (
           <AdminPermissionsTab />
-        ) : (
+        ) : mainTab === 'blocked' ? (
           <AdminBlockedUsersTab />
-        )}
+        ) : null}
       </main>
     </div>
   );

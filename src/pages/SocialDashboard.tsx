@@ -12,6 +12,7 @@ import { SocialFeed } from '@/components/SocialFeed';
 import { UserSearch } from '@/components/UserSearch';
 import { FriendRequests } from '@/components/FriendRequests';
 import { SocialGroupsList } from '@/components/SocialGroupsList';
+import { ProfileEditModal } from '@/components/ProfileEditModal';
 import { 
   Home,
   MessageCircle, 
@@ -26,7 +27,8 @@ import {
   Circle,
   UserPlus,
   Newspaper,
-  MessagesSquare
+  MessagesSquare,
+  Edit
 } from 'lucide-react';
 
 interface Profile {
@@ -50,6 +52,7 @@ const SocialDashboard: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Profile[]>([]);
   const [activeTab, setActiveTab] = useState<'home' | 'feed' | 'groups' | 'members' | 'friends' | 'staff' | 'profile'>('home');
+  const [showProfileEdit, setShowProfileEdit] = useState(false);
 
   // Auth state management
   useEffect(() => {
@@ -206,6 +209,18 @@ const SocialDashboard: React.FC = () => {
     
     await supabase.auth.signOut();
     navigate('/social');
+  };
+
+  const refreshProfile = async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (data) {
+      setProfile(data as Profile);
+    }
   };
 
   const getInitials = (name: string | null): string => {
@@ -674,57 +689,76 @@ const SocialDashboard: React.FC = () => {
 
               {/* PROFILE TAB */}
               {activeTab === 'profile' && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Il tuo profilo</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-6">
-                    <div className="flex items-center gap-5">
-                      <Avatar className="w-20 h-20 border-4 border-primary/30">
-                        <AvatarImage src={profile?.avatar_url || undefined} />
-                        <AvatarFallback className="bg-primary/20 text-primary text-2xl">
-                          {getInitials(profile?.display_name)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <h2 className="text-xl font-bold">{profile?.display_name}</h2>
-                        <p className="text-muted-foreground">@{profile?.username}</p>
-                        <Badge className="mt-2" variant="outline">
-                          <span className="w-2 h-2 bg-green-500 rounded-full mr-2" />
-                          Online
-                        </Badge>
-                      </div>
-                    </div>
-                    
-                    <div className="border-t border-border pt-5">
-                      <h3 className="font-medium mb-3 text-sm">Informazioni account</h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between py-2 border-b border-border/50">
-                          <span className="text-muted-foreground">Email</span>
-                          <span>{user?.email}</span>
-                        </div>
-                        <div className="flex justify-between py-2">
-                          <span className="text-muted-foreground">Membro dal</span>
-                          <span>{new Date(user?.created_at || '').toLocaleDateString('it-IT')}</span>
+                <>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Il tuo profilo</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      <div className="flex items-center gap-5">
+                        <Avatar className="w-20 h-20 border-4 border-primary/30">
+                          <AvatarImage src={profile?.avatar_url || undefined} />
+                          <AvatarFallback className="bg-primary/20 text-primary text-2xl">
+                            {getInitials(profile?.display_name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <h2 className="text-xl font-bold">{profile?.display_name}</h2>
+                          <p className="text-muted-foreground">@{profile?.username}</p>
+                          <Badge className="mt-2" variant="outline">
+                            <span className="w-2 h-2 rounded-full mr-2 bg-green-500" />
+                            Online
+                          </Badge>
                         </div>
                       </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <Button variant="outline" className="w-full">
-                        Modifica profilo
-                      </Button>
-                      <Button 
-                        variant="destructive" 
-                        className="w-full"
-                        onClick={handleLogout}
-                      >
-                        <LogOut className="w-4 h-4 mr-2" />
-                        Esci
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                      
+                      <div className="border-t border-border pt-5">
+                        <h3 className="font-medium mb-3 text-sm">Informazioni account</h3>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between py-2 border-b border-border/50">
+                            <span className="text-muted-foreground">Email</span>
+                            <span>{user?.email}</span>
+                          </div>
+                          <div className="flex justify-between py-2 border-b border-border/50">
+                            <span className="text-muted-foreground">Username</span>
+                            <span>@{profile?.username}</span>
+                          </div>
+                          <div className="flex justify-between py-2">
+                            <span className="text-muted-foreground">Membro dal</span>
+                            <span>{new Date(user?.created_at || '').toLocaleDateString('it-IT')}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Button 
+                          variant="outline" 
+                          className="w-full"
+                          onClick={() => setShowProfileEdit(true)}
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Modifica profilo
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          className="w-full"
+                          onClick={handleLogout}
+                        >
+                          <LogOut className="w-4 h-4 mr-2" />
+                          Esci
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <ProfileEditModal
+                    open={showProfileEdit}
+                    onOpenChange={setShowProfileEdit}
+                    user={user}
+                    profile={profile}
+                    onProfileUpdate={refreshProfile}
+                  />
+                </>
               )}
             </div>
           </div>
