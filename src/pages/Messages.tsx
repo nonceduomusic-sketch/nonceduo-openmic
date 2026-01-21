@@ -9,6 +9,9 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
+import { MessageStatusIndicator } from '@/components/MessageStatusIndicator';
+import { TypingIndicator } from '@/components/TypingIndicator';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 
 const messageSchema = z.object({
   sender_name: z.string().trim()
@@ -40,6 +43,18 @@ const Messages: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const presenceChannelRef = useRef<any>(null);
 
+  // Typing indicator hook
+  const {
+    typingNames,
+    isAnyoneTyping,
+    updateTypingIndicator,
+    clearTypingIndicator,
+  } = useTypingIndicator(
+    selectedConversation?.id || null,
+    userSessionId,
+    name
+  );
+
   const { 
     conversations, 
     publicGroups,
@@ -47,6 +62,7 @@ const Messages: React.FC = () => {
     sendMessage: sendChatMessage, 
     editMessage,
     joinPublicGroup,
+    markMessagesAsRead,
     isBlocked,
     loading 
   } = useConversations(userSessionId);
@@ -218,6 +234,13 @@ const Messages: React.FC = () => {
       }
     }
   }, [conversations, selectedConversation?.id]);
+
+  // Mark messages as read when opening a conversation
+  useEffect(() => {
+    if (selectedConversation && userSessionId) {
+      markMessagesAsRead(selectedConversation.id, userSessionId);
+    }
+  }, [selectedConversation?.id, userSessionId, markMessagesAsRead]);
 
   // If no conversations exist, show the new message form automatically
   useEffect(() => {
@@ -446,7 +469,7 @@ const Messages: React.FC = () => {
                         ) : (
                           <>
                             <p className="break-words">{msg.message_text}</p>
-                            <div className="flex items-center justify-end gap-2 mt-1">
+                            <div className="flex items-center justify-end gap-1.5 mt-1">
                               <span className={`text-[10px] ${
                                 isAdmin ? 'text-secondary-foreground/50' : 
                                 isOwnMessage ? 'text-primary-foreground/50' : 'text-muted-foreground'
@@ -457,10 +480,17 @@ const Messages: React.FC = () => {
                                 })}
                                 {msg.edited_at && ' (modificato)'}
                               </span>
+                              {/* WhatsApp-style message status checkmarks */}
+                              {isOwnMessage && !isAdmin && (
+                                <MessageStatusIndicator 
+                                  status={msg.status || 'sent'} 
+                                  className={isOwnMessage ? 'text-primary-foreground/60' : ''}
+                                />
+                              )}
                               {isOwnMessage && !isAdmin && (
                                 <button
                                   onClick={() => handleStartEdit(msg)}
-                                  className="opacity-50 hover:opacity-100 transition-opacity"
+                                  className="opacity-50 hover:opacity-100 transition-opacity ml-1"
                                 >
                                   <Edit2 className="w-3 h-3" />
                                 </button>
@@ -477,12 +507,26 @@ const Messages: React.FC = () => {
             </div>
           </ScrollArea>
 
+          {/* Typing indicator */}
+          {isAnyoneTyping && (
+            <div className="px-4 py-2">
+              <TypingIndicator names={typingNames} />
+            </div>
+          )}
+
           {/* Reply form */}
           <div className="p-4 border-t border-border bg-card/50">
-            <form onSubmit={handleSendReply} className="flex gap-2">
+            <form onSubmit={(e) => { clearTypingIndicator(); handleSendReply(e); }} className="flex gap-2">
               <Input
                 value={message}
-                onChange={(e) => setMessage(e.target.value)}
+                onChange={(e) => {
+                  setMessage(e.target.value);
+                  if (e.target.value.trim()) {
+                    updateTypingIndicator();
+                  } else {
+                    clearTypingIndicator();
+                  }
+                }}
                 placeholder="Scrivi un messaggio..."
                 className="flex-1 bg-muted border-border"
                 disabled={isBlocked || isSubmitting}

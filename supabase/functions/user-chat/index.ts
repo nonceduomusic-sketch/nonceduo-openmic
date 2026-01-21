@@ -107,6 +107,7 @@ serve(async (req: Request): Promise<Response> => {
             sender_name: senderName,
             sender_session_id: sessionId,
             message_text: messageText,
+            status: "delivered", // New messages are instantly delivered
           },
         ])
         .select("*")
@@ -160,6 +161,7 @@ serve(async (req: Request): Promise<Response> => {
             sender_name: senderName,
             sender_session_id: sessionId,
             message_text: messageText,
+            status: "delivered", // User messages are instantly delivered
           },
         ])
         .select("*")
@@ -170,7 +172,39 @@ serve(async (req: Request): Promise<Response> => {
         return json(500, { error: "Errore invio messaggio" });
       }
 
+      // Mark admin messages in this conversation as read
+      await supabase
+        .from("chat_messages")
+        .update({ status: "read", read_at: new Date().toISOString() })
+        .eq("conversation_id", conversationId)
+        .eq("sender_type", "admin")
+        .neq("status", "read");
+
       return json(200, { message: msgData });
+    }
+
+    if (action === "markMessagesAsRead") {
+      const conversationId = asTrimmedString(body.conversation_id);
+      const sessionId = asTrimmedString(body.session_id);
+
+      if (!conversationId || !sessionId) {
+        return json(400, { error: "Parametri mancanti" });
+      }
+
+      // Mark admin messages as read when user views them
+      const { error } = await supabase
+        .from("chat_messages")
+        .update({ status: "read", read_at: new Date().toISOString() })
+        .eq("conversation_id", conversationId)
+        .eq("sender_type", "admin")
+        .neq("status", "read");
+
+      if (error) {
+        console.error("markMessagesAsRead error:", error);
+        return json(500, { error: "Errore aggiornamento stato" });
+      }
+
+      return json(200, { success: true });
     }
 
     return json(400, { error: "Azione non supportata" });

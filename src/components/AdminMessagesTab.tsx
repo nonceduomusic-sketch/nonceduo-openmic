@@ -20,6 +20,9 @@ import {
   Mail,
   MailOpen,
 } from 'lucide-react';
+import { MessageStatusIndicator } from '@/components/MessageStatusIndicator';
+import { TypingIndicator } from '@/components/TypingIndicator';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -136,6 +139,18 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
   const [messageSelectionMode, setMessageSelectionMode] = useState(false);
   const [selectedMessages, setSelectedMessages] = useState<Set<string>>(new Set());
   const longPressTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Typing indicator for admin
+  const {
+    typingNames,
+    isAnyoneTyping,
+    updateTypingIndicator,
+    clearTypingIndicator,
+  } = useTypingIndicator(
+    selectedConversation?.id || null,
+    'admin',
+    'Staff'
+  );
 
   const unreadConversations = getUnreadConversations();
   const readConversations = getReadConversations();
@@ -721,13 +736,19 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                         {msg.message_text}
                       </p>
                       <div className="flex items-center justify-between mt-1 gap-2">
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(msg.created_at).toLocaleTimeString('it-IT', { 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                          })}
-                          {msg.edited_at && ' (modificato)'}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(msg.created_at).toLocaleTimeString('it-IT', { 
+                              hour: '2-digit', 
+                              minute: '2-digit' 
+                            })}
+                            {msg.edited_at && ' (modificato)'}
+                          </span>
+                          {/* WhatsApp-style message status checkmarks for admin messages */}
+                          {msg.sender_type === 'admin' && (
+                            <MessageStatusIndicator status={msg.status || 'sent'} />
+                          )}
+                        </div>
                         {!messageSelectionMode && (
                           <div className="flex gap-1">
                             <Button
@@ -781,23 +802,38 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
           </div>
         </ScrollArea>
 
+        {/* Typing indicator */}
+        {isAnyoneTyping && (
+          <div className="px-4 py-2">
+            <TypingIndicator names={typingNames} />
+          </div>
+        )}
+
         {/* Reply input */}
         <div className="glass-card p-4 border border-border">
           <div className="flex gap-2">
             <Textarea
               value={replyText}
-              onChange={(e) => setReplyText(e.target.value)}
+              onChange={(e) => {
+                setReplyText(e.target.value);
+                if (e.target.value.trim()) {
+                  updateTypingIndicator();
+                } else {
+                  clearTypingIndicator();
+                }
+              }}
               placeholder="Scrivi una risposta..."
               className="min-h-[44px] max-h-[120px] bg-muted border-border resize-none"
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
+                  clearTypingIndicator();
                   handleSendReply();
                 }
               }}
             />
             <Button
-              onClick={handleSendReply}
+              onClick={() => { clearTypingIndicator(); handleSendReply(); }}
               disabled={!replyText.trim() || isSubmittingReply}
               className="neon-button-pink h-auto"
             >
