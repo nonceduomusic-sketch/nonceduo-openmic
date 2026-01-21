@@ -174,8 +174,12 @@ export const AdminDashboard: React.FC = () => {
 
   // Calculate unread count directly from conversations using is_read column
   const unreadConvCount = React.useMemo(() => {
-    return getUnreadConversations().length;
-  }, [conversations, getUnreadConversations]);
+    return conversations.filter(conv => {
+      if (!conv.messages || conv.messages.length === 0) return false;
+      // Use is_read column - conversations with is_read = false are unread
+      return conv.is_read === false;
+    }).length;
+  }, [conversations]);
 
   // Clear selection when changing tabs
   useEffect(() => {

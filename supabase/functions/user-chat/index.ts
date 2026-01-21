@@ -72,7 +72,7 @@ serve(async (req: Request): Promise<Response> => {
 
       const { data: convData, error: convError } = await supabase
         .from("conversations")
-        .insert([{ is_group: false, is_public: false }])
+        .insert([{ is_group: false, is_public: false, is_read: false }])
         .select("*")
         .single();
 
@@ -171,6 +171,12 @@ serve(async (req: Request): Promise<Response> => {
         console.error("sendMessage insert error:", msgError);
         return json(500, { error: "Errore invio messaggio" });
       }
+
+      // Mark conversation as unread for admin (new user message)
+      await supabase
+        .from("conversations")
+        .update({ is_read: false })
+        .eq("id", conversationId);
 
       // Mark admin messages in this conversation as read
       await supabase
