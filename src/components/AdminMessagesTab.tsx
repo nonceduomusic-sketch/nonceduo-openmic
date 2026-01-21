@@ -1349,6 +1349,23 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                               )}
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedConversation(conv);
+                              setShowMembersDialog(true);
+                            }}>
+                              <Users className="w-4 h-4 mr-2" />
+                              Gestisci membri
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedConversation(conv);
+                              setShowPasswordDialog(true);
+                            }}>
+                              <Key className="w-4 h-4 mr-2" />
+                              {conv.password_hash ? 'Modifica password' : 'Imposta password'}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                           </>
                         )}
                         {/* Mark as read/unread */}
