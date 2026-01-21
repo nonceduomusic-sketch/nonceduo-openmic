@@ -672,6 +672,95 @@ serve(async (req: Request): Promise<Response> => {
         break;
       }
 
+      case 'createInviteLink': {
+        const { conversation_id, expires_in_hours, max_uses } = body;
+        
+        if (!conversation_id) {
+          return new Response(
+            JSON.stringify({ error: 'ID conversazione richiesto' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Generate unique invite code (short and URL-safe)
+        const inviteCode = Array.from(crypto.getRandomValues(new Uint8Array(6)))
+          .map(b => 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'[b % 62])
+          .join('');
+
+        const insertData: any = {
+          conversation_id,
+          invite_code: inviteCode,
+          created_by: userId,
+        };
+
+        if (expires_in_hours) {
+          insertData.expires_at = new Date(Date.now() + expires_in_hours * 60 * 60 * 1000).toISOString();
+        }
+
+        if (max_uses) {
+          insertData.max_uses = max_uses;
+        }
+
+        const { data: inviteLink, error: inviteError } = await supabase
+          .from('chat_invite_links')
+          .insert([insertData])
+          .select()
+          .single();
+
+        if (inviteError) {
+          console.error('Error creating invite link:', inviteError);
+          return new Response(
+            JSON.stringify({ error: 'Errore nella creazione del link' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        result = { data: inviteLink, error: null };
+        break;
+      }
+
+      case 'getInviteLinks': {
+        const { conversation_id } = body;
+        
+        const { data, error } = await supabase
+          .from('chat_invite_links')
+          .select('*')
+          .eq('conversation_id', conversation_id)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching invite links:', error);
+          return new Response(
+            JSON.stringify({ error: 'Errore nel recupero dei link' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        result = { data, error: null };
+        break;
+      }
+
+      case 'revokeInviteLink': {
+        const { invite_id } = body;
+        
+        const { error } = await supabase
+          .from('chat_invite_links')
+          .update({ is_active: false })
+          .eq('id', invite_id);
+
+        if (error) {
+          console.error('Error revoking invite link:', error);
+          return new Response(
+            JSON.stringify({ error: 'Errore nella revoca del link' }),
+            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        result = { data: { revoked: true }, error: null };
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: 'Unknown action' }),

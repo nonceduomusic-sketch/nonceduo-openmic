@@ -39,8 +39,15 @@ const Messages: React.FC = () => {
   const [editText, setEditText] = useState('');
   const [showNewMessageForm, setShowNewMessageForm] = useState(false);
   const [onlineUsers, setOnlineUsers] = useState<Map<string, OnlineUser[]>>(new Map());
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(() => {
+    try {
+      return localStorage.getItem('chat_notifications_enabled') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [notificationsSupported, setNotificationsSupported] = useState(false);
+  const markAsReadIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const presenceChannelRef = useRef<any>(null);
@@ -132,7 +139,9 @@ const Messages: React.FC = () => {
   useEffect(() => {
     if ('Notification' in window) {
       setNotificationsSupported(true);
-      setNotificationsEnabled(Notification.permission === 'granted');
+      // Only enable if permission granted AND user has enabled in settings
+      const savedPref = localStorage.getItem('chat_notifications_enabled') === 'true';
+      setNotificationsEnabled(Notification.permission === 'granted' && savedPref);
     }
   }, []);
 
@@ -281,11 +290,25 @@ const Messages: React.FC = () => {
     }
   }, [conversations]);
 
-  // Mark messages as read when opening a conversation
+  // Mark messages as read when opening a conversation - with continuous polling while chat is open
   useEffect(() => {
     if (selectedConversation && userSessionId) {
+      // Immediately mark as read when opening
       markMessagesAsRead(selectedConversation.id, userSessionId);
+      
+      // Set up interval to continuously mark as read while user is in chat
+      // This ensures admin sees blue checkmarks even if user doesn't type
+      markAsReadIntervalRef.current = setInterval(() => {
+        markMessagesAsRead(selectedConversation.id, userSessionId);
+      }, 3000); // Every 3 seconds while chat is open
     }
+    
+    return () => {
+      if (markAsReadIntervalRef.current) {
+        clearInterval(markAsReadIntervalRef.current);
+        markAsReadIntervalRef.current = null;
+      }
+    };
   }, [selectedConversation?.id, userSessionId, markMessagesAsRead]);
 
   // If no conversations exist, show the new message form automatically
@@ -870,20 +893,38 @@ const Messages: React.FC = () => {
                   size="icon"
                   onClick={async () => {
                     if (notificationsEnabled) {
-                      // Can't programmatically revoke, just inform user
-                      toast.info('Per disattivare le notifiche, usa le impostazioni del browser');
+                      // Disable notifications locally
+                      setNotificationsEnabled(false);
+                      try {
+                        localStorage.setItem('chat_notifications_enabled', 'false');
+                      } catch {}
+                      toast.success('Notifiche disattivate');
                     } else {
-                      const permission = await Notification.requestPermission();
-                      if (permission === 'granted') {
+                      // Check if permission already granted
+                      if (Notification.permission === 'granted') {
                         setNotificationsEnabled(true);
-                        toast.success('Notifiche attivate! Riceverai avvisi per nuovi messaggi');
-                      } else if (permission === 'denied') {
-                        toast.error('Permesso negato. Abilita le notifiche dalle impostazioni del browser');
+                        try {
+                          localStorage.setItem('chat_notifications_enabled', 'true');
+                        } catch {}
+                        toast.success('Notifiche attivate!');
+                      } else if (Notification.permission === 'denied') {
+                        toast.error('Notifiche bloccate dal browser. Abilitale dalle impostazioni del browser');
+                      } else {
+                        const permission = await Notification.requestPermission();
+                        if (permission === 'granted') {
+                          setNotificationsEnabled(true);
+                          try {
+                            localStorage.setItem('chat_notifications_enabled', 'true');
+                          } catch {}
+                          toast.success('Notifiche attivate! Riceverai avvisi per nuovi messaggi');
+                        } else if (permission === 'denied') {
+                          toast.error('Permesso negato. Abilita le notifiche dalle impostazioni del browser');
+                        }
                       }
                     }
                   }}
                   className={`relative ${notificationsEnabled ? 'text-secondary' : 'text-muted-foreground hover:text-foreground'}`}
-                  title={notificationsEnabled ? 'Notifiche attive' : 'Attiva notifiche'}
+                  title={notificationsEnabled ? 'Disattiva notifiche' : 'Attiva notifiche'}
                 >
                   {notificationsEnabled ? (
                     <Bell className="w-5 h-5" />

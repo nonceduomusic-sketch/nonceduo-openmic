@@ -213,6 +213,124 @@ serve(async (req: Request): Promise<Response> => {
       return json(200, { success: true });
     }
 
+    if (action === "joinViaInvite") {
+      const inviteCode = asTrimmedString(body.invite_code);
+      const participantName = asTrimmedString(body.participant_name);
+      const sessionId = asTrimmedString(body.session_id);
+
+      if (!inviteCode) return json(400, { error: "Codice invito mancante" });
+      if (!participantName) return json(400, { error: "Inserisci il tuo nome" });
+      if (!sessionId) return json(400, { error: "Sessione non valida" });
+
+      if (await isSessionBlocked(supabase, sessionId)) {
+        return json(403, { error: "Il tuo account è sospeso" });
+      }
+
+      // Find the invite link
+      const { data: inviteLink, error: inviteError } = await supabase
+        .from("chat_invite_links")
+        .select("*")
+        .eq("invite_code", inviteCode)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (inviteError || !inviteLink) {
+        return json(404, { error: "Link di invito non valido o scaduto" });
+      }
+
+      // Check if expired
+      if (inviteLink.expires_at && new Date(inviteLink.expires_at) < new Date()) {
+        return json(400, { error: "Link di invito scaduto" });
+      }
+
+      // Check max uses
+      if (inviteLink.max_uses && inviteLink.use_count >= inviteLink.max_uses) {
+        return json(400, { error: "Questo link ha raggiunto il numero massimo di utilizzi" });
+      }
+
+      // Check if already a participant
+      const { data: existingPart } = await supabase
+        .from("conversation_participants")
+        .select("id")
+        .eq("conversation_id", inviteLink.conversation_id)
+        .eq("session_id", sessionId)
+        .maybeSingle();
+
+      if (existingPart) {
+        // Already a member, just return the conversation
+        const { data: conv } = await supabase
+          .from("conversations")
+          .select("*")
+          .eq("id", inviteLink.conversation_id)
+          .single();
+        
+        return json(200, { conversation: conv, already_member: true });
+      }
+
+      // Add participant
+      const { data: partData, error: partError } = await supabase
+        .from("conversation_participants")
+        .insert([{
+          conversation_id: inviteLink.conversation_id,
+          participant_name: participantName,
+          session_id: sessionId,
+        }])
+        .select("*")
+        .single();
+
+      if (partError) {
+        console.error("joinViaInvite participant insert error:", partError);
+        return json(500, { error: "Errore nell'unirsi alla chat" });
+      }
+
+      // Increment use count
+      await supabase
+        .from("chat_invite_links")
+        .update({ use_count: inviteLink.use_count + 1 })
+        .eq("id", inviteLink.id);
+
+      // Get conversation details
+      const { data: conv } = await supabase
+        .from("conversations")
+        .select("*")
+        .eq("id", inviteLink.conversation_id)
+        .single();
+
+      return json(200, { conversation: conv, participant: partData });
+    }
+
+    if (action === "getInviteInfo") {
+      const inviteCode = asTrimmedString(body.invite_code);
+
+      if (!inviteCode) return json(400, { error: "Codice invito mancante" });
+
+      // Find the invite link and conversation
+      const { data: inviteLink, error: inviteError } = await supabase
+        .from("chat_invite_links")
+        .select(`
+          *,
+          conversation:conversations(id, name, is_group, is_public)
+        `)
+        .eq("invite_code", inviteCode)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (inviteError || !inviteLink) {
+        return json(404, { error: "Link di invito non valido" });
+      }
+
+      // Check if expired
+      if (inviteLink.expires_at && new Date(inviteLink.expires_at) < new Date()) {
+        return json(400, { error: "Link di invito scaduto" });
+      }
+
+      return json(200, { 
+        conversation_name: inviteLink.conversation?.name || "Chat",
+        is_group: inviteLink.conversation?.is_group,
+        is_public: inviteLink.conversation?.is_public,
+      });
+    }
+
     return json(400, { error: "Azione non supportata" });
   } catch (error) {
     console.error("user-chat error:", error);
