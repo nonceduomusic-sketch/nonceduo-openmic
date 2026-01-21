@@ -84,11 +84,14 @@ export const AdminDashboard: React.FC = () => {
   } = useReservations();
   
   const { unreadMessages } = useMessages();
-  const { conversations, getUnreadConversations } = useConversations();
+  // Note: conversations hook is only used for notifications, not badge count
+  // The badge count comes from AdminMessagesTab via onUnreadCountChange callback
+  const { conversations } = useConversations();
 
   const [reservationNotifications, setReservationNotifications] = useState<Reservation[]>([]);
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
   const [chatNotifications, setChatNotifications] = useState<{ message: ChatMessage; conversation?: Conversation }[]>([]);
+  const [unreadConvCount, setUnreadConvCount] = useState(0);
   const [mainTab, setMainTab] = useState<'openmic' | 'messages' | 'blocked' | 'songs' | 'settings'>('openmic');
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [selectionMode, setSelectionMode] = useState(false);
@@ -172,14 +175,19 @@ export const AdminDashboard: React.FC = () => {
     };
   }, [conversations]);
 
-  // Calculate unread count directly from conversations using is_read column
-  const unreadConvCount = React.useMemo(() => {
-    return conversations.filter(conv => {
+  // Update unread count when conversations change (for initial load and realtime updates)
+  React.useEffect(() => {
+    const count = conversations.filter(conv => {
       if (!conv.messages || conv.messages.length === 0) return false;
-      // Use is_read column - conversations with is_read = false are unread
       return conv.is_read === false;
     }).length;
+    setUnreadConvCount(count);
   }, [conversations]);
+
+  // Handler for unread count updates from AdminMessagesTab
+  const handleUnreadCountChange = useCallback((count: number) => {
+    setUnreadConvCount(count);
+  }, []);
 
   // Clear selection when changing tabs
   useEffect(() => {
@@ -884,7 +892,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
           )
         ) : mainTab === 'messages' ? (
-          <AdminMessagesTab />
+          <AdminMessagesTab onUnreadCountChange={handleUnreadCountChange} />
         ) : mainTab === 'songs' ? (
           <AdminSongManagementTab />
         ) : mainTab === 'settings' ? (
