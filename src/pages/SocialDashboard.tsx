@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { SocialFeed } from '@/components/SocialFeed';
 import { UserSearch } from '@/components/UserSearch';
 import { FriendRequests } from '@/components/FriendRequests';
-import { PublicGroupsList } from '@/components/PublicGroupsList';
+import { SocialGroupsList } from '@/components/SocialGroupsList';
 import { 
   Home,
   MessageCircle, 
@@ -327,15 +327,6 @@ const SocialDashboard: React.FC = () => {
               <Settings className="w-5 h-5" />
               <span className="text-xs">Profilo</span>
             </button>
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`flex flex-col items-center gap-1 px-3 py-2 rounded-lg transition-colors ${
-                activeTab === 'profile' ? 'text-primary' : 'text-muted-foreground'
-              }`}
-            >
-              <Settings className="w-5 h-5" />
-              <span className="text-xs">Profilo</span>
-            </button>
           </div>
         </nav>
 
@@ -579,7 +570,8 @@ const SocialDashboard: React.FC = () => {
                     <MessagesSquare className="w-5 h-5" />
                     Gruppi
                   </h2>
-                  <PublicGroupsList 
+                  <SocialGroupsList 
+                    userId={user?.id}
                     userSessionId={(() => {
                       try {
                         return localStorage.getItem('user_session_id') || undefined;
@@ -587,9 +579,6 @@ const SocialDashboard: React.FC = () => {
                         return undefined;
                       }
                     })()}
-                    onJoinGroup={() => {
-                      // Optionally navigate to messages page after joining
-                    }}
                   />
                 </div>
               )}
