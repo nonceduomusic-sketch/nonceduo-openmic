@@ -61,10 +61,6 @@ const Index: React.FC = () => {
             <ArtistFilter value={artistFilter} onChange={setArtistFilter} />
           </div>
 
-          {/* Results count */}
-          <p className="text-xs text-muted-foreground mt-3">
-            {filteredSongs.length} canzoni trovate
-          </p>
         </div>
       </header>
 
