@@ -106,17 +106,12 @@ const OpenMic: React.FC = () => {
             <ArtistFilter value={artistFilter} onChange={setArtistFilter} />
           </div>
 
-          {/* Results count */}
-          <div className="flex items-center justify-between mt-3">
-            <p className="text-xs text-muted-foreground">
-              {filteredSongs.length} canzoni
+          {/* Booked count only */}
+          {bookedSongKeys.size > 0 && (
+            <p className="text-xs text-warning mt-3">
+              {bookedSongKeys.size} canzoni prenotate
             </p>
-            {bookedSongKeys.size > 0 && (
-              <p className="text-xs text-warning">
-                {bookedSongKeys.size} prenotate
-              </p>
-            )}
-          </div>
+          )}
         </div>
       </header>
 
