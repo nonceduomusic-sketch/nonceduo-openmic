@@ -1355,6 +1355,22 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                             Segna come da leggere
                           </DropdownMenuItem>
                         ) : null}
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={async (e) => {
+                          e.stopPropagation();
+                          const inviteLink = await adminCreateInviteLink(conv.id);
+                          if (inviteLink) {
+                            const fullUrl = `${window.location.origin}/join/${inviteLink.invite_code}`;
+                            await navigator.clipboard.writeText(fullUrl);
+                            toast({
+                              title: 'Link copiato!',
+                              description: 'Condividi questo link per invitare persone',
+                            });
+                          }
+                        }}>
+                          <Link2 className="w-4 h-4 mr-2" />
+                          Crea link invito
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
