@@ -139,6 +139,8 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
   // Visibility dialog
   const [showVisibilityDialog, setShowVisibilityDialog] = useState(false);
   const [visibilityTarget, setVisibilityTarget] = useState<Conversation | null>(null);
+  const [allowedParticipantsInput, setAllowedParticipantsInput] = useState<string[]>([]);
+  const [visibilityMode, setVisibilityMode] = useState<'public' | 'private' | 'restricted'>('private');
   
   // Group members dialog
   const [showMembersDialog, setShowMembersDialog] = useState(false);
@@ -548,15 +550,47 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     }
   };
   
-  const handleSetVisibility = async (isPublic: boolean) => {
+  const handleSetVisibility = async () => {
     if (!visibilityTarget) return;
     
-    const success = await adminSetGroupVisibility(visibilityTarget.id, isPublic);
+    const isPublic = visibilityMode === 'public';
+    const allowedList = visibilityMode === 'restricted' ? allowedParticipantsInput : [];
+    
+    const success = await adminSetGroupVisibility(visibilityTarget.id, isPublic, allowedList);
     if (success) {
       setShowVisibilityDialog(false);
       setVisibilityTarget(null);
+      setAllowedParticipantsInput([]);
+      setVisibilityMode('private');
     }
   };
+
+  // Initialize visibility dialog state when target changes
+  const openVisibilityDialog = (conv: Conversation) => {
+    setVisibilityTarget(conv);
+    if (conv.is_public) {
+      setVisibilityMode('public');
+    } else if (conv.allowed_participants && conv.allowed_participants.length > 0) {
+      setVisibilityMode('restricted');
+      setAllowedParticipantsInput(conv.allowed_participants);
+    } else {
+      setVisibilityMode('private');
+    }
+    setShowVisibilityDialog(true);
+  };
+
+  // Get all known participants from all conversations for selection
+  const allKnownParticipants = React.useMemo(() => {
+    const participantsMap = new Map<string, { session_id: string; name: string }>();
+    conversations.forEach(conv => {
+      conv.participants?.forEach(p => {
+        if (!participantsMap.has(p.session_id)) {
+          participantsMap.set(p.session_id, { session_id: p.session_id, name: p.participant_name });
+        }
+      });
+    });
+    return Array.from(participantsMap.values());
+  }, [conversations]);
 
   const exitSelectionMode = () => {
     setSelectionMode('none');
@@ -699,10 +733,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                         <Edit2 className="w-4 h-4 mr-2" />
                         Rinomina gruppo
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => {
-                        setVisibilityTarget(selectedConversation);
-                        setShowVisibilityDialog(true);
-                      }}>
+                      <DropdownMenuItem onClick={() => openVisibilityDialog(selectedConversation)}>
                         {selectedConversation.is_public ? (
                           <>
                             <Lock className="w-4 h-4 mr-2" />
@@ -711,7 +742,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                         ) : (
                           <>
                             <Globe className="w-4 h-4 mr-2" />
-                            Rendi pubblico
+                            Cambia visibilità
                           </>
                         )}
                       </DropdownMenuItem>
@@ -1333,8 +1364,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={(e) => {
                               e.stopPropagation();
-                              setVisibilityTarget(conv);
-                              setShowVisibilityDialog(true);
+                              openVisibilityDialog(conv);
                             }}>
                               {conv.is_public ? (
                                 <>
@@ -1344,7 +1374,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
                               ) : (
                                 <>
                                   <Globe className="w-4 h-4 mr-2" />
-                                  Rendi pubblico
+                                  Cambia visibilità
                                 </>
                               )}
                             </DropdownMenuItem>
@@ -1665,33 +1695,122 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
       </Dialog>
 
       {/* Visibility dialog */}
-      <Dialog open={showVisibilityDialog} onOpenChange={setShowVisibilityDialog}>
-        <DialogContent className="glass-card">
+      <Dialog open={showVisibilityDialog} onOpenChange={(open) => {
+        if (!open) {
+          setShowVisibilityDialog(false);
+          setVisibilityTarget(null);
+          setAllowedParticipantsInput([]);
+          setVisibilityMode('private');
+        }
+      }}>
+        <DialogContent className="glass-card max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              {visibilityTarget?.is_public ? (
-                <>
-                  <Lock className="w-5 h-5 text-muted-foreground" />
-                  Rendi Privato
-                </>
-              ) : (
-                <>
-                  <Globe className="w-5 h-5 text-secondary" />
-                  Rendi Pubblico
-                </>
-              )}
+              <Globe className="w-5 h-5 text-secondary" />
+              Visibilità Gruppo
             </DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
-            {visibilityTarget?.is_public ? (
-              <p className="text-sm text-muted-foreground">
-                Rendendo il gruppo privato, solo i partecipanti attuali potranno vedere e partecipare.
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Rendendo il gruppo pubblico, tutti gli utenti potranno vederlo e partecipare alla conversazione.
-              </p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Gruppo: <strong>{visibilityTarget?.name}</strong>
+            </p>
+            
+            {/* Visibility options */}
+            <div className="space-y-3">
+              <div 
+                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                  visibilityMode === 'public' 
+                    ? 'border-secondary bg-secondary/10' 
+                    : 'border-border hover:border-muted-foreground'
+                }`}
+                onClick={() => setVisibilityMode('public')}
+              >
+                <div className="flex items-center gap-2">
+                  <Globe className="w-4 h-4 text-secondary" />
+                  <span className="font-medium">Pubblico</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Tutti gli utenti possono vedere e unirsi al gruppo
+                </p>
+              </div>
+              
+              <div 
+                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                  visibilityMode === 'private' 
+                    ? 'border-primary bg-primary/10' 
+                    : 'border-border hover:border-muted-foreground'
+                }`}
+                onClick={() => setVisibilityMode('private')}
+              >
+                <div className="flex items-center gap-2">
+                  <Lock className="w-4 h-4 text-primary" />
+                  <span className="font-medium">Privato</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Solo i partecipanti attuali possono vedere il gruppo
+                </p>
+              </div>
+              
+              <div 
+                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                  visibilityMode === 'restricted' 
+                    ? 'border-accent bg-accent/10' 
+                    : 'border-border hover:border-muted-foreground'
+                }`}
+                onClick={() => setVisibilityMode('restricted')}
+              >
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4 text-accent-foreground" />
+                  <span className="font-medium">Utenti Selezionati</span>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Solo gli utenti che selezioni potranno vedere e unirsi
+                </p>
+              </div>
+            </div>
+            
+            {/* User selection for restricted mode */}
+            {visibilityMode === 'restricted' && (
+              <div className="space-y-2 pt-2">
+                <Label className="text-sm font-medium">Seleziona utenti abilitati:</Label>
+                <ScrollArea className="h-40 border rounded-lg p-2">
+                  {allKnownParticipants.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      Nessun utente disponibile
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {allKnownParticipants.map((p) => (
+                        <div key={p.session_id} className="flex items-center gap-2">
+                          <Checkbox
+                            id={`participant-${p.session_id}`}
+                            checked={allowedParticipantsInput.includes(p.session_id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setAllowedParticipantsInput(prev => [...prev, p.session_id]);
+                              } else {
+                                setAllowedParticipantsInput(prev => prev.filter(id => id !== p.session_id));
+                              }
+                            }}
+                          />
+                          <label 
+                            htmlFor={`participant-${p.session_id}`}
+                            className="text-sm cursor-pointer flex-1"
+                          >
+                            {p.name}
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </ScrollArea>
+                {allowedParticipantsInput.length > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {allowedParticipantsInput.length} utenti selezionati
+                  </p>
+                )}
+              </div>
             )}
           </div>
           
@@ -1699,24 +1818,18 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
             <Button variant="outline" onClick={() => {
               setShowVisibilityDialog(false);
               setVisibilityTarget(null);
+              setAllowedParticipantsInput([]);
+              setVisibilityMode('private');
             }}>
               Annulla
             </Button>
             <Button 
-              onClick={() => handleSetVisibility(!visibilityTarget?.is_public)}
-              className={visibilityTarget?.is_public ? "" : "neon-button-cyan"}
+              onClick={handleSetVisibility}
+              className="neon-button-cyan"
+              disabled={visibilityMode === 'restricted' && allowedParticipantsInput.length === 0}
             >
-              {visibilityTarget?.is_public ? (
-                <>
-                  <Lock className="w-4 h-4 mr-2" />
-                  Rendi Privato
-                </>
-              ) : (
-                <>
-                  <Globe className="w-4 h-4 mr-2" />
-                  Rendi Pubblico
-                </>
-              )}
+              <Check className="w-4 h-4 mr-2" />
+              Salva
             </Button>
           </DialogFooter>
         </DialogContent>
