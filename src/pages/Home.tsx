@@ -209,6 +209,106 @@ const Home: React.FC = () => {
         </div>
       </section>
 
+      {/* Party Band Section - WOW Effect */}
+      <section className="py-24 relative overflow-hidden">
+        {/* Animated gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-accent/10 to-secondary/20" />
+        <div className="absolute inset-0">
+          <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/30 rounded-full blur-[120px] animate-pulse" />
+          <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-secondary/30 rounded-full blur-[100px] animate-pulse delay-700" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-accent/20 rounded-full blur-[80px] animate-pulse delay-1000" />
+        </div>
+        
+        {/* Content */}
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="max-w-4xl mx-auto text-center">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 border border-primary/40 mb-8 animate-float">
+              <span className="relative flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-primary"></span>
+              </span>
+              <span className="text-primary font-semibold text-sm uppercase tracking-wider">Novità</span>
+            </div>
+
+            {/* Main Title with Glow */}
+            <h2 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-tight">
+              <span className="text-foreground">Vuoi una festa</span>
+              <br />
+              <span className="neon-text-pink animate-neon-pulse">che spacca?</span>
+            </h2>
+
+            {/* Subtitle */}
+            <p className="text-xl md:text-2xl text-muted-foreground mb-8 leading-relaxed">
+              Non C'è Duo diventa <span className="text-secondary font-semibold">Non C'è Band</span>
+            </p>
+
+            {/* Description with gradient border */}
+            <div className="gradient-border rounded-2xl p-[2px] mb-10 max-w-2xl mx-auto">
+              <div className="bg-card/90 backdrop-blur-sm rounded-2xl p-8">
+                <p className="text-lg text-foreground/90 leading-relaxed">
+                  Quando l'occasione richiede <strong className="text-primary">più potenza</strong>, 
+                  possiamo espanderci con batteria, basso e altri musicisti per creare 
+                  un <strong className="text-secondary">sound pieno e travolgente</strong>.
+                </p>
+                <div className="flex flex-wrap justify-center gap-4 mt-6 text-sm">
+                  <span className="px-3 py-1 rounded-full bg-primary/20 text-primary">🎸 Chitarre elettriche</span>
+                  <span className="px-3 py-1 rounded-full bg-secondary/20 text-secondary">🥁 Batteria live</span>
+                  <span className="px-3 py-1 rounded-full bg-accent/20 text-accent">🎹 Tastiere</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-6 max-w-lg mx-auto mb-10">
+              <div className="text-center">
+                <div className="font-display text-3xl md:text-4xl font-bold neon-text-cyan">2-6</div>
+                <div className="text-sm text-muted-foreground">Musicisti</div>
+              </div>
+              <div className="text-center">
+                <div className="font-display text-3xl md:text-4xl font-bold neon-text-pink">100%</div>
+                <div className="text-sm text-muted-foreground">Live</div>
+              </div>
+              <div className="text-center">
+                <div className="font-display text-3xl md:text-4xl font-bold neon-text-purple">∞</div>
+                <div className="text-sm text-muted-foreground">Energia</div>
+              </div>
+            </div>
+
+            {/* CTA */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button 
+                size="lg" 
+                className="neon-button-pink text-lg px-10 py-6 group"
+                onClick={() => scrollToSection('contact')}
+              >
+                <PartyPopper className="w-5 h-5 mr-2 group-hover:animate-bounce" />
+                Richiedi Party Band
+              </Button>
+              <a 
+                href="https://wa.me/393807911941?text=Ciao!%20Vorrei%20info%20sulla%20formazione%20Party%20Band"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  className="text-lg px-10 py-6 border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground w-full"
+                >
+                  <Phone className="w-5 h-5 mr-2" />
+                  WhatsApp Diretto
+                </Button>
+              </a>
+            </div>
+
+            {/* Bottom note */}
+            <p className="mt-8 text-sm text-muted-foreground">
+              💡 Stesso stile, stessa energia, <span className="text-primary">volume massimo</span>
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Gallery Section */}
       <section id="gallery" className="py-24 bg-card/30">
         <div className="container mx-auto px-4">
