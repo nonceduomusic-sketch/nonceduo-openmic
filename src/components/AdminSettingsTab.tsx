@@ -59,6 +59,7 @@ export const AdminSettingsTab: React.FC = () => {
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   );
   const [isSaved, setIsSaved] = useState(false);
+  const [seeding, setSeeding] = useState(false);
 
   const fetchSectionSettings = async () => {
     setSectionsLoading(true);
@@ -230,6 +231,61 @@ export const AdminSettingsTab: React.FC = () => {
             })}
           </div>
         )}
+      </div>
+
+      {/* Demo Community Seed */}
+      <div className="glass-card p-4 space-y-3">
+        <div>
+          <h3 className="font-medium text-foreground">Community: contenuti demo</h3>
+          <p className="text-xs text-muted-foreground">
+            Crea ~30 profili demo (trasparenti), post distribuiti su più giorni e alcuni gruppi pubblici con messaggi.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          disabled={seeding}
+          onClick={async () => {
+            const ok = window.confirm(
+              'Vuoi popolare la Community con contenuti DEMO?\n\n' +
+                'Se sono già presenti, non verrà fatto nulla.'
+            );
+            if (!ok) return;
+
+            setSeeding(true);
+            try {
+              const { data, error } = await supabase.functions.invoke('seed-community-demo');
+              if (error || !data?.ok) {
+                throw new Error((data as any)?.error || error?.message || 'Errore durante il seed');
+              }
+
+              toast({
+                title: data.skipped ? 'Già presente' : 'Fatto!',
+                description: data.skipped
+                  ? 'I contenuti demo erano già presenti.'
+                  : `Creati: ${data.counts?.profiles ?? 0} profili, ${data.counts?.posts ?? 0} post, ${data.counts?.groups ?? 0} gruppi.`,
+              });
+
+              adminAuditLog({
+                action: 'community.seed_demo',
+                section: 'community',
+                entity: 'seed',
+                entity_id: null,
+                metadata: { skipped: data.skipped, counts: data.counts },
+              });
+            } catch (e: any) {
+              toast({
+                title: 'Errore',
+                description: e?.message || 'Impossibile creare i contenuti demo.',
+                variant: 'destructive',
+              });
+            } finally {
+              setSeeding(false);
+            }
+          }}
+          className="w-full"
+        >
+          {seeding ? 'Creazione in corso…' : 'Popola Community (demo)'}
+        </Button>
       </div>
 
       {/* Browser Notification Permission */}
