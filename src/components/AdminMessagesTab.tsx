@@ -1052,7 +1052,8 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
               className="border-accent text-accent-foreground bg-accent/20 hover:bg-accent hover:text-accent-foreground"
             >
               <Plus className="w-4 h-4 mr-2" />
-              Nuovo Gruppo
+              <span className="sm:hidden">Nuovo</span>
+              <span className="hidden sm:inline">Nuovo Gruppo</span>
             </Button>
             <Button
               variant="outline"
@@ -1062,7 +1063,8 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
               disabled={conversations.length < 2}
             >
               <Users className="w-4 h-4 mr-2" />
-              Unisci in Gruppo
+              <span className="sm:hidden">Unisci</span>
+              <span className="hidden sm:inline">Unisci in Gruppo</span>
             </Button>
             {existingGroups.length > 0 && (
               <Button
@@ -1074,7 +1076,8 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
                 className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
               >
                 <UserPlus className="w-4 h-4 mr-2" />
-                Aggiungi a Gruppo
+                <span className="sm:hidden">Aggiungi</span>
+                <span className="hidden sm:inline">Aggiungi a Gruppo</span>
               </Button>
             )}
             <Button

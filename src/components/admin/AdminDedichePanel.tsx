@@ -12,7 +12,7 @@ export const AdminDedichePanel: React.FC<AdminDedichePanelProps> = ({ onUnreadCo
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <button
           onClick={() => setSubTab("messages")}
           className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
@@ -22,7 +22,8 @@ export const AdminDedichePanel: React.FC<AdminDedichePanelProps> = ({ onUnreadCo
           }`}
         >
           <MessageCircle className="w-4 h-4 inline-block mr-2" />
-          Messaggi + Gruppi
+          <span className="sm:hidden">Messaggi</span>
+          <span className="hidden sm:inline">Messaggi + Gruppi</span>
         </button>
         <button
           onClick={() => setSubTab("blocked")}
@@ -33,7 +34,8 @@ export const AdminDedichePanel: React.FC<AdminDedichePanelProps> = ({ onUnreadCo
           }`}
         >
           <Ban className="w-4 h-4 inline-block mr-2" />
-          Bloccati (Dediche)
+          <span className="sm:hidden">Bloccati</span>
+          <span className="hidden sm:inline">Bloccati (Dediche)</span>
         </button>
       </div>
 
