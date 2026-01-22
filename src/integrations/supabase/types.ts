@@ -204,6 +204,7 @@ export type Database = {
           name: string | null
           password_hash: string | null
           password_hint: string | null
+          requires_approval: boolean | null
           updated_at: string
         }
         Insert: {
@@ -218,6 +219,7 @@ export type Database = {
           name?: string | null
           password_hash?: string | null
           password_hint?: string | null
+          requires_approval?: boolean | null
           updated_at?: string
         }
         Update: {
@@ -232,6 +234,7 @@ export type Database = {
           name?: string | null
           password_hash?: string | null
           password_hint?: string | null
+          requires_approval?: boolean | null
           updated_at?: string
         }
         Relationships: []
@@ -262,6 +265,50 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      group_join_requests: {
+        Row: {
+          conversation_id: string
+          created_at: string | null
+          id: string
+          requester_name: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          session_id: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string | null
+          id?: string
+          requester_name: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          session_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string | null
+          id?: string
+          requester_name?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          session_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "group_join_requests_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       message_requests: {
         Row: {
@@ -638,6 +685,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      section_settings: {
+        Row: {
+          description: string | null
+          display_name: string
+          id: string
+          is_enabled: boolean | null
+          section_key: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          description?: string | null
+          display_name: string
+          id?: string
+          is_enabled?: boolean | null
+          section_key: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          description?: string | null
+          display_name?: string
+          id?: string
+          is_enabled?: boolean | null
+          section_key?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       typing_indicators: {
         Row: {
