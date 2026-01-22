@@ -623,7 +623,7 @@ export const AdminUsersTab: React.FC = () => {
                 <SelectItem value="moderator">
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-accent" />
-                    Staff (Moderatore)
+                    Staff
                   </div>
                 </SelectItem>
                 <SelectItem value="user">

@@ -79,7 +79,7 @@ const ROLE_ICONS: Record<string, React.ReactNode> = {
 const ROLE_LABELS: Record<string, string> = {
   owner: 'Owner',
   admin: 'Admin',
-  moderator: 'Moderatore',
+  moderator: 'Staff',
   user: 'Utente',
 };
 

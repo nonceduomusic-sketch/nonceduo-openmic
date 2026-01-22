@@ -441,7 +441,7 @@ export const AdminDashboard: React.FC = () => {
       : staffRole === 'admin'
         ? 'Admin'
         : staffRole === 'moderator'
-          ? 'Moderatore'
+          ? 'Staff'
           : 'Staff';
   const staffEmail = session?.user?.email ?? currentUser?.email ?? '';
 

@@ -203,7 +203,7 @@ const AdminManualContent: React.FC = () => {
           content: [
             '👑 **Owner**: accesso completo, gestisce admin e owner.',
             '🛡️ **Admin**: gestisce tutto tranne gli altri admin/owner.',
-            '🔰 **Moderator**: permessi limitati configurabili.',
+            '🔰 **Staff**: permessi limitati configurabili.',
             '👤 **User**: utente normale della community.',
           ]
         },
