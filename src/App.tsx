@@ -16,6 +16,11 @@ import Social from "./pages/Social";
 import SocialAuth from "./pages/SocialAuth";
 import SocialDashboard from "./pages/SocialDashboard";
 import NotFound from "./pages/NotFound";
+import AppLauncher from "./pages/AppLauncher";
+import AppOpenMic from "./pages/AppOpenMic";
+import AppDediche from "./pages/AppDediche";
+import OpenMicInfo from "./pages/OpenMicInfo";
+import DedicheInfo from "./pages/DedicheInfo";
 
 const queryClient = new QueryClient();
 
@@ -29,8 +34,18 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/partyband" element={<PartyBand />} />
-            <Route path="/openmic" element={<OpenMic />} />
-            <Route path="/messaggi" element={<Messages />} />
+            {/* SITO (vetrina) */}
+            <Route path="/openmic" element={<OpenMicInfo />} />
+            <Route path="/messaggi" element={<DedicheInfo />} />
+
+            {/* APP (launcher + live) */}
+            <Route path="/app" element={<AppLauncher />} />
+            <Route path="/app/openmic" element={<AppOpenMic />} />
+            <Route path="/app/dediche" element={<AppDediche />} />
+
+            {/* Legacy routes (keep existing behavior for now) */}
+            <Route path="/openmic/live" element={<OpenMic />} />
+            <Route path="/messaggi/live" element={<Messages />} />
             <Route path="/join/:code" element={<JoinChat />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/reset" element={<AdminReset />} />
