@@ -49,14 +49,14 @@ const OpenMic: React.FC = () => {
         title="Open Mic | Karaoke Live by Non C'è Duo"
         description="Il karaoke live dove TU sei la star! Prenota la tua canzone e sali sul palco con la band."
         image="/og-openmic.jpg"
-        url="/openmic"
+        url="/app/openmic"
       />
       {/* Header */}
       <header className="sticky top-0 z-40 bg-card/90 backdrop-blur-md border-b border-border">
         <div className="container py-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <Link to="/">
+              <Link to="/app">
                 <Button variant="ghost" size="icon" className="mr-1">
                   <Home className="w-5 h-5" />
                 </Button>
@@ -76,7 +76,7 @@ const OpenMic: React.FC = () => {
 
             <div className="flex items-center gap-2">
               <UserLoginIndicator compact />
-              <Link to="/messaggi">
+              <Link to="/app/dediche">
                 <Button 
                   variant="outline" 
                   size="sm"

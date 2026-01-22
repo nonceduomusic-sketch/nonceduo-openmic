@@ -4,8 +4,8 @@ import { Music, MapPin, PartyPopper, Heart, Users, Phone, Mail, Instagram, Chevr
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { TestimonialsSection } from '@/components/TestimonialsSection';
-import { PageLayout } from '@/components/layout/PageLayout';
 import { SEO } from '@/components/SEO';
+import { SiteHeader } from '@/components/site/SiteHeader';
 
 import duoPhoto1 from '@/assets/duo-photo-1.png';
 import duoPhoto2 from '@/assets/duo-photo-2.png';
@@ -23,8 +23,10 @@ const Home: React.FC = () => {
         title="Non C'è Duo | Musica Live per Eventi"
         description="Energia acustica allo stato puro. Musica live per locali, eventi privati, matrimoni e feste."
       />
-      
-      <PageLayout variant="main" showAdmin>
+
+      <div className="min-h-screen bg-background">
+        <SiteHeader />
+
         {/* Hero Section - Maximum Impact */}
         <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
           {/* Animated background gradients */}
@@ -435,7 +437,8 @@ const Home: React.FC = () => {
             </div>
           </div>
         </footer>
-      </PageLayout>
+
+      </div>
     </>
   );
 };

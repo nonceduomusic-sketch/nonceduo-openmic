@@ -34,7 +34,15 @@ interface OnlineUser {
   conversation_id: string;
 }
 
-const Messages: React.FC = () => {
+interface MessagesProps {
+  /**
+   * When true, this page is being used inside the /app (live) experience.
+   * We keep UX focused and avoid the global bottom navigation.
+   */
+  appMode?: boolean;
+}
+
+const Messages: React.FC<MessagesProps> = ({ appMode = false }) => {
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -901,17 +909,20 @@ const Messages: React.FC = () => {
               </Button>
             ) : (
               <div className="flex items-center gap-1">
-                <Link to="/" aria-label="Vai alla Home">
+                 <Link to={appMode ? "/app" : "/"} aria-label={appMode ? "Vai all'App" : "Vai alla Home"}>
                   <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                     <Home className="w-5 h-5" />
                   </Button>
                 </Link>
-                <Link to="/openmic" aria-label="Vai a Open Mic">
+                 <Link
+                   to={appMode ? "/app/openmic" : "/openmic"}
+                   aria-label="Vai a Open Mic"
+                 >
                   <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                     <Mic2 className="w-5 h-5" />
                   </Button>
                 </Link>
-                <Link to="/social" aria-label="Vai a Community">
+                 <Link to="/social" aria-label="Vai a Community">
                   <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
                     <Users className="w-5 h-5" />
                   </Button>
@@ -1030,8 +1041,8 @@ const Messages: React.FC = () => {
         {renderMainContent()}
       </main>
 
-      {/* Mobile Bottom Nav */}
-      <MobileBottomNav variant="main" />
+       {/* Mobile Bottom Nav (not in app-mode) */}
+       {!appMode && <MobileBottomNav variant="main" />}
 
       {/* Password Dialog for joining protected groups */}
       <JoinGroupPasswordDialog
