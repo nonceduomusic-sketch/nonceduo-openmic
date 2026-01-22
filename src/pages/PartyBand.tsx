@@ -16,8 +16,8 @@ const PartyBand: React.FC = () => {
       <SEO 
         title="Non C'è Band | Formazione Completa per Grandi Eventi"
         description="Quando il duo non basta, alziamo il volume. Batteria, basso, tastiere per un sound potente e travolgente."
-        image="https://nonceduo-openmic.lovable.app/og-partyband.jpg"
-        url="https://nonceduo-openmic.lovable.app/partyband"
+        image="/og-partyband.jpg"
+        url="/partyband"
       />
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">

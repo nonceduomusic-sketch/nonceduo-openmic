@@ -16,6 +16,7 @@ import { ChatScrollIndicator } from '@/components/ChatScrollIndicator';
 import { SocialCTA } from '@/components/SocialCTA';
 import { JoinGroupPasswordDialog } from '@/components/JoinGroupPasswordDialog';
 import { UserLoginIndicator } from '@/components/UserLoginIndicator';
+import { SEO } from '@/components/SEO';
 
 const messageSchema = z.object({
   sender_name: z.string().trim()
@@ -876,7 +877,14 @@ const Messages: React.FC = () => {
   const showBackToList = selectedConversation || (showNewMessageForm && hasConversations);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <>
+      <SEO 
+        title="Dediche | Non C'è Duo"
+        description="Invia dediche musicali durante le serate live. Un messaggio speciale per chi ami!"
+        image="/og-dediche.jpg"
+        url="/messaggi"
+      />
+      <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-card/90 backdrop-blur-md border-b border-border">
         <div className="container py-4">
@@ -1018,6 +1026,7 @@ const Messages: React.FC = () => {
         onSubmit={handlePasswordSubmit}
       />
     </div>
+    </>
   );
 };
 

@@ -46,8 +46,8 @@ const OpenMic: React.FC = () => {
       <SEO 
         title="Open Mic | Karaoke Live by Non C'è Duo"
         description="Il karaoke live dove TU sei la star! Prenota la tua canzone e sali sul palco con la band."
-        image="https://nonceduo-openmic.lovable.app/og-openmic.jpg"
-        url="https://nonceduo-openmic.lovable.app/openmic"
+        image="/og-openmic.jpg"
+        url="/openmic"
       />
       {/* Header */}
       <header className="sticky top-0 z-40 bg-card/90 backdrop-blur-md border-b border-border">
