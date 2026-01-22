@@ -205,6 +205,7 @@ export type Database = {
           password_hash: string | null
           password_hint: string | null
           requires_approval: boolean | null
+          section: string | null
           updated_at: string
         }
         Insert: {
@@ -220,6 +221,7 @@ export type Database = {
           password_hash?: string | null
           password_hint?: string | null
           requires_approval?: boolean | null
+          section?: string | null
           updated_at?: string
         }
         Update: {
@@ -235,6 +237,7 @@ export type Database = {
           password_hash?: string | null
           password_hint?: string | null
           requires_approval?: boolean | null
+          section?: string | null
           updated_at?: string
         }
         Relationships: []

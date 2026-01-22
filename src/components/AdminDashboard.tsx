@@ -44,6 +44,7 @@ import { AdminSongManagementTab } from './AdminSongManagementTab';
 // AdminPermissionsTab removed - merged into AdminUsersTab
 import { AdminUsersTab } from './AdminUsersTab';
 import { AdminFeedTab } from './AdminFeedTab';
+import { AdminNotificationsTab } from './AdminNotificationsTab';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -100,7 +101,7 @@ export const AdminDashboard: React.FC = () => {
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
   const [chatNotifications, setChatNotifications] = useState<{ message: ChatMessage; conversation?: Conversation }[]>([]);
   const [unreadConvCount, setUnreadConvCount] = useState(0);
-  const [mainTab, setMainTab] = useState<'openmic' | 'messages' | 'users' | 'feed' | 'blocked' | 'songs' | 'settings'>('openmic');
+  const [mainTab, setMainTab] = useState<'openmic' | 'messages' | 'users' | 'feed' | 'blocked' | 'songs' | 'settings' | 'notifications'>('openmic');
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -766,6 +767,17 @@ export const AdminDashboard: React.FC = () => {
           {/* Main Tabs - Simplified */}
           <div className="flex gap-1 mt-4 overflow-x-auto pb-1">
             <button
+              onClick={() => setMainTab('notifications')}
+              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
+                mainTab === 'notifications'
+                  ? 'bg-gradient-to-r from-warning to-accent text-warning-foreground shadow-lg'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              <Bell className="w-4 h-4" />
+              Centro
+            </button>
+            <button
               onClick={() => setMainTab('openmic')}
               className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
                 mainTab === 'openmic'
@@ -945,6 +957,8 @@ export const AdminDashboard: React.FC = () => {
           <AdminSettingsTab />
         ) : mainTab === 'blocked' ? (
           <AdminBlockedUsersTab />
+        ) : mainTab === 'notifications' ? (
+          <AdminNotificationsTab />
         ) : null}
       </main>
     </div>
