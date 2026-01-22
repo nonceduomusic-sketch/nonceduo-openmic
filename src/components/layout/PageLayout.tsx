@@ -3,6 +3,7 @@ import { MobileHeader } from './MobileHeader';
 import { MobileBottomNav } from './MobileBottomNav';
 import { DesktopHeader } from './DesktopHeader';
 import { cn } from '@/lib/utils';
+import { useStaffRole } from '@/hooks/useStaffRole';
 
 interface PageLayoutProps {
   children: React.ReactNode;
@@ -29,10 +30,13 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
   hideBottomNav = false,
   className
 }) => {
+  const { isStaff } = useStaffRole();
+  const effectiveShowAdmin = showAdmin && isStaff;
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Desktop Header */}
-      <DesktopHeader variant={variant} showAdmin={showAdmin} />
+      <DesktopHeader variant={variant} showAdmin={effectiveShowAdmin} />
       
       {/* Mobile Header */}
       <MobileHeader 
@@ -41,7 +45,7 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
         variant={variant}
         showBack={showBack}
         backPath={backPath}
-        showAdmin={showAdmin}
+        showAdmin={effectiveShowAdmin}
         rightContent={rightContent}
       />
       
