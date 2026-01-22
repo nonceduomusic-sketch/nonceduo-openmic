@@ -42,8 +42,10 @@ const Social: React.FC = () => {
   return (
     <>
       <SEO 
-        title="Community Social | Non Ce Duo"
-        description="Unisciti alla community di Non Ce Duo. Chat private, gruppi tematici e tanto divertimento!"
+        title="Community | Non C'è Duo"
+        description="Unisciti alla community di Non C'è Duo. Chat private, gruppi tematici e tanto divertimento!"
+        image="/og-community.jpg"
+        url="/social"
       />
       
       <div className="min-h-screen bg-background relative overflow-hidden">

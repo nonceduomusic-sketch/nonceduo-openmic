@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { Quote, Star } from 'lucide-react';
 
 interface Testimonial {
@@ -57,16 +57,16 @@ const partybandTestimonials: Testimonial[] = [
   }
 ];
 
-export const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({
+export const TestimonialsSection = forwardRef<HTMLElement, TestimonialsSectionProps>(({
   testimonials,
   title = "Cosa Dicono di Noi",
   subtitle = "Le parole dei nostri clienti valgono più di mille descrizioni",
   variant = 'default'
-}) => {
+}, ref) => {
   const displayTestimonials = testimonials || (variant === 'partyband' ? partybandTestimonials : defaultTestimonials);
 
   return (
-    <section className="py-24 bg-card/30">
+    <section ref={ref} className="py-24 bg-card/30">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 text-foreground">
@@ -113,6 +113,8 @@ export const TestimonialsSection: React.FC<TestimonialsSectionProps> = ({
       </div>
     </section>
   );
-};
+});
+
+TestimonialsSection.displayName = 'TestimonialsSection';
 
 export default TestimonialsSection;
