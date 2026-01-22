@@ -69,6 +69,8 @@ import { Badge } from '@/components/ui/badge';
 import { adminAuditLog } from '@/lib/adminAudit';
 import { useAdminSectionAccess } from '@/hooks/useAdminSectionAccess';
 import { AdminMobileTabBar } from '@/components/admin/AdminMobileTabBar';
+import { AdminOpenMicMobileActions } from '@/components/admin/AdminOpenMicMobileActions';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // Type for tracking undo operations
 interface UndoAction {
@@ -81,6 +83,7 @@ export const AdminDashboard: React.FC = () => {
   const { currentUser, logout, staffRole, session } = useAdmin();
   const { toast } = useToast();
   const { access, isLoading: isAccessLoading } = useAdminSectionAccess();
+  const isMobile = useIsMobile();
   const {
     activeReservations,
     completedReservations,
@@ -966,6 +969,7 @@ export const AdminDashboard: React.FC = () => {
                     selectionMode={selectionMode}
                     isSelected={selectedIds.has(reservation.id)}
                     onSelect={handleSelect}
+                    compact={isMobile}
                   />
                 ))
               )}
@@ -989,6 +993,7 @@ export const AdminDashboard: React.FC = () => {
                     selectionMode={selectionMode}
                     isSelected={selectedIds.has(reservation.id)}
                     onSelect={handleSelect}
+                    compact={isMobile}
                   />
                 ))
               )}
@@ -1010,6 +1015,20 @@ export const AdminDashboard: React.FC = () => {
           <AdminNotificationsTab />
         ) : null}
       </main>
+
+      <AdminOpenMicMobileActions
+        visible={mainTab === 'openmic'}
+        selectionMode={selectionMode}
+        selectedCount={selectedIds.size}
+        totalCount={currentReservations.length}
+        canUndo={!!lastAction}
+        onUndo={handleUndoAction}
+        onEnterSelection={() => setSelectionMode(true)}
+        onExitSelection={exitSelectionMode}
+        onToggleSelectAll={handleSelectAll}
+        onDeleteSelected={handleDeleteSelected}
+      />
+
       <AdminMobileTabBar
         value={mainTab}
         onChange={setMainTab}

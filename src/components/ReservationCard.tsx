@@ -26,6 +26,8 @@ interface ReservationCardProps {
   selectionMode?: boolean;
   isSelected?: boolean;
   onSelect?: (id: string, checked: boolean) => void;
+  /** Compact mobile-friendly layout */
+  compact?: boolean;
 }
 
 export const ReservationCard: React.FC<ReservationCardProps> = ({
@@ -37,6 +39,7 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
   selectionMode = false,
   isSelected = false,
   onSelect,
+  compact = false,
 }) => {
   const [lyricsDialogOpen, setLyricsDialogOpen] = useState(false);
 
@@ -62,11 +65,11 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
   return (
     <>
       <div
-        className={`glass-card p-4 transition-all duration-300 ${
+        className={`glass-card ${compact ? 'p-3 md:p-4' : 'p-4'} transition-all duration-300 ${
           isCompleted ? 'opacity-70' : 'hover:neon-glow-pink'
         } ${isSelected ? 'ring-2 ring-primary neon-glow-pink' : ''}`}
       >
-        <div className="flex items-start gap-3">
+        <div className={compact ? 'flex items-start gap-2.5' : 'flex items-start gap-3'}>
           {selectionMode && (
             <div className="flex items-center pt-1">
               <Checkbox
@@ -78,19 +81,19 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
           )}
           
           <div
-            className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+            className={`${compact ? 'w-9 h-9 rounded-lg' : 'w-10 h-10 rounded-lg'} flex items-center justify-center flex-shrink-0 ${
               isCompleted
                 ? 'bg-muted'
                 : 'bg-gradient-to-br from-primary/20 to-secondary/20'
             }`}
           >
             <Music
-              className={`w-5 h-5 ${isCompleted ? 'text-muted-foreground' : 'text-primary'}`}
+              className={`${compact ? 'w-4 h-4' : 'w-5 h-5'} ${isCompleted ? 'text-muted-foreground' : 'text-primary'}`}
             />
           </div>
 
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
+            <div className={compact ? 'flex items-center gap-2 mb-0.5' : 'flex items-center gap-2 mb-1'}>
               <span className="font-display font-semibold text-foreground">
                 {reservation.customer_name}
               </span>
@@ -101,7 +104,7 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
               )}
             </div>
 
-            <p className="font-medium text-sm text-foreground truncate">
+            <p className={compact ? 'font-medium text-sm text-foreground truncate leading-snug' : 'font-medium text-sm text-foreground truncate'}>
               {reservation.song_title}
             </p>
             <p className="text-xs text-secondary truncate">
@@ -115,16 +118,26 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
           </div>
         </div>
 
-        <div className="mt-3 p-2 rounded-lg bg-muted/30 border border-border">
-          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-            <MessageCircle className="w-3 h-3" />
-            Messaggio:
+        {compact ? (
+          <details className="mt-2 rounded-lg bg-muted/30 border border-border px-3 py-2">
+            <summary className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
+              <MessageCircle className="w-3 h-3" />
+              Messaggio WhatsApp
+            </summary>
+            <p className="text-xs text-foreground italic mt-2">"{message}"</p>
+          </details>
+        ) : (
+          <div className="mt-3 p-2 rounded-lg bg-muted/30 border border-border">
+            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
+              <MessageCircle className="w-3 h-3" />
+              Messaggio:
+            </div>
+            <p className="text-xs text-foreground italic">"{message}"</p>
           </div>
-          <p className="text-xs text-foreground italic">"{message}"</p>
-        </div>
+        )}
 
         {/* Lyrics/Chords button - always visible */}
-        <div className="mt-3">
+        <div className={compact ? 'mt-2' : 'mt-3'}>
           <Button
             onClick={() => setLyricsDialogOpen(true)}
             variant="outline"
@@ -137,7 +150,7 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
         </div>
 
         {showActions && !selectionMode && (
-          <div className="mt-3 flex gap-2">
+          <div className={compact ? 'mt-2 flex gap-2' : 'mt-3 flex gap-2'}>
             {isCompleted ? (
               <>
                 <Button
