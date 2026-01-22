@@ -159,6 +159,33 @@ export type Database = {
           },
         ]
       }
+      community_blocked_users: {
+        Row: {
+          blocked_at: string | null
+          blocked_by: string | null
+          expires_at: string | null
+          id: string
+          reason: string | null
+          user_id: string
+        }
+        Insert: {
+          blocked_at?: string | null
+          blocked_by?: string | null
+          expires_at?: string | null
+          id?: string
+          reason?: string | null
+          user_id: string
+        }
+        Update: {
+          blocked_at?: string | null
+          blocked_by?: string | null
+          expires_at?: string | null
+          id?: string
+          reason?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       conversation_participants: {
         Row: {
           conversation_id: string
