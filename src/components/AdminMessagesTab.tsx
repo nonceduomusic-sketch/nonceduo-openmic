@@ -33,7 +33,7 @@ import { GroupPasswordDialog } from '@/components/GroupPasswordDialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { useConversations, Conversation, ChatMessage } from '@/hooks/useConversations';
+import { useConversations, Conversation, ChatMessage, ConversationSection } from '@/hooks/useConversations';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,9 +74,20 @@ import { Label } from '@/components/ui/label';
 
 interface AdminMessagesTabProps {
   onUnreadCountChange?: (count: number) => void;
+  /** Filter conversations/groups by section (dediche | community). */
+  section?: ConversationSection;
+  /** Limit which subtabs are shown. Defaults to all. */
+  visibleSubTabs?: Array<'unread' | 'read' | 'groups'>;
+  /** Initial selected subtab. Defaults to 'unread'. */
+  initialSubTab?: 'unread' | 'read' | 'groups';
 }
 
-export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCountChange }) => {
+export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
+  onUnreadCountChange,
+  section,
+  visibleSubTabs,
+  initialSubTab = 'unread',
+}) => {
   const { toast } = useToast();
   const {
     conversations,
@@ -106,9 +117,15 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
     adminStartPrivateChat,
     getUnreadConversations,
     getReadConversations,
-  } = useConversations();
+  } = useConversations(undefined, section);
 
-  const [activeSubTab, setActiveSubTab] = useState<'unread' | 'read' | 'groups'>('unread');
+  const allowedSubTabs = (visibleSubTabs && visibleSubTabs.length > 0)
+    ? visibleSubTabs
+    : (['unread', 'read', 'groups'] as const);
+
+  const [activeSubTab, setActiveSubTab] = useState<'unread' | 'read' | 'groups'>(
+    allowedSubTabs.includes(initialSubTab) ? initialSubTab : allowedSubTabs[0]
+  );
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [replyText, setReplyText] = useState('');
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
@@ -193,6 +210,14 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
   React.useEffect(() => {
     onUnreadCountChange?.(unreadConversations.length);
   }, [unreadConversations.length, onUnreadCountChange]);
+
+  // Ensure active subtab is always allowed
+  useEffect(() => {
+    if (!allowedSubTabs.includes(activeSubTab)) {
+      setActiveSubTab(allowedSubTabs[0]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allowedSubTabs.join('|')]);
 
   // Track which messages admin has seen (local state for visual distinction)
   const [viewedMessageIds, setViewedMessageIds] = useState<Set<string>>(new Set());
@@ -1158,39 +1183,45 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({ onUnreadCoun
 
       {/* Sub-tabs */}
       <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => setActiveSubTab('unread')}
-          className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
-            activeSubTab === 'unread'
-              ? 'bg-primary text-primary-foreground neon-glow-pink'
-              : 'bg-muted text-muted-foreground hover:bg-muted/80'
-          }`}
-        >
-          <MessageCircle className="w-4 h-4 inline-block mr-2" />
-          Da leggere ({unreadConversations.length})
-        </button>
-        <button
-          onClick={() => setActiveSubTab('read')}
-          className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
-            activeSubTab === 'read'
-              ? 'bg-secondary text-secondary-foreground neon-glow-cyan'
-              : 'bg-muted text-muted-foreground hover:bg-muted/80'
-          }`}
-        >
-          <Eye className="w-4 h-4 inline-block mr-2" />
-          Letti ({readConversations.length})
-        </button>
-        <button
-          onClick={() => setActiveSubTab('groups')}
-          className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
-            activeSubTab === 'groups'
-              ? 'bg-accent text-accent-foreground'
-              : 'bg-muted text-muted-foreground hover:bg-muted/80'
-          }`}
-        >
-          <Users className="w-4 h-4 inline-block mr-2" />
-          Gruppi ({groupConversations.length})
-        </button>
+        {allowedSubTabs.includes('unread') && (
+          <button
+            onClick={() => setActiveSubTab('unread')}
+            className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
+              activeSubTab === 'unread'
+                ? 'bg-primary text-primary-foreground neon-glow-pink'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            <MessageCircle className="w-4 h-4 inline-block mr-2" />
+            Da leggere ({unreadConversations.length})
+          </button>
+        )}
+        {allowedSubTabs.includes('read') && (
+          <button
+            onClick={() => setActiveSubTab('read')}
+            className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
+              activeSubTab === 'read'
+                ? 'bg-secondary text-secondary-foreground neon-glow-cyan'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            <Eye className="w-4 h-4 inline-block mr-2" />
+            Letti ({readConversations.length})
+          </button>
+        )}
+        {allowedSubTabs.includes('groups') && (
+          <button
+            onClick={() => setActiveSubTab('groups')}
+            className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
+              activeSubTab === 'groups'
+                ? 'bg-accent text-accent-foreground'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+            }`}
+          >
+            <Users className="w-4 h-4 inline-block mr-2" />
+            Gruppi ({groupConversations.length})
+          </button>
+        )}
       </div>
 
       {/* Conversations list */}
