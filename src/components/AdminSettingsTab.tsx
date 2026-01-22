@@ -15,6 +15,19 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+
+type SectionKey = 'openmic' | 'dediche' | 'community';
+
+interface SectionSettingRow {
+  id: string;
+  section_key: SectionKey;
+  display_name: string;
+  is_enabled: boolean | null;
+  description: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+}
 
 interface NotificationSettings {
   pushEnabled: boolean;
@@ -39,10 +52,34 @@ const DEFAULT_SETTINGS: NotificationSettings = {
 export const AdminSettingsTab: React.FC = () => {
   const { toast } = useToast();
   const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_SETTINGS);
+  const [sectionSettings, setSectionSettings] = useState<SectionSettingRow[]>([]);
+  const [sectionsLoading, setSectionsLoading] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   );
   const [isSaved, setIsSaved] = useState(false);
+
+  const fetchSectionSettings = async () => {
+    setSectionsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('section_settings')
+        .select('id, section_key, display_name, is_enabled, description, updated_at, updated_by')
+        .order('display_name', { ascending: true });
+
+      if (error) throw error;
+      setSectionSettings((data as SectionSettingRow[]) || []);
+    } catch (e) {
+      console.error('Failed to load section settings:', e);
+      toast({
+        title: 'Errore',
+        description: 'Impossibile caricare i format (sezioni).',
+        variant: 'destructive',
+      });
+    } finally {
+      setSectionsLoading(false);
+    }
+  };
 
   // Load settings from localStorage
   useEffect(() => {
@@ -55,6 +92,38 @@ export const AdminSettingsTab: React.FC = () => {
       }
     }
   }, []);
+
+  // Load section settings from backend
+  useEffect(() => {
+    fetchSectionSettings();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleToggleSection = async (row: SectionSettingRow, enabled: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('section_settings')
+        .update({ is_enabled: enabled })
+        .eq('id', row.id);
+
+      if (error) throw error;
+
+      setSectionSettings(prev => prev.map(r => (r.id === row.id ? { ...r, is_enabled: enabled } : r)));
+      toast({
+        title: 'Aggiornato',
+        description: `${row.display_name}: ${enabled ? 'attivo' : 'disattivo'}`,
+      });
+    } catch (e: any) {
+      console.error('Failed to update section setting:', e);
+      toast({
+        title: 'Permessi insufficienti',
+        description: e?.message || 'Non puoi modificare questi format.',
+        variant: 'destructive',
+      });
+      // Re-sync from backend to avoid stale UI
+      fetchSectionSettings();
+    }
+  };
 
   const saveSettings = () => {
     localStorage.setItem('admin_notification_settings', JSON.stringify(settings));
@@ -110,12 +179,48 @@ export const AdminSettingsTab: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="mb-6">
-        <h2 className="font-display text-xl font-bold text-foreground mb-2">
-          Impostazioni Notifiche
-        </h2>
+        <h2 className="font-display text-xl font-bold text-foreground mb-2">Impostazioni</h2>
         <p className="text-sm text-muted-foreground">
-          Configura come e quando ricevere le notifiche
+          Gestisci format e notifiche dell'admin
         </p>
+      </div>
+
+      {/* Format (Sections) */}
+      <div className="glass-card p-4 space-y-4">
+        <div>
+          <h3 className="font-medium text-foreground">Format (Sezioni)</h3>
+          <p className="text-xs text-muted-foreground">
+            Accendi/spegni Open Mic, Dediche e Community.
+          </p>
+        </div>
+
+        {sectionsLoading ? (
+          <div className="text-sm text-muted-foreground">Caricamento format...</div>
+        ) : sectionSettings.length === 0 ? (
+          <div className="text-sm text-muted-foreground">
+            Nessun format configurato nel backend.
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {sectionSettings.map((row) => {
+              const enabled = row.is_enabled ?? true;
+              return (
+                <div key={row.id} className="flex items-center justify-between py-2 border-t border-border first:border-t-0">
+                  <div className="min-w-0">
+                    <Label className="text-foreground">{row.display_name}</Label>
+                    {row.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-2">{row.description}</p>
+                    )}
+                  </div>
+                  <Switch
+                    checked={enabled}
+                    onCheckedChange={(checked) => handleToggleSection(row, checked)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Browser Notification Permission */}

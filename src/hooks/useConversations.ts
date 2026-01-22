@@ -27,6 +27,7 @@ export interface Conversation {
   id: string;
   name: string | null;
   is_group: boolean;
+  section?: ConversationSection;
   is_public?: boolean;
   is_read?: boolean;
   allowed_participants?: string[];
