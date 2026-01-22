@@ -26,6 +26,7 @@ import {
   Crown,
   Newspaper,
   Book,
+  Shield,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Users } from 'lucide-react';
@@ -33,6 +34,7 @@ import { useAdmin } from '@/contexts/AdminContext';
 import { useReservations, Reservation } from '@/hooks/useReservations';
 import { useMessages, Message } from '@/hooks/useMessages';
 import { useConversations, ChatMessage, Conversation } from '@/hooks/useConversations';
+import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 import { ReservationCard } from './ReservationCard';
 import { NotificationPopup } from './NotificationPopup';
 import { MessageNotificationPopup } from './MessageNotificationPopup';
@@ -41,7 +43,7 @@ import { AdminMessagesTab } from './AdminMessagesTab';
 import { AdminBlockedUsersTab } from './AdminBlockedUsersTab';
 import { AdminSettingsTab } from './AdminSettingsTab';
 import { AdminSongManagementTab } from './AdminSongManagementTab';
-// AdminPermissionsTab removed - merged into AdminUsersTab
+import { AdminPermissionsTab } from './AdminPermissionsTab';
 import { AdminUsersTab } from './AdminUsersTab';
 import { AdminFeedTab } from './AdminFeedTab';
 import { AdminNotificationsTab } from './AdminNotificationsTab';
@@ -101,7 +103,11 @@ export const AdminDashboard: React.FC = () => {
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
   const [chatNotifications, setChatNotifications] = useState<{ message: ChatMessage; conversation?: Conversation }[]>([]);
   const [unreadConvCount, setUnreadConvCount] = useState(0);
-  const [mainTab, setMainTab] = useState<'openmic' | 'messages' | 'users' | 'feed' | 'blocked' | 'songs' | 'settings' | 'notifications'>('openmic');
+  const [mainTab, setMainTab] = useState<'openmic' | 'messages' | 'users' | 'feed' | 'blocked' | 'songs' | 'settings' | 'notifications' | 'permissions'>('openmic');
+  
+  // Get notification counts for badges
+  const { counts: notificationCounts } = useAdminNotifications();
+  const totalNotifications = notificationCounts.pendingJoinRequests + notificationCounts.unreadDedicheMessages + notificationCounts.unreadCommunityMessages;
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -768,7 +774,7 @@ export const AdminDashboard: React.FC = () => {
           <div className="flex gap-1 mt-4 overflow-x-auto pb-1">
             <button
               onClick={() => setMainTab('notifications')}
-              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap relative ${
                 mainTab === 'notifications'
                   ? 'bg-gradient-to-r from-warning to-accent text-warning-foreground shadow-lg'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -776,6 +782,11 @@ export const AdminDashboard: React.FC = () => {
             >
               <Bell className="w-4 h-4" />
               Centro
+              {totalNotifications > 0 && (
+                <span className="px-1.5 py-0.5 text-xs rounded-full bg-destructive text-destructive-foreground animate-pulse">
+                  {totalNotifications}
+                </span>
+              )}
             </button>
             <button
               onClick={() => setMainTab('openmic')}
@@ -830,6 +841,17 @@ export const AdminDashboard: React.FC = () => {
             >
               <Users className="w-4 h-4" />
               Utenti
+            </button>
+            <button
+              onClick={() => setMainTab('permissions')}
+              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
+                mainTab === 'permissions'
+                  ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-white shadow-lg'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              <Shield className="w-4 h-4" />
+              Permessi
             </button>
             <button
               onClick={() => setMainTab('feed')}
@@ -949,6 +971,8 @@ export const AdminDashboard: React.FC = () => {
           <AdminMessagesTab onUnreadCountChange={handleUnreadCountChange} />
         ) : mainTab === 'users' ? (
           <AdminUsersTab />
+        ) : mainTab === 'permissions' ? (
+          <AdminPermissionsTab />
         ) : mainTab === 'feed' ? (
           <AdminFeedTab />
         ) : mainTab === 'songs' ? (
