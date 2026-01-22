@@ -122,7 +122,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
         {/* Right side */}
         <div className="flex items-center gap-1.5">
           {rightContent}
-          <UserLoginIndicator />
+          {(variant === 'community' || variant === 'admin') && <UserLoginIndicator />}
           {showAdmin && (
             <Link to="/admin">
               <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80">

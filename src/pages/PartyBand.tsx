@@ -4,7 +4,6 @@ import { Music, Phone, Mail, Instagram, PartyPopper, Users, Sparkles, Volume2, A
 import { Button } from '@/components/ui/button';
 import { SEO } from '@/components/SEO';
 import { TestimonialsSection } from '@/components/TestimonialsSection';
-import { UserLoginIndicator } from '@/components/UserLoginIndicator';
 
 const PartyBand: React.FC = () => {
   const scrollToSection = (id: string) => {
@@ -34,7 +33,6 @@ const PartyBand: React.FC = () => {
             </Link>
             
             <div className="flex items-center gap-3">
-              <UserLoginIndicator compact />
               <Link to="/">
                 <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                   <ArrowLeft className="w-4 h-4 mr-2" />

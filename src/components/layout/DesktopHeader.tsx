@@ -201,7 +201,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
 
         {/* Right side */}
         <div className="flex items-center gap-2">
-          <UserLoginIndicator />
+          {(variant === 'community' || variant === 'admin') && <UserLoginIndicator />}
           {showAdmin && (
             <Link to="/admin">
               <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground rounded-xl">
