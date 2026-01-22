@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Menu, Mic2, ExternalLink, Phone, Instagram, Mail } from "lucide-react";
+import { Menu, Mic2, ExternalLink, Phone, Instagram, Mail, Shield } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -114,6 +114,15 @@ export const SiteHeader: React.FC<{ className?: string }> = ({ className }) => {
                     </Button>
                   </a>
                 </div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-border/60">
+                <Link to="/admin">
+                  <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground">
+                    <Shield className="w-4 h-4 mr-2" />
+                    Area Staff
+                  </Button>
+                </Link>
               </div>
             </SheetContent>
           </Sheet>

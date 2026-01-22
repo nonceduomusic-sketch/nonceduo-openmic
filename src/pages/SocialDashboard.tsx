@@ -13,6 +13,8 @@ import { UserSearch } from '@/components/UserSearch';
 import { FriendRequests } from '@/components/FriendRequests';
 import { SocialGroupsList } from '@/components/SocialGroupsList';
 import { ProfileEditModal } from '@/components/ProfileEditModal';
+import { SectionOffLanding } from '@/components/SectionOffLanding';
+import { useSectionStatus } from '@/hooks/useSectionStatus';
 import { 
   Home,
   MessageCircle, 
@@ -45,6 +47,7 @@ interface Profile {
 const SocialDashboard: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { status: communityStatus, loading: communityLoading } = useSectionStatus('community');
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -240,11 +243,24 @@ const SocialDashboard: React.FC = () => {
     return `${Math.floor(diffMins / 1440)}g fa`;
   };
 
-  if (loading) {
+  if (loading || communityLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <RefreshCw className="w-8 h-8 text-primary animate-spin" />
       </div>
+    );
+  }
+
+  if (communityStatus && !communityStatus.isEnabled) {
+    return (
+      <SectionOffLanding
+        title="Community"
+        description="La Community è momentaneamente disabilitata. Per info e date, contattaci."
+        backTo="/"
+        backLabel="Torna al sito"
+        secondaryBackTo="/app"
+        secondaryBackLabel="Torna all'app"
+      />
     );
   }
 

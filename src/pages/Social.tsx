@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { SEO } from '@/components/SEO';
 import { UserLoginIndicator } from '@/components/UserLoginIndicator';
+import { SectionOffLanding } from '@/components/SectionOffLanding';
+import { useSectionStatus } from '@/hooks/useSectionStatus';
 import { 
   Users, 
   MessageCircle, 
@@ -16,6 +18,25 @@ import {
 } from 'lucide-react';
 
 const Social: React.FC = () => {
+  const { status, loading } = useSectionStatus('community');
+
+  if (loading) {
+    return <div className="min-h-screen bg-background" />;
+  }
+
+  if (status && !status.isEnabled) {
+    return (
+      <SectionOffLanding
+        title="Community"
+        description="La Community è momentaneamente disabilitata. Per info e date, contattaci."
+        backTo="/"
+        backLabel="Torna al sito"
+        secondaryBackTo="/app"
+        secondaryBackLabel="Torna all'app"
+      />
+    );
+  }
+
   const features = [
     {
       icon: <MessageCircle className="w-8 h-8" />,

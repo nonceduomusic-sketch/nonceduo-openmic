@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { TestimonialsSection } from '@/components/TestimonialsSection';
 import { SEO } from '@/components/SEO';
 import { SiteHeader } from '@/components/site/SiteHeader';
+import { useSectionStatus } from '@/hooks/useSectionStatus';
 
 import duoPhoto1 from '@/assets/duo-photo-1.png';
 import duoPhoto2 from '@/assets/duo-photo-2.png';
@@ -13,6 +14,9 @@ import duoPhoto3 from '@/assets/duo-photo-3.png';
 import duoPhoto4 from '@/assets/duo-photo-4.png';
 
 const Home: React.FC = () => {
+  const { status: communityStatus } = useSectionStatus('community');
+  const communityEnabled = communityStatus?.isEnabled ?? true;
+
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -107,15 +111,23 @@ const Home: React.FC = () => {
                   </Card>
                 </Link>
                 
-                <Link to="/social" className="group">
-                  <Card className="bg-card/70 backdrop-blur-sm border-accent/40 hover:border-accent hover:scale-105 transition-all duration-300 overflow-hidden">
+                <Link to="/social" className={communityEnabled ? 'group' : 'group opacity-70'}>
+                  <Card className={communityEnabled
+                    ? "bg-card/70 backdrop-blur-sm border-accent/40 hover:border-accent hover:scale-105 transition-all duration-300 overflow-hidden"
+                    : "bg-card/70 backdrop-blur-sm border-border/60 transition-all duration-300 overflow-hidden"
+                  }>
                     <CardContent className="p-4 text-center relative">
                       <div className="absolute inset-0 bg-gradient-to-t from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                       <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-accent/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-accent/30 transition-all">
                         <Users className="w-6 h-6 text-accent" />
                       </div>
                       <span className="text-sm font-bold text-foreground block">Community</span>
-                      <p className="text-[10px] text-accent font-medium mt-0.5">Entra nel club</p>
+                      <p className={communityEnabled
+                        ? "text-[10px] text-accent font-medium mt-0.5"
+                        : "text-[10px] text-muted-foreground font-medium mt-0.5"
+                      }>
+                        {communityEnabled ? 'Entra nel club' : 'Momentaneamente OFF'}
+                      </p>
                     </CardContent>
                   </Card>
                 </Link>
