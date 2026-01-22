@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowLeft, Send, MessageCircle, Edit2, Check, X, Users, Globe, Ban, Circle, Plus, Bell, BellOff, Lock } from 'lucide-react';
+import { ArrowLeft, Send, MessageCircle, Edit2, Check, X, Users, Globe, Ban, Circle, Plus, Bell, BellOff, Lock, Home, Mic2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,6 +17,7 @@ import { SocialCTA } from '@/components/SocialCTA';
 import { JoinGroupPasswordDialog } from '@/components/JoinGroupPasswordDialog';
 import { UserLoginIndicator } from '@/components/UserLoginIndicator';
 import { SEO } from '@/components/SEO';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 
 const messageSchema = z.object({
   sender_name: z.string().trim()
@@ -899,11 +900,23 @@ const Messages: React.FC = () => {
                 <ArrowLeft className="w-5 h-5" />
               </Button>
             ) : (
-              <Link to="/openmic">
-                <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-              </Link>
+              <div className="flex items-center gap-1">
+                <Link to="/" aria-label="Vai alla Home">
+                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                    <Home className="w-5 h-5" />
+                  </Button>
+                </Link>
+                <Link to="/openmic" aria-label="Vai a Open Mic">
+                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                    <Mic2 className="w-5 h-5" />
+                  </Button>
+                </Link>
+                <Link to="/social" aria-label="Vai a Community">
+                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
+                    <Users className="w-5 h-5" />
+                  </Button>
+                </Link>
+              </div>
             )}
             <div className="flex-1">
               <h1 className="font-display text-xl md:text-2xl font-bold neon-text-cyan">
@@ -1013,9 +1026,12 @@ const Messages: React.FC = () => {
         </div>
       )}
 
-      <main className="flex-1 container py-6 max-w-lg mx-auto flex flex-col">
+      <main className="flex-1 container py-6 pb-24 max-w-lg mx-auto flex flex-col">
         {renderMainContent()}
       </main>
+
+      {/* Mobile Bottom Nav */}
+      <MobileBottomNav variant="main" />
 
       {/* Password Dialog for joining protected groups */}
       <JoinGroupPasswordDialog
