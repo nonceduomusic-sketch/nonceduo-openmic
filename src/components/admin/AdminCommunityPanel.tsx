@@ -27,10 +27,11 @@ export const AdminCommunityPanel: React.FC<{
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 overflow-x-auto pb-1 md:pb-0 md:flex-wrap">
+      {/* Mobile: wrap (no horizontal scrollbar). Desktop: can still wrap naturally. */}
+      <div className="flex gap-2 flex-wrap">
         <button
           onClick={() => setSubTab("groups")}
-          className={`shrink-0 md:flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
+          className={`flex-1 min-w-[140px] py-2 px-4 rounded-lg font-medium text-sm transition-all ${
             subTab === "groups" ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
@@ -39,7 +40,7 @@ export const AdminCommunityPanel: React.FC<{
         </button>
         <button
           onClick={() => setSubTab("invites")}
-          className={`shrink-0 md:flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
+          className={`flex-1 min-w-[140px] py-2 px-4 rounded-lg font-medium text-sm transition-all ${
             subTab === "invites" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
@@ -48,7 +49,7 @@ export const AdminCommunityPanel: React.FC<{
         </button>
         <button
           onClick={() => setSubTab("users")}
-          className={`shrink-0 md:flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
+          className={`flex-1 min-w-[140px] py-2 px-4 rounded-lg font-medium text-sm transition-all ${
             subTab === "users" ? "bg-secondary text-secondary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
@@ -57,7 +58,7 @@ export const AdminCommunityPanel: React.FC<{
         </button>
         <button
           onClick={() => setSubTab("feed")}
-          className={`shrink-0 md:flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
+          className={`flex-1 min-w-[140px] py-2 px-4 rounded-lg font-medium text-sm transition-all ${
             subTab === "feed" ? "bg-gradient-to-r from-accent to-secondary text-accent-foreground shadow-lg" : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
@@ -66,7 +67,7 @@ export const AdminCommunityPanel: React.FC<{
         </button>
         <button
           onClick={() => setSubTab("blocked")}
-          className={`shrink-0 md:flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
+          className={`flex-1 min-w-[140px] py-2 px-4 rounded-lg font-medium text-sm transition-all ${
             subTab === "blocked" ? "bg-destructive text-destructive-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >

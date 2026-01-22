@@ -464,7 +464,8 @@ export const AdminDashboard: React.FC = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
-        <AdminSidebar active={mainTab} onSelect={setMainTab} access={access} />
+        {/* Mobile uses the bottom tab bar; keep sidebar desktop-only to avoid a huge overlay sheet */}
+        {!isMobile && <AdminSidebar active={mainTab} onSelect={setMainTab} access={access} />}
         <SidebarInset>
       {/* Reservation Notifications */}
       {reservationNotifications.map((notification) => (
@@ -501,7 +502,8 @@ export const AdminDashboard: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
-                <SidebarTrigger className="-ml-1" />
+                {/* Desktop-only: on mobile the sidebar sheet covers too much and we already have bottom nav */}
+                <SidebarTrigger className="-ml-1 hidden md:inline-flex" />
                 <h1 className="font-display text-xl md:text-2xl font-bold neon-text-cyan">Admin Panel</h1>
               </div>
               <p className="text-sm text-muted-foreground">
