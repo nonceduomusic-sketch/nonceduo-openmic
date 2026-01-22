@@ -117,6 +117,11 @@ export const AdminPermissionsTab: React.FC = () => {
   const [showRoleChangeDialog, setShowRoleChangeDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserRole | null>(null);
   const [newRole, setNewRole] = useState<AppRole>('admin');
+  const [groupEnableDialog, setGroupEnableDialog] = useState<{
+    open: boolean;
+    role: AppRole;
+    groupKey: string;
+  } | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -242,6 +247,82 @@ export const AdminPermissionsTab: React.FC = () => {
       toast({
         title: 'Errore',
         description: 'Impossibile aggiornare la sezione di permessi',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const toggleRolePermissionGroupRecommended = async (role: AppRole, groupKey: string) => {
+    try {
+      // For Admin/Owner, “recommended” == full.
+      if (role === 'admin' || role === 'owner') {
+        await toggleRolePermissionGroup(role, groupKey, true);
+        return;
+      }
+
+      const inGroup = permissions.filter((p) => getPermissionGroupKey(p.name) === groupKey);
+
+      // Minimal & safe defaults for Staff/User:
+      // - allow viewing/reading/listing
+      // - avoid destructive/admin actions by default
+      const recommended = inGroup.filter((p) => {
+        const name = p.name.toLowerCase();
+        return (
+          name.endsWith('.view') ||
+          name.endsWith('.read') ||
+          name.endsWith('.list') ||
+          name.includes('.view_') ||
+          name.includes('.read_') ||
+          name.includes('.list_')
+        );
+      });
+
+      const recommendedIds = recommended.map((p) => p.id);
+      if (recommendedIds.length === 0) {
+        // Fallback: at least enable the base "{group}.view" if present.
+        const baseView = inGroup.find((p) => p.name.toLowerCase() === `${groupKey}.view`);
+        if (baseView) recommendedIds.push(baseView.id);
+      }
+
+      if (recommendedIds.length === 0) {
+        toast({
+          title: 'Nessun permesso consigliato',
+          description: 'Non trovo permessi “view/read/list” per questa sezione.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const existing = new Set(
+        rolePermissions.filter((rp) => rp.role === role).map((rp) => rp.permission_id),
+      );
+      const rows = recommendedIds
+        .filter((id) => !existing.has(id))
+        .map((permission_id) => ({ role, permission_id }));
+
+      if (rows.length > 0) {
+        const { error } = await supabase.from('role_permissions').insert(rows);
+        if (error) throw error;
+      }
+
+      toast({
+        title: 'Sezione aggiornata',
+        description: `${PERMISSION_GROUP_LABELS[groupKey] ?? groupKey}: abilitazione consigliata per ${ROLE_LABELS[role]}`,
+      });
+
+      adminAuditLog({
+        action: 'permissions.role_group_enable_recommended',
+        section: 'settings',
+        entity: 'role_permissions',
+        metadata: { role, group: groupKey, mode: 'recommended' },
+      });
+
+      fetchData();
+    } catch (error) {
+      console.error('Error enabling recommended group permissions:', error);
+      toast({
+        title: 'Errore',
+        description: 'Impossibile applicare l’abilitazione consigliata',
         variant: 'destructive',
       });
     }
@@ -587,9 +668,15 @@ export const AdminPermissionsTab: React.FC = () => {
                               <span className="text-xs text-muted-foreground">Tutto</span>
                               <Switch
                                 checked={allEnabled}
-                                onCheckedChange={(checked) =>
-                                  toggleRolePermissionGroup(selectedRole, g, checked)
-                                }
+                                onCheckedChange={(checked) => {
+                                  if (selectedRole === ('owner' as AppRole)) return;
+                                  if (!checked) {
+                                    toggleRolePermissionGroup(selectedRole, g, false);
+                                    return;
+                                  }
+
+                                  setGroupEnableDialog({ open: true, role: selectedRole, groupKey: g });
+                                }}
                                 disabled={selectedRole === ('owner' as AppRole)}
                               />
                             </div>
@@ -702,6 +789,52 @@ export const AdminPermissionsTab: React.FC = () => {
             <AlertDialogAction onClick={handleRoleChange}>
               Conferma
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Enable group dialog (recommended vs full) */}
+      <AlertDialog
+        open={!!groupEnableDialog?.open}
+        onOpenChange={(open) => {
+          if (!groupEnableDialog) return;
+          setGroupEnableDialog(open ? groupEnableDialog : null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Abilita sezione</AlertDialogTitle>
+            <AlertDialogDescription>
+              Vuoi abilitare la sezione <strong>{PERMISSION_GROUP_LABELS[groupEnableDialog?.groupKey ?? ''] ?? groupEnableDialog?.groupKey}</strong> con un set
+              <strong> consigliato</strong> (più sicuro) oppure <strong>completo</strong> (tutti i permessi)?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="grid gap-3 py-2">
+            <Button
+              variant="default"
+              onClick={async () => {
+                if (!groupEnableDialog) return;
+                await toggleRolePermissionGroupRecommended(groupEnableDialog.role, groupEnableDialog.groupKey);
+                setGroupEnableDialog(null);
+              }}
+            >
+              Abilitazione consigliata
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={async () => {
+                if (!groupEnableDialog) return;
+                await toggleRolePermissionGroup(groupEnableDialog.role, groupEnableDialog.groupKey, true);
+                setGroupEnableDialog(null);
+              }}
+            >
+              Abilitazione completa
+            </Button>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setGroupEnableDialog(null)}>Annulla</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
