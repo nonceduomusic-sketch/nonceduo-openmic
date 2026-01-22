@@ -67,6 +67,7 @@ import { useToast } from '@/hooks/use-toast';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Badge } from '@/components/ui/badge';
 import { adminAuditLog } from '@/lib/adminAudit';
+import { useAdminSectionAccess } from '@/hooks/useAdminSectionAccess';
 
 // Type for tracking undo operations
 interface UndoAction {
@@ -78,6 +79,7 @@ interface UndoAction {
 export const AdminDashboard: React.FC = () => {
   const { currentUser, logout, staffRole, session } = useAdmin();
   const { toast } = useToast();
+  const { access, isLoading: isAccessLoading } = useAdminSectionAccess();
   const {
     activeReservations,
     completedReservations,
@@ -198,6 +200,25 @@ export const AdminDashboard: React.FC = () => {
     setSelectedIds(new Set());
     setSelectionMode(false);
   }, [activeTab, mainTab]);
+
+  // If the current tab is not allowed (permissions changed), move to the first allowed one.
+  useEffect(() => {
+    if (isAccessLoading) return;
+    const nextAllowed: AdminMainTab = access.openmic
+      ? 'openmic'
+      : access.dediche
+        ? 'dediche'
+        : access.community
+          ? 'community'
+          : 'notifications';
+
+    const isCurrentBlocked =
+      (mainTab === 'openmic' && !access.openmic) ||
+      (mainTab === 'dediche' && !access.dediche) ||
+      (mainTab === 'community' && !access.community);
+
+    if (isCurrentBlocked) setMainTab(nextAllowed);
+  }, [access.community, access.dediche, access.openmic, isAccessLoading, mainTab]);
 
   const removeReservationNotification = (id: string) => {
     setReservationNotifications((prev) => prev.filter((n) => n.id !== id));
@@ -438,7 +459,7 @@ export const AdminDashboard: React.FC = () => {
   return (
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
-        <AdminSidebar active={mainTab} onSelect={setMainTab} />
+        <AdminSidebar active={mainTab} onSelect={setMainTab} access={access} />
         <SidebarInset>
       {/* Reservation Notifications */}
       {reservationNotifications.map((notification) => (
@@ -471,7 +492,7 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Header */}
       <header className="sticky top-0 z-40 bg-card/90 backdrop-blur-md border-b border-border">
-        <div className="container py-4">
+        <div className="px-3 md:container py-3 md:py-4">
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
@@ -490,7 +511,8 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            {/* Desktop actions */}
+            <div className="hidden md:flex items-center gap-2">
               {/* Notification permission button */}
               {typeof Notification !== 'undefined' && notificationPermission !== 'granted' && (
                 <Button
@@ -798,6 +820,84 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
+          {/* Mobile actions: compact menu */}
+          <div className="md:hidden mt-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Badge variant="secondary" className="capitalize shrink-0">{staffLabel}</Badge>
+              <span className="text-xs text-muted-foreground truncate">{staffEmail || currentUser?.username}</span>
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="shrink-0">
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                {typeof Notification !== 'undefined' && notificationPermission !== 'granted' && (
+                  <DropdownMenuItem onClick={requestNotificationPermission}>
+                    <Bell className="w-4 h-4 mr-2" />
+                    Attiva notifiche
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuItem asChild>
+                  <Link to="/admin/manual">
+                    <Book className="w-4 h-4 mr-2" />
+                    Manuale Admin
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={openHomePage}>
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  Apri Open Mic
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    setResetOption('openmic');
+                    setShowResetDialog(true);
+                  }}
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Reset Open Mic
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setResetOption('messages');
+                    setShowResetDialog(true);
+                  }}
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Reset Messaggi
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setResetOption('songs');
+                    setShowResetDialog(true);
+                  }}
+                >
+                  <ListMusic className="w-4 h-4 mr-2" />
+                  Ripristina Canzoni
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    setResetOption('all');
+                    setShowResetDialog(true);
+                  }}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Database className="w-4 h-4 mr-2" />
+                  Reset Totale
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={logout}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Esci
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
           {/* Mobile Tabs (desktop uses sidebar) */}
           <div className="md:hidden flex gap-1 mt-4 overflow-x-auto pb-1">
             <button
@@ -817,8 +917,9 @@ export const AdminDashboard: React.FC = () => {
               )}
             </button>
             <button
-              onClick={() => setMainTab('openmic')}
-              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
+              onClick={() => access.openmic && setMainTab('openmic')}
+              disabled={!access.openmic}
+              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap disabled:opacity-50 disabled:pointer-events-none ${
                 mainTab === 'openmic'
                   ? 'bg-gradient-to-r from-primary to-secondary text-primary-foreground shadow-lg'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -833,8 +934,9 @@ export const AdminDashboard: React.FC = () => {
               )}
             </button>
             <button
-              onClick={() => setMainTab('dediche')}
-              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
+              onClick={() => access.dediche && setMainTab('dediche')}
+              disabled={!access.dediche}
+              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap disabled:opacity-50 disabled:pointer-events-none ${
                 mainTab === 'dediche'
                   ? 'bg-gradient-to-r from-secondary to-primary text-secondary-foreground shadow-lg'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -849,8 +951,9 @@ export const AdminDashboard: React.FC = () => {
               )}
             </button>
             <button
-              onClick={() => setMainTab('community')}
-              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
+              onClick={() => access.community && setMainTab('community')}
+              disabled={!access.community}
+              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap disabled:opacity-50 disabled:pointer-events-none ${
                 mainTab === 'community'
                   ? 'bg-gradient-to-r from-accent to-secondary text-accent-foreground shadow-lg'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -941,7 +1044,7 @@ export const AdminDashboard: React.FC = () => {
       </header>
 
       {/* Content */}
-      <main className="container py-6">
+      <main className="px-3 md:container py-6">
         {mainTab === 'openmic' ? (
           activeTab === 'active' ? (
             <div className="space-y-4">

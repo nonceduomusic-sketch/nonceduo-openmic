@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Bell, Database, ListMusic, MessageSquare, Music, Newspaper, Settings, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { AdminSectionKey } from "@/hooks/useAdminSectionAccess";
 
 export type AdminMainTab =
   | "notifications"
@@ -44,10 +45,19 @@ const ITEMS: Item[] = [
 export function AdminSidebar({
   active,
   onSelect,
+  access,
 }: {
   active: AdminMainTab;
   onSelect: (tab: AdminMainTab) => void;
+  access: Record<AdminSectionKey, boolean>;
 }) {
+  const isBlocked = (key: AdminMainTab) => {
+    if (key === "openmic") return !access.openmic;
+    if (key === "dediche") return !access.dediche;
+    if (key === "community") return !access.community;
+    return false;
+  };
+
   return (
     <Sidebar variant="inset" collapsible="icon" className="border-r border-border">
       <SidebarContent>
@@ -58,12 +68,14 @@ export function AdminSidebar({
               {ITEMS.filter((i) => i.group === "Operativo").map((item) => {
                 const Icon = item.icon;
                 const isActive = active === item.key;
+                const blocked = isBlocked(item.key);
                 return (
                   <SidebarMenuItem key={item.key}>
                     <SidebarMenuButton
                       isActive={isActive}
-                      tooltip={item.label}
-                      onClick={() => onSelect(item.key)}
+                      tooltip={blocked ? `${item.label} (non autorizzato)` : item.label}
+                      onClick={() => !blocked && onSelect(item.key)}
+                      disabled={blocked}
                       className={cn("justify-start", isActive && "font-medium")}
                     >
                       <Icon className="h-4 w-4" />
