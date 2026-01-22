@@ -45,7 +45,7 @@ const App = () => (
 
             {/* Legacy routes (keep existing behavior for now) */}
             <Route path="/openmic/live" element={<OpenMic />} />
-            <Route path="/messaggi/live" element={<Messages />} />
+            <Route path="/messaggi/live" element={<Messages appMode />} />
             <Route path="/join/:code" element={<JoinChat />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/reset" element={<AdminReset />} />
