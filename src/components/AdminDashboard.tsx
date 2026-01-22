@@ -41,7 +41,7 @@ import { AdminMessagesTab } from './AdminMessagesTab';
 import { AdminBlockedUsersTab } from './AdminBlockedUsersTab';
 import { AdminSettingsTab } from './AdminSettingsTab';
 import { AdminSongManagementTab } from './AdminSongManagementTab';
-import { AdminPermissionsTab } from './AdminPermissionsTab';
+// AdminPermissionsTab removed - merged into AdminUsersTab
 import { AdminUsersTab } from './AdminUsersTab';
 import { AdminFeedTab } from './AdminFeedTab';
 import {
@@ -100,7 +100,7 @@ export const AdminDashboard: React.FC = () => {
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
   const [chatNotifications, setChatNotifications] = useState<{ message: ChatMessage; conversation?: Conversation }[]>([]);
   const [unreadConvCount, setUnreadConvCount] = useState(0);
-  const [mainTab, setMainTab] = useState<'openmic' | 'messages' | 'users' | 'feed' | 'blocked' | 'songs' | 'permissions' | 'settings'>('openmic');
+  const [mainTab, setMainTab] = useState<'openmic' | 'messages' | 'users' | 'feed' | 'blocked' | 'songs' | 'settings'>('openmic');
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -763,98 +763,87 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Main Tabs */}
-          <div className="flex gap-1 sm:gap-2 mt-4 overflow-x-auto">
+          {/* Main Tabs - Simplified */}
+          <div className="flex gap-1 mt-4 overflow-x-auto pb-1">
             <button
               onClick={() => setMainTab('openmic')}
-              className={`flex-1 min-w-0 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-all ${
+              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
                 mainTab === 'openmic'
                   ? 'bg-gradient-to-r from-primary to-secondary text-primary-foreground shadow-lg'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
               }`}
             >
-              <Music className="w-4 h-4 inline-block sm:mr-1" />
-              <span className="hidden sm:inline">Open Mic</span>
+              <Music className="w-4 h-4" />
+              Open Mic
               {activeReservations.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-background/30">
+                <span className="px-1.5 py-0.5 text-xs rounded-full bg-background/30">
                   {activeReservations.length}
                 </span>
               )}
             </button>
             <button
               onClick={() => setMainTab('messages')}
-              className={`flex-1 min-w-0 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-all relative ${
+              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
                 mainTab === 'messages'
                   ? 'bg-gradient-to-r from-secondary to-primary text-secondary-foreground shadow-lg'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
               }`}
             >
-              <MessageCircle className="w-4 h-4 inline-block sm:mr-1" />
-              <span className="hidden sm:inline">Messaggi</span>
+              <MessageCircle className="w-4 h-4" />
+              Messaggi
               {unreadConvCount > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-destructive text-destructive-foreground">
+                <span className="px-1.5 py-0.5 text-xs rounded-full bg-destructive text-destructive-foreground">
                   {unreadConvCount}
                 </span>
               )}
             </button>
             <button
               onClick={() => setMainTab('songs')}
-              className={`flex-1 min-w-0 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-all ${
+              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
                 mainTab === 'songs'
                   ? 'bg-gradient-to-r from-accent to-accent/70 text-accent-foreground shadow-lg'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
               }`}
             >
-              <ListMusic className="w-4 h-4 inline-block sm:mr-1" />
-              <span className="hidden sm:inline">Canzoni</span>
+              <ListMusic className="w-4 h-4" />
+              Canzoni
             </button>
             <button
               onClick={() => setMainTab('users')}
-              className={`flex-1 min-w-0 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-all ${
+              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
                 mainTab === 'users'
                   ? 'bg-gradient-to-r from-secondary to-accent text-secondary-foreground shadow-lg'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
               }`}
             >
-              <Users className="w-4 h-4 inline-block sm:mr-1" />
-              <span className="hidden sm:inline">Utenti</span>
+              <Users className="w-4 h-4" />
+              Utenti
             </button>
             <button
               onClick={() => setMainTab('feed')}
-              className={`flex-1 min-w-0 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-all ${
+              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
                 mainTab === 'feed'
                   ? 'bg-gradient-to-r from-accent to-secondary text-accent-foreground shadow-lg'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
               }`}
             >
-              <Newspaper className="w-4 h-4 inline-block sm:mr-1" />
-              <span className="hidden sm:inline">Bacheca</span>
+              <Newspaper className="w-4 h-4" />
+              Bacheca
             </button>
             <button
               onClick={() => setMainTab('blocked')}
-              className={`flex-1 min-w-0 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-all ${
+              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
                 mainTab === 'blocked'
-                  ? 'bg-gradient-to-r from-destructive to-destructive/70 text-destructive-foreground shadow-lg'
+                  ? 'bg-destructive text-destructive-foreground shadow-lg'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
               }`}
             >
-              <Ban className="w-4 h-4 inline-block sm:mr-1" />
-              <span className="hidden sm:inline">Bloccati</span>
-            </button>
-            <button
-              onClick={() => setMainTab('permissions')}
-              className={`flex-1 min-w-0 py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-all ${
-                mainTab === 'permissions'
-                  ? 'bg-gradient-to-r from-accent to-primary text-accent-foreground shadow-lg'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              <Crown className="w-4 h-4 inline-block sm:mr-1" />
-              <span className="hidden sm:inline">Permessi</span>
+              <Ban className="w-4 h-4" />
+              Bloccati
             </button>
             <button
               onClick={() => setMainTab('settings')}
-              className={`py-2 sm:py-3 px-2 sm:px-4 rounded-lg font-medium text-xs sm:text-sm transition-all ${
+              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
                 mainTab === 'settings'
                   ? 'bg-muted-foreground text-background shadow-lg'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
@@ -954,8 +943,6 @@ export const AdminDashboard: React.FC = () => {
           <AdminSongManagementTab />
         ) : mainTab === 'settings' ? (
           <AdminSettingsTab />
-        ) : mainTab === 'permissions' ? (
-          <AdminPermissionsTab />
         ) : mainTab === 'blocked' ? (
           <AdminBlockedUsersTab />
         ) : null}
