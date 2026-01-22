@@ -115,18 +115,20 @@ export const useAdminNotifications = () => {
   const fetchCounts = useCallback(async () => {
     try {
       // Get unread dediche messages count
+      // NOTE: `conversations.is_read` is nullable in the schema.
+      // Older rows (or some creation paths) may leave it NULL. Treat NULL as "unread".
       const { data: dedicheConvs } = await supabase
         .from('conversations')
         .select('id')
         .eq('section', 'dediche')
-        .eq('is_read', false);
+        .or('is_read.is.null,is_read.eq.false');
       
       // Get unread community messages count  
       const { data: communityConvs } = await supabase
         .from('conversations')
         .select('id')
         .eq('section', 'community')
-        .eq('is_read', false);
+        .or('is_read.is.null,is_read.eq.false');
 
       // Get today's reservations count
       const today = new Date();
@@ -173,6 +175,13 @@ export const useAdminNotifications = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'conversations' },
+        () => fetchCounts()
+      )
+      // Conversations don't necessarily emit an update on every new message,
+      // so we also listen directly to message inserts/updates.
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'chat_messages' },
         () => fetchCounts()
       )
       .on(
