@@ -72,6 +72,7 @@ export type Database = {
           invite_code: string
           is_active: boolean
           max_uses: number | null
+          requires_approval: boolean
           use_count: number
         }
         Insert: {
@@ -83,6 +84,7 @@ export type Database = {
           invite_code: string
           is_active?: boolean
           max_uses?: number | null
+          requires_approval?: boolean
           use_count?: number
         }
         Update: {
@@ -94,6 +96,7 @@ export type Database = {
           invite_code?: string
           is_active?: boolean
           max_uses?: number | null
+          requires_approval?: boolean
           use_count?: number
         }
         Relationships: [
