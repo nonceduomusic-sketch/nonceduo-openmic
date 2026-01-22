@@ -719,6 +719,27 @@ export type Database = {
           },
         ]
       }
+      section_public_settings: {
+        Row: {
+          display_name: string
+          is_enabled: boolean
+          section_key: string
+          updated_at: string
+        }
+        Insert: {
+          display_name: string
+          is_enabled?: boolean
+          section_key: string
+          updated_at?: string
+        }
+        Update: {
+          display_name?: string
+          is_enabled?: boolean
+          section_key?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       section_settings: {
         Row: {
           description: string | null
