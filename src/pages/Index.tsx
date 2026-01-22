@@ -1,18 +1,27 @@
 import React, { useState, useMemo } from 'react';
 import { Mic2, Settings } from 'lucide-react';
 import { songs, Song } from '@/data/songs';
-import { SongCard } from '@/components/SongCard';
+import { SongCardWithStatus } from '@/components/SongCardWithStatus';
 import { SearchBar } from '@/components/SearchBar';
 import { ArtistFilter } from '@/components/ArtistFilter';
-import { BookingModal } from '@/components/BookingModal';
+import { BookingConfirmationModal } from '@/components/BookingConfirmationModal';
 import { Link } from 'react-router-dom';
 import { useStaffRole } from '@/hooks/useStaffRole';
+import { useReservationStatuses } from '@/hooks/useReservationStatuses';
 
 const Index: React.FC = () => {
   const { isStaff } = useStaffRole();
+  const { isSongBooked, isSongCompleted } = useReservationStatuses();
   const [search, setSearch] = useState('');
   const [artistFilter, setArtistFilter] = useState('all');
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+
+  const handleBookSong = (song: Song) => {
+    if (isSongBooked(song.title, song.artist)) {
+      return; // Already booked, do nothing
+    }
+    setSelectedSong(song);
+  };
 
   const filteredSongs = useMemo(() => {
     return songs.filter((song) => {
@@ -82,10 +91,12 @@ const Index: React.FC = () => {
         {/* Mobile: 1 col, Tablet: 2 cols with better spacing, Desktop: 3 cols */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-3">
           {filteredSongs.map((song, index) => (
-            <SongCard
+            <SongCardWithStatus
               key={`${song.title}-${song.artist}-${index}`}
               song={song}
-              onBook={setSelectedSong}
+              onBook={handleBookSong}
+              isBooked={isSongBooked(song.title, song.artist)}
+              isCompleted={isSongCompleted(song.title, song.artist)}
             />
           ))}
         </div>
@@ -105,7 +116,7 @@ const Index: React.FC = () => {
 
       {/* Booking Modal */}
       {selectedSong && (
-        <BookingModal
+        <BookingConfirmationModal
           song={selectedSong}
           onClose={() => setSelectedSong(null)}
         />
