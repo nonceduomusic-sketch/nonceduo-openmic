@@ -734,8 +734,8 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false }) => {
     // Conversations list view (default)
     return (
       <div className="space-y-4">
-        {/* Social CTA Banner */}
-        <SocialCTA variant="banner" className="mb-2" />
+        {/* Social CTA Banner (hide in app-mode to keep Dediche isolated) */}
+        {!appMode && <SocialCTA variant="banner" className="mb-2" />}
 
         {/* New message CTA */}
         <Button
@@ -922,11 +922,17 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false }) => {
                     <Mic2 className="w-5 h-5" />
                   </Button>
                 </Link>
-                 <Link to="/social" aria-label="Vai a Community">
-                  <Button variant="ghost" size="icon" className="text-muted-foreground hover:text-foreground">
-                    <Users className="w-5 h-5" />
-                  </Button>
-                </Link>
+                {!appMode && (
+                  <Link to="/social" aria-label="Vai a Community">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <Users className="w-5 h-5" />
+                    </Button>
+                  </Link>
+                )}
               </div>
             )}
             <div className="flex-1">
@@ -952,7 +958,7 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false }) => {
             
             {/* Login indicator and Notification button and Online users indicator */}
             <div className="flex items-center gap-2">
-              <UserLoginIndicator compact />
+              {!appMode && <UserLoginIndicator compact />}
               {selectedConversation && (
                 <>
                   {(() => {
