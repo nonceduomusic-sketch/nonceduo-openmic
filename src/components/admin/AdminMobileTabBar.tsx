@@ -31,9 +31,10 @@ type Item = {
 const ITEMS: Item[] = [
   { key: "notifications", label: "Centro", icon: Bell, badge: (b) => b.totalNotifications },
   { key: "openmic", label: "Open Mic", icon: Music, badge: (b) => b.openmicActiveCount, gatedBy: "openmic" },
+  // Keep Open Mic + Canzoni adjacent (same format)
+  { key: "songs", label: "Canzoni", icon: ListMusic },
   { key: "dediche", label: "Dediche", icon: MessageSquare, badge: (b) => b.dedicheUnread, gatedBy: "dediche" },
   { key: "community", label: "Community", icon: Newspaper, badge: (b) => b.communityUnread, gatedBy: "community" },
-  { key: "songs", label: "Canzoni", icon: ListMusic },
 ];
 
 export function AdminMobileTabBar({ value, onChange, badges, access }: Props) {
