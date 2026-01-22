@@ -76,6 +76,32 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
   const [loading, setLoading] = useState(true);
   const [isBlocked, setIsBlocked] = useState(false);
 
+  // User chat API calls (avoids device-specific storage quirks)
+  const callUserChatApi = useCallback(async <T,>(action: string, data: Record<string, unknown>): Promise<T> => {
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/user-chat`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      },
+      body: JSON.stringify({ action, ...data }),
+    });
+
+    const json = await res.json().catch(() => ({}));
+
+    if (!res.ok) {
+      throw new Error((json as any)?.error || `HTTP ${res.status}`);
+    }
+
+    if ((json as any)?.error) {
+      throw new Error((json as any).error);
+    }
+
+    return json as T;
+  }, []);
+
   // Check if user is blocked
   const checkIfBlocked = useCallback(async (userSessionId: string) => {
     try {
@@ -102,23 +128,38 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
 
   const fetchConversations = useCallback(async () => {
     try {
-      // Fetch all conversations user participates in
-      let query = supabase
-        .from('conversations')
-        .select(`
-          *,
-          participants:conversation_participants(*),
-          messages:chat_messages(*)
-        `)
-        .order('updated_at', { ascending: false });
+      // For anonymous users we cannot rely on client-side RLS to list conversations
+      // because it depends on request headers (x-session-id). Use the backend function.
+      let data: any[] | null = null;
 
-      if (section) {
-        query = query.eq('section', section);
+      const { data: authSession } = await supabase.auth.getSession();
+      const isAnon = !authSession?.session;
+
+      if (isAnon && sessionId) {
+        const fromApi = await callUserChatApi<{ conversations: any[] }>('listConversations', {
+          session_id: sessionId,
+          section: section ?? undefined,
+        });
+        data = fromApi.conversations || [];
+      } else {
+        // Authenticated (or admin) can use direct queries.
+        let query = supabase
+          .from('conversations')
+          .select(`
+            *,
+            participants:conversation_participants(*),
+            messages:chat_messages(*)
+          `)
+          .order('updated_at', { ascending: false });
+
+        if (section) {
+          query = query.eq('section', section);
+        }
+
+        const { data: directData, error } = await query;
+        if (error) throw error;
+        data = directData;
       }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
 
       // Process conversations
       const processedConversations = (data || [])
@@ -173,7 +214,7 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
     } finally {
       setLoading(false);
     }
-  }, [sessionId, section]);
+  }, [sessionId, section, callUserChatApi]);
 
   useEffect(() => {
     fetchConversations();
@@ -252,32 +293,6 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
       supabase.removeChannel(conversationsChannel);
     };
   }, [fetchConversations, sessionId, checkIfBlocked]);
-
-  // User chat API calls (avoids device-specific storage quirks)
-  const callUserChatApi = useCallback(async <T,>(action: string, data: Record<string, unknown>): Promise<T> => {
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/user-chat`;
-
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      },
-      body: JSON.stringify({ action, ...data }),
-    });
-
-    const json = await res.json().catch(() => ({}));
-
-    if (!res.ok) {
-      throw new Error((json as any)?.error || `HTTP ${res.status}`);
-    }
-
-    if ((json as any)?.error) {
-      throw new Error((json as any).error);
-    }
-
-    return json as T;
-  }, []);
 
   // Mark messages in a conversation as read (for user)
   const markMessagesAsRead = useCallback(async (conversationId: string, userSessionId: string) => {
