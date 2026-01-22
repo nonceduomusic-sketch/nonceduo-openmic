@@ -12,7 +12,6 @@ import {
   X,
   Home,
   Undo2,
-  MessageCircle,
   Ban,
   Settings,
   ListMusic,
@@ -29,24 +28,21 @@ import {
   Shield,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Users } from 'lucide-react';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useReservations, Reservation } from '@/hooks/useReservations';
-import { useMessages, Message } from '@/hooks/useMessages';
+import { Message } from '@/hooks/useMessages';
 import { useConversations, ChatMessage, Conversation } from '@/hooks/useConversations';
 import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 import { ReservationCard } from './ReservationCard';
 import { NotificationPopup } from './NotificationPopup';
 import { MessageNotificationPopup } from './MessageNotificationPopup';
 import { ChatNotificationPopup } from './ChatNotificationPopup';
-import { AdminMessagesTab } from './AdminMessagesTab';
-import { AdminBlockedUsersTab } from './AdminBlockedUsersTab';
 import { AdminSettingsTab } from './AdminSettingsTab';
 import { AdminSongManagementTab } from './AdminSongManagementTab';
 import { AdminPermissionsTab } from './AdminPermissionsTab';
-import { AdminUsersTab } from './AdminUsersTab';
-import { AdminFeedTab } from './AdminFeedTab';
 import { AdminNotificationsTab } from './AdminNotificationsTab';
+import { AdminDedichePanel } from '@/components/admin/AdminDedichePanel';
+import { AdminCommunityPanel } from '@/components/admin/AdminCommunityPanel';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -94,7 +90,6 @@ export const AdminDashboard: React.FC = () => {
     restoreReservation,
   } = useReservations();
   
-  const { unreadMessages } = useMessages();
   // Note: conversations hook is only used for notifications, not badge count
   // The badge count comes from AdminMessagesTab via onUnreadCountChange callback
   const { conversations } = useConversations();
@@ -102,8 +97,7 @@ export const AdminDashboard: React.FC = () => {
   const [reservationNotifications, setReservationNotifications] = useState<Reservation[]>([]);
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
   const [chatNotifications, setChatNotifications] = useState<{ message: ChatMessage; conversation?: Conversation }[]>([]);
-  const [unreadConvCount, setUnreadConvCount] = useState(0);
-  const [mainTab, setMainTab] = useState<'openmic' | 'messages' | 'users' | 'feed' | 'blocked' | 'songs' | 'settings' | 'notifications' | 'permissions'>('openmic');
+  const [mainTab, setMainTab] = useState<'openmic' | 'dediche' | 'community' | 'songs' | 'settings' | 'notifications' | 'permissions'>('openmic');
   
   // Get notification counts for badges
   const { counts: notificationCounts } = useAdminNotifications();
@@ -190,18 +184,8 @@ export const AdminDashboard: React.FC = () => {
     };
   }, [conversations]);
 
-  // Update unread count when conversations change (for initial load and realtime updates)
-  React.useEffect(() => {
-    const count = conversations.filter(conv => {
-      if (!conv.messages || conv.messages.length === 0) return false;
-      return conv.is_read === false;
-    }).length;
-    setUnreadConvCount(count);
-  }, [conversations]);
-
-  // Handler for unread count updates from AdminMessagesTab
-  const handleUnreadCountChange = useCallback((count: number) => {
-    setUnreadConvCount(count);
+  const handleUnreadCountChange = useCallback((_count: number) => {
+    // Kept for compatibility with AdminDedichePanel prop, but main badges are driven by AdminNotificationCounts.
   }, []);
 
   // Clear selection when changing tabs
@@ -805,18 +789,34 @@ export const AdminDashboard: React.FC = () => {
               )}
             </button>
             <button
-              onClick={() => setMainTab('messages')}
+              onClick={() => setMainTab('dediche')}
               className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
-                mainTab === 'messages'
+                mainTab === 'dediche'
                   ? 'bg-gradient-to-r from-secondary to-primary text-secondary-foreground shadow-lg'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
               }`}
             >
-              <MessageCircle className="w-4 h-4" />
-              Messaggi
-              {unreadConvCount > 0 && (
+              <MessageSquare className="w-4 h-4" />
+              Dediche
+              {notificationCounts.unreadDedicheMessages > 0 && (
                 <span className="px-1.5 py-0.5 text-xs rounded-full bg-destructive text-destructive-foreground">
-                  {unreadConvCount}
+                  {notificationCounts.unreadDedicheMessages}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setMainTab('community')}
+              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
+                mainTab === 'community'
+                  ? 'bg-gradient-to-r from-accent to-secondary text-accent-foreground shadow-lg'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              <Newspaper className="w-4 h-4" />
+              Community
+              {notificationCounts.unreadCommunityMessages > 0 && (
+                <span className="px-1.5 py-0.5 text-xs rounded-full bg-destructive text-destructive-foreground">
+                  {notificationCounts.unreadCommunityMessages}
                 </span>
               )}
             </button>
@@ -832,17 +832,6 @@ export const AdminDashboard: React.FC = () => {
               Canzoni
             </button>
             <button
-              onClick={() => setMainTab('users')}
-              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
-                mainTab === 'users'
-                  ? 'bg-gradient-to-r from-secondary to-accent text-secondary-foreground shadow-lg'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              Utenti
-            </button>
-            <button
               onClick={() => setMainTab('permissions')}
               className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
                 mainTab === 'permissions'
@@ -852,28 +841,6 @@ export const AdminDashboard: React.FC = () => {
             >
               <Shield className="w-4 h-4" />
               Permessi
-            </button>
-            <button
-              onClick={() => setMainTab('feed')}
-              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
-                mainTab === 'feed'
-                  ? 'bg-gradient-to-r from-accent to-secondary text-accent-foreground shadow-lg'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              <Newspaper className="w-4 h-4" />
-              Bacheca
-            </button>
-            <button
-              onClick={() => setMainTab('blocked')}
-              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
-                mainTab === 'blocked'
-                  ? 'bg-destructive text-destructive-foreground shadow-lg'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              <Ban className="w-4 h-4" />
-              Bloccati
             </button>
             <button
               onClick={() => setMainTab('settings')}
@@ -968,20 +935,16 @@ export const AdminDashboard: React.FC = () => {
               )}
             </div>
           )
-        ) : mainTab === 'messages' ? (
-          <AdminMessagesTab onUnreadCountChange={handleUnreadCountChange} />
-        ) : mainTab === 'users' ? (
-          <AdminUsersTab />
+        ) : mainTab === 'dediche' ? (
+          <AdminDedichePanel onUnreadCountChange={handleUnreadCountChange} />
+        ) : mainTab === 'community' ? (
+          <AdminCommunityPanel />
         ) : mainTab === 'permissions' ? (
           <AdminPermissionsTab />
-        ) : mainTab === 'feed' ? (
-          <AdminFeedTab />
         ) : mainTab === 'songs' ? (
           <AdminSongManagementTab />
         ) : mainTab === 'settings' ? (
           <AdminSettingsTab />
-        ) : mainTab === 'blocked' ? (
-          <AdminBlockedUsersTab />
         ) : mainTab === 'notifications' ? (
           <AdminNotificationsTab />
         ) : null}
