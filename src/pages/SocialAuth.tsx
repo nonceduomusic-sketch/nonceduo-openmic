@@ -90,7 +90,7 @@ const SocialAuth: React.FC = () => {
     return (
       <SectionOffLanding
         title="Community"
-        description="La Community è momentaneamente disabilitata. Per info e date, contattaci."
+        description="La Community è momentaneamente non disponibile, ma tornerà attiva durante gli eventi. Per info e date, contattaci."
         backTo="/"
         backLabel="Torna al sito"
         secondaryBackTo="/app"
