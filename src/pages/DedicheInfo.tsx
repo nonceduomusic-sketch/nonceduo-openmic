@@ -63,7 +63,7 @@ const DedicheInfo: React.FC = () => {
                   </Button>
                 </a>
                 <a
-                  href="https://www.instagram.com/nonceduo/"
+                  href="https://www.instagram.com/nonceduo.music/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-full sm:w-auto"

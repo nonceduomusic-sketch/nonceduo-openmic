@@ -379,7 +379,7 @@ const Home: React.FC = () => {
                     WhatsApp
                   </Button>
                 </a>
-                <a href="mailto:info@nonceduo.com" className="w-full sm:w-auto">
+                <a href="mailto:nonceduo.music@gmail.com" className="w-full sm:w-auto">
                   <Button 
                     size="lg" 
                     variant="outline"
@@ -394,7 +394,7 @@ const Home: React.FC = () => {
               {/* Social Links */}
               <div className="flex justify-center gap-6">
                 <a 
-                  href="https://www.instagram.com/nonceduo/"
+                  href="https://www.instagram.com/nonceduo.music/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="w-14 h-14 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary transition-all hover:scale-110"
@@ -410,7 +410,7 @@ const Home: React.FC = () => {
                   <Phone className="w-6 h-6" />
                 </a>
                 <a 
-                  href="mailto:info@nonceduo.com"
+                  href="mailto:nonceduo.music@gmail.com"
                   className="w-14 h-14 rounded-xl bg-card border border-border flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary transition-all hover:scale-110"
                 >
                   <Mail className="w-6 h-6" />

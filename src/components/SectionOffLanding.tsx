@@ -72,7 +72,7 @@ export const SectionOffLanding: React.FC<SectionOffLandingProps> = ({
                   </Button>
                 </a>
                 <a
-                  href="https://www.instagram.com/nonceduo/"
+                  href="https://www.instagram.com/nonceduo.music/"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
@@ -80,7 +80,7 @@ export const SectionOffLanding: React.FC<SectionOffLandingProps> = ({
                     <Instagram className="w-4 h-4" />
                   </Button>
                 </a>
-                <a href="mailto:info@nonceduo.com">
+                <a href="mailto:nonceduo.music@gmail.com">
                   <Button variant="outline" size="icon" className="w-full">
                     <Mail className="w-4 h-4" />
                   </Button>

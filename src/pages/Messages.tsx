@@ -18,6 +18,7 @@ import { JoinGroupPasswordDialog } from '@/components/JoinGroupPasswordDialog';
 import { UserLoginIndicator } from '@/components/UserLoginIndicator';
 import { SEO } from '@/components/SEO';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
+import { NamePromptDialog } from '@/components/NamePromptDialog';
 
 const messageSchema = z.object({
   sender_name: z.string().trim()
@@ -72,6 +73,10 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false }) => {
   const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   const [passwordDialogGroup, setPasswordDialogGroup] = useState<Conversation | null>(null);
   const [passwordHint, setPasswordHint] = useState<string | undefined>(undefined);
+
+  // Name prompt state (for joining groups when user hasn't set a name yet)
+  const [showNameDialog, setShowNameDialog] = useState(false);
+  const [pendingJoinGroup, setPendingJoinGroup] = useState<Conversation | null>(null);
 
   // Typing indicator hook
   const {
@@ -415,7 +420,9 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false }) => {
     }
 
     if (!name.trim()) {
-      toast.error('Inserisci il tuo nome prima di unirti al gruppo');
+      // Instead of a dead-end toast, prompt for the name.
+      setPendingJoinGroup(conv);
+      setShowNameDialog(true);
       return false;
     }
 
@@ -894,6 +901,30 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false }) => {
         url="/messaggi"
       />
       <div className="min-h-screen bg-background flex flex-col">
+        <NamePromptDialog
+          open={showNameDialog}
+          onOpenChange={(open) => {
+            setShowNameDialog(open);
+            if (!open) setPendingJoinGroup(null);
+          }}
+          initialValue={name}
+          onConfirm={async (confirmedName) => {
+            setName(confirmedName);
+            try {
+              localStorage.setItem('user_name', confirmedName);
+            } catch {
+              // ignore
+            }
+            setShowNameDialog(false);
+            const group = pendingJoinGroup;
+            setPendingJoinGroup(null);
+            if (group) {
+              // Best-effort: join the group right after collecting the name.
+              await handleJoinGroup(group);
+            }
+          }}
+        />
+
       {/* Header */}
       <header className="sticky top-0 z-40 bg-card/90 backdrop-blur-md border-b border-border">
         <div className="container py-4">
