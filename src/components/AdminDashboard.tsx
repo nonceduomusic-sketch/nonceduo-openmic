@@ -884,6 +884,7 @@ export const AdminDashboard: React.FC = () => {
               }`}
             >
               <Settings className="w-4 h-4" />
+              Impostazioni
             </button>
           </div>
 
