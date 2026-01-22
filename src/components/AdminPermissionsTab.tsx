@@ -83,6 +83,18 @@ const ROLE_LABELS: Record<string, string> = {
   user: 'Utente',
 };
 
+const PERMISSION_GROUP_LABELS: Record<string, string> = {
+  openmic: 'Open Mic',
+  dediche: 'Dediche',
+  community: 'Community',
+  settings: 'Impostazioni',
+  social: 'Social',
+  admin: 'Admin',
+  altro: 'Altro',
+};
+
+const PRIMARY_PERMISSION_GROUPS = ['openmic', 'dediche', 'community'] as const;
+
 type AppRole = 'owner' | 'admin' | 'moderator' | 'user';
 
 const ROLE_COLORS: Record<AppRole, string> = {
@@ -167,6 +179,11 @@ export const AdminPermissionsTab: React.FC = () => {
 
   const hasRolePermission = (role: string, permissionId: string): boolean => {
     return rolePermissions.some(rp => rp.role === role && rp.permission_id === permissionId);
+  };
+
+  const getPermissionGroupKey = (permissionName: string) => {
+    const raw = permissionName.split('.')[0] || 'altro';
+    return raw.trim() || 'altro';
   };
 
   const toggleRolePermission = async (role: AppRole, permissionId: string, hasPermission: boolean) => {
@@ -404,51 +421,44 @@ export const AdminPermissionsTab: React.FC = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="mb-4">
+                <div className="space-y-4">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       value={permSearch}
                       onChange={(e) => setPermSearch(e.target.value)}
-                      placeholder="Cerca permessi (es. openmic, settings, reset...)"
+                      placeholder="Cerca (opzionale) — es. reset, manage_groups, settings…"
                       className="pl-10"
                     />
                   </div>
-                </div>
-                <ScrollArea className="max-h-96">
-                  <div className="space-y-4">
-                    {(() => {
-                      const q = permSearch.trim().toLowerCase();
-                      const filtered = !q
-                        ? permissions
-                        : permissions.filter((p) => {
-                            const hay = `${p.name} ${p.description ?? ''}`.toLowerCase();
-                            return hay.includes(q);
-                          });
 
-                      const groups = filtered.reduce<Record<string, Permission[]>>((acc, p) => {
-                        const group = p.name.split('.')[0] || 'altro';
-                        (acc[group] ||= []).push(p);
-                        return acc;
-                      }, {});
+                  {(() => {
+                    const q = permSearch.trim().toLowerCase();
+                    const filtered = !q
+                      ? permissions
+                      : permissions.filter((p) => {
+                          const hay = `${p.name} ${p.description ?? ''}`.toLowerCase();
+                          return hay.includes(q);
+                        });
 
-                      const sortedGroupKeys = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+                    const groups = filtered.reduce<Record<string, Permission[]>>((acc, p) => {
+                      const g = getPermissionGroupKey(p.name);
+                      (acc[g] ||= []).push(p);
+                      return acc;
+                    }, {});
 
-                      return sortedGroupKeys.map((g) => (
-                        <div key={g} className="space-y-2">
-                          <div className="flex items-center gap-3">
-                            <Separator className="flex-1" />
-                            <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                              {g}
-                            </span>
-                            <Separator className="flex-1" />
-                          </div>
+                    const groupKeysInOrder = [
+                      ...PRIMARY_PERMISSION_GROUPS,
+                      ...Object.keys(groups)
+                        .filter((k) => !PRIMARY_PERMISSION_GROUPS.includes(k as any))
+                        .sort((a, b) => a.localeCompare(b)),
+                    ];
 
-                          <div className="space-y-4">
-                            {groups[g].map((permission) => {
+                    const renderPermissionRow = (permission: Permission) => {
                       const hasPermission = hasRolePermission(selectedRole, permission.id);
                       const isOwnerOnly = permission.name === 'manage_owners';
-                      const isDisabled = selectedRole === 'owner' as AppRole || 
+                      const isDisabled =
+                        (selectedRole === ('owner' as AppRole)) ||
                         (isOwnerOnly && selectedRole !== ('owner' as AppRole));
 
                       const prettyName = permission.name.includes('.')
@@ -456,36 +466,90 @@ export const AdminPermissionsTab: React.FC = () => {
                         : permission.name;
 
                       return (
-                        <div 
+                        <div
                           key={permission.id}
-                          className="flex items-center justify-between py-2"
+                          className="flex items-start justify-between gap-4 py-3"
                         >
-                          <div className="space-y-1">
-                            <Label className="font-medium">
+                          <div className="min-w-0 space-y-1">
+                            <Label className="font-medium break-words">
                               {prettyName}
                             </Label>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm text-muted-foreground break-words">
                               {permission.description}
                             </p>
                           </div>
-                          <Switch
-                            checked={hasPermission}
-                            onCheckedChange={() => toggleRolePermission(
-                              selectedRole, 
-                              permission.id, 
-                              hasPermission
-                            )}
-                            disabled={isDisabled}
-                          />
-                        </div>
-                      );
-                            })}
+                          <div className="shrink-0 pt-1">
+                            <Switch
+                              checked={hasPermission}
+                              onCheckedChange={() =>
+                                toggleRolePermission(selectedRole, permission.id, hasPermission)
+                              }
+                              disabled={isDisabled}
+                            />
                           </div>
                         </div>
-                      ));
-                    })()}
-                  </div>
-                </ScrollArea>
+                      );
+                    };
+
+                    const renderGroupBlock = (g: string) => {
+                      const items = groups[g] ?? [];
+                      if (items.length === 0) {
+                        return (
+                          <div className="text-sm text-muted-foreground py-6">
+                            Nessun permesso in questa sezione.
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="divide-y">
+                          {items.map(renderPermissionRow)}
+                        </div>
+                      );
+                    };
+
+                    return (
+                      <Tabs defaultValue="openmic" className="space-y-4">
+                        <TabsList className="w-full flex flex-wrap justify-start h-auto">
+                          <TabsTrigger value="openmic">Open Mic</TabsTrigger>
+                          <TabsTrigger value="dediche">Dediche</TabsTrigger>
+                          <TabsTrigger value="community">Community</TabsTrigger>
+                          <TabsTrigger value="all">Tutti</TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="openmic" className="space-y-2">
+                          {renderGroupBlock('openmic')}
+                        </TabsContent>
+
+                        <TabsContent value="dediche" className="space-y-2">
+                          {renderGroupBlock('dediche')}
+                        </TabsContent>
+
+                        <TabsContent value="community" className="space-y-2">
+                          {renderGroupBlock('community')}
+                        </TabsContent>
+
+                        <TabsContent value="all" className="space-y-6">
+                          {groupKeysInOrder
+                            .filter((g, idx, arr) => arr.indexOf(g) === idx)
+                            .filter((g) => (groups[g]?.length ?? 0) > 0)
+                            .map((g) => (
+                              <div key={g} className="space-y-2">
+                                <div className="flex items-center gap-3">
+                                  <Separator className="flex-1" />
+                                  <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                                    {PERMISSION_GROUP_LABELS[g] ?? g}
+                                  </span>
+                                  <Separator className="flex-1" />
+                                </div>
+                                {renderGroupBlock(g)}
+                              </div>
+                            ))}
+                        </TabsContent>
+                      </Tabs>
+                    );
+                  })()}
+                </div>
               </CardContent>
             </Card>
           )}
@@ -526,7 +590,7 @@ export const AdminPermissionsTab: React.FC = () => {
                 <SelectItem value="moderator">
                   <div className="flex items-center gap-2">
                     {ROLE_ICONS.moderator}
-                    Moderatore
+                    Staff
                   </div>
                 </SelectItem>
                 <SelectItem value="user">
