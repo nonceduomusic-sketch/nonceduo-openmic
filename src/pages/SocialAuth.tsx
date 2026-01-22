@@ -8,6 +8,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SEO } from '@/components/SEO';
 import { useToast } from '@/hooks/use-toast';
+import { SectionOffLanding } from '@/components/SectionOffLanding';
+import { useSectionStatus } from '@/hooks/useSectionStatus';
 import { z } from 'zod';
 import { 
   Mail, 
@@ -31,6 +33,7 @@ const SocialAuth: React.FC = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
+  const { status: communityStatus, loading: communityLoading } = useSectionStatus('community');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
@@ -77,6 +80,24 @@ const SocialAuth: React.FC = () => {
     
     return () => subscription.unsubscribe();
   }, [navigate, isResetMode]);
+
+  // IMPORTANT: keep gating AFTER all hooks (useState/useEffect) to respect React Rules of Hooks.
+  const communityDisabled = !communityLoading && !!communityStatus && !communityStatus.isEnabled;
+  if (communityLoading) {
+    return <div className="min-h-screen bg-background" />;
+  }
+  if (communityDisabled) {
+    return (
+      <SectionOffLanding
+        title="Community"
+        description="La Community è momentaneamente disabilitata. Per info e date, contattaci."
+        backTo="/"
+        backLabel="Torna al sito"
+        secondaryBackTo="/app"
+        secondaryBackLabel="Torna all'app"
+      />
+    );
+  }
 
   const validateForm = (isSignup: boolean): boolean => {
     const newErrors: typeof errors = {};
