@@ -68,6 +68,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 import { Badge } from '@/components/ui/badge';
 import { adminAuditLog } from '@/lib/adminAudit';
 import { useAdminSectionAccess } from '@/hooks/useAdminSectionAccess';
+import { AdminMobileTabBar } from '@/components/admin/AdminMobileTabBar';
 
 // Type for tracking undo operations
 interface UndoAction {
@@ -840,6 +841,19 @@ export const AdminDashboard: React.FC = () => {
                     Attiva notifiche
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setMainTab('permissions')}>
+                  <Shield className="w-4 h-4 mr-2" />
+                  Permessi
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setMainTab('settings')}>
+                  <Settings className="w-4 h-4 mr-2" />
+                  Impostazioni
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setMainTab('audit')}>
+                  <Database className="w-4 h-4 mr-2" />
+                  Audit
+                </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/admin/manual">
                     <Book className="w-4 h-4 mr-2" />
@@ -898,120 +912,7 @@ export const AdminDashboard: React.FC = () => {
             </DropdownMenu>
           </div>
 
-          {/* Mobile Tabs (desktop uses sidebar) */}
-          <div className="md:hidden flex gap-1 mt-4 overflow-x-auto pb-1">
-            <button
-              onClick={() => setMainTab('notifications')}
-              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap relative ${
-                mainTab === 'notifications'
-                  ? 'bg-gradient-to-r from-warning to-accent text-warning-foreground shadow-lg'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              <Bell className="w-4 h-4" />
-              Centro
-              {totalNotifications > 0 && (
-                <span className="px-1.5 py-0.5 text-xs rounded-full bg-destructive text-destructive-foreground animate-pulse">
-                  {totalNotifications}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => access.openmic && setMainTab('openmic')}
-              disabled={!access.openmic}
-              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap disabled:opacity-50 disabled:pointer-events-none ${
-                mainTab === 'openmic'
-                  ? 'bg-gradient-to-r from-primary to-secondary text-primary-foreground shadow-lg'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              <Music className="w-4 h-4" />
-              Open Mic
-              {activeReservations.length > 0 && (
-                <span className="px-1.5 py-0.5 text-xs rounded-full bg-background/30">
-                  {activeReservations.length}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => access.dediche && setMainTab('dediche')}
-              disabled={!access.dediche}
-              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap disabled:opacity-50 disabled:pointer-events-none ${
-                mainTab === 'dediche'
-                  ? 'bg-gradient-to-r from-secondary to-primary text-secondary-foreground shadow-lg'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              <MessageSquare className="w-4 h-4" />
-              Dediche
-              {notificationCounts.unreadDedicheMessages > 0 && (
-                <span className="px-1.5 py-0.5 text-xs rounded-full bg-destructive text-destructive-foreground">
-                  {notificationCounts.unreadDedicheMessages}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => access.community && setMainTab('community')}
-              disabled={!access.community}
-              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap disabled:opacity-50 disabled:pointer-events-none ${
-                mainTab === 'community'
-                  ? 'bg-gradient-to-r from-accent to-secondary text-accent-foreground shadow-lg'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              <Newspaper className="w-4 h-4" />
-              Community
-              {notificationCounts.unreadCommunityMessages > 0 && (
-                <span className="px-1.5 py-0.5 text-xs rounded-full bg-destructive text-destructive-foreground">
-                  {notificationCounts.unreadCommunityMessages}
-                </span>
-              )}
-            </button>
-            <button
-              onClick={() => setMainTab('songs')}
-              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
-                mainTab === 'songs'
-                  ? 'bg-gradient-to-r from-accent to-accent/70 text-accent-foreground shadow-lg'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              <ListMusic className="w-4 h-4" />
-              Canzoni
-            </button>
-            <button
-              onClick={() => setMainTab('permissions')}
-              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
-                mainTab === 'permissions'
-                  ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-white shadow-lg'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              <Shield className="w-4 h-4" />
-              Permessi
-            </button>
-            <button
-              onClick={() => setMainTab('settings')}
-              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
-                mainTab === 'settings'
-                  ? 'bg-muted-foreground text-background shadow-lg'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              <Settings className="w-4 h-4" />
-              Impostazioni
-            </button>
-            <button
-              onClick={() => setMainTab('audit')}
-              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
-                mainTab === 'audit'
-                  ? 'bg-gradient-to-r from-muted-foreground to-muted text-background shadow-lg'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
-            >
-              <Database className="w-4 h-4" />
-              Audit
-            </button>
-          </div>
+          {/* On mobile, navigation lives in the bottom bar (thumb-friendly). */}
 
           {/* Sub-tabs for Open Mic */}
           {mainTab === 'openmic' && (
@@ -1044,7 +945,7 @@ export const AdminDashboard: React.FC = () => {
       </header>
 
       {/* Content */}
-      <main className="px-3 md:container py-6">
+      <main className="px-3 md:container py-6 pb-24 md:pb-6">
         {mainTab === 'openmic' ? (
           activeTab === 'active' ? (
             <div className="space-y-4">
@@ -1109,6 +1010,17 @@ export const AdminDashboard: React.FC = () => {
           <AdminNotificationsTab />
         ) : null}
       </main>
+      <AdminMobileTabBar
+        value={mainTab}
+        onChange={setMainTab}
+        access={access}
+        badges={{
+          totalNotifications,
+          openmicActiveCount: activeReservations.length,
+          dedicheUnread: notificationCounts.unreadDedicheMessages,
+          communityUnread: notificationCounts.unreadCommunityMessages,
+        }}
+      />
         </SidebarInset>
       </div>
     </SidebarProvider>
