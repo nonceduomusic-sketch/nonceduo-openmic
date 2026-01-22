@@ -9,6 +9,7 @@ import OpenMic from "./pages/OpenMic";
 import Messages from "./pages/Messages";
 import Admin from "./pages/Admin";
 import AdminReset from "./pages/AdminReset";
+import AdminManual from "./pages/AdminManual";
 import JoinChat from "./pages/JoinChat";
 import PartyBand from "./pages/PartyBand";
 import Social from "./pages/Social";
@@ -33,6 +34,7 @@ const App = () => (
             <Route path="/join/:code" element={<JoinChat />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/reset" element={<AdminReset />} />
+            <Route path="/admin/manual" element={<AdminManual />} />
             {/* Social Platform Routes */}
             <Route path="/social" element={<Social />} />
             <Route path="/social/auth" element={<SocialAuth />} />
