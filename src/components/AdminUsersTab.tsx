@@ -143,8 +143,13 @@ export const AdminUsersTab: React.FC = () => {
         body: { action: 'listAdmins' }
       });
 
-      if (!error && data?.admins) {
-        setAdminUsers(data.admins);
+      if (error) {
+        // This function is intentionally Owner-only.
+        console.error('Error listing staff:', error);
+        setAdminUsers([]);
+        toast.error('Solo Owner può vedere/gestire lo Staff');
+      } else {
+        setAdminUsers(data?.admins ?? []);
       }
     } catch (error) {
       console.error('Error fetching users:', error);

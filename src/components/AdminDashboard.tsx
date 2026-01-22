@@ -109,6 +109,7 @@ export const AdminDashboard: React.FC = () => {
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
   const [chatNotifications, setChatNotifications] = useState<{ message: ChatMessage; conversation?: Conversation }[]>([]);
   const [mainTab, setMainTab] = useState<AdminMainTab>('openmic');
+  const [communitySubTab, setCommunitySubTab] = useState<"groups" | "invites" | "users" | "feed" | "blocked">("groups");
   
   // Get notification counts for badges
   const { counts: notificationCounts } = useAdminNotifications();
@@ -845,6 +846,15 @@ export const AdminDashboard: React.FC = () => {
                   </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    setCommunitySubTab("users");
+                    setMainTab('community');
+                  }}
+                >
+                  <Shield className="w-4 h-4 mr-2" />
+                  Utenti & Staff
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setMainTab('permissions')}>
                   <Shield className="w-4 h-4 mr-2" />
                   Permessi
@@ -1002,7 +1012,7 @@ export const AdminDashboard: React.FC = () => {
         ) : mainTab === 'dediche' ? (
           <AdminDedichePanel onUnreadCountChange={handleUnreadCountChange} />
         ) : mainTab === 'community' ? (
-          <AdminCommunityPanel />
+          <AdminCommunityPanel subTab={communitySubTab} onSubTabChange={setCommunitySubTab} />
         ) : mainTab === 'permissions' ? (
           <AdminPermissionsTab />
         ) : mainTab === 'songs' ? (
