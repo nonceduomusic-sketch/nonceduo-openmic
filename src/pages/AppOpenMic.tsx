@@ -23,7 +23,7 @@ const AppOpenMic: React.FC = () => {
     );
   }
 
-  return <OpenMic />;
+  return <OpenMic appMode />;
 };
 
 export default AppOpenMic;
