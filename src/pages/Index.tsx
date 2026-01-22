@@ -6,8 +6,10 @@ import { SearchBar } from '@/components/SearchBar';
 import { ArtistFilter } from '@/components/ArtistFilter';
 import { BookingModal } from '@/components/BookingModal';
 import { Link } from 'react-router-dom';
+import { useStaffRole } from '@/hooks/useStaffRole';
 
 const Index: React.FC = () => {
+  const { isStaff } = useStaffRole();
   const [search, setSearch] = useState('');
   const [artistFilter, setArtistFilter] = useState('all');
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
@@ -46,13 +48,15 @@ const Index: React.FC = () => {
               </div>
             </div>
 
-            <Link
-              to="/admin"
-              className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
-              title="Admin"
-            >
-              <Settings className="w-5 h-5 text-muted-foreground" />
-            </Link>
+            {isStaff && (
+              <Link
+                to="/admin"
+                className="p-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors"
+                title="Admin"
+              >
+                <Settings className="w-5 h-5 text-muted-foreground" />
+              </Link>
+            )}
           </div>
 
           {/* Search & Filter */}

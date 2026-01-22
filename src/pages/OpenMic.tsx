@@ -10,8 +10,10 @@ import { Button } from '@/components/ui/button';
 import { useReservationStatuses } from '@/hooks/useReservationStatuses';
 import { SEO } from '@/components/SEO';
 import { UserLoginIndicator } from '@/components/UserLoginIndicator';
+import { useStaffRole } from '@/hooks/useStaffRole';
 
 const OpenMic: React.FC = () => {
+  const { isStaff } = useStaffRole();
   const [search, setSearch] = useState('');
   const [artistFilter, setArtistFilter] = useState('all');
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
@@ -84,16 +86,18 @@ const OpenMic: React.FC = () => {
                   <span className="hidden sm:inline">Chat</span>
                 </Button>
               </Link>
-              <Link to="/admin">
-                <Button 
-                  variant="ghost" 
-                  size="icon"
-                  className="text-muted-foreground hover:text-foreground"
-                  title="Area Admin"
-                >
-                  <Settings className="w-4 h-4" />
-                </Button>
-              </Link>
+              {isStaff && (
+                <Link to="/admin">
+                  <Button 
+                    variant="ghost" 
+                    size="icon"
+                    className="text-muted-foreground hover:text-foreground"
+                    title="Area Admin"
+                  >
+                    <Settings className="w-4 h-4" />
+                  </Button>
+                </Link>
+              )}
             </div>
           </div>
 

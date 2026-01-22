@@ -2,6 +2,7 @@ import React, { forwardRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Mic2, MessageCircle, Users, Settings, Shield } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useStaffRole } from '@/hooks/useStaffRole';
 
 interface NavItem {
   path: string;
@@ -17,6 +18,7 @@ interface MobileBottomNavProps {
 
 export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ variant = 'main' }, ref) => {
   const location = useLocation();
+  const { isStaff } = useStaffRole();
 
   const mainNavItems: NavItem[] = [
     { 
@@ -144,6 +146,7 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
   };
 
   const navItems = getNavItems();
+  const visibleNavItems = isStaff ? navItems : navItems.filter((i) => i.path !== '/admin');
 
   const isActive = (item: NavItem) => {
     const paths = item.matchPaths || [item.path];
@@ -153,7 +156,7 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
   return (
     <nav ref={ref} className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-card/98 backdrop-blur-xl border-t border-border/80 safe-area-bottom shadow-lg shadow-background/50">
       <div className="flex items-center justify-around h-16 px-1 max-w-md mx-auto">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const active = isActive(item);
           return (
             <Link
