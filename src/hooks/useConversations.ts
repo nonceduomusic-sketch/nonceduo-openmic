@@ -76,31 +76,25 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
   const [loading, setLoading] = useState(true);
   const [isBlocked, setIsBlocked] = useState(false);
 
-  // User chat API calls (avoids device-specific storage quirks)
-  const callUserChatApi = useCallback(async <T,>(action: string, data: Record<string, unknown>): Promise<T> => {
-    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/user-chat`;
+  // User chat API calls (server-side logic, works for both anonymous + authenticated users)
+  const callUserChatApi = useCallback(
+    async <T,>(action: string, data: Record<string, unknown>): Promise<T> => {
+      const res = await supabase.functions.invoke('user-chat', {
+        body: { action, ...data },
+      });
 
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      },
-      body: JSON.stringify({ action, ...data }),
-    });
+      if (res.error) {
+        throw new Error(res.error.message);
+      }
 
-    const json = await res.json().catch(() => ({}));
+      if ((res.data as any)?.error) {
+        throw new Error((res.data as any).error);
+      }
 
-    if (!res.ok) {
-      throw new Error((json as any)?.error || `HTTP ${res.status}`);
-    }
-
-    if ((json as any)?.error) {
-      throw new Error((json as any).error);
-    }
-
-    return json as T;
-  }, []);
+      return res.data as T;
+    },
+    []
+  );
 
   // Check if user is blocked
   const checkIfBlocked = useCallback(async (userSessionId: string) => {
@@ -332,6 +326,12 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
         messages: [message],
         last_message: message,
       };
+
+      // Optimistic: ensure the new conversation is immediately visible in the list
+      setConversations(prev => {
+        const withoutDup = prev.filter(c => c.id !== newConversation.id);
+        return [newConversation, ...withoutDup];
+      });
 
       // Refresh conversations in background
       fetchConversations();
