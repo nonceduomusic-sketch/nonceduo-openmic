@@ -915,12 +915,17 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false }) => {
   const handleBack = () => {
     if (selectedConversation) {
       setSelectedConversation(null);
-    } else if (showNewMessageForm && hasConversations) {
+      return;
+    }
+
+    // Always allow backing out of the "Nuovo Messaggio" form to the list,
+    // even when the user has no conversations yet.
+    if (showNewMessageForm) {
       setShowNewMessageForm(false);
     }
   };
 
-  const showBackToList = selectedConversation || (showNewMessageForm && hasConversations);
+  const showBackToList = Boolean(selectedConversation || showNewMessageForm);
 
   return (
     <>
