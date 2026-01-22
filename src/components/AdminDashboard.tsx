@@ -110,6 +110,7 @@ export const AdminDashboard: React.FC = () => {
   const [chatNotifications, setChatNotifications] = useState<{ message: ChatMessage; conversation?: Conversation }[]>([]);
   const [mainTab, setMainTab] = useState<AdminMainTab>('openmic');
   const [communitySubTab, setCommunitySubTab] = useState<"groups" | "invites" | "users" | "feed" | "blocked">("groups");
+  const [didInitTabFromAccess, setDidInitTabFromAccess] = useState(false);
   
   // Get notification counts for badges
   const { counts: notificationCounts } = useAdminNotifications();
@@ -206,24 +207,55 @@ export const AdminDashboard: React.FC = () => {
     setSelectionMode(false);
   }, [activeTab, mainTab]);
 
-  // If the current tab is not allowed (permissions changed), move to the first allowed one.
-  useEffect(() => {
-    if (isAccessLoading) return;
-    const nextAllowed: AdminMainTab = access.openmic
+  const getNextAllowedTab = useCallback((): AdminMainTab => {
+    return access.openmic
       ? 'openmic'
       : access.dediche
         ? 'dediche'
         : access.community
           ? 'community'
           : 'notifications';
+  }, [access.community, access.dediche, access.openmic]);
 
-    const isCurrentBlocked =
-      (mainTab === 'openmic' && !access.openmic) ||
-      (mainTab === 'dediche' && !access.dediche) ||
-      (mainTab === 'community' && !access.community);
+  const isMainTabBlocked = useCallback(
+    (tab: AdminMainTab) => {
+      if (tab === 'openmic') return !access.openmic;
+      if (tab === 'songs') return !access.openmic;
+      if (tab === 'dediche') return !access.dediche;
+      if (tab === 'community') return !access.community;
+      return false;
+    },
+    [access.community, access.dediche, access.openmic],
+  );
 
-    if (isCurrentBlocked) setMainTab(nextAllowed);
-  }, [access.community, access.dediche, access.openmic, isAccessLoading, mainTab]);
+  // On first load, pick the first allowed tab so the user doesn't land on a blocked section.
+  useEffect(() => {
+    if (isAccessLoading) return;
+    if (didInitTabFromAccess) return;
+
+    const nextAllowed = getNextAllowedTab();
+    setMainTab(nextAllowed);
+    setDidInitTabFromAccess(true);
+  }, [didInitTabFromAccess, getNextAllowedTab, isAccessLoading]);
+
+  const handleBlockedSelect = useCallback(
+    (tab: AdminMainTab) => {
+      const label =
+        tab === 'openmic'
+          ? 'Open Mic'
+          : tab === 'dediche'
+            ? 'Dediche'
+            : tab === 'community'
+              ? 'Community'
+              : 'Sezione';
+      toast({
+        title: 'Accesso non autorizzato',
+        description: `Non hai i permessi per aprire: ${label}.`,
+        variant: 'destructive',
+      });
+    },
+    [toast],
+  );
 
   const removeReservationNotification = (id: string) => {
     setReservationNotifications((prev) => prev.filter((n) => n.id !== id));
@@ -465,7 +497,14 @@ export const AdminDashboard: React.FC = () => {
     <SidebarProvider>
       <div className="min-h-screen flex w-full bg-background">
         {/* Mobile uses the bottom tab bar; keep sidebar desktop-only to avoid a huge overlay sheet */}
-        {!isMobile && <AdminSidebar active={mainTab} onSelect={setMainTab} access={access} />}
+          {!isMobile && (
+            <AdminSidebar
+              active={mainTab}
+              onSelect={setMainTab}
+              onBlockedSelect={handleBlockedSelect}
+              access={access}
+            />
+          )}
         <SidebarInset>
       {/* Reservation Notifications */}
       {reservationNotifications.map((notification) => (
@@ -961,7 +1000,22 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Content */}
       <main className="px-3 md:container py-6 pb-24 md:pb-6 overflow-x-hidden">
-        {mainTab === 'openmic' ? (
+        {isMainTabBlocked(mainTab) ? (
+          <div className="max-w-xl mx-auto">
+            <div className="rounded-xl border bg-card p-6">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-6 h-6 text-destructive" />
+                <div className="space-y-1">
+                  <h2 className="text-lg font-semibold">Sezione bloccata</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Questa sezione è visibile ma non puoi aprirla perché non hai i permessi necessari.
+                    Chiedi all’Owner/Admin di abilitarti la sezione da <strong>Permessi</strong>.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : mainTab === 'openmic' ? (
           activeTab === 'active' ? (
             <div className="space-y-4">
               {activeReservations.length === 0 ? (
@@ -1044,6 +1098,7 @@ export const AdminDashboard: React.FC = () => {
       <AdminMobileTabBar
         value={mainTab}
         onChange={setMainTab}
+        onBlockedChange={handleBlockedSelect}
         access={access}
         badges={{
           totalNotifications,

@@ -46,13 +46,16 @@ export function AdminSidebar({
   active,
   onSelect,
   access,
+  onBlockedSelect,
 }: {
   active: AdminMainTab;
   onSelect: (tab: AdminMainTab) => void;
   access: Record<AdminSectionKey, boolean>;
+  onBlockedSelect?: (tab: AdminMainTab) => void;
 }) {
   const isBlocked = (key: AdminMainTab) => {
     if (key === "openmic") return !access.openmic;
+    if (key === "songs") return !access.openmic;
     if (key === "dediche") return !access.dediche;
     if (key === "community") return !access.community;
     return false;
@@ -74,9 +77,19 @@ export function AdminSidebar({
                     <SidebarMenuButton
                       isActive={isActive}
                       tooltip={blocked ? `${item.label} (non autorizzato)` : item.label}
-                      onClick={() => !blocked && onSelect(item.key)}
-                      disabled={blocked}
-                      className={cn("justify-start", isActive && "font-medium")}
+                      onClick={() => {
+                        if (blocked) {
+                          onBlockedSelect?.(item.key);
+                          return;
+                        }
+                        onSelect(item.key);
+                      }}
+                      className={cn(
+                        "justify-start",
+                        isActive && "font-medium",
+                        blocked && "opacity-50 cursor-not-allowed",
+                      )}
+                      aria-disabled={blocked}
                     >
                       <Icon className="h-4 w-4" />
                       <span>{item.label}</span>

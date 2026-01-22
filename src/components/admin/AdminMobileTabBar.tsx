@@ -6,6 +6,7 @@ import type { AdminMainTab } from "@/components/admin/AdminSidebar";
 type Props = {
   value: AdminMainTab;
   onChange: (tab: AdminMainTab) => void;
+  onBlockedChange?: (tab: AdminMainTab) => void;
   badges: {
     totalNotifications: number;
     openmicActiveCount: number;
@@ -32,12 +33,12 @@ const ITEMS: Item[] = [
   { key: "notifications", label: "Centro", icon: Bell, badge: (b) => b.totalNotifications },
   { key: "openmic", label: "Open Mic", icon: Music, badge: (b) => b.openmicActiveCount, gatedBy: "openmic" },
   // Keep Open Mic + Canzoni adjacent (same format)
-  { key: "songs", label: "Canzoni", icon: ListMusic },
+  { key: "songs", label: "Canzoni", icon: ListMusic, gatedBy: "openmic" },
   { key: "dediche", label: "Dediche", icon: MessageSquare, badge: (b) => b.dedicheUnread, gatedBy: "dediche" },
   { key: "community", label: "Community", icon: Newspaper, badge: (b) => b.communityUnread, gatedBy: "community" },
 ];
 
-export function AdminMobileTabBar({ value, onChange, badges, access }: Props) {
+export function AdminMobileTabBar({ value, onChange, onBlockedChange, badges, access }: Props) {
   const isDisabled = (item: Item) => {
     if (!item.gatedBy) return false;
     return !access[item.gatedBy];
@@ -56,14 +57,20 @@ export function AdminMobileTabBar({ value, onChange, badges, access }: Props) {
             <button
               key={item.key}
               type="button"
-              onClick={() => !disabled && onChange(item.key)}
-              disabled={disabled}
+              onClick={() => {
+                if (disabled) {
+                  onBlockedChange?.(item.key);
+                  return;
+                }
+                onChange(item.key);
+              }}
               className={cn(
                 "flex flex-col items-center justify-center flex-1 h-full py-1.5 transition-all duration-200 relative",
-                disabled && "opacity-45",
+                disabled && "opacity-45 cursor-not-allowed",
                 active ? "text-foreground" : "text-muted-foreground",
               )}
               aria-current={active ? "page" : undefined}
+              aria-disabled={disabled}
             >
               {active && <div className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-primary" />}
 
