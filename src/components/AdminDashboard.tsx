@@ -43,6 +43,7 @@ import { AdminPermissionsTab } from './AdminPermissionsTab';
 import { AdminNotificationsTab } from './AdminNotificationsTab';
 import { AdminDedichePanel } from '@/components/admin/AdminDedichePanel';
 import { AdminCommunityPanel } from '@/components/admin/AdminCommunityPanel';
+import { AdminAuditTab } from '@/components/admin/AdminAuditTab';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -97,7 +98,7 @@ export const AdminDashboard: React.FC = () => {
   const [reservationNotifications, setReservationNotifications] = useState<Reservation[]>([]);
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
   const [chatNotifications, setChatNotifications] = useState<{ message: ChatMessage; conversation?: Conversation }[]>([]);
-  const [mainTab, setMainTab] = useState<'openmic' | 'dediche' | 'community' | 'songs' | 'settings' | 'notifications' | 'permissions'>('openmic');
+  const [mainTab, setMainTab] = useState<'openmic' | 'dediche' | 'community' | 'songs' | 'settings' | 'notifications' | 'permissions' | 'audit'>('openmic');
   
   // Get notification counts for badges
   const { counts: notificationCounts } = useAdminNotifications();
@@ -853,6 +854,17 @@ export const AdminDashboard: React.FC = () => {
               <Settings className="w-4 h-4" />
               Impostazioni
             </button>
+            <button
+              onClick={() => setMainTab('audit')}
+              className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
+                mainTab === 'audit'
+                  ? 'bg-gradient-to-r from-muted-foreground to-muted text-background shadow-lg'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              <Database className="w-4 h-4" />
+              Audit
+            </button>
           </div>
 
           {/* Sub-tabs for Open Mic */}
@@ -945,6 +957,8 @@ export const AdminDashboard: React.FC = () => {
           <AdminSongManagementTab />
         ) : mainTab === 'settings' ? (
           <AdminSettingsTab />
+        ) : mainTab === 'audit' ? (
+          <AdminAuditTab />
         ) : mainTab === 'notifications' ? (
           <AdminNotificationsTab />
         ) : null}
