@@ -140,7 +140,7 @@ export const AdminNotificationsTab: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-hidden">
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="glass-card border-primary/30">
@@ -202,14 +202,14 @@ export const AdminNotificationsTab: React.FC = () => {
                     {joinRequests.map((request) => (
                       <div
                         key={request.id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border"
+                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-lg bg-muted/30 border border-border min-w-0"
                       >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{request.requester_name}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="font-medium truncate">{request.requester_name}</span>
                             {getSectionBadge(request.conversation?.section)}
                           </div>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground break-words leading-snug">
                             Vuole entrare in: <strong>{request.conversation?.name || 'Gruppo'}</strong>
                           </p>
                           <p className="text-xs text-muted-foreground">
@@ -219,11 +219,11 @@ export const AdminNotificationsTab: React.FC = () => {
                             })}
                           </p>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 w-full sm:w-auto">
                           <Button
                             size="sm"
                             variant="outline"
-                            className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+                            className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground flex-1 sm:flex-none"
                             onClick={() => approveJoinRequest(request.id)}
                           >
                             <Check className="w-4 h-4" />
@@ -231,7 +231,7 @@ export const AdminNotificationsTab: React.FC = () => {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="border-destructive text-destructive hover:bg-destructive hover:text-white"
+                            className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground flex-1 sm:flex-none"
                             onClick={() => rejectJoinRequest(request.id)}
                           >
                             <X className="w-4 h-4" />
@@ -303,18 +303,18 @@ export const AdminNotificationsTab: React.FC = () => {
                     {filteredFriendships.map((friendship) => (
                       <div
                         key={friendship.id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border"
+                        className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-lg bg-muted/30 border border-border min-w-0"
                       >
-                        <div className="flex items-center gap-3 flex-1">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3 flex-1 min-w-0">
                           {/* User 1 */}
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
                             <Avatar className="w-8 h-8">
                               <AvatarImage src={friendship.requester?.avatar_url || undefined} />
                               <AvatarFallback className="text-xs">
                                 {friendship.requester?.display_name?.[0] || '?'}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium">
+                            <span className="text-sm font-medium truncate">
                               {friendship.requester?.display_name || friendship.requester?.username || 'Utente'}
                             </span>
                           </div>
@@ -325,14 +325,14 @@ export const AdminNotificationsTab: React.FC = () => {
                           </div>
 
                           {/* User 2 */}
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
                             <Avatar className="w-8 h-8">
                               <AvatarImage src={friendship.addressee?.avatar_url || undefined} />
                               <AvatarFallback className="text-xs">
                                 {friendship.addressee?.display_name?.[0] || '?'}
                               </AvatarFallback>
                             </Avatar>
-                            <span className="text-sm font-medium">
+                            <span className="text-sm font-medium truncate">
                               {friendship.addressee?.display_name || friendship.addressee?.username || 'Utente'}
                             </span>
                           </div>
@@ -340,12 +340,12 @@ export const AdminNotificationsTab: React.FC = () => {
                           {getStatusBadge(friendship.status)}
                         </div>
 
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 w-full sm:w-auto">
                           {friendship.status === 'pending' && (
                             <Button
                               size="sm"
                               variant="outline"
-                              className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+                              className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground flex-1 sm:flex-none"
                               onClick={() => updateFriendshipStatus(friendship.id, 'accepted')}
                             >
                               <Check className="w-4 h-4" />
@@ -354,7 +354,7 @@ export const AdminNotificationsTab: React.FC = () => {
                           <Button
                             size="sm"
                             variant="outline"
-                            className="border-destructive text-destructive hover:bg-destructive hover:text-white"
+                            className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground flex-1 sm:flex-none"
                             onClick={() => removeFriendship(friendship.id)}
                           >
                             <Trash2 className="w-4 h-4" />
