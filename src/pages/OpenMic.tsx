@@ -12,7 +12,15 @@ import { SEO } from '@/components/SEO';
 import { UserLoginIndicator } from '@/components/UserLoginIndicator';
 import { useStaffRole } from '@/hooks/useStaffRole';
 
-const OpenMic: React.FC = () => {
+interface OpenMicProps {
+  /**
+   * When true, this page is being used inside the /app (live) experience.
+   * We keep UX focused and avoid entry-points into Community.
+   */
+  appMode?: boolean;
+}
+
+const OpenMic: React.FC<OpenMicProps> = ({ appMode = false }) => {
   const { isStaff } = useStaffRole();
   const [search, setSearch] = useState('');
   const [artistFilter, setArtistFilter] = useState('all');
@@ -75,7 +83,7 @@ const OpenMic: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2">
-              <UserLoginIndicator compact />
+              {!appMode && <UserLoginIndicator compact />}
               <Link to="/app/dediche">
                 <Button 
                   variant="outline" 
