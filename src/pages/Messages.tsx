@@ -103,6 +103,11 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false }) => {
     loading 
   } = useConversations(userSessionId, 'dediche');
 
+  // NOTE: `userSessionId` is generated async on mount.
+  // If the user submits before it's ready, the conversation may be created with an empty session_id,
+  // and then it won't be selectable/visible as "their" conversation.
+  const isSessionReady = Boolean(userSessionId);
+
   // Generate unique session ID (safe for older mobile browsers)
   useEffect(() => {
     const safeGet = (key: string) => {
@@ -344,6 +349,11 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false }) => {
 
   const handleSubmitNew = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isSessionReady) {
+      toast.error('Attendi un secondo e riprova (inizializzazione in corso)');
+      return;
+    }
     
     if (isBlocked) {
       toast.error('Il tuo account è stato sospeso. Contatta lo staff per maggiori informazioni.');
@@ -382,6 +392,11 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false }) => {
     e.preventDefault();
     if (!selectedConversation || !message.trim()) return;
 
+    if (!isSessionReady) {
+      toast.error('Attendi un secondo e riprova (inizializzazione in corso)');
+      return;
+    }
+
     if (isBlocked) {
       toast.error('Il tuo account è stato sospeso. Contatta lo staff per maggiori informazioni.');
       return;
@@ -416,6 +431,11 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false }) => {
   const handleJoinGroup = async (conv: Conversation, password?: string) => {
     if (isBlocked) {
       toast.error('Il tuo account è stato sospeso. Contatta lo staff per maggiori informazioni.');
+      return false;
+    }
+
+    if (!isSessionReady) {
+      toast.error('Attendi un secondo e riprova (inizializzazione in corso)');
       return false;
     }
 
@@ -499,6 +519,16 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false }) => {
   const hasConversations = allConversations.length > 0 || publicGroups.length > 0;
 
   if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <MessageCircle className="w-12 h-12 text-secondary animate-pulse" />
+      </div>
+    );
+  }
+
+  // Keep the UI blocked until the session id is available.
+  // This prevents creating chats with an empty session id.
+  if (!isSessionReady) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <MessageCircle className="w-12 h-12 text-secondary animate-pulse" />
