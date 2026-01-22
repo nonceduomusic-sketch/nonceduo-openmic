@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { adminAuditLog } from '@/lib/adminAudit';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -69,9 +70,9 @@ interface UserPermissionOverride {
 }
 
 const ROLE_ICONS: Record<string, React.ReactNode> = {
-  owner: <Crown className="w-4 h-4 text-yellow-500" />,
-  admin: <Shield className="w-4 h-4 text-blue-500" />,
-  moderator: <ShieldCheck className="w-4 h-4 text-green-500" />,
+  owner: <Crown className="w-4 h-4 text-accent" />,
+  admin: <Shield className="w-4 h-4 text-primary" />,
+  moderator: <ShieldCheck className="w-4 h-4 text-secondary" />,
   user: <User className="w-4 h-4 text-muted-foreground" />,
 };
 
@@ -100,6 +101,7 @@ export const AdminPermissionsTab: React.FC = () => {
   const [userPermissions, setUserPermissions] = useState<UserPermissionOverride[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState<AppRole | null>(null);
+  const [permSearch, setPermSearch] = useState('');
   const [showRoleChangeDialog, setShowRoleChangeDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserRole | null>(null);
   const [newRole, setNewRole] = useState<AppRole>('admin');
@@ -191,6 +193,14 @@ export const AdminPermissionsTab: React.FC = () => {
         title: 'Permesso aggiornato',
         description: `Permesso ${hasPermission ? 'rimosso da' : 'aggiunto a'} ${ROLE_LABELS[role]}`,
       });
+
+      const perm = permissions.find((p) => p.id === permissionId);
+      adminAuditLog({
+        action: 'permissions.role_toggle',
+        section: 'settings',
+        entity: 'role_permissions',
+        metadata: { role, permission: perm?.name ?? permissionId, enabled: !hasPermission },
+      });
       
       fetchData();
     } catch (error) {
@@ -218,6 +228,14 @@ export const AdminPermissionsTab: React.FC = () => {
       toast({
         title: 'Ruolo aggiornato',
         description: `Ruolo cambiato a ${ROLE_LABELS[newRole]}`,
+      });
+
+      adminAuditLog({
+        action: 'users.role_change',
+        section: 'settings',
+        entity: 'user_roles',
+        entity_id: selectedUser.user_id,
+        metadata: { from: selectedUser.role, to: newRole },
       });
 
       setShowRoleChangeDialog(false);
@@ -386,13 +404,56 @@ export const AdminPermissionsTab: React.FC = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                <div className="mb-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      value={permSearch}
+                      onChange={(e) => setPermSearch(e.target.value)}
+                      placeholder="Cerca permessi (es. openmic, settings, reset...)"
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
                 <ScrollArea className="max-h-96">
                   <div className="space-y-4">
-                    {permissions.map(permission => {
+                    {(() => {
+                      const q = permSearch.trim().toLowerCase();
+                      const filtered = !q
+                        ? permissions
+                        : permissions.filter((p) => {
+                            const hay = `${p.name} ${p.description ?? ''}`.toLowerCase();
+                            return hay.includes(q);
+                          });
+
+                      const groups = filtered.reduce<Record<string, Permission[]>>((acc, p) => {
+                        const group = p.name.split('.')[0] || 'altro';
+                        (acc[group] ||= []).push(p);
+                        return acc;
+                      }, {});
+
+                      const sortedGroupKeys = Object.keys(groups).sort((a, b) => a.localeCompare(b));
+
+                      return sortedGroupKeys.map((g) => (
+                        <div key={g} className="space-y-2">
+                          <div className="flex items-center gap-3">
+                            <Separator className="flex-1" />
+                            <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                              {g}
+                            </span>
+                            <Separator className="flex-1" />
+                          </div>
+
+                          <div className="space-y-4">
+                            {groups[g].map((permission) => {
                       const hasPermission = hasRolePermission(selectedRole, permission.id);
                       const isOwnerOnly = permission.name === 'manage_owners';
                       const isDisabled = selectedRole === 'owner' as AppRole || 
                         (isOwnerOnly && selectedRole !== ('owner' as AppRole));
+
+                      const prettyName = permission.name.includes('.')
+                        ? permission.name.replace(/\./g, ' › ')
+                        : permission.name;
 
                       return (
                         <div 
@@ -401,7 +462,7 @@ export const AdminPermissionsTab: React.FC = () => {
                         >
                           <div className="space-y-1">
                             <Label className="font-medium">
-                              {permission.name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                              {prettyName}
                             </Label>
                             <p className="text-sm text-muted-foreground">
                               {permission.description}
@@ -418,7 +479,11 @@ export const AdminPermissionsTab: React.FC = () => {
                           />
                         </div>
                       );
-                    })}
+                            })}
+                          </div>
+                        </div>
+                      ));
+                    })()}
                   </div>
                 </ScrollArea>
               </CardContent>

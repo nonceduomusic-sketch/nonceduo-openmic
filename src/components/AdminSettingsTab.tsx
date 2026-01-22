@@ -16,6 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { adminAuditLog } from '@/lib/adminAudit';
 
 type SectionKey = 'openmic' | 'dediche' | 'community';
 
@@ -112,6 +113,14 @@ export const AdminSettingsTab: React.FC = () => {
       toast({
         title: 'Aggiornato',
         description: `${row.display_name}: ${enabled ? 'attivo' : 'disattivo'}`,
+      });
+
+      adminAuditLog({
+        action: 'settings.section_toggle',
+        section: row.section_key,
+        entity: 'section_settings',
+        entity_id: row.id,
+        metadata: { enabled },
       });
     } catch (e: any) {
       console.error('Failed to update section setting:', e);
