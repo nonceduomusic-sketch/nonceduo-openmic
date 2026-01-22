@@ -78,6 +78,9 @@ export const AdminNotificationsTab: React.FC = () => {
   };
 
   const handleSearch1 = (query: string) => {
+    // If the admin starts typing again, treat it as a new selection flow.
+    // Otherwise `selectedUser1` would keep the results list hidden.
+    if (selectedUser1) setSelectedUser1(null);
     setSearchQuery1(query);
     if (query.length >= 2) {
       searchUsers(query);
@@ -85,6 +88,7 @@ export const AdminNotificationsTab: React.FC = () => {
   };
 
   const handleSearch2 = (query: string) => {
+    if (selectedUser2) setSelectedUser2(null);
     setSearchQuery2(query);
     if (query.length >= 2) {
       searchUsers(query);
