@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -20,19 +21,32 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useToast } from '@/hooks/use-toast';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
 import { 
   Users, 
   Search, 
   RefreshCw, 
   MoreVertical,
-  Mail,
   KeyRound,
   Trash2,
   Edit,
   Shield,
+  ShieldCheck,
+  Crown,
+  User,
   Circle,
-  AlertTriangle
+  AlertTriangle,
+  UserPlus,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 
 interface UserProfile {
@@ -44,27 +58,63 @@ interface UserProfile {
   is_online: boolean;
   last_seen_at: string;
   created_at: string;
-  email?: string;
-  has_admin_role?: boolean;
+  role?: 'owner' | 'admin' | 'moderator' | 'user';
 }
 
+interface AdminUser {
+  username: string;
+  created_at: string;
+  role: string;
+}
+
+type AppRole = 'owner' | 'admin' | 'moderator' | 'user';
+
+const ROLE_ICONS: Record<AppRole, React.ReactNode> = {
+  owner: <Crown className="w-3.5 h-3.5" />,
+  admin: <Shield className="w-3.5 h-3.5" />,
+  moderator: <ShieldCheck className="w-3.5 h-3.5" />,
+  user: <User className="w-3.5 h-3.5" />,
+};
+
+const ROLE_LABELS: Record<AppRole, string> = {
+  owner: 'Owner',
+  admin: 'Admin',
+  moderator: 'Staff',
+  user: 'Utente',
+};
+
+const ROLE_COLORS: Record<AppRole, string> = {
+  owner: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30',
+  admin: 'bg-blue-500/20 text-blue-600 border-blue-500/30',
+  moderator: 'bg-green-500/20 text-green-600 border-green-500/30',
+  user: 'bg-muted text-muted-foreground border-border',
+};
+
 export const AdminUsersTab: React.FC = () => {
-  const { toast } = useToast();
+  const [activeSubTab, setActiveSubTab] = useState<'community' | 'staff'>('community');
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
-  const [showResetDialog, setShowResetDialog] = useState(false);
-  const [editEmail, setEditEmail] = useState('');
+  const [showRoleDialog, setShowRoleDialog] = useState(false);
+  const [showCreateStaffDialog, setShowCreateStaffDialog] = useState(false);
   const [editDisplayName, setEditDisplayName] = useState('');
+  const [newRole, setNewRole] = useState<AppRole>('moderator');
   const [isProcessing, setIsProcessing] = useState(false);
+  
+  // New staff creation
+  const [newStaffUsername, setNewStaffUsername] = useState('');
+  const [newStaffPassword, setNewStaffPassword] = useState('');
+  const [newStaffRole, setNewStaffRole] = useState<'admin' | 'moderator'>('moderator');
+  const [showPassword, setShowPassword] = useState(false);
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // Fetch profiles
+      // Fetch community profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('*')
@@ -72,28 +122,32 @@ export const AdminUsersTab: React.FC = () => {
 
       if (profilesError) throw profilesError;
 
-      // Fetch user roles to check admin status
+      // Fetch user roles
       const { data: roles } = await supabase
         .from('user_roles')
-        .select('user_id, role')
-        .eq('role', 'admin');
+        .select('user_id, role');
 
-      const adminUserIds = new Set(roles?.map(r => r.user_id) || []);
+      const roleMap = new Map(roles?.map(r => [r.user_id, r.role]) || []);
 
-      // Map profiles with admin status
+      // Map profiles with roles
       const usersWithRoles = (profiles || []).map(profile => ({
         ...profile,
-        has_admin_role: adminUserIds.has(profile.user_id),
+        role: (roleMap.get(profile.user_id) as AppRole) || 'user',
       }));
 
       setUsers(usersWithRoles);
+
+      // Fetch admin users (staff)
+      const { data, error } = await supabase.functions.invoke('admin-credentials-update', {
+        body: { action: 'listAdmins' }
+      });
+
+      if (!error && data?.admins) {
+        setAdminUsers(data.admins);
+      }
     } catch (error) {
       console.error('Error fetching users:', error);
-      toast({
-        title: 'Errore',
-        description: 'Impossibile caricare gli utenti',
-        variant: 'destructive',
-      });
+      toast.error('Impossibile caricare gli utenti');
     } finally {
       setLoading(false);
     }
@@ -131,7 +185,6 @@ export const AdminUsersTab: React.FC = () => {
   const handleEditUser = (user: UserProfile) => {
     setSelectedUser(user);
     setEditDisplayName(user.display_name || '');
-    setEditEmail('');
     setShowEditDialog(true);
   };
 
@@ -140,7 +193,6 @@ export const AdminUsersTab: React.FC = () => {
     setIsProcessing(true);
 
     try {
-      // Update profile display name
       if (editDisplayName && editDisplayName !== selectedUser.display_name) {
         const { error } = await supabase
           .from('profiles')
@@ -150,45 +202,52 @@ export const AdminUsersTab: React.FC = () => {
         if (error) throw error;
       }
 
-      toast({
-        title: 'Utente aggiornato',
-        description: 'Le modifiche sono state salvate',
-      });
-
+      toast.success('Utente aggiornato');
       setShowEditDialog(false);
       fetchUsers();
     } catch (error) {
       console.error('Error updating user:', error);
-      toast({
-        title: 'Errore',
-        description: 'Impossibile aggiornare l\'utente',
-        variant: 'destructive',
-      });
+      toast.error('Impossibile aggiornare l\'utente');
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const handleResetPassword = async () => {
+  const handleChangeRole = async () => {
     if (!selectedUser) return;
     setIsProcessing(true);
 
     try {
-      // Note: This requires the user's email which we don't have directly accessible
-      // We would need to call an admin function to reset the password
-      toast({
-        title: 'Funzione in sviluppo',
-        description: 'Il reset password admin sarà disponibile presto. L\'utente può usare "Password dimenticata" dalla pagina login.',
-      });
+      // Check if user already has a role entry
+      const { data: existingRole } = await supabase
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', selectedUser.user_id)
+        .maybeSingle();
 
-      setShowResetDialog(false);
+      if (existingRole) {
+        // Update existing role
+        const { error } = await supabase
+          .from('user_roles')
+          .update({ role: newRole })
+          .eq('user_id', selectedUser.user_id);
+
+        if (error) throw error;
+      } else {
+        // Insert new role
+        const { error } = await supabase
+          .from('user_roles')
+          .insert({ user_id: selectedUser.user_id, role: newRole });
+
+        if (error) throw error;
+      }
+
+      toast.success(`Ruolo cambiato a ${ROLE_LABELS[newRole]}`);
+      setShowRoleDialog(false);
+      fetchUsers();
     } catch (error) {
-      console.error('Error resetting password:', error);
-      toast({
-        title: 'Errore',
-        description: 'Impossibile resettare la password',
-        variant: 'destructive',
-      });
+      console.error('Error changing role:', error);
+      toast.error('Impossibile cambiare il ruolo');
     } finally {
       setIsProcessing(false);
     }
@@ -199,7 +258,6 @@ export const AdminUsersTab: React.FC = () => {
     setIsProcessing(true);
 
     try {
-      // Delete profile (user remains in auth.users but profile is removed)
       const { error } = await supabase
         .from('profiles')
         .delete()
@@ -207,20 +265,73 @@ export const AdminUsersTab: React.FC = () => {
 
       if (error) throw error;
 
-      toast({
-        title: 'Profilo eliminato',
-        description: `Il profilo di ${selectedUser.display_name} è stato rimosso`,
-      });
-
+      toast.success(`Profilo di ${selectedUser.display_name} eliminato`);
       setShowDeleteDialog(false);
       fetchUsers();
     } catch (error) {
       console.error('Error deleting user:', error);
-      toast({
-        title: 'Errore',
-        description: 'Impossibile eliminare l\'utente',
-        variant: 'destructive',
+      toast.error('Impossibile eliminare l\'utente');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleCreateStaff = async () => {
+    if (!newStaffUsername.trim() || !newStaffPassword.trim()) {
+      toast.error('Inserisci username e password');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-credentials-update', {
+        body: { 
+          action: 'upsertAdmin',
+          username: newStaffUsername.trim(),
+          password: newStaffPassword,
+          role: newStaffRole
+        }
       });
+
+      if (error || !data?.success) {
+        throw new Error(data?.error || 'Errore nella creazione');
+      }
+
+      toast.success(`${newStaffRole === 'admin' ? 'Admin' : 'Staff'} "${newStaffUsername}" creato`);
+      setShowCreateStaffDialog(false);
+      setNewStaffUsername('');
+      setNewStaffPassword('');
+      setNewStaffRole('moderator');
+      fetchUsers();
+    } catch (error) {
+      console.error('Error creating staff:', error);
+      toast.error('Impossibile creare lo staff');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeleteStaff = async (username: string) => {
+    if (username.toLowerCase() === 'iacopo') {
+      toast.error('Non puoi eliminare il proprietario');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-credentials-update', {
+        body: { action: 'deleteAdmin', username }
+      });
+
+      if (error || !data?.success) {
+        throw new Error(data?.error || 'Errore');
+      }
+
+      toast.success(`Staff "${username}" eliminato`);
+      fetchUsers();
+    } catch (error) {
+      console.error('Error deleting staff:', error);
+      toast.error('Impossibile eliminare lo staff');
     } finally {
       setIsProcessing(false);
     }
@@ -232,6 +343,7 @@ export const AdminUsersTab: React.FC = () => {
   );
 
   const onlineCount = users.filter(u => u.is_online).length;
+  const staffCount = users.filter(u => u.role && u.role !== 'user').length;
 
   return (
     <div className="space-y-4">
@@ -240,15 +352,36 @@ export const AdminUsersTab: React.FC = () => {
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
-            Utenti Community
+            Gestione Utenti
           </h2>
           <p className="text-sm text-muted-foreground">
-            {users.length} utenti registrati · {onlineCount} online
+            {users.length} community · {staffCount} staff · {onlineCount} online
           </p>
         </div>
         
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
+          <Button variant="outline" size="icon" onClick={fetchUsers} disabled={loading}>
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          </Button>
+        </div>
+      </div>
+
+      {/* Sub-tabs */}
+      <Tabs value={activeSubTab} onValueChange={(v) => setActiveSubTab(v as 'community' | 'staff')}>
+        <TabsList className="w-full grid grid-cols-2">
+          <TabsTrigger value="community" className="gap-2">
+            <Users className="w-4 h-4" />
+            Community ({users.length})
+          </TabsTrigger>
+          <TabsTrigger value="staff" className="gap-2">
+            <Shield className="w-4 h-4" />
+            Staff ({adminUsers.length})
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Community Tab */}
+        <TabsContent value="community" className="mt-4 space-y-4">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Cerca utente..."
@@ -257,110 +390,167 @@ export const AdminUsersTab: React.FC = () => {
               className="pl-9"
             />
           </div>
-          <Button variant="outline" size="icon" onClick={fetchUsers} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-        </div>
-      </div>
 
-      {/* Users list */}
-      {loading ? (
-        <div className="flex items-center justify-center py-12">
-          <RefreshCw className="w-8 h-8 text-primary animate-spin" />
-        </div>
-      ) : filteredUsers.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
-            <p className="text-muted-foreground">
-              {searchTerm ? 'Nessun utente trovato' : 'Nessun utente registrato'}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid gap-3">
-          {filteredUsers.map((user) => (
-            <Card key={user.id} className="hover:bg-muted/30 transition-colors">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  {/* Avatar */}
-                  <div className="relative">
-                    <Avatar className="w-12 h-12">
-                      <AvatarImage src={user.avatar_url || undefined} />
-                      <AvatarFallback className="bg-primary/20 text-primary">
-                        {getInitials(user.display_name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    {user.is_online && (
-                      <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-background" />
-                    )}
-                  </div>
-                  
-                  {/* User info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium truncate">{user.display_name}</p>
-                      {user.has_admin_role && (
-                        <Badge variant="default" className="text-xs">
-                          <Shield className="w-3 h-3 mr-1" />
-                          Admin
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground truncate">@{user.username}</p>
-                  </div>
-                  
-                  {/* Status & date */}
-                  <div className="hidden sm:block text-right">
-                    <div className="flex items-center gap-1.5 justify-end">
-                      <Circle className={`w-2 h-2 ${user.is_online ? 'fill-green-500 text-green-500' : 'fill-muted-foreground/30 text-muted-foreground/30'}`} />
-                      <span className="text-sm">
-                        {user.is_online ? 'Online' : formatLastSeen(user.last_seen_at)}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Iscritto {formatDate(user.created_at)}
-                    </p>
-                  </div>
-                  
-                  {/* Actions */}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="shrink-0">
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEditUser(user)}>
-                        <Edit className="w-4 h-4 mr-2" />
-                        Modifica profilo
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => {
-                        setSelectedUser(user);
-                        setShowResetDialog(true);
-                      }}>
-                        <KeyRound className="w-4 h-4 mr-2" />
-                        Reset password
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setShowDeleteDialog(true);
-                        }}
-                        className="text-destructive focus:text-destructive"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Elimina profilo
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+            </div>
+          ) : filteredUsers.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Users className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                <p className="text-muted-foreground">
+                  {searchTerm ? 'Nessun utente trovato' : 'Nessun utente registrato'}
+                </p>
               </CardContent>
             </Card>
-          ))}
-        </div>
-      )}
+          ) : (
+            <div className="grid gap-2">
+              {filteredUsers.map((user) => (
+                <Card key={user.id} className="hover:bg-muted/30 transition-colors">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      {/* Avatar */}
+                      <div className="relative">
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={user.avatar_url || undefined} />
+                          <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                            {getInitials(user.display_name)}
+                          </AvatarFallback>
+                        </Avatar>
+                        {user.is_online && (
+                          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+                        )}
+                      </div>
+                      
+                      {/* User info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium truncate text-sm">{user.display_name}</p>
+                          {user.role && user.role !== 'user' && (
+                            <Badge variant="outline" className={`text-xs ${ROLE_COLORS[user.role]}`}>
+                              {ROLE_ICONS[user.role]}
+                              <span className="ml-1">{ROLE_LABELS[user.role]}</span>
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                      </div>
+                      
+                      {/* Status */}
+                      <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Circle className={`w-2 h-2 ${user.is_online ? 'fill-green-500 text-green-500' : 'fill-muted-foreground/30 text-muted-foreground/30'}`} />
+                        <span>{user.is_online ? 'Online' : formatLastSeen(user.last_seen_at)}</span>
+                      </div>
+                      
+                      {/* Actions */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                            <Edit className="w-4 h-4 mr-2" />
+                            Modifica
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => {
+                            setSelectedUser(user);
+                            setNewRole(user.role || 'user');
+                            setShowRoleDialog(true);
+                          }}>
+                            <Crown className="w-4 h-4 mr-2" />
+                            Cambia ruolo
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowDeleteDialog(true);
+                            }}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Elimina
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        {/* Staff Tab */}
+        <TabsContent value="staff" className="mt-4 space-y-4">
+          <Button 
+            onClick={() => setShowCreateStaffDialog(true)}
+            className="w-full"
+          >
+            <UserPlus className="w-4 h-4 mr-2" />
+            Aggiungi Staff
+          </Button>
+
+          {adminUsers.length === 0 ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Shield className="w-12 h-12 text-muted-foreground/30 mx-auto mb-4" />
+                <p className="text-muted-foreground">Nessuno staff configurato</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-2">
+              {adminUsers.map((admin) => {
+                const isOwner = admin.role === 'owner';
+                const roleKey = admin.role as AppRole;
+                
+                return (
+                  <Card key={admin.username}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                            isOwner ? 'bg-yellow-500/20' : admin.role === 'admin' ? 'bg-blue-500/20' : 'bg-green-500/20'
+                          }`}>
+                            {isOwner ? (
+                              <Crown className="w-5 h-5 text-yellow-600" />
+                            ) : admin.role === 'admin' ? (
+                              <Shield className="w-5 h-5 text-blue-600" />
+                            ) : (
+                              <ShieldCheck className="w-5 h-5 text-green-600" />
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium">{admin.username}</p>
+                            <Badge variant="outline" className={ROLE_COLORS[roleKey]}>
+                              {ROLE_LABELS[roleKey]}
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        {!isOwner && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => handleDeleteStaff(admin.username)}
+                            disabled={isProcessing}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Edit Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
@@ -373,20 +563,12 @@ export const AdminUsersTab: React.FC = () => {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Nome visualizzato</label>
+              <Label>Nome visualizzato</Label>
               <Input
                 value={editDisplayName}
                 onChange={(e) => setEditDisplayName(e.target.value)}
                 placeholder="Nome utente"
               />
-            </div>
-            <div className="bg-muted/50 rounded-lg p-3">
-              <p className="text-sm text-muted-foreground">
-                <strong>Username:</strong> @{selectedUser?.username}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                L'username non può essere modificato
-              </p>
             </div>
           </div>
           <DialogFooter>
@@ -400,32 +582,48 @@ export const AdminUsersTab: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Reset Password Dialog */}
-      <Dialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+      {/* Role Change Dialog */}
+      <Dialog open={showRoleDialog} onOpenChange={setShowRoleDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <KeyRound className="w-5 h-5 text-primary" />
-              Reset Password
-            </DialogTitle>
+            <DialogTitle>Cambia Ruolo</DialogTitle>
             <DialogDescription>
-              Invia un'email di reset password a {selectedUser?.display_name}
+              Scegli il nuovo ruolo per {selectedUser?.display_name}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
-              <p className="text-sm text-amber-600 dark:text-amber-400">
-                <strong>Nota:</strong> L'utente riceverà un'email con un link per reimpostare la password. 
-                In alternativa, può usare "Password dimenticata?" dalla pagina di login.
-              </p>
-            </div>
+            <Select value={newRole} onValueChange={(v) => setNewRole(v as AppRole)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="admin">
+                  <div className="flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-blue-500" />
+                    Admin
+                  </div>
+                </SelectItem>
+                <SelectItem value="moderator">
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck className="w-4 h-4 text-green-500" />
+                    Staff (Moderatore)
+                  </div>
+                </SelectItem>
+                <SelectItem value="user">
+                  <div className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-muted-foreground" />
+                    Utente normale
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowResetDialog(false)}>
+            <Button variant="outline" onClick={() => setShowRoleDialog(false)}>
               Annulla
             </Button>
-            <Button onClick={handleResetPassword} disabled={isProcessing}>
-              {isProcessing ? 'Invio...' : 'Invia email reset'}
+            <Button onClick={handleChangeRole} disabled={isProcessing}>
+              {isProcessing ? 'Salvataggio...' : 'Conferma'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -443,19 +641,86 @@ export const AdminUsersTab: React.FC = () => {
               Sei sicuro di voler eliminare il profilo di <strong>{selectedUser?.display_name}</strong>?
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <div className="bg-destructive/10 border border-destructive/30 rounded-lg p-4">
-              <p className="text-sm text-destructive">
-                Questa azione eliminerà il profilo dalla community. L'account di autenticazione rimarrà attivo ma l'utente dovrà ricreare il profilo.
-              </p>
-            </div>
-          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
               Annulla
             </Button>
             <Button variant="destructive" onClick={handleDeleteUser} disabled={isProcessing}>
-              {isProcessing ? 'Eliminazione...' : 'Elimina profilo'}
+              {isProcessing ? 'Eliminazione...' : 'Elimina'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Staff Dialog */}
+      <Dialog open={showCreateStaffDialog} onOpenChange={setShowCreateStaffDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5 text-primary" />
+              Nuovo Staff
+            </DialogTitle>
+            <DialogDescription>
+              Crea un nuovo account staff per accedere al pannello admin
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Username</Label>
+              <Input
+                value={newStaffUsername}
+                onChange={(e) => setNewStaffUsername(e.target.value)}
+                placeholder="es. Mario"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Password</Label>
+              <div className="relative">
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  value={newStaffPassword}
+                  onChange={(e) => setNewStaffPassword(e.target.value)}
+                  placeholder="Password sicura"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Ruolo</Label>
+              <Select value={newStaffRole} onValueChange={(v) => setNewStaffRole(v as 'admin' | 'moderator')}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-blue-500" />
+                      Admin (accesso completo)
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="moderator">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-green-500" />
+                      Staff (permessi limitati)
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateStaffDialog(false)}>
+              Annulla
+            </Button>
+            <Button onClick={handleCreateStaff} disabled={isProcessing || !newStaffUsername.trim() || !newStaffPassword.trim()}>
+              {isProcessing ? 'Creazione...' : 'Crea Staff'}
             </Button>
           </DialogFooter>
         </DialogContent>
