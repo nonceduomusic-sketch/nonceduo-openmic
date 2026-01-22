@@ -186,6 +186,67 @@ export const AdminPermissionsTab: React.FC = () => {
     return raw.trim() || 'altro';
   };
 
+  const toggleRolePermissionGroup = async (
+    role: AppRole,
+    groupKey: string,
+    enable: boolean,
+  ) => {
+    try {
+      const groupPermissionIds = permissions
+        .filter((p) => getPermissionGroupKey(p.name) === groupKey)
+        .map((p) => p.id);
+
+      if (groupPermissionIds.length === 0) return;
+
+      if (!enable) {
+        const { error } = await supabase
+          .from('role_permissions')
+          .delete()
+          .eq('role', role)
+          .in('permission_id', groupPermissionIds);
+
+        if (error) throw error;
+      } else {
+        // Insert missing only (ignore duplicates)
+        const existing = new Set(
+          rolePermissions
+            .filter((rp) => rp.role === role)
+            .map((rp) => rp.permission_id),
+        );
+
+        const rows = groupPermissionIds
+          .filter((id) => !existing.has(id))
+          .map((permission_id) => ({ role, permission_id }));
+
+        if (rows.length > 0) {
+          const { error } = await supabase.from('role_permissions').insert(rows);
+          if (error) throw error;
+        }
+      }
+
+      toast({
+        title: 'Sezione aggiornata',
+        description: `${PERMISSION_GROUP_LABELS[groupKey] ?? groupKey}: ${enable ? 'abilitata' : 'disabilitata'} per ${ROLE_LABELS[role]}`,
+      });
+
+      adminAuditLog({
+        action: 'permissions.role_group_toggle',
+        section: 'settings',
+        entity: 'role_permissions',
+        metadata: { role, group: groupKey, enabled: enable },
+      });
+
+      fetchData();
+    } catch (error) {
+      console.error('Error toggling role permission group:', error);
+      toast({
+        title: 'Errore',
+        description: 'Impossibile aggiornare la sezione di permessi',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const toggleRolePermission = async (role: AppRole, permissionId: string, hasPermission: boolean) => {
     try {
       if (hasPermission) {
@@ -501,9 +562,42 @@ export const AdminPermissionsTab: React.FC = () => {
                         );
                       }
 
+                      const enabledCount = items.filter((p) => hasRolePermission(selectedRole, p.id)).length;
+                      const allEnabled = enabledCount === items.length;
+                      const anyEnabled = enabledCount > 0;
+
                       return (
-                        <div className="divide-y">
-                          {items.map(renderPermissionRow)}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium">
+                                  {PERMISSION_GROUP_LABELS[g] ?? g}
+                                </span>
+                                {!allEnabled && anyEnabled && (
+                                  <Badge variant="secondary">Parziale</Badge>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {enabledCount}/{items.length} permessi attivi
+                              </p>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">Tutto</span>
+                              <Switch
+                                checked={allEnabled}
+                                onCheckedChange={(checked) =>
+                                  toggleRolePermissionGroup(selectedRole, g, checked)
+                                }
+                                disabled={selectedRole === ('owner' as AppRole)}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="divide-y">
+                            {items.map(renderPermissionRow)}
+                          </div>
                         </div>
                       );
                     };
