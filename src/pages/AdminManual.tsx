@@ -31,6 +31,8 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { SEO } from '@/components/SEO';
+import { AdminProvider, useAdmin } from '@/contexts/AdminContext';
+import { AdminLogin } from '@/components/AdminLogin';
 
 interface ManualSection {
   id: string;
@@ -44,7 +46,24 @@ interface ManualSection {
   }[];
 }
 
-const AdminManual: React.FC = () => {
+const AdminManualContent: React.FC = () => {
+  const { isLoggedIn, isLoading } = useAdmin();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <RefreshCw className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Caricamento...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return <AdminLogin />;
+  }
+
   const sections: ManualSection[] = [
     {
       id: 'openmic',
@@ -402,5 +421,11 @@ const AdminManual: React.FC = () => {
     </>
   );
 };
+
+const AdminManual: React.FC = () => (
+  <AdminProvider>
+    <AdminManualContent />
+  </AdminProvider>
+);
 
 export default AdminManual;
