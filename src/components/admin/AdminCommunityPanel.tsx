@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Users, Link2, Newspaper, Shield, Ban } from "lucide-react";
 import { AdminMessagesTab } from "@/components/AdminMessagesTab";
 import { AdminUsersTab } from "@/components/AdminUsersTab";
@@ -6,8 +6,24 @@ import { AdminFeedTab } from "@/components/AdminFeedTab";
 import { AdminCommunityInvitesTab } from "@/components/admin/AdminCommunityInvitesTab";
 import { AdminCommunityBlockedUsersTab } from "@/components/admin/AdminCommunityBlockedUsersTab";
 
-export const AdminCommunityPanel: React.FC = () => {
-  const [subTab, setSubTab] = useState<"groups" | "invites" | "users" | "feed" | "blocked">("groups");
+type SubTab = "groups" | "invites" | "users" | "feed" | "blocked";
+
+export const AdminCommunityPanel: React.FC<{
+  subTab?: SubTab;
+  onSubTabChange?: (tab: SubTab) => void;
+}> = ({ subTab: controlledSubTab, onSubTabChange }) => {
+  const [internalSubTab, setInternalSubTab] = useState<SubTab>("groups");
+
+  const subTab = controlledSubTab ?? internalSubTab;
+  const setSubTab = (tab: SubTab) => {
+    onSubTabChange?.(tab);
+    if (!controlledSubTab) setInternalSubTab(tab);
+  };
+
+  // If the parent starts controlling this, sync internal state once.
+  useEffect(() => {
+    if (controlledSubTab) setInternalSubTab(controlledSubTab);
+  }, [controlledSubTab]);
 
   return (
     <div className="space-y-4">
@@ -37,7 +53,7 @@ export const AdminCommunityPanel: React.FC = () => {
           }`}
         >
           <Shield className="w-4 h-4 inline-block mr-2" />
-          Utenti
+          Utenti & Staff
         </button>
         <button
           onClick={() => setSubTab("feed")}
