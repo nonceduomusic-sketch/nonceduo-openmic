@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import {
   LogOut,
   Trash2,
@@ -24,6 +25,7 @@ import {
   Database,
   Crown,
   Newspaper,
+  Book,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Users } from 'lucide-react';
@@ -477,6 +479,18 @@ export const AdminDashboard: React.FC = () => {
                   <span className="hidden md:inline">On</span>
                 </div>
               )}
+
+              {/* Manual link */}
+              <Link to="/admin/manual">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-accent text-accent hover:bg-accent hover:text-accent-foreground"
+                  title="Manuale Admin"
+                >
+                  <Book className="w-4 h-4" />
+                </Button>
+              </Link>
 
               {/* Home button - always visible */}
               <Button
