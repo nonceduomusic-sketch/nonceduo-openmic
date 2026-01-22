@@ -46,6 +46,20 @@ interface ManualSection {
   }[];
 }
 
+const renderBold = (text: string) => {
+  // Supports simple **bold** segments without injecting HTML.
+  const parts = text.split(/\*\*(.*?)\*\*/g);
+  return parts.map((part, i) =>
+    i % 2 === 1 ? (
+      <strong key={i} className="text-foreground">
+        {part}
+      </strong>
+    ) : (
+      <React.Fragment key={i}>{part}</React.Fragment>
+    )
+  );
+};
+
 const AdminManualContent: React.FC = () => {
   const { isLoggedIn, isLoading } = useAdmin();
 
@@ -383,13 +397,9 @@ const AdminManualContent: React.FC = () => {
                           <h4 className="font-medium mb-2 text-sm">{sub.title}</h4>
                           <ul className="space-y-1.5">
                             {sub.content.map((item, i) => (
-                              <li 
-                                key={i} 
-                                className="text-sm text-muted-foreground"
-                                dangerouslySetInnerHTML={{ 
-                                  __html: item.replace(/\*\*(.*?)\*\*/g, '<strong class="text-foreground">$1</strong>') 
-                                }}
-                              />
+                              <li key={i} className="text-sm text-muted-foreground">
+                                {renderBold(item)}
+                              </li>
                             ))}
                           </ul>
                         </div>
