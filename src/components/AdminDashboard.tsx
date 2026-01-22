@@ -960,7 +960,7 @@ export const AdminDashboard: React.FC = () => {
       </header>
 
       {/* Content */}
-      <main className="px-3 md:container py-6 pb-24 md:pb-6">
+      <main className="px-3 md:container py-6 pb-24 md:pb-6 overflow-x-hidden">
         {mainTab === 'openmic' ? (
           activeTab === 'active' ? (
             <div className="space-y-4">
