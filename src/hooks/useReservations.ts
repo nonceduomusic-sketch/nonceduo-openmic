@@ -35,6 +35,16 @@ export const useReservations = () => {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const normalizeReservations = useCallback((rows: Reservation[]) => {
+    // Realtime + manual refetch can cause duplicate rows if we always append on INSERT.
+    // Keep the most recent version per id.
+    const map = new Map<string, Reservation>();
+    for (const r of rows) map.set(r.id, r);
+    return Array.from(map.values()).sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+    );
+  }, []);
+
   const fetchReservations = useCallback(async () => {
     const { data, error } = await supabase
       .from('reservations')
@@ -49,9 +59,9 @@ export const useReservations = () => {
       return;
     }
 
-    setReservations(data as Reservation[]);
+    setReservations(normalizeReservations((data || []) as Reservation[]));
     setLoading(false);
-  }, []);
+  }, [normalizeReservations]);
 
   useEffect(() => {
     fetchReservations();
@@ -69,21 +79,19 @@ export const useReservations = () => {
         (payload) => {
           if (payload.eventType === 'INSERT') {
             const newReservation = payload.new as Reservation;
-            setReservations((prev) => [...prev, newReservation]);
+            setReservations((prev) => normalizeReservations([...prev, newReservation]));
             // Trigger notification for admin
             window.dispatchEvent(
               new CustomEvent('new-reservation', { detail: newReservation })
             );
           } else if (payload.eventType === 'UPDATE') {
             setReservations((prev) =>
-              prev.map((r) =>
-                r.id === payload.new.id ? (payload.new as Reservation) : r
+              normalizeReservations(
+                prev.map((r) => (r.id === payload.new.id ? (payload.new as Reservation) : r))
               )
             );
           } else if (payload.eventType === 'DELETE') {
-            setReservations((prev) =>
-              prev.filter((r) => r.id !== payload.old.id)
-            );
+            setReservations((prev) => normalizeReservations(prev.filter((r) => r.id !== payload.old.id)));
           }
         }
       )
@@ -92,7 +100,7 @@ export const useReservations = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchReservations]);
+  }, [fetchReservations, normalizeReservations]);
 
   const createReservation = async (
     customerName: string,

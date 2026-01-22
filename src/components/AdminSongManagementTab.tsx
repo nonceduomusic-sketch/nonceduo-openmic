@@ -96,8 +96,24 @@ export const AdminSongManagementTab: React.FC = () => {
     });
   }, [songs, songStatusMap, search, filter]);
 
-  const bookedCount = activeReservations.length;
-  const completedCount = completedReservations.length;
+  // Counts should reflect unique songs (not raw reservations).
+  const bookedCount = useMemo(() => {
+    const keys = new Set<string>();
+    activeReservations.forEach(res => keys.add(getSongKey(res.song_title, res.song_artist)));
+    return keys.size;
+  }, [activeReservations]);
+
+  const completedCount = useMemo(() => {
+    // Completed songs that are not currently booked (see songStatusMap logic).
+    let count = 0;
+    songStatusMap.forEach((v) => {
+      if (v.status === 'completed') count += 1;
+    });
+    return count;
+  }, [songStatusMap]);
+
+  const unavailableCount = songStatusMap.size;
+  const availableCount = Math.max(0, songs.length - unavailableCount);
 
   const handleCompleteSong = async (reservation: Reservation) => {
     const previousStatus = reservation.status;
@@ -209,7 +225,7 @@ export const AdminSongManagementTab: React.FC = () => {
             Gestione Canzoni
           </h2>
           <p className="text-sm text-muted-foreground">
-            {bookedCount} in coda • {completedCount} completate • {songs.length - bookedCount} disponibili
+            {bookedCount} in coda • {completedCount} completate • {availableCount} disponibili
           </p>
         </div>
         
@@ -218,7 +234,7 @@ export const AdminSongManagementTab: React.FC = () => {
             <Button
               variant="outline"
               className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-              disabled={bookedCount === 0 && completedCount === 0}
+                disabled={unavailableCount === 0}
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               Reset Globale
@@ -279,7 +295,7 @@ export const AdminSongManagementTab: React.FC = () => {
             )}
           >
             <Lock className="w-3 h-3 mr-1" />
-            Prenotate ({bookedCount + completedCount})
+            Prenotate ({unavailableCount})
           </Button>
           <Button
             variant={filter === 'available' ? 'default' : 'outline'}
