@@ -84,9 +84,10 @@ const ROLE_LABELS: Record<AppRole, string> = {
 };
 
 const ROLE_COLORS: Record<AppRole, string> = {
-  owner: 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30',
-  admin: 'bg-blue-500/20 text-blue-600 border-blue-500/30',
-  moderator: 'bg-green-500/20 text-green-600 border-green-500/30',
+  // Use semantic design tokens only (no raw Tailwind colors)
+  owner: 'bg-warning/20 text-warning border-warning/30',
+  admin: 'bg-secondary/20 text-secondary border-secondary/30',
+  moderator: 'bg-accent/20 text-accent border-accent/30',
   user: 'bg-muted text-muted-foreground border-border',
 };
 
@@ -409,7 +410,7 @@ export const AdminUsersTab: React.FC = () => {
               {filteredUsers.map((user) => (
                 <Card key={user.id} className="hover:bg-muted/30 transition-colors">
                   <CardContent className="p-3">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       {/* Avatar */}
                       <div className="relative">
                         <Avatar className="w-10 h-10">
@@ -419,27 +420,32 @@ export const AdminUsersTab: React.FC = () => {
                           </AvatarFallback>
                         </Avatar>
                         {user.is_online && (
-                          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-background" />
+                          <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-secondary rounded-full border-2 border-background" />
                         )}
                       </div>
                       
                       {/* User info */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium truncate text-sm">{user.display_name}</p>
+                        <div className="flex items-start sm:items-center gap-2 min-w-0">
+                          <p className="font-medium text-sm break-words leading-snug min-w-0">
+                            {user.display_name}
+                          </p>
                           {user.role && user.role !== 'user' && (
-                            <Badge variant="outline" className={`text-xs ${ROLE_COLORS[user.role]}`}>
+                            <Badge
+                              variant="outline"
+                              className={`shrink-0 text-xs whitespace-nowrap ${ROLE_COLORS[user.role]}`}
+                            >
                               {ROLE_ICONS[user.role]}
                               <span className="ml-1">{ROLE_LABELS[user.role]}</span>
                             </Badge>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground truncate">@{user.username}</p>
+                        <p className="text-xs text-muted-foreground break-words leading-snug">@{user.username}</p>
                       </div>
                       
                       {/* Status */}
                       <div className="hidden sm:flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Circle className={`w-2 h-2 ${user.is_online ? 'fill-green-500 text-green-500' : 'fill-muted-foreground/30 text-muted-foreground/30'}`} />
+                        <Circle className={`w-2 h-2 ${user.is_online ? 'fill-secondary text-secondary' : 'fill-muted-foreground/30 text-muted-foreground/30'}`} />
                         <span>{user.is_online ? 'Online' : formatLastSeen(user.last_seen_at)}</span>
                       </div>
                       
@@ -512,15 +518,21 @@ export const AdminUsersTab: React.FC = () => {
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                            isOwner ? 'bg-yellow-500/20' : admin.role === 'admin' ? 'bg-blue-500/20' : 'bg-green-500/20'
-                          }`}>
+                          <div
+                            className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                              isOwner
+                                ? 'bg-warning/20'
+                                : admin.role === 'admin'
+                                  ? 'bg-secondary/20'
+                                  : 'bg-accent/20'
+                            }`}
+                          >
                             {isOwner ? (
-                              <Crown className="w-5 h-5 text-yellow-600" />
+                              <Crown className="w-5 h-5 text-warning" />
                             ) : admin.role === 'admin' ? (
-                              <Shield className="w-5 h-5 text-blue-600" />
+                              <Shield className="w-5 h-5 text-secondary" />
                             ) : (
-                              <ShieldCheck className="w-5 h-5 text-green-600" />
+                              <ShieldCheck className="w-5 h-5 text-accent" />
                             )}
                           </div>
                           <div>
@@ -599,13 +611,13 @@ export const AdminUsersTab: React.FC = () => {
               <SelectContent>
                 <SelectItem value="admin">
                   <div className="flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-blue-500" />
+                    <Shield className="w-4 h-4 text-secondary" />
                     Admin
                   </div>
                 </SelectItem>
                 <SelectItem value="moderator">
                   <div className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-green-500" />
+                    <ShieldCheck className="w-4 h-4 text-accent" />
                     Staff (Moderatore)
                   </div>
                 </SelectItem>
@@ -701,13 +713,13 @@ export const AdminUsersTab: React.FC = () => {
                 <SelectContent>
                   <SelectItem value="admin">
                     <div className="flex items-center gap-2">
-                      <Shield className="w-4 h-4 text-blue-500" />
+                      <Shield className="w-4 h-4 text-secondary" />
                       Admin (accesso completo)
                     </div>
                   </SelectItem>
                   <SelectItem value="moderator">
                     <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-green-500" />
+                      <ShieldCheck className="w-4 h-4 text-accent" />
                       Staff (permessi limitati)
                     </div>
                   </SelectItem>
