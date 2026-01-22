@@ -54,6 +54,7 @@ export const SocialGroupsList: React.FC<SocialGroupsListProps> = ({
           *,
           participants:conversation_participants(id, session_id, participant_name, user_id)
         `)
+        .eq('section', 'community')
         .eq('is_group', true)
         .order('updated_at', { ascending: false });
 

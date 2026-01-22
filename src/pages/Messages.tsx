@@ -87,7 +87,7 @@ const Messages: React.FC = () => {
     markMessagesAsRead,
     isBlocked,
     loading 
-  } = useConversations(userSessionId);
+  } = useConversations(userSessionId, 'dediche');
 
   // Generate unique session ID (safe for older mobile browsers)
   useEffect(() => {

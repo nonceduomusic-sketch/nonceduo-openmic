@@ -44,6 +44,8 @@ export interface GroupMember extends Participant {
   is_blocked: boolean;
 }
 
+export type ConversationSection = 'dediche' | 'community';
+
 // Helper for admin API calls
 const callAdminChatApi = async (action: string, data: Record<string, unknown>) => {
   const { data: { session } } = await supabase.auth.getSession();
@@ -67,7 +69,7 @@ const callAdminChatApi = async (action: string, data: Record<string, unknown>) =
   return response.data;
 };
 
-export const useConversations = (sessionId?: string) => {
+export const useConversations = (sessionId?: string, section?: ConversationSection) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [publicGroups, setPublicGroups] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -108,6 +110,10 @@ export const useConversations = (sessionId?: string) => {
           messages:chat_messages(*)
         `)
         .order('updated_at', { ascending: false });
+
+      if (section) {
+        query = query.eq('section', section);
+      }
 
       const { data, error } = await query;
 
@@ -166,7 +172,7 @@ export const useConversations = (sessionId?: string) => {
     } finally {
       setLoading(false);
     }
-  }, [sessionId]);
+  }, [sessionId, section]);
 
   useEffect(() => {
     fetchConversations();
