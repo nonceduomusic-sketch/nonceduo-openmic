@@ -44,6 +44,7 @@ import { AdminNotificationsTab } from './AdminNotificationsTab';
 import { AdminDedichePanel } from '@/components/admin/AdminDedichePanel';
 import { AdminCommunityPanel } from '@/components/admin/AdminCommunityPanel';
 import { AdminAuditTab } from '@/components/admin/AdminAuditTab';
+import { AdminSidebar, type AdminMainTab } from '@/components/admin/AdminSidebar';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,6 +64,9 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
+import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { Badge } from '@/components/ui/badge';
+import { adminAuditLog } from '@/lib/adminAudit';
 
 // Type for tracking undo operations
 interface UndoAction {
@@ -72,7 +76,7 @@ interface UndoAction {
 }
 
 export const AdminDashboard: React.FC = () => {
-  const { currentUser, logout } = useAdmin();
+  const { currentUser, logout, staffRole, session } = useAdmin();
   const { toast } = useToast();
   const {
     activeReservations,
@@ -98,7 +102,7 @@ export const AdminDashboard: React.FC = () => {
   const [reservationNotifications, setReservationNotifications] = useState<Reservation[]>([]);
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
   const [chatNotifications, setChatNotifications] = useState<{ message: ChatMessage; conversation?: Conversation }[]>([]);
-  const [mainTab, setMainTab] = useState<'openmic' | 'dediche' | 'community' | 'songs' | 'settings' | 'notifications' | 'permissions' | 'audit'>('openmic');
+  const [mainTab, setMainTab] = useState<AdminMainTab>('openmic');
   
   // Get notification counts for badges
   const { counts: notificationCounts } = useAdminNotifications();
@@ -267,6 +271,12 @@ export const AdminDashboard: React.FC = () => {
     
     const success = await deleteMultipleReservations(Array.from(selectedIds));
     if (success) {
+      adminAuditLog({
+        action: 'openmic.delete_multiple',
+        section: 'openmic',
+        entity: 'reservation',
+        metadata: { ids: Array.from(selectedIds), count: selectedIds.size },
+      });
       setLastAction({
         type: 'deleteMultiple',
         reservations: reservationsToDelete,
@@ -283,6 +293,7 @@ export const AdminDashboard: React.FC = () => {
     
     const success = await deleteReservation(id);
     if (success && reservationToDelete) {
+      adminAuditLog({ action: 'openmic.delete', section: 'openmic', entity: 'reservation', entity_id: id });
       setLastAction({
         type: 'delete',
         reservations: [reservationToDelete],
@@ -303,6 +314,11 @@ export const AdminDashboard: React.FC = () => {
     }
     
     if (success && reservationsToReset.length > 0) {
+      adminAuditLog({
+        action: 'openmic.reset_list',
+        section: 'openmic',
+        metadata: { scope: activeTab, count: reservationsToReset.length },
+      });
       setLastAction({
         type: 'deleteMultiple',
         reservations: reservationsToReset,
@@ -336,6 +352,7 @@ export const AdminDashboard: React.FC = () => {
     const reservation = activeReservations.find(r => r.id === id);
     const success = await completeReservation(id);
     if (success && reservation) {
+      adminAuditLog({ action: 'openmic.complete', section: 'openmic', entity: 'reservation', entity_id: id });
       setLastAction({
         type: 'complete',
         reservations: [reservation],
@@ -348,6 +365,7 @@ export const AdminDashboard: React.FC = () => {
     const reservation = completedReservations.find(r => r.id === id);
     const success = await reactivateReservation(id);
     if (success && reservation) {
+      adminAuditLog({ action: 'openmic.reactivate', section: 'openmic', entity: 'reservation', entity_id: id });
       setLastAction({
         type: 'reactivate',
         reservations: [reservation],
@@ -391,6 +409,16 @@ export const AdminDashboard: React.FC = () => {
     window.open('/openmic', '_blank');
   };
 
+  const staffLabel =
+    staffRole === 'owner'
+      ? 'Owner'
+      : staffRole === 'admin'
+        ? 'Admin'
+        : staffRole === 'moderator'
+          ? 'Moderatore'
+          : 'Staff';
+  const staffEmail = session?.user?.email ?? currentUser?.email ?? '';
+
   const exitSelectionMode = () => {
     setSelectionMode(false);
     setSelectedIds(new Set());
@@ -408,7 +436,10 @@ export const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-background">
+        <AdminSidebar active={mainTab} onSelect={setMainTab} />
+        <SidebarInset>
       {/* Reservation Notifications */}
       {reservationNotifications.map((notification) => (
         <NotificationPopup
@@ -443,12 +474,20 @@ export const AdminDashboard: React.FC = () => {
         <div className="container py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="font-display text-xl md:text-2xl font-bold neon-text-cyan">
-                Admin Panel
-              </h1>
+              <div className="flex items-center gap-2">
+                <SidebarTrigger className="-ml-1" />
+                <h1 className="font-display text-xl md:text-2xl font-bold neon-text-cyan">Admin Panel</h1>
+              </div>
               <p className="text-sm text-muted-foreground">
                 Ciao, {currentUser?.username}
               </p>
+              <div className="mt-2 inline-flex items-center gap-2">
+                <Badge variant="secondary" className="capitalize">{staffLabel}</Badge>
+                {staffEmail ? (
+                  <span className="text-xs text-muted-foreground truncate max-w-[240px]">{staffEmail}</span>
+                ) : null}
+                <span className="text-xs text-muted-foreground">• Stai operando come Staff</span>
+              </div>
             </div>
 
             <div className="flex items-center gap-2">
@@ -600,12 +639,16 @@ export const AdminDashboard: React.FC = () => {
                         
                         if (resetOption === 'openmic') {
                           success = await resetOpenMic();
+                          if (success) adminAuditLog({ action: 'openmic.reset', section: 'openmic' });
                         } else if (resetOption === 'messages') {
                           success = await resetMessages();
+                          if (success) adminAuditLog({ action: 'messages.reset', section: 'dediche', metadata: { scope: 'messages' } });
                         } else if (resetOption === 'songs') {
                           success = await resetSongStatuses();
+                          if (success) adminAuditLog({ action: 'songs.reset_statuses', section: 'openmic' });
                         } else if (resetOption === 'all') {
                           success = await resetEverything();
+                          if (success) adminAuditLog({ action: 'night.reset_all', section: null, metadata: { scope: 'all' } });
                         }
                         
                         setIsResetting(false);
@@ -755,8 +798,8 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          {/* Main Tabs - Simplified */}
-          <div className="flex gap-1 mt-4 overflow-x-auto pb-1">
+          {/* Mobile Tabs (desktop uses sidebar) */}
+          <div className="md:hidden flex gap-1 mt-4 overflow-x-auto pb-1">
             <button
               onClick={() => setMainTab('notifications')}
               className={`flex items-center gap-1.5 py-2 px-3 rounded-lg font-medium text-sm transition-all whitespace-nowrap relative ${
@@ -963,6 +1006,8 @@ export const AdminDashboard: React.FC = () => {
           <AdminNotificationsTab />
         ) : null}
       </main>
-    </div>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 };
