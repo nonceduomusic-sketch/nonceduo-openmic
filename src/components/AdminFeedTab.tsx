@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import {
   AlertDialog,
@@ -17,6 +18,13 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import {
   RefreshCw,
   Trash2,
   Search,
@@ -25,6 +33,7 @@ import {
   MessageSquare,
   Heart,
   RotateCcw,
+  Pencil,
 } from 'lucide-react';
 
 interface PostAuthor {
@@ -57,6 +66,9 @@ export const AdminFeedTab: React.FC = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
   const [deletedPosts, setDeletedPosts] = useState<DeletedPost[]>([]);
+  const [editingPost, setEditingPost] = useState<Post | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetchPosts();
@@ -250,6 +262,40 @@ export const AdminFeedTab: React.FC = () => {
     }
   };
 
+  const openEditDialog = (post: Post) => {
+    setEditingPost(post);
+    setEditContent(post.content);
+  };
+
+  const saveEditedPost = async () => {
+    if (!editingPost || !editContent.trim()) return;
+    
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .update({ content: editContent.trim(), updated_at: new Date().toISOString() })
+        .eq('id', editingPost.id);
+
+      if (error) throw error;
+
+      setPosts(prev => prev.map(p => 
+        p.id === editingPost.id 
+          ? { ...p, content: editContent.trim(), updated_at: new Date().toISOString() }
+          : p
+      ));
+      
+      toast.success('Post modificato');
+      setEditingPost(null);
+      setEditContent('');
+    } catch (error) {
+      console.error('Error updating post:', error);
+      toast.error('Errore durante la modifica');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const getInitials = (name: string | null): string => {
     if (!name) return '?';
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -388,35 +434,46 @@ export const AdminFeedTab: React.FC = () => {
                         </p>
                       </div>
                       
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10 flex-shrink-0"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Elimina Post</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Sei sicuro di voler eliminare questo post?
-                              Questa azione eliminerà anche tutti i commenti e like associati.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Annulla</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => deletePost(post.id)}
-                              className="bg-destructive hover:bg-destructive/90"
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => openEditDialog(post)}
+                          className="text-primary hover:text-primary hover:bg-primary/10"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
                             >
-                              Elimina
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Elimina Post</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Sei sicuro di voler eliminare questo post?
+                                Questa azione eliminerà anche tutti i commenti e like associati.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Annulla</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deletePost(post.id)}
+                                className="bg-destructive hover:bg-destructive/90"
+                              >
+                                Elimina
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     </div>
                     
                     <p className="mt-2 text-sm whitespace-pre-wrap break-words">
@@ -440,6 +497,52 @@ export const AdminFeedTab: React.FC = () => {
           ))}
         </div>
       )}
+
+      {/* Edit Post Dialog */}
+      <Dialog open={!!editingPost} onOpenChange={(open) => !open && setEditingPost(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifica Post</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <Avatar className="w-10 h-10">
+                <AvatarImage src={editingPost?.author?.avatar_url || undefined} />
+                <AvatarFallback className="bg-primary/20 text-primary text-sm">
+                  {getInitials(editingPost?.author?.display_name)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-medium">{editingPost?.author?.display_name || 'Utente'}</p>
+                <p className="text-xs text-muted-foreground">
+                  @{editingPost?.author?.username || 'unknown'}
+                </p>
+              </div>
+            </div>
+            <Textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              rows={5}
+              maxLength={1000}
+              className="resize-none"
+            />
+            <p className="text-xs text-muted-foreground text-right">
+              {editContent.length}/1000
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingPost(null)}>
+              Annulla
+            </Button>
+            <Button 
+              onClick={saveEditedPost}
+              disabled={isSaving || !editContent.trim()}
+            >
+              {isSaving ? 'Salvataggio...' : 'Salva'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

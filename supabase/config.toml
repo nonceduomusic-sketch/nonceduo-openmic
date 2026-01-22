@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.social-password-reset]
 verify_jwt = false
+
+[functions.admin-credentials-update]
+verify_jwt = false

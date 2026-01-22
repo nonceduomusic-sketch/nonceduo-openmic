@@ -179,8 +179,13 @@ serve(async (req) => {
       
       authUser = newUser.user;
       
-      // Determine role: Iacopo is owner, others are admin
-      const userRole = adminUser.username.toLowerCase() === 'iacopo' ? 'owner' : 'admin';
+      // Determine role: Iacopo is owner, Gianluca is admin, others are moderators (staff)
+      let userRole = 'moderator';
+      if (adminUser.username.toLowerCase() === 'iacopo') {
+        userRole = 'owner';
+      } else if (adminUser.username.toLowerCase() === 'gianluca') {
+        userRole = 'admin';
+      }
       
       // Add role to user_roles table (use service role to bypass RLS)
       const { error: roleError } = await supabaseAdmin
