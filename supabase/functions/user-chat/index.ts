@@ -57,6 +57,53 @@ serve(async (req: Request): Promise<Response> => {
 
     if (!action) return json(400, { error: "Azione mancante" });
 
+    if (action === "listConversations") {
+      const sessionId = asTrimmedString(body.session_id);
+      const section = asTrimmedString(body.section); // optional
+
+      if (!sessionId) return json(400, { error: "Sessione non valida" });
+
+      // Find conversation ids for this session
+      const { data: parts, error: partsError } = await supabase
+        .from("conversation_participants")
+        .select("conversation_id")
+        .eq("session_id", sessionId);
+
+      if (partsError) {
+        console.error("listConversations participants error:", partsError);
+        return json(500, { error: "Errore caricamento conversazioni" });
+      }
+
+      const ids = Array.from(new Set((parts || []).map((p: any) => p.conversation_id).filter(Boolean)));
+
+      if (ids.length === 0) {
+        return json(200, { conversations: [] });
+      }
+
+      let convQuery = supabase
+        .from("conversations")
+        .select(`
+          *,
+          participants:conversation_participants(*),
+          messages:chat_messages(*)
+        `)
+        .in("id", ids)
+        .order("updated_at", { ascending: false });
+
+      if (section) {
+        convQuery = convQuery.eq("section", section);
+      }
+
+      const { data: convs, error: convsError } = await convQuery;
+
+      if (convsError) {
+        console.error("listConversations convs error:", convsError);
+        return json(500, { error: "Errore caricamento conversazioni" });
+      }
+
+      return json(200, { conversations: convs || [] });
+    }
+
     if (action === "startConversation") {
       const senderName = asTrimmedString(body.sender_name);
       const messageText = asTrimmedString(body.message_text);
