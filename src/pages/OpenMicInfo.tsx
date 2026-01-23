@@ -10,9 +10,12 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { useFormatGating } from "@/hooks/useFormatGating";
 
 const OpenMicInfo: React.FC = () => {
-  const { isLiveSessionActive, isGloballyActive, requiresPin, loading } = useFormatGating('openmic');
+  const { isLiveSessionActive, isGloballyActive, loading } = useFormatGating('openmic');
 
-  // "Serata in corso" only if format is both globally active AND live session is active
+  // "Serata in corso" SOLO se:
+  // 1. Il format è globalmente attivo (abilitato in "Format attivi")
+  // 2. E la sessione live è attiva (section_public_settings.is_enabled = true)
+  // Se uno dei due è false → mostra teaser "Prossimamente"
   const isActuallyLive = isGloballyActive && isLiveSessionActive;
 
   return (
