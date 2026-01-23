@@ -60,7 +60,7 @@ export function usePinSession(format: FormatKey) {
   }, []);
 
   // Validate existing session with server for THIS format
-  // The session is global, but we validate it can access this specific format
+  // The session is GLOBAL - if valid for one format, it's valid for ALL formats sharing the same live session
   const validateStoredSession = useCallback(async (): Promise<boolean> => {
     const stored = getStoredSession();
     if (!stored) {
@@ -68,89 +68,55 @@ export function usePinSession(format: FormatKey) {
     }
 
     try {
-      // Validate the global session token
-      const { data, error } = await supabase.rpc('validate_pin_session', {
-        p_token: stored.token,
-        p_format: format // Il formato viene verificato per sicurezza
-      });
+      // First, verify the token is still valid in pin_sessions table
+      const { data: pinSession, error: pinError } = await supabase
+        .from('pin_sessions')
+        .select('is_valid, live_session_id')
+        .eq('session_token', stored.token)
+        .eq('is_valid', true)
+        .maybeSingle();
 
-      if (error) {
-        console.error('[PinSession] Error validating session:', {
-          format,
-          tokenPrefix: stored.token?.substring(0, 8),
-          message: (error as any)?.message,
-          code: (error as any)?.code,
-          details: (error as any)?.details,
-        });
-        
-        // Se l'errore è perché il formato non corrisponde, proviamo una validazione globale
-        // chiamando la funzione senza filtro formato o verificando il live_session direttamente
-        const { data: liveCheck, error: liveError } = await supabase
-          .from('live_sessions')
-          .select('id, pin_code, protected_formats, is_active, expires_at')
-          .eq('id', stored.liveSessionId)
-          .eq('is_active', true)
-          .maybeSingle();
-
-        if (liveError || !liveCheck) {
-          removeSession();
-          return false;
-        }
-
-        // Check if format is protected by this live session
-        const protectedFormats = liveCheck.protected_formats as string[] | null;
-        if (!protectedFormats?.includes(format)) {
-          // Format not protected by this session, but that's OK - might not need PIN
-          return false;
-        }
-
-        // Check if session token is still valid in pin_sessions
-        const { data: pinSession, error: pinError } = await supabase
-          .from('pin_sessions')
-          .select('is_valid, invalidation_reason')
-          .eq('session_token', stored.token)
-          .eq('is_valid', true)
-          .maybeSingle();
-
-        if (pinError || !pinSession) {
-          removeSession();
-          return false;
-        }
-
-        return true;
-      }
-
-      // RPC returns array, get first result
-      const result = Array.isArray(data) ? data[0] : data;
-
-      if (!result) {
-        console.warn('[PinSession] validate_pin_session returned no rows', {
-          format,
-          tokenPrefix: stored.token?.substring(0, 8),
-        });
+      if (pinError || !pinSession) {
+        console.warn('[PinSession] Token not valid or not found:', stored.token?.substring(0, 8));
         removeSession();
         return false;
       }
-      
-      if (result?.is_valid) {
-        // Verify the format is still protected by the same PIN/live session
-        const protectedFormats = result.protected_formats as string[] | null;
-        if (protectedFormats && !protectedFormats.includes(format)) {
-          console.warn('[PinSession] PIN session mismatch: token valid but format not in protected_formats', {
-            format,
-            protectedFormats,
-            tokenPrefix: stored.token?.substring(0, 8),
-          });
-          // In questo caso NON blocchiamo: se il format non è più protetto, la UI entrerà comunque via gating.
-        }
-        return true;
-      } else {
+
+      // Then verify the live session is still active and protects this format
+      const { data: liveSession, error: liveError } = await supabase
+        .from('live_sessions')
+        .select('id, pin_code, protected_formats, is_active, expires_at')
+        .eq('id', pinSession.live_session_id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (liveError || !liveSession) {
+        console.warn('[PinSession] Live session not active:', pinSession.live_session_id);
         removeSession();
         return false;
       }
+
+      // Check expiration
+      if (liveSession.expires_at && new Date(liveSession.expires_at) < new Date()) {
+        console.warn('[PinSession] Live session expired');
+        removeSession();
+        return false;
+      }
+
+      // Check if this format is protected by the live session
+      const protectedFormats = liveSession.protected_formats as string[] | null;
+      if (!protectedFormats?.includes(format)) {
+        // Format is NOT protected by this session = doesn't need PIN = let through
+        console.log(`[PinSession] Format ${format} not protected, no PIN needed`);
+        return false; // Return false to indicate "no session needed" not "session invalid"
+      }
+
+      // Session is valid and format is protected - user has access!
+      console.log(`[PinSession] Valid global session for ${format}, live_session:`, liveSession.id);
+      return true;
     } catch (error) {
       console.error('[PinSession] Error validating session:', error);
-      removeSession();
+      // Don't remove session on transient errors - just return false
       return false;
     }
   }, [format, getStoredSession, removeSession]);

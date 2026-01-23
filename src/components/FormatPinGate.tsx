@@ -53,19 +53,23 @@ export const FormatPinGate: React.FC<FormatPinGateProps> = ({
     
     const valid = await validatePin(pin);
     if (valid) {
-      // Get live session ID to create GLOBAL persistent session
+      // Get live session that protects THIS format (there should be exactly one active)
       const { data: liveSession } = await supabase
         .from('live_sessions')
-        .select('id, protected_formats')
+        .select('id, protected_formats, pin_code')
         .eq('is_active', true)
+        .contains('protected_formats', [format])
         .maybeSingle();
 
       if (liveSession) {
-        // Create session that will work for ALL formats with same PIN
+        // Create GLOBAL session - works for ALL formats that share the same live session
         const created = await createSession(liveSession.id, pin);
         if (created) {
-          console.log(`[FormatPinGate] Global session created, valid for formats:`, liveSession.protected_formats);
+          console.log(`[FormatPinGate] Global session created for live_session ${liveSession.id}`);
+          console.log(`[FormatPinGate] User now has access to ALL protected formats:`, liveSession.protected_formats);
         }
+      } else {
+        console.warn(`[FormatPinGate] No active live session found protecting ${format}`);
       }
       
       onPinValidated();
