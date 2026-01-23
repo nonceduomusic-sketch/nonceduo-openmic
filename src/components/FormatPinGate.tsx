@@ -53,34 +53,38 @@ export const FormatPinGate: React.FC<FormatPinGateProps> = ({
     
     const valid = await validatePin(pin);
     if (valid) {
-      // Get the active live session (there should be only one active at a time)
-      const { data: liveSession, error } = await supabase
-        .from('live_sessions')
-        .select('id, protected_formats, pin_code')
-        .eq('is_active', true)
-        .maybeSingle();
+      // Resolve the correct active live session for THIS format via backend (handles the case of >1 active session)
+      const { data: sessions, error: sessionError } = await supabase.rpc('get_active_session_for_format', {
+        p_format: format,
+      });
 
-      if (error) {
-        console.error('[FormatPinGate] Error fetching live session:', error);
+      if (sessionError) {
+        console.error('[FormatPinGate] Error resolving active session for format:', {
+          format,
+          message: (sessionError as any)?.message,
+          code: (sessionError as any)?.code,
+          details: (sessionError as any)?.details,
+        });
       }
 
-      if (liveSession) {
-        // Verify this live session actually protects our format
+      const liveSession = Array.isArray(sessions) ? sessions[0] : sessions;
+
+      if (liveSession?.id) {
         const protectedFormats = (liveSession.protected_formats as string[]) || [];
-        if (protectedFormats.includes(format)) {
-          // Create GLOBAL session - works for ALL formats that share the same live session
-          const created = await createSession(liveSession.id, pin);
-          if (created) {
-            console.log(`[FormatPinGate] Global session created for live_session ${liveSession.id}`);
-            console.log(`[FormatPinGate] User now has access to ALL protected formats:`, protectedFormats);
-          } else {
-            console.warn('[FormatPinGate] Failed to create pin session');
-          }
+
+        // Create GLOBAL session - works for ALL formats that share the same live session
+        const created = await createSession(liveSession.id as string, pin);
+        if (created) {
+          console.log(`[FormatPinGate] Global session created for live_session ${liveSession.id}`);
+          console.log(`[FormatPinGate] User now has access to ALL protected formats:`, protectedFormats);
         } else {
-          console.warn(`[FormatPinGate] Format ${format} not in protected_formats:`, protectedFormats);
+          console.warn('[FormatPinGate] Failed to create pin session');
         }
       } else {
-        console.warn(`[FormatPinGate] No active live session found`);
+        // PIN was valid, but we couldn't resolve a session id to persist the access.
+        console.warn('[FormatPinGate] No active live session resolved for format (cannot persist PIN session):', {
+          format,
+        });
       }
       
       onPinValidated();
