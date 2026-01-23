@@ -187,10 +187,11 @@ serve(async (req: Request): Promise<Response> => {
       }
 
       case "resetEverything": {
-        // Reset EVERYTHING: reservations, reservation_statuses, conversations, chat_messages, messages
-        console.log("Performing full reset of all data...");
+        // Reset Open Mic + Dediche ONLY (NOT community)
+        // Includes: reservations, reservation_statuses, dediche conversations/messages, legacy messages
+        console.log("Performing reset of Open Mic and Dediche data (excluding community)...");
         
-        // Delete all reservations (this will trigger the sync_reservation_status to clean up reservation_statuses)
+        // 1. Delete all reservations (triggers sync_reservation_status to clean up reservation_statuses)
         const { error: reservationsError } = await supabase
           .from("reservations")
           .delete()
@@ -204,49 +205,51 @@ serve(async (req: Request): Promise<Response> => {
           );
         }
 
-        // Delete all chat messages
-        const { error: chatMessagesError } = await supabase
-          .from("chat_messages")
-          .delete()
-          .gte("id", "00000000-0000-0000-0000-000000000000");
-        
-        if (chatMessagesError) {
-          console.error("Error resetting chat messages:", chatMessagesError);
-          return new Response(
-            JSON.stringify({ error: "Errore nel reset messaggi chat" }),
-            { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-          );
-        }
-
-        // Delete all conversation participants
-        const { error: participantsError } = await supabase
-          .from("conversation_participants")
-          .delete()
-          .gte("id", "00000000-0000-0000-0000-000000000000");
-        
-        if (participantsError) {
-          console.error("Error resetting conversation participants:", participantsError);
-          return new Response(
-            JSON.stringify({ error: "Errore nel reset partecipanti" }),
-            { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-          );
-        }
-
-        // Delete all conversations
-        const { error: conversationsError } = await supabase
+        // 2. Get dediche conversation IDs first
+        const { data: dedicheConversations, error: fetchError } = await supabase
           .from("conversations")
-          .delete()
-          .gte("id", "00000000-0000-0000-0000-000000000000");
+          .select("id")
+          .eq("section", "dediche");
         
-        if (conversationsError) {
-          console.error("Error resetting conversations:", conversationsError);
-          return new Response(
-            JSON.stringify({ error: "Errore nel reset conversazioni" }),
-            { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-          );
+        if (fetchError) {
+          console.error("Error fetching dediche conversations:", fetchError);
+        }
+        
+        const dedicheConvIds = dedicheConversations?.map(c => c.id) || [];
+        
+        if (dedicheConvIds.length > 0) {
+          // 3. Delete chat messages from dediche conversations only
+          const { error: chatMessagesError } = await supabase
+            .from("chat_messages")
+            .delete()
+            .in("conversation_id", dedicheConvIds);
+          
+          if (chatMessagesError) {
+            console.error("Error resetting dediche chat messages:", chatMessagesError);
+          }
+
+          // 4. Delete participants from dediche conversations only
+          const { error: participantsError } = await supabase
+            .from("conversation_participants")
+            .delete()
+            .in("conversation_id", dedicheConvIds);
+          
+          if (participantsError) {
+            console.error("Error resetting dediche participants:", participantsError);
+          }
+
+          // 5. Delete dediche conversations only
+          const { error: conversationsError } = await supabase
+            .from("conversations")
+            .delete()
+            .eq("section", "dediche");
+          
+          if (conversationsError) {
+            console.error("Error resetting dediche conversations:", conversationsError);
+          }
         }
 
-        // Delete all legacy messages
+        // 6. Delete all legacy messages (these are dediche-related)
         const { error: messagesError } = await supabase
           .from("messages")
           .delete()
@@ -254,13 +257,9 @@ serve(async (req: Request): Promise<Response> => {
         
         if (messagesError) {
           console.error("Error resetting messages:", messagesError);
-          return new Response(
-            JSON.stringify({ error: "Errore nel reset messaggi" }),
-            { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-          );
         }
 
-        console.log("Full reset completed successfully");
+        console.log("Open Mic + Dediche reset completed (community preserved)");
         break;
       }
 
