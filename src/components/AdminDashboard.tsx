@@ -582,22 +582,24 @@ export const AdminDashboard: React.FC = () => {
                     )}
                     <DropdownMenuSeparator />
                     {staffRole === 'owner' && (
-                      <DropdownMenuItem onClick={() => setMainTab('staff')} className="rounded-lg">
-                        <Crown className="w-4 h-4 mr-2" />
-                        Gestione Staff
-                      </DropdownMenuItem>
+                      <>
+                        <DropdownMenuItem onClick={() => setMainTab('staff')} className="rounded-lg">
+                          <Crown className="w-4 h-4 mr-2" />
+                          Gestione Staff
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setMainTab('permissions')} className="rounded-lg">
+                          <Shield className="w-4 h-4 mr-2" />
+                          Permessi
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setMainTab('audit')} className="rounded-lg">
+                          <Database className="w-4 h-4 mr-2" />
+                          Audit
+                        </DropdownMenuItem>
+                      </>
                     )}
-                    <DropdownMenuItem onClick={() => setMainTab('permissions')} className="rounded-lg">
-                      <Shield className="w-4 h-4 mr-2" />
-                      Permessi
-                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setMainTab('settings')} className="rounded-lg">
                       <Settings className="w-4 h-4 mr-2" />
                       Impostazioni
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setMainTab('audit')} className="rounded-lg">
-                      <Database className="w-4 h-4 mr-2" />
-                      Audit
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild className="rounded-lg">
                       <Link to="/admin/manual">
@@ -845,17 +847,45 @@ export const AdminDashboard: React.FC = () => {
         ) : mainTab === 'dediche' ? (
           <AdminDedichePanel onUnreadCountChange={handleUnreadCountChange} />
         ) : mainTab === 'community' ? (
-          <AdminCommunityPanel subTab={communitySubTab} onSubTabChange={setCommunitySubTab} />
+          access.community ? (
+            <AdminCommunityPanel subTab={communitySubTab} onSubTabChange={setCommunitySubTab} />
+          ) : (
+            <div className="text-center py-12">
+              <Shield className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+              <p className="text-muted-foreground">Accesso non autorizzato</p>
+            </div>
+          )
         ) : mainTab === 'permissions' ? (
-          <AdminPermissionsTab />
+          staffRole === 'owner' ? (
+            <AdminPermissionsTab />
+          ) : (
+            <div className="text-center py-12">
+              <Shield className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+              <p className="text-muted-foreground">Solo l'Owner può gestire i permessi</p>
+            </div>
+          )
         ) : mainTab === 'songs' ? (
           <AdminSongManagementTab />
         ) : mainTab === 'staff' ? (
-          <AdminStaffTab />
+          staffRole === 'owner' ? (
+            <AdminStaffTab />
+          ) : (
+            <div className="text-center py-12">
+              <Shield className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+              <p className="text-muted-foreground">Solo l'Owner può gestire lo staff</p>
+            </div>
+          )
         ) : mainTab === 'settings' ? (
           <AdminSettingsTab />
         ) : mainTab === 'audit' ? (
-          <AdminAuditTab />
+          staffRole === 'owner' ? (
+            <AdminAuditTab />
+          ) : (
+            <div className="text-center py-12">
+              <Shield className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+              <p className="text-muted-foreground">Solo l'Owner può visualizzare l'Audit</p>
+            </div>
+          )
         ) : mainTab === 'notifications' ? (
           <AdminNotificationsTab 
             onNavigate={(tab, subTab) => {
