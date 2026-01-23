@@ -6,7 +6,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Song } from '@/data/songs';
 import { useReservations } from '@/hooks/useReservations';
-import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { getLyricsSearchUrl } from '@/lib/whatsapp';
@@ -47,10 +46,6 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
   const [dedicationMessage, setDedicationMessage] = useState('');
   
   const { createReservation } = useReservations();
-  
-  // Check if dediche format is active (for showing dedication option)
-  const { isActive: isDedicheActive, loading: dedicheLoading } = useFormatActiveCheck('dediche');
-
   const handleSearchLyrics = () => {
     window.open(getLyricsSearchUrl(song.title, song.artist), '_blank');
   };
@@ -88,8 +83,8 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
     setIsSubmitting(false);
   };
 
-  // Show dedication option only if dediche format is active
-  const showDedicationOption = !dedicheLoading && isDedicheActive;
+  // Always show dedication option - it's a booking feature, not tied to dediche format
+  const showDedicationOption = true;
 
   if (isConfirmed) {
     return (
