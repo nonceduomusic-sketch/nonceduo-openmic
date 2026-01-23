@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -32,29 +32,49 @@ export interface Comment {
   author?: PostAuthor;
 }
 
+// Scalability constants
+const PAGE_SIZE = 20;
+const POLLING_INTERVAL = 30000; // 30 seconds - no realtime for feed (saves connections)
+
 export const useSocialFeed = (userId?: string) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(0);
+  const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchPosts = useCallback(async () => {
+  const fetchPosts = useCallback(async (pageNum: number = 0, append: boolean = false) => {
     try {
-      // Fetch posts
+      if (pageNum === 0) setLoading(true);
+      else setLoadingMore(true);
+
+      const from = pageNum * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
+      // Fetch posts with pagination
       const { data: postsData, error: postsError } = await supabase
         .from('posts')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(50);
+        .range(from, to);
 
       if (postsError) throw postsError;
 
-      // Fetch profiles for authors
-      const userIds = [...new Set(postsData?.map(p => p.user_id) || [])];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, user_id, display_name, username, avatar_url')
-        .in('user_id', userIds);
+      // Check if there are more posts
+      setHasMore((postsData?.length || 0) === PAGE_SIZE);
 
-      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+      // Fetch profiles for authors (batch query)
+      const userIds = [...new Set(postsData?.map(p => p.user_id) || [])];
+      
+      let profileMap = new Map<string, PostAuthor>();
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, user_id, display_name, username, avatar_url')
+          .in('user_id', userIds);
+        profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+      }
 
       const enrichedPosts: Post[] = (postsData || []).map(post => ({
         ...post,
@@ -62,12 +82,14 @@ export const useSocialFeed = (userId?: string) => {
         has_liked: false,
       }));
 
-      // Check if current user has liked each post
+      // Check if current user has liked each post (single batch query)
       if (userId && enrichedPosts.length > 0) {
+        const postIds = enrichedPosts.map(p => p.id);
         const { data: userLikes } = await supabase
           .from('post_likes')
           .select('post_id')
-          .eq('user_id', userId);
+          .eq('user_id', userId)
+          .in('post_id', postIds);
 
         const likedPostIds = new Set(userLikes?.map(l => l.post_id) || []);
         enrichedPosts.forEach(post => {
@@ -75,31 +97,51 @@ export const useSocialFeed = (userId?: string) => {
         });
       }
 
-      setPosts(enrichedPosts);
+      if (append) {
+        setPosts(prev => [...prev, ...enrichedPosts]);
+      } else {
+        setPosts(enrichedPosts);
+      }
+      setPage(pageNum);
     } catch (error) {
       console.error('Error fetching posts:', error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [userId]);
 
-  useEffect(() => {
-    fetchPosts();
+  // Load more posts (pagination)
+  const loadMore = useCallback(() => {
+    if (!loadingMore && hasMore) {
+      fetchPosts(page + 1, true);
+    }
+  }, [fetchPosts, page, loadingMore, hasMore]);
 
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel('social-feed')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'posts' },
-        () => fetchPosts()
-      )
-      .subscribe();
+  // Refresh feed (pull to refresh)
+  const refresh = useCallback(() => {
+    setPage(0);
+    setHasMore(true);
+    fetchPosts(0, false);
+  }, [fetchPosts]);
+
+  useEffect(() => {
+    fetchPosts(0, false);
+
+    // Use polling instead of realtime for feed (saves connections for 100K+ users)
+    pollingRef.current = setInterval(() => {
+      // Only refresh if we're on page 0 (top of feed)
+      if (page === 0) {
+        fetchPosts(0, false);
+      }
+    }, POLLING_INTERVAL);
 
     return () => {
-      supabase.removeChannel(channel);
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
     };
-  }, [fetchPosts]);
+  }, [fetchPosts, page]);
 
   const createPost = async (content: string): Promise<boolean> => {
     if (!userId) {
@@ -114,6 +156,8 @@ export const useSocialFeed = (userId?: string) => {
 
       if (error) throw error;
       toast.success('Post pubblicato!');
+      // Refresh to show new post at top
+      refresh();
       return true;
     } catch (error: any) {
       console.error('Error creating post:', error);
@@ -130,6 +174,9 @@ export const useSocialFeed = (userId?: string) => {
         .eq('id', postId);
 
       if (error) throw error;
+      
+      // Remove from local state immediately
+      setPosts(prev => prev.filter(p => p.id !== postId));
       toast.success('Post eliminato');
       return true;
     } catch (error: any) {
@@ -184,47 +231,59 @@ export const useSocialFeed = (userId?: string) => {
   };
 
   const toggleLike = async (postId: string, currentlyLiked: boolean): Promise<boolean> => {
-    if (currentlyLiked) {
-      const success = await unlikePost(postId);
-      if (success) {
-        setPosts(prev => prev.map(p => 
-          p.id === postId 
-            ? { ...p, has_liked: false, likes_count: p.likes_count - 1 }
-            : p
-        ));
-      }
-      return success;
-    } else {
-      const success = await likePost(postId);
-      if (success) {
-        setPosts(prev => prev.map(p => 
-          p.id === postId 
-            ? { ...p, has_liked: true, likes_count: p.likes_count + 1 }
-            : p
-        ));
-      }
-      return success;
+    // Optimistic update
+    setPosts(prev => prev.map(p => 
+      p.id === postId 
+        ? { 
+            ...p, 
+            has_liked: !currentlyLiked, 
+            likes_count: currentlyLiked ? p.likes_count - 1 : p.likes_count + 1 
+          }
+        : p
+    ));
+
+    const success = currentlyLiked 
+      ? await unlikePost(postId)
+      : await likePost(postId);
+
+    // Rollback on failure
+    if (!success) {
+      setPosts(prev => prev.map(p => 
+        p.id === postId 
+          ? { 
+              ...p, 
+              has_liked: currentlyLiked, 
+              likes_count: currentlyLiked ? p.likes_count + 1 : p.likes_count - 1 
+            }
+          : p
+      ));
     }
+
+    return success;
   };
 
-  const fetchComments = async (postId: string): Promise<Comment[]> => {
+  const fetchComments = async (postId: string, limit: number = 50): Promise<Comment[]> => {
     try {
       const { data: comments, error } = await supabase
         .from('post_comments')
         .select('*')
         .eq('post_id', postId)
-        .order('created_at', { ascending: true });
+        .order('created_at', { ascending: true })
+        .limit(limit);
 
       if (error) throw error;
 
-      // Fetch author profiles
+      // Fetch author profiles (batch)
       const userIds = [...new Set(comments?.map(c => c.user_id) || [])];
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, user_id, display_name, username, avatar_url')
-        .in('user_id', userIds);
-
-      const profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+      
+      let profileMap = new Map<string, PostAuthor>();
+      if (userIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, user_id, display_name, username, avatar_url')
+          .in('user_id', userIds);
+        profileMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
+      }
 
       return (comments || []).map(comment => ({
         ...comment,
@@ -249,7 +308,7 @@ export const useSocialFeed = (userId?: string) => {
 
       if (error) throw error;
       
-      // Update local posts count
+      // Update local posts count (optimistic)
       setPosts(prev => prev.map(p => 
         p.id === postId 
           ? { ...p, comments_count: p.comments_count + 1 }
@@ -267,11 +326,15 @@ export const useSocialFeed = (userId?: string) => {
   return {
     posts,
     loading,
+    loadingMore,
+    hasMore,
+    loadMore,
+    refresh,
     createPost,
     deletePost,
     toggleLike,
     fetchComments,
     addComment,
-    refetch: fetchPosts,
+    refetch: refresh,
   };
 };
