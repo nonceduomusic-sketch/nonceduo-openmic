@@ -379,8 +379,8 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
 
       {/* ========== CATEGORY CARDS GRID - Tappable squares ========== */}
       {visibleCards.length > 0 && (
-        <div className="px-4 py-4 border-b border-border/30">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="px-3 py-4 border-b border-border/30 overflow-hidden">
+          <div className="grid grid-cols-3 gap-2 max-w-full">
             {visibleCards.map((card) => {
               const count = card.getCount(counts);
               const isActive = filterType === card.key;
@@ -390,46 +390,44 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
                   key={card.key}
                   type="button"
                   onClick={() => {
-                    // Toggle filter or navigate
                     if (card.navigateTo) {
                       setFilterType(isActive ? 'all' : card.key);
                     }
                   }}
                   onDoubleClick={() => {
-                    // Double tap to navigate directly
                     if (card.navigateTo) {
                       onNavigate?.(card.navigateTo.tab, card.navigateTo.subTab);
                     }
                   }}
                   className={cn(
-                    "relative flex flex-col items-center justify-center p-5 rounded-2xl border-2 transition-all duration-200",
-                    "min-h-[100px] touch-target",
+                    "relative flex flex-col items-center justify-center p-3 rounded-xl border-2 transition-all duration-200",
+                    "min-h-[80px] w-full overflow-hidden",
                     "hover:scale-[1.02] active:scale-[0.98]",
                     card.bgColor,
                     isActive ? card.borderColor : "border-transparent",
-                    isActive && "ring-2 ring-offset-2 ring-offset-background ring-current"
+                    isActive && "ring-2 ring-offset-1 ring-offset-background ring-current"
                   )}
                 >
-                  {/* Unread badge */}
+                  {/* Unread badge - positioned inside card */}
                   {count > 0 && (
-                    <div className="absolute -top-2 -right-2 flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-destructive text-destructive-foreground text-sm font-bold shadow-lg">
+                    <div className="absolute top-1 right-1 flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-xs font-bold">
                       {count > 99 ? '99+' : count}
                     </div>
                   )}
                   
                   {/* Icon */}
-                  <div className={cn("mb-2", card.textColor)}>
-                    {card.icon}
+                  <div className={cn("mb-1", card.textColor)}>
+                    {React.cloneElement(card.icon as React.ReactElement, { className: "w-5 h-5" })}
                   </div>
                   
                   {/* Label */}
-                  <span className={cn("text-sm font-medium", card.textColor)}>
+                  <span className={cn("text-xs font-medium truncate max-w-full", card.textColor)}>
                     {card.label}
                   </span>
                   
                   {/* Selected indicator */}
                   {isActive && (
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-current opacity-50" />
+                    <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-6 h-0.5 rounded-full bg-current opacity-50" />
                   )}
                 </button>
               );
@@ -437,8 +435,8 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
           </div>
           
           {/* Hint text */}
-          <p className="text-xs text-muted-foreground text-center mt-3">
-            Tocca per filtrare • Doppio tap per aprire sezione
+          <p className="text-[10px] text-muted-foreground text-center mt-2">
+            Tocca per filtrare • Doppio tap per aprire
           </p>
         </div>
       )}
