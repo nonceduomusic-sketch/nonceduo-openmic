@@ -606,6 +606,13 @@ export const AdminDashboard: React.FC = () => {
                       Reset Open Mic
                     </DropdownMenuItem>
                     <DropdownMenuItem
+                      onClick={() => { setResetOption('messages'); setShowResetDialog(true); }}
+                      className="rounded-lg"
+                    >
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Reset Dediche
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
                       onClick={() => { setResetOption('all'); setShowResetDialog(true); }}
                       className="text-destructive focus:text-destructive rounded-lg"
                     >
