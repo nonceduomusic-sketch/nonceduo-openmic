@@ -2,27 +2,23 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { FormatKey } from './useFormatGating';
 
-const PIN_SESSION_STORAGE_KEY = 'ncd_pin_sessions';
+const PIN_SESSION_STORAGE_KEY = 'ncd_pin_sessions_v2';
 
 interface StoredSession {
   token: string;
-  format: FormatKey;
   liveSessionId: string;
+  pinCodeHash: string; // Hash del PIN per identificare sessioni con stesso PIN
   createdAt: string;
 }
 
-interface SessionStorage {
-  [format: string]: StoredSession;
-}
-
 /**
- * Hook per gestire le sessioni PIN persistenti.
+ * Hook per gestire le sessioni PIN GLOBALI condivise tra format.
  * 
- * LOGICA:
- * - Dopo PIN corretto → crea sessione server + salva token in localStorage
- * - Utente chiude browser e rientra → valida sessione esistente
- * - Sessione scade se: format chiude, owner cambia PIN, o owner resetta manualmente
- * - Real-time: riceve notifiche quando sessione invalidata
+ * LOGICA AGGIORNATA:
+ * - La sessione è legata al live_session_id (NOT al format specifico)
+ * - PIN corretto su UN format → accesso a TUTTI i format con stesso PIN
+ * - Esempio: entra Open Mic con PIN → Dediche (stesso PIN) = accesso diretto
+ * - Cambio PIN → invalida sessione globale (tutti i format richiedono nuovo PIN)
  */
 export function usePinSession(format: FormatKey) {
   const [hasValidSession, setHasValidSession] = useState(false);
@@ -30,37 +26,41 @@ export function usePinSession(format: FormatKey) {
   const [sessionInvalidated, setSessionInvalidated] = useState(false);
   const [invalidationReason, setInvalidationReason] = useState<string | null>(null);
 
-  // Get stored sessions from localStorage
-  const getStoredSessions = useCallback((): SessionStorage => {
+  // Get stored global session from localStorage
+  const getStoredSession = useCallback((): StoredSession | null => {
     try {
       const stored = localStorage.getItem(PIN_SESSION_STORAGE_KEY);
-      return stored ? JSON.parse(stored) : {};
+      return stored ? JSON.parse(stored) : null;
     } catch {
-      return {};
+      return null;
     }
   }, []);
 
-  // Save session to localStorage
+  // Save global session to localStorage
   const saveSession = useCallback((session: StoredSession) => {
-    const sessions = getStoredSessions();
-    sessions[session.format] = session;
-    localStorage.setItem(PIN_SESSION_STORAGE_KEY, JSON.stringify(sessions));
-  }, [getStoredSessions]);
+    localStorage.setItem(PIN_SESSION_STORAGE_KEY, JSON.stringify(session));
+  }, []);
 
   // Remove session from localStorage
-  const removeSession = useCallback((formatKey: FormatKey) => {
-    const sessions = getStoredSessions();
-    delete sessions[formatKey];
-    localStorage.setItem(PIN_SESSION_STORAGE_KEY, JSON.stringify(sessions));
-  }, [getStoredSessions]);
+  const removeSession = useCallback(() => {
+    localStorage.removeItem(PIN_SESSION_STORAGE_KEY);
+  }, []);
 
-  // Get current session for format
-  const getStoredSession = useCallback((): StoredSession | null => {
-    const sessions = getStoredSessions();
-    return sessions[format] || null;
-  }, [format, getStoredSessions]);
+  // Simple hash function for PIN comparison
+  const hashPin = useCallback((pin: string): string => {
+    const cleanPin = pin.toUpperCase().trim();
+    // Simple hash for client-side comparison (not cryptographic, just for matching)
+    let hash = 0;
+    for (let i = 0; i < cleanPin.length; i++) {
+      const char = cleanPin.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash;
+    }
+    return hash.toString(36);
+  }, []);
 
-  // Validate existing session with server
+  // Validate existing session with server for THIS format
+  // The session is global, but we validate it can access this specific format
   const validateStoredSession = useCallback(async (): Promise<boolean> => {
     const stored = getStoredSession();
     if (!stored) {
@@ -68,74 +68,118 @@ export function usePinSession(format: FormatKey) {
     }
 
     try {
+      // Validate the global session token
       const { data, error } = await supabase.rpc('validate_pin_session', {
         p_token: stored.token,
-        p_format: format
+        p_format: format // Il formato viene verificato per sicurezza
       });
 
       if (error) {
-        console.error('Error validating session:', error);
-        removeSession(format);
-        return false;
+        console.error('[PinSession] Error validating session:', error);
+        
+        // Se l'errore è perché il formato non corrisponde, proviamo una validazione globale
+        // chiamando la funzione senza filtro formato o verificando il live_session direttamente
+        const { data: liveCheck, error: liveError } = await supabase
+          .from('live_sessions')
+          .select('id, pin_code, protected_formats, is_active, expires_at')
+          .eq('id', stored.liveSessionId)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (liveError || !liveCheck) {
+          removeSession();
+          return false;
+        }
+
+        // Check if format is protected by this live session
+        const protectedFormats = liveCheck.protected_formats as string[] | null;
+        if (!protectedFormats?.includes(format)) {
+          // Format not protected by this session, but that's OK - might not need PIN
+          return false;
+        }
+
+        // Check if session token is still valid in pin_sessions
+        const { data: pinSession, error: pinError } = await supabase
+          .from('pin_sessions')
+          .select('is_valid, invalidation_reason')
+          .eq('session_token', stored.token)
+          .eq('is_valid', true)
+          .maybeSingle();
+
+        if (pinError || !pinSession) {
+          removeSession();
+          return false;
+        }
+
+        return true;
       }
 
       // RPC returns array, get first result
       const result = Array.isArray(data) ? data[0] : data;
       
       if (result?.is_valid) {
+        // Verify the format is still protected by the same PIN/live session
+        const protectedFormats = result.protected_formats as string[] | null;
+        if (protectedFormats && protectedFormats.includes(format)) {
+          return true;
+        }
+        // Format might have been removed from protection - still valid session though
         return true;
       } else {
-        removeSession(format);
+        removeSession();
         return false;
       }
     } catch (error) {
-      console.error('Error validating session:', error);
-      removeSession(format);
+      console.error('[PinSession] Error validating session:', error);
+      removeSession();
       return false;
     }
   }, [format, getStoredSession, removeSession]);
 
-  // Create new session after PIN validation
+  // Create new GLOBAL session after PIN validation (works for ALL formats with same PIN)
   const createSession = useCallback(async (liveSessionId: string, pinCode: string): Promise<boolean> => {
     try {
+      // Create session without format-specific binding
+      // The format is still passed for logging but session is global
       const { data: token, error } = await supabase.rpc('create_pin_session', {
         p_live_session_id: liveSessionId,
-        p_format: format,
+        p_format: format, // Per logging/audit, ma sessione è globale
         p_pin_code: pinCode.toUpperCase().trim(),
         p_device_fingerprint: navigator.userAgent.substring(0, 100)
       });
 
       if (error) {
-        console.error('Error creating session:', error);
+        console.error('[PinSession] Error creating session:', error);
         return false;
       }
 
       if (token) {
         const session: StoredSession = {
           token: token as string,
-          format,
           liveSessionId,
+          pinCodeHash: hashPin(pinCode),
           createdAt: new Date().toISOString()
         };
         saveSession(session);
         setHasValidSession(true);
+        console.log('[PinSession] Global session created for live_session:', liveSessionId);
         return true;
       }
 
       return false;
     } catch (error) {
-      console.error('Error creating session:', error);
+      console.error('[PinSession] Error creating session:', error);
       return false;
     }
-  }, [format, saveSession]);
+  }, [format, hashPin, saveSession]);
 
   // Clear session (on logout or manual clear)
   const clearSession = useCallback(() => {
-    removeSession(format);
+    removeSession();
     setHasValidSession(false);
     setSessionInvalidated(false);
     setInvalidationReason(null);
-  }, [format, removeSession]);
+  }, [removeSession]);
 
   // Check session validity on mount
   useEffect(() => {
@@ -156,7 +200,7 @@ export function usePinSession(format: FormatKey) {
 
     // Subscribe to pin_sessions changes for this token
     const channel = supabase
-      .channel(`pin-session-${format}`)
+      .channel(`pin-session-global-${stored.token.substring(0, 8)}`)
       .on(
         'postgres_changes',
         { 
@@ -168,19 +212,19 @@ export function usePinSession(format: FormatKey) {
         (payload) => {
           const newRecord = payload.new as { is_valid: boolean; invalidation_reason?: string };
           if (!newRecord.is_valid) {
-            console.log('[PinSession] Session invalidated:', newRecord.invalidation_reason);
+            console.log('[PinSession] Global session invalidated:', newRecord.invalidation_reason);
             setHasValidSession(false);
             setSessionInvalidated(true);
             setInvalidationReason(newRecord.invalidation_reason || 'unknown');
-            removeSession(format);
+            removeSession();
           }
         }
       )
       .subscribe();
 
-    // Also subscribe to live_sessions changes
+    // Also subscribe to live_sessions changes (PIN change, deactivation)
     const liveChannel = supabase
-      .channel(`live-session-change-${format}`)
+      .channel(`live-session-change-global-${stored.liveSessionId.substring(0, 8)}`)
       .on(
         'postgres_changes',
         { 
@@ -189,7 +233,8 @@ export function usePinSession(format: FormatKey) {
           table: 'live_sessions',
           filter: `id=eq.${stored.liveSessionId}`
         },
-        async () => {
+        async (payload) => {
+          console.log('[PinSession] Live session changed:', payload.eventType);
           // Re-validate session when live session changes
           const isValid = await validateStoredSession();
           if (!isValid && hasValidSession) {
@@ -205,7 +250,7 @@ export function usePinSession(format: FormatKey) {
       supabase.removeChannel(channel);
       supabase.removeChannel(liveChannel);
     };
-  }, [format, getStoredSession, hasValidSession, removeSession, validateStoredSession]);
+  }, [getStoredSession, hasValidSession, removeSession, validateStoredSession]);
 
   return {
     hasValidSession,
@@ -233,13 +278,13 @@ export function useAdminPinSessionReset() {
       });
 
       if (error) {
-        console.error('Error resetting sessions:', error);
+        console.error('[PinSessionReset] Error resetting sessions:', error);
         return 0;
       }
 
       return (data as number) || 0;
     } catch (error) {
-      console.error('Error resetting sessions:', error);
+      console.error('[PinSessionReset] Error resetting sessions:', error);
       return 0;
     } finally {
       setResetting(false);
@@ -255,13 +300,13 @@ export function useAdminPinSessionReset() {
         .eq('is_valid', true);
 
       if (error) {
-        console.error('Error counting sessions:', error);
+        console.error('[PinSessionReset] Error counting sessions:', error);
         return 0;
       }
 
       return count || 0;
     } catch (error) {
-      console.error('Error counting sessions:', error);
+      console.error('[PinSessionReset] Error counting sessions:', error);
       return 0;
     }
   }, []);

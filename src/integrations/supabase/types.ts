@@ -1078,6 +1078,7 @@ export type Database = {
         Returns: boolean
       }
       normalize_song_text: { Args: { t: string }; Returns: string }
+      touch_pin_session: { Args: { p_token: string }; Returns: undefined }
       validate_format_pin: {
         Args: { p_format: string; p_pin: string }
         Returns: boolean
