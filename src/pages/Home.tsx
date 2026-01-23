@@ -432,10 +432,10 @@ const Home: React.FC = () => {
               </div>
               
               <p className="text-sm text-muted-foreground text-center">
-                © 2024 Non C'è Duo. Tutti i diritti riservati.
+                © 2026 Non C'è Duo. Tutti i diritti riservati.
               </p>
 
-              <div className="flex gap-4">
+              <div className="flex flex-wrap justify-center gap-4">
                 <Link to="/openmic" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Open Mic
                 </Link>
@@ -444,6 +444,10 @@ const Home: React.FC = () => {
                 </Link>
                 <Link to="/partyband" className="text-sm text-muted-foreground hover:text-primary transition-colors">
                   Party Band
+                </Link>
+                <Link to="/privacy" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+                  Privacy
                 </Link>
               </div>
             </div>

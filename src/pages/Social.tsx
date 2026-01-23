@@ -189,9 +189,9 @@ const Social: React.FC = () => {
           <footer className="container py-8 border-t border-border/50">
             <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <p className="text-muted-foreground text-sm">
-                © 2024 Non Ce Duo. Tutti i diritti riservati.
+                © 2026 Non Ce Duo. Tutti i diritti riservati.
               </p>
-              <div className="flex gap-6">
+              <div className="flex flex-wrap justify-center gap-4 md:gap-6">
                 <Link to="/" className="text-muted-foreground hover:text-primary transition-colors text-sm">
                   Home
                 </Link>
@@ -200,6 +200,10 @@ const Social: React.FC = () => {
                 </Link>
                 <Link to="/openmic" className="text-muted-foreground hover:text-primary transition-colors text-sm">
                   Open Mic
+                </Link>
+                <Link to="/privacy" className="text-muted-foreground hover:text-primary transition-colors text-sm flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+                  Privacy
                 </Link>
               </div>
             </div>
