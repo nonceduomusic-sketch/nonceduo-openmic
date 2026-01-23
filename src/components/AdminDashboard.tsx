@@ -1078,7 +1078,15 @@ export const AdminDashboard: React.FC = () => {
         ) : mainTab === 'audit' ? (
           <AdminAuditTab />
         ) : mainTab === 'notifications' ? (
-          <AdminNotificationsTab />
+          <AdminNotificationsTab 
+            onNavigate={(tab, subTab) => {
+              setMainTab(tab);
+              if (tab === 'community' && subTab) {
+                setCommunitySubTab(subTab as "groups" | "invites" | "users" | "feed" | "blocked");
+              }
+            }}
+            access={access}
+          />
         ) : null}
       </main>
 
