@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, forwardRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Lock, User, LogIn, Eye, EyeOff, Home, Music, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ const loginSchema = z.object({
     .max(100, 'Password troppo lunga'),
 });
 
-export const AdminLogin: React.FC = () => {
+export const AdminLogin = forwardRef<HTMLDivElement>((_, ref) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -68,7 +68,7 @@ export const AdminLogin: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4 relative">
+    <div ref={ref} className="min-h-screen bg-background flex items-center justify-center p-4 relative">
       {/* Navigation links */}
       <div className="absolute top-4 left-4 right-4 flex items-center justify-between">
         <Link 
@@ -194,4 +194,6 @@ export const AdminLogin: React.FC = () => {
       </div>
     </div>
   );
-};
+});
+
+AdminLogin.displayName = 'AdminLogin';
