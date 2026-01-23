@@ -203,6 +203,41 @@ export const AdminPermissionsTab: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
+  // Real-time subscriptions for instant updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('permissions-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_permissions' },
+        () => {
+          console.log('[Realtime] user_permissions changed');
+          fetchData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'user_roles' },
+        () => {
+          console.log('[Realtime] user_roles changed');
+          fetchData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'role_permissions' },
+        () => {
+          console.log('[Realtime] role_permissions changed');
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchData]);
+
   // Profile lookup helper
   const getProfile = useCallback((userId: string) => {
     return profiles.find(p => p.user_id === userId);
