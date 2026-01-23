@@ -21,6 +21,7 @@ import AppOpenMic from "./pages/AppOpenMic";
 import AppDediche from "./pages/AppDediche";
 import OpenMicInfo from "./pages/OpenMicInfo";
 import DedicheInfo from "./pages/DedicheInfo";
+import EventoLive from "./pages/EventoLive";
 
 const queryClient = new QueryClient();
 
@@ -47,6 +48,7 @@ const App = () => (
             <Route path="/openmic/live" element={<OpenMic />} />
             <Route path="/messaggi/live" element={<Messages appMode />} />
             <Route path="/join/:code" element={<JoinChat />} />
+            <Route path="/evento-live/:linkCode" element={<EventoLive />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/reset" element={<AdminReset />} />
             <Route path="/admin/manual" element={<AdminManual />} />

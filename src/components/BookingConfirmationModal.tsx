@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Song } from '@/data/songs';
 import { useReservations } from '@/hooks/useReservations';
-import { usePinValidation } from '@/hooks/useLiveSession';
+import { useFormatPinValidation } from '@/hooks/useUnifiedLiveSession';
 import { PinInputField } from '@/components/PinInputField';
 import { z } from 'zod';
 import { toast } from 'sonner';
@@ -36,7 +36,7 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
   const [isConfirmed, setIsConfirmed] = useState(false);
   
   const { createReservation } = useReservations();
-  const { isLiveMode, loading: liveLoading, validatePin } = usePinValidation('openmic');
+  const { isProtected: isLiveMode, loading: liveLoading, validatePin } = useFormatPinValidation('openmic');
 
   // Validate PIN when it changes (debounced)
   const debouncedValidatePin = useCallback(async (pinValue: string) => {
