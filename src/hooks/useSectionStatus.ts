@@ -12,7 +12,7 @@ interface SectionStatus {
 
 /**
  * Public (no-auth) read of section enablement.
- * Reads from `section_public_settings` (public mirror) to avoid exposing internal settings.
+ * Reads from `global_format_settings` which is the source of truth for format activation.
  */
 export function useSectionStatus(sectionKey: SectionKey) {
   const [status, setStatus] = useState<SectionStatus | null>(null);
@@ -24,10 +24,11 @@ export function useSectionStatus(sectionKey: SectionKey) {
     const run = async () => {
       setLoading(true);
       try {
+        // Read from global_format_settings - the source of truth for format activation
         const { data, error } = await supabase
-          .from("section_public_settings")
-          .select("section_key, display_name, is_enabled, updated_at")
-          .eq("section_key", sectionKey)
+          .from("global_format_settings")
+          .select("format_key, is_active, updated_at")
+          .eq("format_key", sectionKey)
           .maybeSingle();
 
         if (error) throw error;
@@ -35,8 +36,8 @@ export function useSectionStatus(sectionKey: SectionKey) {
 
         setStatus({
           sectionKey,
-          displayName: data?.display_name ?? sectionKey,
-          isEnabled: data?.is_enabled ?? true,
+          displayName: sectionKey === 'openmic' ? 'Open Mic' : sectionKey === 'dediche' ? 'Dediche' : 'Community',
+          isEnabled: data?.is_active ?? true,
           updatedAt: data?.updated_at,
         });
       } catch (e) {
@@ -51,8 +52,33 @@ export function useSectionStatus(sectionKey: SectionKey) {
     };
 
     run();
+
+    // Subscribe to realtime updates for immediate toggle effect
+    const channel = supabase
+      .channel(`section-status-${sectionKey}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'global_format_settings',
+          filter: `format_key=eq.${sectionKey}`,
+        },
+        (payload) => {
+          if (payload.new && 'is_active' in payload.new) {
+            setStatus(prev => prev ? {
+              ...prev,
+              isEnabled: (payload.new as { is_active: boolean }).is_active,
+              updatedAt: (payload.new as { updated_at?: string }).updated_at,
+            } : null);
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
       cancelled = true;
+      supabase.removeChannel(channel);
     };
   }, [sectionKey]);
 
