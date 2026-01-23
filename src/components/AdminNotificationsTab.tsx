@@ -13,6 +13,7 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronRight,
+  ArrowRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,8 +44,22 @@ import { useAdminNotifications, FriendshipAdmin } from '@/hooks/useAdminNotifica
 import { useUserSearch } from '@/hooks/useUserSearch';
 import { formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
+import type { AdminMainTab } from '@/components/admin/AdminSidebar';
 
-export const AdminNotificationsTab: React.FC = () => {
+interface AdminNotificationsTabProps {
+  onNavigate?: (tab: AdminMainTab, subTab?: string) => void;
+  access?: {
+    openmic: boolean;
+    dediche: boolean;
+    community: boolean;
+  };
+}
+
+export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({ 
+  onNavigate,
+  access = { openmic: true, dediche: true, community: true }
+}) => {
   const {
     joinRequests,
     friendships,
@@ -145,30 +160,93 @@ export const AdminNotificationsTab: React.FC = () => {
 
   return (
     <div className="space-y-6 overflow-x-hidden">
-      {/* Summary Cards */}
+      {/* Summary Cards - Clickable Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="glass-card border-primary/30">
-          <CardContent className="p-4 text-center">
-            <div className="text-3xl font-bold text-primary">{counts.pendingJoinRequests}</div>
-            <div className="text-xs text-muted-foreground mt-1">Richieste Accesso</div>
+        {/* Pending Join Requests - navigates to Community > Invites */}
+        <Card 
+          className={cn(
+            "glass-card border-primary/30 transition-all duration-200",
+            access.community && onNavigate && "cursor-pointer hover:border-primary hover:shadow-lg hover:shadow-primary/10 hover:scale-[1.02] group",
+            !access.community && "opacity-60"
+          )}
+          onClick={() => access.community && onNavigate?.('community', 'invites')}
+        >
+          <CardContent className="p-4 text-center relative">
+            <div className="text-3xl font-bold text-primary transition-transform group-hover:scale-110">
+              {counts.pendingJoinRequests}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+              Richieste Accesso
+              {access.community && onNavigate && (
+                <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
+              )}
+            </div>
           </CardContent>
         </Card>
-        <Card className="glass-card border-secondary/30">
-          <CardContent className="p-4 text-center">
-            <div className="text-3xl font-bold text-secondary">{counts.unreadDedicheMessages}</div>
-            <div className="text-xs text-muted-foreground mt-1">Msg Dediche</div>
+
+        {/* Unread Dediche Messages - navigates to Dediche */}
+        <Card 
+          className={cn(
+            "glass-card border-secondary/30 transition-all duration-200",
+            access.dediche && onNavigate && "cursor-pointer hover:border-secondary hover:shadow-lg hover:shadow-secondary/10 hover:scale-[1.02] group",
+            !access.dediche && "opacity-60"
+          )}
+          onClick={() => access.dediche && onNavigate?.('dediche')}
+        >
+          <CardContent className="p-4 text-center relative">
+            <div className="text-3xl font-bold text-secondary transition-transform group-hover:scale-110">
+              {counts.unreadDedicheMessages}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+              Msg Dediche
+              {access.dediche && onNavigate && (
+                <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-secondary" />
+              )}
+            </div>
           </CardContent>
         </Card>
-        <Card className="glass-card border-accent/30">
-          <CardContent className="p-4 text-center">
-            <div className="text-3xl font-bold text-accent">{counts.unreadCommunityMessages}</div>
-            <div className="text-xs text-muted-foreground mt-1">Msg Community</div>
+
+        {/* Unread Community Messages - navigates to Community > Groups */}
+        <Card 
+          className={cn(
+            "glass-card border-accent/30 transition-all duration-200",
+            access.community && onNavigate && "cursor-pointer hover:border-accent hover:shadow-lg hover:shadow-accent/10 hover:scale-[1.02] group",
+            !access.community && "opacity-60"
+          )}
+          onClick={() => access.community && onNavigate?.('community', 'groups')}
+        >
+          <CardContent className="p-4 text-center relative">
+            <div className="text-3xl font-bold text-accent transition-transform group-hover:scale-110">
+              {counts.unreadCommunityMessages}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+              Msg Community
+              {access.community && onNavigate && (
+                <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-accent" />
+              )}
+            </div>
           </CardContent>
         </Card>
-        <Card className="glass-card border-warning/30">
-          <CardContent className="p-4 text-center">
-            <div className="text-3xl font-bold text-warning">{counts.newReservations}</div>
-            <div className="text-xs text-muted-foreground mt-1">Prenotazioni Oggi</div>
+
+        {/* Today's Reservations - navigates to Open Mic */}
+        <Card 
+          className={cn(
+            "glass-card border-warning/30 transition-all duration-200",
+            access.openmic && onNavigate && "cursor-pointer hover:border-warning hover:shadow-lg hover:shadow-warning/10 hover:scale-[1.02] group",
+            !access.openmic && "opacity-60"
+          )}
+          onClick={() => access.openmic && onNavigate?.('openmic')}
+        >
+          <CardContent className="p-4 text-center relative">
+            <div className="text-3xl font-bold text-warning transition-transform group-hover:scale-110">
+              {counts.newReservations}
+            </div>
+            <div className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+              Prenotazioni Oggi
+              {access.openmic && onNavigate && (
+                <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-warning" />
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
