@@ -46,24 +46,43 @@ const FormatToggleItem: React.FC<FormatToggleItemProps> = ({
         <TooltipTrigger asChild>
           <div
             className={cn(
-              "flex items-center justify-between p-3 rounded-xl transition-all duration-300 ease-out cursor-pointer",
-              "hover:bg-muted/50",
-              enabled ? "bg-primary/5 border border-primary/20" : "bg-muted/30 border border-transparent"
+              // Mobile-first: large touch targets, high contrast
+              "flex items-center justify-between p-4 rounded-xl transition-all duration-300 ease-out cursor-pointer",
+              "min-h-[56px] touch-target", // Minimum 56px height for easy tapping
+              "hover:bg-muted/50 active:scale-[0.98]",
+              // Desktop: slightly more compact
+              "md:p-3 md:min-h-[48px]",
+              enabled 
+                ? "bg-primary/10 border-2 border-primary/30" 
+                : "bg-muted/30 border border-transparent"
             )}
             onClick={onToggle}
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 md:gap-2">
               <div
                 className={cn(
-                  "w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-300",
-                  enabled ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                  // Mobile: larger icons
+                  "w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-300",
+                  // Desktop: standard size
+                  "md:w-8 md:h-8 md:rounded-lg",
+                  enabled 
+                    ? "bg-primary/20 text-primary shadow-lg shadow-primary/20" 
+                    : "bg-muted text-muted-foreground"
                 )}
               >
-                {icon}
+                {React.cloneElement(icon as React.ReactElement, {
+                  className: cn(
+                    "w-5 h-5 md:w-4 md:h-4",
+                    enabled && "animate-pulse"
+                  )
+                })}
               </div>
               <span
                 className={cn(
-                  "font-medium text-sm transition-colors duration-300",
+                  // Mobile: larger, bolder text
+                  "font-semibold text-base transition-colors duration-300",
+                  // Desktop: standard size
+                  "md:font-medium md:text-sm",
                   enabled ? "text-foreground" : "text-muted-foreground"
                 )}
               >
@@ -73,11 +92,15 @@ const FormatToggleItem: React.FC<FormatToggleItemProps> = ({
             <Switch
               checked={enabled}
               onCheckedChange={onToggle}
-              className="data-[state=checked]:bg-primary"
+              className={cn(
+                // Mobile: larger switch
+                "scale-125 md:scale-100",
+                "data-[state=checked]:bg-primary"
+              )}
             />
           </div>
         </TooltipTrigger>
-        <TooltipContent side="right" className="max-w-[200px]">
+        <TooltipContent side="right" className="max-w-[200px] hidden md:block">
           <p className="text-xs">{tooltip}</p>
         </TooltipContent>
       </Tooltip>
@@ -115,14 +138,14 @@ export const FormatToggleCard: React.FC<FormatToggleCardProps> = ({
 
   return (
     <Card className="glass-card border-border/50 overflow-hidden">
-      <CardHeader className="pb-2 pt-4 px-4">
+      <CardHeader className="pb-2 pt-4 px-4 md:px-4">
         <CardTitle className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
           <Settings2 className="w-4 h-4" />
-          Seleziona format da monitorare
+          <span className="text-base md:text-sm">Format da monitorare</span>
         </CardTitle>
       </CardHeader>
-      <CardContent className="px-4 pb-4 pt-2">
-        <div className="space-y-2">
+      <CardContent className="px-3 pb-4 pt-2 md:px-4">
+        <div className="space-y-2 md:space-y-2">
           {accessibleFormats.map((format) => (
             <FormatToggleItem
               key={format.key}

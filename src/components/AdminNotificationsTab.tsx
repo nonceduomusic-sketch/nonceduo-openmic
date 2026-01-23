@@ -85,16 +85,16 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
   }
 
   return (
-    <div className="space-y-6 overflow-x-hidden">
+    <div className="space-y-5 md:space-y-6 overflow-x-hidden pb-4">
       {/* Format Configuration Card */}
       <Collapsible open={openSections.config} onOpenChange={() => toggleSection('config')}>
         <CollapsibleTrigger asChild>
-          <div className="flex items-center justify-between cursor-pointer group mb-2">
-            <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+          <div className="flex items-center justify-between cursor-pointer group mb-2 py-1">
+            <h3 className="text-base md:text-sm font-medium text-muted-foreground flex items-center gap-2">
               {openSections.config ? (
-                <ChevronDown className="w-4 h-4" />
+                <ChevronDown className="w-5 h-5 md:w-4 md:h-4" />
               ) : (
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
               )}
               Configurazione Monitoraggio
             </h3>
@@ -117,38 +117,38 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
       {/* No formats active message */}
       {!hasActiveFormats && (
         <Card className="glass-card border-warning/30 bg-warning/5">
-          <CardContent className="p-6 text-center">
-            <AlertCircle className="w-10 h-10 text-warning mx-auto mb-3" />
-            <h3 className="font-semibold text-foreground mb-1">
+          <CardContent className="p-6 md:p-6 text-center">
+            <AlertCircle className="w-12 h-12 md:w-10 md:h-10 text-warning mx-auto mb-3" />
+            <h3 className="font-semibold text-lg md:text-base text-foreground mb-1">
               Nessun format selezionato
             </h3>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-base md:text-sm text-muted-foreground">
               Attiva almeno un format per vedere le metriche in tempo reale
             </p>
           </CardContent>
         </Card>
       )}
 
-      {/* Summary Cards - Clickable Metrics - Only show active formats */}
+      {/* Summary Cards - Clickable Metrics - Mobile: 2 columns, Desktop: 4 columns */}
       {hasActiveFormats && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
           {/* Pending Join Requests - navigates to Community > Invites */}
           {preferences.community && access.community && (
             <Card 
               className={cn(
                 "glass-card border-primary/30 transition-all duration-300 ease-out animate-in fade-in-0 slide-in-from-bottom-2",
-                onNavigate && "cursor-pointer hover:border-primary hover:shadow-lg hover:shadow-primary/10 hover:scale-[1.02] group"
+                onNavigate && "cursor-pointer hover:border-primary hover:shadow-lg hover:shadow-primary/10 hover:scale-[1.02] active:scale-[0.98] group"
               )}
               onClick={() => onNavigate?.('community', 'invites')}
             >
-              <CardContent className="p-4 text-center relative">
-                <div className="text-3xl font-bold text-primary transition-transform group-hover:scale-110">
+              <CardContent className="p-4 md:p-4 text-center relative">
+                <div className="text-4xl md:text-3xl font-bold text-primary transition-transform group-hover:scale-110">
                   {counts.pendingJoinRequests}
                 </div>
-                <div className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+                <div className="text-sm md:text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
                   Richieste Accesso
                   {onNavigate && (
-                    <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
+                    <ArrowRight className="w-4 h-4 md:w-3 md:h-3 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
                   )}
                 </div>
               </CardContent>
@@ -160,18 +160,18 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
             <Card 
               className={cn(
                 "glass-card border-secondary/30 transition-all duration-300 ease-out animate-in fade-in-0 slide-in-from-bottom-2",
-                onNavigate && "cursor-pointer hover:border-secondary hover:shadow-lg hover:shadow-secondary/10 hover:scale-[1.02] group"
+                onNavigate && "cursor-pointer hover:border-secondary hover:shadow-lg hover:shadow-secondary/10 hover:scale-[1.02] active:scale-[0.98] group"
               )}
               onClick={() => onNavigate?.('dediche')}
             >
-              <CardContent className="p-4 text-center relative">
-                <div className="text-3xl font-bold text-secondary transition-transform group-hover:scale-110">
+              <CardContent className="p-4 md:p-4 text-center relative">
+                <div className="text-4xl md:text-3xl font-bold text-secondary transition-transform group-hover:scale-110">
                   {counts.unreadDedicheMessages}
                 </div>
-                <div className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+                <div className="text-sm md:text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
                   Msg Dediche
                   {onNavigate && (
-                    <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-secondary" />
+                    <ArrowRight className="w-4 h-4 md:w-3 md:h-3 opacity-0 group-hover:opacity-100 transition-opacity text-secondary" />
                   )}
                 </div>
               </CardContent>
@@ -183,18 +183,18 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
             <Card 
               className={cn(
                 "glass-card border-accent/30 transition-all duration-300 ease-out animate-in fade-in-0 slide-in-from-bottom-2",
-                onNavigate && "cursor-pointer hover:border-accent hover:shadow-lg hover:shadow-accent/10 hover:scale-[1.02] group"
+                onNavigate && "cursor-pointer hover:border-accent hover:shadow-lg hover:shadow-accent/10 hover:scale-[1.02] active:scale-[0.98] group"
               )}
               onClick={() => onNavigate?.('community', 'groups')}
             >
-              <CardContent className="p-4 text-center relative">
-                <div className="text-3xl font-bold text-accent transition-transform group-hover:scale-110">
+              <CardContent className="p-4 md:p-4 text-center relative">
+                <div className="text-4xl md:text-3xl font-bold text-accent transition-transform group-hover:scale-110">
                   {counts.unreadCommunityMessages}
                 </div>
-                <div className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+                <div className="text-sm md:text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
                   Msg Community
                   {onNavigate && (
-                    <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-accent" />
+                    <ArrowRight className="w-4 h-4 md:w-3 md:h-3 opacity-0 group-hover:opacity-100 transition-opacity text-accent" />
                   )}
                 </div>
               </CardContent>
@@ -206,18 +206,18 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
             <Card 
               className={cn(
                 "glass-card border-warning/30 transition-all duration-300 ease-out animate-in fade-in-0 slide-in-from-bottom-2",
-                onNavigate && "cursor-pointer hover:border-warning hover:shadow-lg hover:shadow-warning/10 hover:scale-[1.02] group"
+                onNavigate && "cursor-pointer hover:border-warning hover:shadow-lg hover:shadow-warning/10 hover:scale-[1.02] active:scale-[0.98] group"
               )}
               onClick={() => onNavigate?.('openmic')}
             >
-              <CardContent className="p-4 text-center relative">
-                <div className="text-3xl font-bold text-warning transition-transform group-hover:scale-110">
+              <CardContent className="p-4 md:p-4 text-center relative">
+                <div className="text-4xl md:text-3xl font-bold text-warning transition-transform group-hover:scale-110">
                   {counts.newReservations}
                 </div>
-                <div className="text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
+                <div className="text-sm md:text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
                   Prenotazioni Oggi
                   {onNavigate && (
-                    <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity text-warning" />
+                    <ArrowRight className="w-4 h-4 md:w-3 md:h-3 opacity-0 group-hover:opacity-100 transition-opacity text-warning" />
                   )}
                 </div>
               </CardContent>
@@ -231,13 +231,13 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
         <Collapsible open={openSections.joinRequests} onOpenChange={() => toggleSection('joinRequests')}>
           <Card className="glass-card animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
             <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                <CardTitle className="flex items-center justify-between text-lg">
+              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4 md:py-3">
+                <CardTitle className="flex items-center justify-between text-lg md:text-base">
                   <div className="flex items-center gap-2">
                     <Users className="w-5 h-5 text-primary" />
-                    Richieste Accesso Gruppi
+                    <span className="text-base md:text-lg">Richieste Accesso Gruppi</span>
                     {joinRequests.length > 0 && (
-                      <Badge variant="destructive">{joinRequests.length}</Badge>
+                      <Badge variant="destructive" className="text-sm md:text-xs">{joinRequests.length}</Badge>
                     )}
                   </div>
                   {openSections.joinRequests ? (
@@ -249,9 +249,9 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
               </CardHeader>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <CardContent>
+              <CardContent className="pt-0">
                 {joinRequests.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-4">
+                  <p className="text-base md:text-sm text-muted-foreground text-center py-4">
                     Nessuna richiesta in attesa
                   </p>
                 ) : (
@@ -260,39 +260,41 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
                       {joinRequests.map((request) => (
                         <div
                           key={request.id}
-                          className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-3 rounded-lg bg-muted/30 border border-border min-w-0"
+                          className="flex flex-col gap-3 p-4 md:p-3 rounded-xl bg-muted/30 border border-border min-w-0"
                         >
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="font-medium truncate">{request.requester_name}</span>
+                            <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                              <span className="font-semibold text-base md:text-sm truncate">{request.requester_name}</span>
                               {getSectionBadge(request.conversation?.section)}
                             </div>
-                            <p className="text-sm text-muted-foreground break-words leading-snug">
+                            <p className="text-base md:text-sm text-muted-foreground break-words leading-snug mt-1">
                               Vuole entrare in: <strong>{request.conversation?.name || 'Gruppo'}</strong>
                             </p>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-sm md:text-xs text-muted-foreground mt-1">
                               {formatDistanceToNow(new Date(request.created_at), { 
                                 addSuffix: true, 
                                 locale: it 
                               })}
                             </p>
                           </div>
-                          <div className="flex gap-2 w-full sm:w-auto">
+                          <div className="flex gap-2 w-full">
                             <Button
-                              size="sm"
+                              size="lg"
                               variant="outline"
-                              className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground flex-1 sm:flex-none"
+                              className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground flex-1 h-12 md:h-9 text-base md:text-sm gap-2"
                               onClick={() => approveJoinRequest(request.id)}
                             >
-                              <Check className="w-4 h-4" />
+                              <Check className="w-5 h-5 md:w-4 md:h-4" />
+                              <span className="md:hidden">Approva</span>
                             </Button>
                             <Button
-                              size="sm"
+                              size="lg"
                               variant="outline"
-                              className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground flex-1 sm:flex-none"
+                              className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground flex-1 h-12 md:h-9 text-base md:text-sm gap-2"
                               onClick={() => rejectJoinRequest(request.id)}
                             >
-                              <X className="w-4 h-4" />
+                              <X className="w-5 h-5 md:w-4 md:h-4" />
+                              <span className="md:hidden">Rifiuta</span>
                             </Button>
                           </div>
                         </div>
@@ -310,23 +312,23 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
       <Collapsible open={openSections.info} onOpenChange={() => toggleSection('info')}>
         <Card className="glass-card border-muted">
           <CollapsibleTrigger asChild>
-            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-3">
+            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4 md:py-3">
               <CardTitle className="flex items-center justify-between text-base font-normal">
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <Info className="w-4 h-4" />
-                  <span>Info: Amicizie e Moderazione</span>
+                  <Info className="w-5 h-5 md:w-4 md:h-4" />
+                  <span className="text-base md:text-sm">Info: Amicizie e Moderazione</span>
                 </div>
                 {openSections.info ? (
-                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                  <ChevronDown className="w-5 h-5 md:w-4 md:h-4 text-muted-foreground" />
                 ) : (
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  <ChevronRight className="w-5 h-5 md:w-4 md:h-4 text-muted-foreground" />
                 )}
               </CardTitle>
             </CardHeader>
           </CollapsibleTrigger>
           <CollapsibleContent>
             <CardContent className="pt-0">
-              <div className="text-sm text-muted-foreground space-y-2">
+              <div className="text-base md:text-sm text-muted-foreground space-y-2">
                 <p>
                   <strong>Amicizie automatiche:</strong> Gli utenti possono inviare e accettare richieste di amicizia direttamente dalla Community.
                 </p>
