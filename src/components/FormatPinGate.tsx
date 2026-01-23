@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Lock, AlertCircle, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Lock, AlertCircle, ArrowLeft, RefreshCw, CheckCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -35,31 +35,37 @@ export const FormatPinGate: React.FC<FormatPinGateProps> = ({
     clearSession 
   } = usePinSession(format);
 
-  // Check for existing valid session on mount - only once
-  const hasCheckedSession = React.useRef(false);
+  // Track if we've already auto-entered to prevent loops
+  const hasAutoEntered = React.useRef(false);
   
+  // Check for existing valid GLOBAL session on mount
+  // If user entered PIN on Open Mic, they should auto-enter Dediche too (same PIN)
   useEffect(() => {
-    if (!sessionLoading && hasValidSession && !sessionInvalidated && !hasCheckedSession.current) {
-      hasCheckedSession.current = true;
-      console.log('[FormatPinGate] Valid session found, auto-entering');
+    if (!sessionLoading && hasValidSession && !sessionInvalidated && !hasAutoEntered.current) {
+      hasAutoEntered.current = true;
+      console.log(`[FormatPinGate] Valid global session found for ${format}, auto-entering`);
       onPinValidated();
     }
-  }, [sessionLoading, hasValidSession, sessionInvalidated, onPinValidated]);
+  }, [sessionLoading, hasValidSession, sessionInvalidated, onPinValidated, format]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const valid = await validatePin(pin);
     if (valid) {
-      // Get live session ID to create persistent session
+      // Get live session ID to create GLOBAL persistent session
       const { data: liveSession } = await supabase
         .from('live_sessions')
-        .select('id')
+        .select('id, protected_formats')
         .eq('is_active', true)
         .maybeSingle();
 
       if (liveSession) {
-        await createSession(liveSession.id, pin);
+        // Create session that will work for ALL formats with same PIN
+        const created = await createSession(liveSession.id, pin);
+        if (created) {
+          console.log(`[FormatPinGate] Global session created, valid for formats:`, liveSession.protected_formats);
+        }
       }
       
       onPinValidated();
@@ -73,11 +79,12 @@ export const FormatPinGate: React.FC<FormatPinGateProps> = ({
   };
 
   const handleRetry = () => {
+    hasAutoEntered.current = false;
     clearSession();
     setPin('');
   };
 
-  // Show loading while checking existing session
+  // Show loading while checking existing global session
   if (sessionLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -101,6 +108,8 @@ export const FormatPinGate: React.FC<FormatPinGateProps> = ({
           return 'La serata live è terminata. Torna presto!';
         case 'admin_reset':
           return 'L\'accesso è stato resettato dall\'organizzatore. Reinserisci il PIN.';
+        case 'session_changed':
+          return 'La sessione è stata modificata. Reinserisci il PIN.';
         default:
           return 'La tua sessione è scaduta. Reinserisci il PIN per continuare.';
       }
@@ -156,6 +165,16 @@ export const FormatPinGate: React.FC<FormatPinGateProps> = ({
           <p className="text-muted-foreground mt-2">
             Per accedere al contenuto live, inserisci il PIN annunciato dal performer.
           </p>
+          
+          {/* Info about shared access */}
+          <div className="mt-4 p-3 rounded-lg bg-muted border border-border">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <CheckCircle className="w-4 h-4 flex-shrink-0 text-primary" />
+              <span>
+                Un solo PIN per tutti i format della serata
+              </span>
+            </div>
+          </div>
         </CardHeader>
         
         <CardContent className="space-y-6">
@@ -189,7 +208,7 @@ export const FormatPinGate: React.FC<FormatPinGateProps> = ({
               className="w-full h-12 text-lg neon-button-cyan"
               disabled={pin.length < 4 || validating}
             >
-              {validating ? 'Verifica...' : 'Accedi'}
+              {validating ? 'Verifica...' : 'Accedi alla Serata'}
             </Button>
           </form>
 
