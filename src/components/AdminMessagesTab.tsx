@@ -72,6 +72,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 
+interface GroupPermissions {
+  canManageGroups?: boolean;
+  canDeleteGroups?: boolean;
+  canEditGroups?: boolean;
+  canApproveJoin?: boolean;
+}
+
 interface AdminMessagesTabProps {
   onUnreadCountChange?: (count: number) => void;
   /** Filter conversations/groups by section (dediche | community). */
@@ -80,6 +87,8 @@ interface AdminMessagesTabProps {
   visibleSubTabs?: Array<'unread' | 'read' | 'groups'>;
   /** Initial selected subtab. Defaults to 'unread'. */
   initialSubTab?: 'unread' | 'read' | 'groups';
+  /** Granular permissions for group management. Owner/Admin have full access by default. */
+  permissions?: GroupPermissions;
 }
 
 export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
@@ -87,6 +96,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
   section,
   visibleSubTabs,
   initialSubTab = 'unread',
+  permissions = { canManageGroups: true, canDeleteGroups: true, canEditGroups: true, canApproveJoin: true },
 }) => {
   const { toast } = useToast();
   const {
@@ -753,8 +763,8 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
               </>
             ) : (
               <>
-                {/* Group management dropdown */}
-                {selectedConversation.is_group && (
+                {/* Group management dropdown - only shown if user can edit groups */}
+                {selectedConversation.is_group && permissions.canEditGroups && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon">
@@ -811,33 +821,36 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
                   </DropdownMenu>
                 )}
                 
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="text-destructive">
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent className="glass-card border-destructive">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                        <AlertTriangle className="w-5 h-5" />
-                        Elimina Conversazione
-                      </AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Sei sicuro di voler eliminare questa conversazione e tutti i suoi messaggi?
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Annulla</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => handleDeleteConversation(selectedConversation)}
-                        className="bg-destructive text-destructive-foreground"
-                      >
-                        Elimina
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                {/* Delete conversation button - only shown if user can delete groups */}
+                {permissions.canDeleteGroups && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="text-destructive">
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="glass-card border-destructive">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                          <AlertTriangle className="w-5 h-5" />
+                          Elimina Conversazione
+                        </AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Sei sicuro di voler eliminare questa conversazione e tutti i suoi messaggi?
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Annulla</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleDeleteConversation(selectedConversation)}
+                          className="bg-destructive text-destructive-foreground"
+                        >
+                          Elimina
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </>
             )}
           </div>
@@ -1343,151 +1356,155 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
 
                 {selectionMode === 'none' && (
                   <div className="flex items-center gap-1">
-                    {/* Direct delete button */}
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent className="glass-card border-destructive">
-                        <AlertDialogHeader>
-                          <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                            <AlertTriangle className="w-5 h-5" />
-                            Elimina {conv.is_group ? 'Gruppo' : 'Conversazione'}
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            {conv.is_group 
-                              ? `Eliminare il gruppo "${conv.name}"?`
-                              : `Eliminare la conversazione con ${getParticipantNames(conv)}?`}
-                            <br />
-                            Potrai annullare l'operazione subito dopo.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Annulla</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteConversation(conv);
-                            }}
-                            className="bg-destructive text-destructive-foreground"
+                    {/* Direct delete button - only if user can delete */}
+                    {permissions.canDeleteGroups && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            Elimina
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent className="glass-card border-destructive">
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                              <AlertTriangle className="w-5 h-5" />
+                              Elimina {conv.is_group ? 'Gruppo' : 'Conversazione'}
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {conv.is_group 
+                                ? `Eliminare il gruppo "${conv.name}"?`
+                                : `Eliminare la conversazione con ${getParticipantNames(conv)}?`}
+                              <br />
+                              Potrai annullare l'operazione subito dopo.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annulla</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteConversation(conv);
+                              }}
+                              className="bg-destructive text-destructive-foreground"
+                            >
+                              Elimina
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
                     
-                    {/* More options menu */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        {conv.is_group && (
-                          <>
-                            <DropdownMenuItem onClick={(e) => {
+                    {/* More options menu - only if user can edit groups */}
+                    {permissions.canEditGroups && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          {conv.is_group && (
+                            <>
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                setRenameTarget(conv);
+                                setRenameGroupName(conv.name || '');
+                                setShowRenameDialog(true);
+                              }}>
+                                <Edit2 className="w-4 h-4 mr-2" />
+                                Rinomina
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                openVisibilityDialog(conv);
+                              }}>
+                                {conv.is_public ? (
+                                  <>
+                                    <Lock className="w-4 h-4 mr-2" />
+                                    Rendi privato
+                                  </>
+                                ) : (
+                                  <>
+                                    <Globe className="w-4 h-4 mr-2" />
+                                    Cambia visibilità
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedConversation(conv);
+                                setShowMembersDialog(true);
+                              }}>
+                                <Users className="w-4 h-4 mr-2" />
+                                Gestisci membri
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedConversation(conv);
+                                setShowPasswordDialog(true);
+                              }}>
+                                <Key className="w-4 h-4 mr-2" />
+                                {conv.password_hash ? 'Modifica password' : 'Imposta password'}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                            </>
+                          )}
+                          {/* Mark as read/unread */}
+                          {activeSubTab === 'unread' ? (
+                            <DropdownMenuItem onClick={async (e) => {
                               e.stopPropagation();
-                              setRenameTarget(conv);
-                              setRenameGroupName(conv.name || '');
-                              setShowRenameDialog(true);
+                              await adminMarkAsRead(conv.id);
+                              toast({
+                                title: 'Segnato come letto',
+                                description: conv.is_group ? conv.name : getParticipantNames(conv),
+                              });
                             }}>
-                              <Edit2 className="w-4 h-4 mr-2" />
-                              Rinomina
+                              <MailOpen className="w-4 h-4 mr-2" />
+                              Segna come letto
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => {
+                          ) : activeSubTab === 'read' ? (
+                            <DropdownMenuItem onClick={async (e) => {
                               e.stopPropagation();
-                              openVisibilityDialog(conv);
+                              await adminMarkAsUnread(conv.id);
+                              toast({
+                                title: 'Segnato come da leggere',
+                                description: conv.is_group ? conv.name : getParticipantNames(conv),
+                              });
                             }}>
-                              {conv.is_public ? (
-                                <>
-                                  <Lock className="w-4 h-4 mr-2" />
-                                  Rendi privato
-                                </>
-                              ) : (
-                                <>
-                                  <Globe className="w-4 h-4 mr-2" />
-                                  Cambia visibilità
-                                </>
-                              )}
+                              <Mail className="w-4 h-4 mr-2" />
+                              Segna come da leggere
                             </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedConversation(conv);
-                              setShowMembersDialog(true);
-                            }}>
-                              <Users className="w-4 h-4 mr-2" />
-                              Gestisci membri
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedConversation(conv);
-                              setShowPasswordDialog(true);
-                            }}>
-                              <Key className="w-4 h-4 mr-2" />
-                              {conv.password_hash ? 'Modifica password' : 'Imposta password'}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                          </>
-                        )}
-                        {/* Mark as read/unread */}
-                        {activeSubTab === 'unread' ? (
+                          ) : null}
+                          <DropdownMenuSeparator />
                           <DropdownMenuItem onClick={async (e) => {
                             e.stopPropagation();
-                            await adminMarkAsRead(conv.id);
-                            toast({
-                              title: 'Segnato come letto',
-                              description: conv.is_group ? conv.name : getParticipantNames(conv),
-                            });
+                            const inviteLink = await adminCreateInviteLink(conv.id);
+                            if (inviteLink) {
+                              const fullUrl = `${window.location.origin}/join/${inviteLink.invite_code}`;
+                              await navigator.clipboard.writeText(fullUrl);
+                              toast({
+                                title: 'Link copiato!',
+                                description: 'Condividi questo link per invitare persone',
+                              });
+                            }
                           }}>
-                            <MailOpen className="w-4 h-4 mr-2" />
-                            Segna come letto
+                            <Link2 className="w-4 h-4 mr-2" />
+                            Crea link invito
                           </DropdownMenuItem>
-                        ) : activeSubTab === 'read' ? (
-                          <DropdownMenuItem onClick={async (e) => {
-                            e.stopPropagation();
-                            await adminMarkAsUnread(conv.id);
-                            toast({
-                              title: 'Segnato come da leggere',
-                              description: conv.is_group ? conv.name : getParticipantNames(conv),
-                            });
-                          }}>
-                            <Mail className="w-4 h-4 mr-2" />
-                            Segna come da leggere
-                          </DropdownMenuItem>
-                        ) : null}
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={async (e) => {
-                          e.stopPropagation();
-                          const inviteLink = await adminCreateInviteLink(conv.id);
-                          if (inviteLink) {
-                            const fullUrl = `${window.location.origin}/join/${inviteLink.invite_code}`;
-                            await navigator.clipboard.writeText(fullUrl);
-                            toast({
-                              title: 'Link copiato!',
-                              description: 'Condividi questo link per invitare persone',
-                            });
-                          }
-                        }}>
-                          <Link2 className="w-4 h-4 mr-2" />
-                          Crea link invito
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </div>
                 )}
               </div>

@@ -59,7 +59,21 @@ interface DeletedPost extends Post {
   deletedAt: number;
 }
 
-export const AdminFeedTab: React.FC = () => {
+interface FeedPermissions {
+  canModerate?: boolean;
+  canDelete?: boolean;
+  canReset?: boolean;
+  canEditPosts?: boolean;
+  canDeletePosts?: boolean;
+}
+
+interface AdminFeedTabProps {
+  permissions?: FeedPermissions;
+}
+
+export const AdminFeedTab: React.FC<AdminFeedTabProps> = ({ 
+  permissions = { canModerate: true, canDelete: true, canReset: true, canEditPosts: true, canDeletePosts: true } 
+}) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -358,45 +372,48 @@ export const AdminFeedTab: React.FC = () => {
             <RefreshCw className="w-4 h-4" />
           </Button>
 
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button
-                variant="destructive"
-                size="sm"
-                disabled={posts.length === 0}
-              >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Reset Bacheca
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent className="border-destructive">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                  <AlertTriangle className="w-5 h-5" />
-                  Reset Bacheca
-                </AlertDialogTitle>
-                <AlertDialogDescription>
-                  Sei sicuro di voler eliminare <strong>TUTTI</strong> i post della bacheca?
-                  <br /><br />
-                  Questa azione eliminerà anche tutti i commenti e i like associati.
-                  <br /><br />
-                  <span className="text-destructive font-medium">
-                    Questa azione è irreversibile!
-                  </span>
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Annulla</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={deleteAllPosts}
-                  disabled={isResetting}
-                  className="bg-destructive hover:bg-destructive/90"
+          {/* Reset button - only shown if user has reset permission */}
+          {permissions.canReset && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  disabled={posts.length === 0}
                 >
-                  {isResetting ? 'Eliminazione...' : 'Elimina Tutto'}
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Reset Bacheca
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="border-destructive">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+                    <AlertTriangle className="w-5 h-5" />
+                    Reset Bacheca
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Sei sicuro di voler eliminare <strong>TUTTI</strong> i post della bacheca?
+                    <br /><br />
+                    Questa azione eliminerà anche tutti i commenti e i like associati.
+                    <br /><br />
+                    <span className="text-destructive font-medium">
+                      Questa azione è irreversibile!
+                    </span>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={deleteAllPosts}
+                    disabled={isResetting}
+                    className="bg-destructive hover:bg-destructive/90"
+                  >
+                    {isResetting ? 'Eliminazione...' : 'Elimina Tutto'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </div>
 
@@ -435,44 +452,50 @@ export const AdminFeedTab: React.FC = () => {
                       </div>
                       
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEditDialog(post)}
-                          className="text-primary hover:text-primary hover:bg-primary/10"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
+                        {/* Edit button - only if canEditPosts */}
+                        {permissions.canEditPosts && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEditDialog(post)}
+                            className="text-primary hover:text-primary hover:bg-primary/10"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                        )}
                         
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Elimina Post</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Sei sicuro di voler eliminare questo post?
-                                Questa azione eliminerà anche tutti i commenti e like associati.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Annulla</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => deletePost(post.id)}
-                                className="bg-destructive hover:bg-destructive/90"
+                        {/* Delete button - only if canDeletePosts */}
+                        {permissions.canDeletePosts && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
                               >
-                                Elimina
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Elimina Post</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Sei sicuro di voler eliminare questo post?
+                                  Questa azione eliminerà anche tutti i commenti e like associati.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => deletePost(post.id)}
+                                  className="bg-destructive hover:bg-destructive/90"
+                                >
+                                  Elimina
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </div>
                     </div>
                     
