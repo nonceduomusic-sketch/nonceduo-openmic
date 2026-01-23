@@ -338,6 +338,27 @@ export type Database = {
         }
         Relationships: []
       }
+      global_format_settings: {
+        Row: {
+          format_key: string
+          is_active: boolean
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          format_key: string
+          is_active?: boolean
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          format_key?: string
+          is_active?: boolean
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       group_join_requests: {
         Row: {
           conversation_id: string

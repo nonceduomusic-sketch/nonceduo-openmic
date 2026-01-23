@@ -9,6 +9,7 @@ import {
   ArrowRight,
   Info,
   AlertCircle,
+  Lock,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,7 +22,9 @@ import {
 } from '@/components/ui/collapsible';
 import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 import { useFormatPreferences, FormatPreferences } from '@/hooks/useFormatPreferences';
+import { useCentroPermissions } from '@/hooks/useCentroPermissions';
 import { FormatToggleCard } from '@/components/admin/FormatToggleCard';
+import { ActiveFormatsCard } from '@/components/admin/ActiveFormatsCard';
 import { UnifiedLiveSessionCard } from '@/components/admin/UnifiedLiveSessionCard';
 import { formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -49,6 +52,11 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
     toggleFormat, 
     hasActiveFormats 
   } = useFormatPreferences();
+
+  const {
+    permissions: centroPerms,
+    loading: permsLoading,
+  } = useCentroPermissions();
   
   const {
     joinRequests,
@@ -63,6 +71,8 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
     joinRequests: true,
     info: false,
     config: true,
+    activeFormats: true,
+    serataLive: true,
   });
 
   const toggleSection = (section: keyof typeof openSections) => {
@@ -76,7 +86,7 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
       : <Badge className="bg-secondary/20 text-secondary">Community</Badge>;
   };
 
-  if (loading || prefsLoading) {
+  if (loading || prefsLoading || permsLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -84,38 +94,83 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
     );
   }
 
+  // Check if user has at least some centro permissions (owner always has all)
+  const canMonitor = isOwner || centroPerms.monitorFormats;
+  const canManageActive = isOwner || centroPerms.activeFormats;
+  const canManageSerata = isOwner || centroPerms.serataLive;
+
   return (
     <div className="space-y-5 md:space-y-6 overflow-x-hidden pb-4">
-      {/* Format Configuration Card */}
-      <Collapsible open={openSections.config} onOpenChange={() => toggleSection('config')}>
-        <CollapsibleTrigger asChild>
-          <div className="flex items-center justify-between cursor-pointer group mb-2 py-1">
-            <h3 className="text-base md:text-sm font-medium text-muted-foreground flex items-center gap-2">
-              {openSections.config ? (
-                <ChevronDown className="w-5 h-5 md:w-4 md:h-4" />
-              ) : (
-                <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
-              )}
-              Configurazione Monitoraggio
-            </h3>
-          </div>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
-          <FormatToggleCard 
-            preferences={preferences} 
-            onToggle={toggleFormat}
-            access={access}
-          />
-        </CollapsibleContent>
-      </Collapsible>
+      {/* Format Configuration Card - Monitoring (requires permission) */}
+      {canMonitor && (
+        <Collapsible open={openSections.config} onOpenChange={() => toggleSection('config')}>
+          <CollapsibleTrigger asChild>
+            <div className="flex items-center justify-between cursor-pointer group mb-2 py-1">
+              <h3 className="text-base md:text-sm font-medium text-muted-foreground flex items-center gap-2">
+                {openSections.config ? (
+                  <ChevronDown className="w-5 h-5 md:w-4 md:h-4" />
+                ) : (
+                  <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
+                )}
+                Configurazione Monitoraggio
+              </h3>
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <FormatToggleCard 
+              preferences={preferences} 
+              onToggle={toggleFormat}
+              access={access}
+            />
+          </CollapsibleContent>
+        </Collapsible>
+      )}
 
-      {/* Unified Live Session Card - Only for owner, when Open Mic or Dediche are enabled */}
-      {isOwner && (access.openmic || access.dediche) && (preferences.openmic || preferences.dediche) && (
-        <UnifiedLiveSessionCard title="Serata Live" />
+      {/* Global Format Settings - Active/Inactive (requires permission) */}
+      {canManageActive && (
+        <Collapsible open={openSections.activeFormats} onOpenChange={() => toggleSection('activeFormats')}>
+          <CollapsibleTrigger asChild>
+            <div className="flex items-center justify-between cursor-pointer group mb-2 py-1">
+              <h3 className="text-base md:text-sm font-medium text-muted-foreground flex items-center gap-2">
+                {openSections.activeFormats ? (
+                  <ChevronDown className="w-5 h-5 md:w-4 md:h-4" />
+                ) : (
+                  <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
+                )}
+                Format Attivi (Pubblico)
+              </h3>
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <ActiveFormatsCard />
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* Serata Live with PIN - (requires permission) */}
+      {canManageSerata && (access.openmic || access.dediche) && (preferences.openmic || preferences.dediche) && (
+        <Collapsible open={openSections.serataLive} onOpenChange={() => toggleSection('serataLive')}>
+          <CollapsibleTrigger asChild>
+            <div className="flex items-center justify-between cursor-pointer group mb-2 py-1">
+              <h3 className="text-base md:text-sm font-medium text-muted-foreground flex items-center gap-2">
+                {openSections.serataLive ? (
+                  <ChevronDown className="w-5 h-5 md:w-4 md:h-4" />
+                ) : (
+                  <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
+                )}
+                Serata Live con PIN
+                {isOwner && <Lock className="w-4 h-4 text-warning" />}
+              </h3>
+            </div>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
+            <UnifiedLiveSessionCard title="Serata Live" />
+          </CollapsibleContent>
+        </Collapsible>
       )}
 
       {/* No formats active message */}
-      {!hasActiveFormats && (
+      {canMonitor && !hasActiveFormats && (
         <Card className="glass-card border-warning/30 bg-warning/5">
           <CardContent className="p-6 md:p-6 text-center">
             <AlertCircle className="w-12 h-12 md:w-10 md:h-10 text-warning mx-auto mb-3" />
@@ -130,7 +185,7 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
       )}
 
       {/* Summary Cards - Clickable Metrics - Mobile: 2 columns, Desktop: 4 columns */}
-      {hasActiveFormats && (
+      {canMonitor && hasActiveFormats && (
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
           {/* Pending Join Requests - navigates to Community > Invites */}
           {preferences.community && access.community && (
