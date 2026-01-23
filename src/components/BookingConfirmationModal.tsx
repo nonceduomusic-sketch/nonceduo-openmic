@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
-import { X, CheckCircle, Music, Loader2, FileText } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, CheckCircle, Music, Loader2, FileText, Shield, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Song } from '@/data/songs';
 import { useReservations } from '@/hooks/useReservations';
+import { usePinValidation } from '@/hooks/useLiveSession';
+import { PinInputField } from '@/components/PinInputField';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { getLyricsSearchUrl } from '@/lib/whatsapp';
+import { cn } from '@/lib/utils';
 
 const reservationSchema = z.object({
   customer_name: z.string().trim()
@@ -25,9 +28,48 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
   onClose
 }) => {
   const [name, setName] = useState('');
+  const [pin, setPin] = useState('');
+  const [pinError, setPinError] = useState<string | undefined>();
+  const [pinValid, setPinValid] = useState(false);
+  const [isValidatingPin, setIsValidatingPin] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
+  
   const { createReservation } = useReservations();
+  const { isLiveMode, loading: liveLoading, validatePin } = usePinValidation('openmic');
+
+  // Validate PIN when it changes (debounced)
+  const debouncedValidatePin = useCallback(async (pinValue: string) => {
+    if (!isLiveMode || pinValue.length < 6) {
+      setPinError(undefined);
+      setPinValid(false);
+      return;
+    }
+
+    setIsValidatingPin(true);
+    setPinError(undefined);
+    
+    const isValid = await validatePin(pinValue);
+    
+    setIsValidatingPin(false);
+    setPinValid(isValid);
+    
+    if (!isValid) {
+      setPinError('Codice non valido – chiedi al performer o al locale');
+    }
+  }, [isLiveMode, validatePin]);
+
+  useEffect(() => {
+    if (pin.length === 6) {
+      const timeout = setTimeout(() => {
+        debouncedValidatePin(pin);
+      }, 300);
+      return () => clearTimeout(timeout);
+    } else {
+      setPinError(undefined);
+      setPinValid(false);
+    }
+  }, [pin, debouncedValidatePin]);
 
   const handleSearchLyrics = () => {
     window.open(getLyricsSearchUrl(song.title, song.artist), '_blank');
@@ -36,6 +78,23 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
+
+    // Validate PIN if in live mode
+    if (isLiveMode) {
+      if (!pin.trim()) {
+        setPinError('Inserisci il codice della serata');
+        return;
+      }
+      
+      setIsValidatingPin(true);
+      const isValid = await validatePin(pin);
+      setIsValidatingPin(false);
+      
+      if (!isValid) {
+        setPinError('Codice non valido – chiedi al performer o al locale');
+        return;
+      }
+    }
 
     const validation = reservationSchema.safeParse({ customer_name: name });
     if (!validation.success) {
@@ -54,7 +113,6 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
     
     setIsSubmitting(false);
   };
-
 
   if (isConfirmed) {
     return (
@@ -116,6 +174,16 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
           </button>
         </div>
 
+        {/* Live Mode Indicator */}
+        {!liveLoading && isLiveMode && (
+          <div className="mb-4 p-3 rounded-lg bg-primary/10 border border-primary/30 flex items-center gap-2 animate-in fade-in-0 slide-in-from-top-2">
+            <Shield className="w-4 h-4 text-primary" />
+            <span className="text-sm text-foreground">
+              <strong>Serata Live</strong> – È richiesto il codice PIN per prenotare
+            </span>
+          </div>
+        )}
+
         <div className="mb-4 p-4 rounded-lg bg-muted/50 flex items-start gap-3">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center flex-shrink-0">
             <Music className="w-5 h-5 text-primary" />
@@ -127,7 +195,6 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
             <p className="text-sm text-secondary">{song.artist}</p>
           </div>
         </div>
-
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -146,10 +213,25 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
             />
           </div>
 
+          {/* PIN Input - Only shown in live mode */}
+          {!liveLoading && isLiveMode && (
+            <PinInputField
+              value={pin}
+              onChange={setPin}
+              error={pinError}
+              isValid={pinValid}
+              isValidating={isValidatingPin}
+              disabled={isSubmitting}
+            />
+          )}
+
           <Button
             type="submit"
-            disabled={!name.trim() || isSubmitting}
-            className="w-full neon-button-pink h-12 font-display font-semibold"
+            disabled={!name.trim() || isSubmitting || (isLiveMode && !pinValid)}
+            className={cn(
+              "w-full neon-button-pink h-12 font-display font-semibold",
+              "disabled:opacity-50 disabled:cursor-not-allowed"
+            )}
           >
             {isSubmitting ? (
               <>

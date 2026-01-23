@@ -1093,6 +1093,7 @@ export const AdminDashboard: React.FC = () => {
               }
             }}
             access={access}
+            isOwner={staffRole === 'owner'}
           />
         ) : null}
       </main>

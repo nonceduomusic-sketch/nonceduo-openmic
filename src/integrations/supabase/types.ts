@@ -382,6 +382,42 @@ export type Database = {
           },
         ]
       }
+      live_sessions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deactivated_at: string | null
+          deactivated_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          pin_code: string
+          section: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          pin_code: string
+          section: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          pin_code?: string
+          section?: string
+        }
+        Relationships: []
+      }
       message_requests: {
         Row: {
           created_at: string
@@ -921,12 +957,17 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_live_session_active: { Args: { p_section: string }; Returns: boolean }
       is_owner: { Args: { _user_id: string }; Returns: boolean }
       is_session_participant: {
         Args: { conv_id: string; session: string }
         Returns: boolean
       }
       normalize_song_text: { Args: { t: string }; Returns: string }
+      validate_live_session_pin: {
+        Args: { p_pin: string; p_section: string }
+        Returns: boolean
+      }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "owner"
