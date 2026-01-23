@@ -165,31 +165,48 @@ export const useAdminNotifications = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'group_join_requests' },
-        () => fetchJoinRequests()
+        () => {
+          console.log('[AdminNotifications] group_join_requests changed');
+          fetchJoinRequests();
+        }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'friendships' },
-        () => fetchFriendships()
+        () => {
+          console.log('[AdminNotifications] friendships changed');
+          fetchFriendships();
+        }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'conversations' },
-        () => fetchCounts()
+        () => {
+          console.log('[AdminNotifications] conversations changed - refetching counts');
+          fetchCounts();
+        }
       )
-      // Conversations don't necessarily emit an update on every new message,
-      // so we also listen directly to message inserts/updates.
+      // Listen to message inserts/updates for immediate badge updates
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'chat_messages' },
-        () => fetchCounts()
+        () => {
+          console.log('[AdminNotifications] chat_messages changed - refetching counts');
+          fetchCounts();
+        }
       )
+      // Reservations: INSERT, UPDATE (for status changes), and DELETE
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'reservations' },
-        () => fetchCounts()
+        { event: '*', schema: 'public', table: 'reservations' },
+        () => {
+          console.log('[AdminNotifications] reservations changed - refetching counts');
+          fetchCounts();
+        }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[AdminNotifications] Realtime subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);

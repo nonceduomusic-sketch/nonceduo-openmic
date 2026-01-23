@@ -253,6 +253,18 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
     }
   }, [selectedConversation?.id]);
 
+  // Auto-mark conversation as read when opened (if unread or null)
+  React.useEffect(() => {
+    // is_read can be false or null (both treated as unread)
+    if (selectedConversation && (selectedConversation.is_read === false || selectedConversation.is_read === null || selectedConversation.is_read === undefined)) {
+      // Mark as read after a short delay to ensure the user actually opened it
+      const timer = setTimeout(() => {
+        adminMarkAsRead(selectedConversation.id);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [selectedConversation?.id, selectedConversation?.is_read, adminMarkAsRead]);
+
   // Check if admin is at bottom of scroll area
   const checkIfAtBottom = useCallback(() => {
     const scrollElement = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
