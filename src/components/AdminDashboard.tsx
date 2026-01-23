@@ -538,7 +538,7 @@ export const AdminDashboard: React.FC = () => {
             {/* Left: Title */}
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                <SidebarTrigger className="-ml-1 hidden md:inline-flex" />
+                <SidebarTrigger className="-ml-1 hidden lg:inline-flex" />
                 <h1 className="font-display text-lg md:text-xl font-bold truncate">
                   Admin Panel
                 </h1>
@@ -564,7 +564,7 @@ export const AdminDashboard: React.FC = () => {
               </Button>
 
               {/* Mobile: More menu */}
-              <div className="md:hidden">
+              <div className="lg:hidden">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
@@ -628,8 +628,8 @@ export const AdminDashboard: React.FC = () => {
                 </DropdownMenu>
               </div>
 
-              {/* Desktop actions - reset dropdown + logout */}
-              <div className="hidden md:flex items-center gap-2">
+              {/* Desktop (large screens only) - reset dropdown + logout */}
+              <div className="hidden lg:flex items-center gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
