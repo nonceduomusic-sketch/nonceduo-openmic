@@ -10,7 +10,10 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { useFormatGating } from "@/hooks/useFormatGating";
 
 const OpenMicInfo: React.FC = () => {
-  const { isLiveSessionActive, loading } = useFormatGating('openmic');
+  const { isLiveSessionActive, isGloballyActive, requiresPin, loading } = useFormatGating('openmic');
+
+  // "Serata in corso" only if format is both globally active AND live session is active
+  const isActuallyLive = isGloballyActive && isLiveSessionActive;
 
   return (
     <div className="min-h-screen bg-background">
@@ -38,10 +41,10 @@ const OpenMicInfo: React.FC = () => {
             </div>
           </div>
 
-          {/* Status Badge */}
+          {/* Status Badge - only show "Serata in corso" when ACTUALLY live */}
           {!loading && (
             <div className="flex justify-center">
-              {isLiveSessionActive ? (
+              {isActuallyLive ? (
                 <Badge className="bg-secondary/20 text-secondary border-secondary/30 text-base px-4 py-2 gap-2">
                   <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
                   Serata in corso!
@@ -49,7 +52,7 @@ const OpenMicInfo: React.FC = () => {
               ) : (
                 <Badge variant="outline" className="text-base px-4 py-2 gap-2 text-muted-foreground">
                   <Clock className="w-4 h-4" />
-                  Disponibile durante le serate
+                  Prossimamente – Seguici per le date!
                 </Badge>
               )}
             </div>

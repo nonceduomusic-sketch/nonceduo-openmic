@@ -70,11 +70,14 @@ export const UnifiedLiveSessionCard: React.FC<UnifiedLiveSessionCardProps> = ({
     loading, 
     isOwner,
     isActive,
+    isPinActive,
     startSession, 
     stopSession, 
     updateFormats,
     updatePin,
     regeneratePin,
+    removePin,
+    restorePin,
     getEventUrl,
   } = useUnifiedLiveSession();
 
@@ -89,6 +92,7 @@ export const UnifiedLiveSessionCard: React.FC<UnifiedLiveSessionCardProps> = ({
   const [isEditingPin, setIsEditingPin] = useState(false);
   const [editPinValue, setEditPinValue] = useState('');
   const [activeSessionsCount, setActiveSessionsCount] = useState<number>(0);
+  const [isTogglingPin, setIsTogglingPin] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Fetch active sessions count
@@ -362,8 +366,55 @@ export const UnifiedLiveSessionCard: React.FC<UnifiedLiveSessionCardProps> = ({
             </p>
           )}
 
-          {/* Format Selection (always visible when owner) */}
-          {isOwner && (
+          {/* PIN Toggle - Only shown when session is active */}
+          {isActive && isOwner && (
+            <div className="flex flex-col gap-3 p-4 rounded-xl bg-muted/20 border border-border/50 mb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Shield className={cn(
+                    "w-5 h-5",
+                    isPinActive ? "text-primary" : "text-muted-foreground"
+                  )} />
+                  <div>
+                    <p className="font-medium text-sm">Protezione PIN</p>
+                    <p className="text-xs text-muted-foreground">
+                      {isPinActive 
+                        ? 'Attiva – gli utenti devono inserire il PIN' 
+                        : 'Disattivata – accesso diretto senza PIN'}
+                    </p>
+                  </div>
+                </div>
+                <Switch
+                  checked={isPinActive}
+                  onCheckedChange={async (checked) => {
+                    setIsTogglingPin(true);
+                    try {
+                      if (checked) {
+                        // Restore PIN with default formats
+                        await restorePin(['openmic', 'dediche']);
+                      } else {
+                        // Remove PIN protection
+                        await removePin();
+                      }
+                    } finally {
+                      setIsTogglingPin(false);
+                    }
+                  }}
+                  disabled={isTogglingPin}
+                  className="data-[state=checked]:bg-primary"
+                />
+              </div>
+              {!isPinActive && (
+                <p className="text-xs text-amber-500 flex items-center gap-1.5">
+                  <AlertCircle className="w-3 h-3" />
+                  Chiunque può accedere ai format senza inserire codici
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Format Selection (only when PIN is active) */}
+          {isOwner && isPinActive && (
             <div className="space-y-4 mb-4 md:space-y-3">
               <Label className="text-sm md:text-xs text-muted-foreground">
                 Format protetti da PIN:
@@ -396,6 +447,65 @@ export const UnifiedLiveSessionCard: React.FC<UnifiedLiveSessionCardProps> = ({
                   <Checkbox
                     checked={currentFormats.includes('dediche')}
                     onCheckedChange={(checked) => handleFormatToggle('dediche', !!checked)}
+                    disabled={isToggling}
+                    className="w-6 h-6 md:w-4 md:h-4"
+                  />
+                  <MessageSquare className="w-5 h-5 md:w-4 md:h-4 text-secondary" />
+                  <span className="text-base md:text-sm font-medium">Dediche</span>
+                </label>
+              </div>
+              <p className="text-sm md:text-xs text-muted-foreground italic">
+                Community resta sempre accessibile senza PIN
+              </p>
+            </div>
+          )}
+
+          {/* Format Selection when session NOT active (for starting) */}
+          {isOwner && !isActive && (
+            <div className="space-y-4 mb-4 md:space-y-3">
+              <Label className="text-sm md:text-xs text-muted-foreground">
+                Format protetti da PIN:
+              </Label>
+              {/* Mobile: vertical stack, Desktop: horizontal */}
+              <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:gap-4">
+                <label className={cn(
+                  "flex items-center gap-3 cursor-pointer p-3 rounded-xl transition-all",
+                  "min-h-[52px] touch-target",
+                  "md:p-2 md:min-h-0",
+                  "bg-muted/30 hover:bg-muted/50 active:scale-[0.98]",
+                  selectedFormats.includes('openmic') && "bg-primary/10 border border-primary/30"
+                )}>
+                  <Checkbox
+                    checked={selectedFormats.includes('openmic')}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedFormats(prev => [...prev, 'openmic']);
+                      } else {
+                        setSelectedFormats(prev => prev.filter(f => f !== 'openmic'));
+                      }
+                    }}
+                    disabled={isToggling}
+                    className="w-6 h-6 md:w-4 md:h-4"
+                  />
+                  <Mic2 className="w-5 h-5 md:w-4 md:h-4 text-primary" />
+                  <span className="text-base md:text-sm font-medium">Open Mic</span>
+                </label>
+                <label className={cn(
+                  "flex items-center gap-3 cursor-pointer p-3 rounded-xl transition-all",
+                  "min-h-[52px] touch-target",
+                  "md:p-2 md:min-h-0",
+                  "bg-muted/30 hover:bg-muted/50 active:scale-[0.98]",
+                  selectedFormats.includes('dediche') && "bg-secondary/10 border border-secondary/30"
+                )}>
+                  <Checkbox
+                    checked={selectedFormats.includes('dediche')}
+                    onCheckedChange={(checked) => {
+                      if (checked) {
+                        setSelectedFormats(prev => [...prev, 'dediche']);
+                      } else {
+                        setSelectedFormats(prev => prev.filter(f => f !== 'dediche'));
+                      }
+                    }}
                     disabled={isToggling}
                     className="w-6 h-6 md:w-4 md:h-4"
                   />

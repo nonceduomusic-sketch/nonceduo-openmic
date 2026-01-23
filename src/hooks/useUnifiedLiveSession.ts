@@ -367,16 +367,91 @@ export const useUnifiedLiveSession = () => {
     return `${window.location.origin}/evento-live/${session.event_link_code}`;
   };
 
+  // Remove PIN protection (set protected_formats to empty = no PIN required)
+  const removePin = async (): Promise<boolean> => {
+    if (!isOwner || !session) return false;
+
+    try {
+      const { error } = await supabase
+        .from('live_sessions')
+        .update({ protected_formats: [] })
+        .eq('id', session.id);
+
+      if (error) throw error;
+
+      setSession({ ...session, protected_formats: [] });
+
+      // Audit log
+      await adminAuditLog({
+        action: 'live_session_remove_pin',
+        section: 'global',
+        entity: 'live_sessions',
+        entity_id: session.id,
+        metadata: { old_formats: session.protected_formats }
+      });
+
+      toast.success('Protezione PIN rimossa – accesso diretto attivo');
+      return true;
+    } catch (error) {
+      console.error('Error removing PIN protection:', error);
+      toast.error('Errore nella rimozione del PIN');
+      return false;
+    }
+  };
+
+  // Restore PIN protection (add formats back)
+  const restorePin = async (formats: FormatType[]): Promise<boolean> => {
+    if (!isOwner || !session) return false;
+
+    if (formats.length === 0) {
+      toast.error('Seleziona almeno un format da proteggere');
+      return false;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('live_sessions')
+        .update({ protected_formats: formats })
+        .eq('id', session.id);
+
+      if (error) throw error;
+
+      setSession({ ...session, protected_formats: formats });
+
+      // Audit log
+      await adminAuditLog({
+        action: 'live_session_restore_pin',
+        section: 'global',
+        entity: 'live_sessions',
+        entity_id: session.id,
+        metadata: { new_formats: formats }
+      });
+
+      toast.success('Protezione PIN riattivata');
+      return true;
+    } catch (error) {
+      console.error('Error restoring PIN protection:', error);
+      toast.error('Errore nel ripristino del PIN');
+      return false;
+    }
+  };
+
+  // Check if PIN is currently active (protected_formats not empty)
+  const isPinActive = !!session && session.protected_formats.length > 0;
+
   return {
     session,
     loading,
     isOwner,
     isActive: !!session,
+    isPinActive,
     startSession,
     stopSession,
     updateFormats,
     updatePin,
     regeneratePin,
+    removePin,
+    restorePin,
     isFormatProtected,
     getEventUrl,
     refetch: fetchSession,
