@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { SEO } from '@/components/SEO';
 import { UserLoginIndicator } from '@/components/UserLoginIndicator';
-import { SectionOffLanding } from '@/components/SectionOffLanding';
+import { CommunityPrivateLanding } from '@/components/CommunityPrivateLanding';
 import { useSectionStatus } from '@/hooks/useSectionStatus';
 import { 
   Users, 
@@ -25,16 +25,7 @@ const Social: React.FC = () => {
   }
 
   if (status && !status.isEnabled) {
-    return (
-      <SectionOffLanding
-        title="Community"
-          description="La Community è momentaneamente non disponibile, ma tornerà attiva durante gli eventi. Per info e date, contattaci."
-        backTo="/"
-        backLabel="Torna al sito"
-        secondaryBackTo="/app"
-        secondaryBackLabel="Torna all'app"
-      />
-    );
+    return <CommunityPrivateLanding variant="landing" />;
   }
 
   const features = [

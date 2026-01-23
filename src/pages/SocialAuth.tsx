@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { SEO } from '@/components/SEO';
 import { useToast } from '@/hooks/use-toast';
-import { SectionOffLanding } from '@/components/SectionOffLanding';
+import { CommunityPrivateLanding } from '@/components/CommunityPrivateLanding';
 import { useSectionStatus } from '@/hooks/useSectionStatus';
 import { z } from 'zod';
 import { 
@@ -90,16 +90,7 @@ const SocialAuth: React.FC = () => {
     return <div className="min-h-screen bg-background" />;
   }
   if (communityDisabled) {
-    return (
-      <SectionOffLanding
-        title="Community"
-        description="La Community è momentaneamente non disponibile, ma tornerà attiva durante gli eventi. Per info e date, contattaci."
-        backTo="/"
-        backLabel="Torna al sito"
-        secondaryBackTo="/app"
-        secondaryBackLabel="Torna all'app"
-      />
-    );
+    return <CommunityPrivateLanding variant="auth" />;
   }
 
   const validateForm = (isSignup: boolean): boolean => {
