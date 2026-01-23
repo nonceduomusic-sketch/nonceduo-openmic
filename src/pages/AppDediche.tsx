@@ -1,60 +1,48 @@
-import React from "react";
+import React, { useState } from "react";
 import Messages from "@/pages/Messages";
-import { SectionOffLanding } from "@/components/SectionOffLanding";
-import { useSectionStatus } from "@/hooks/useSectionStatus";
-import { useFormatAvailability } from "@/hooks/useUnifiedLiveSession";
-import { useFormatActiveCheck } from "@/hooks/useGlobalFormatSettings";
+import DedicheInfo from "@/pages/DedicheInfo";
+import { FormatPinGate } from "@/components/FormatPinGate";
+import { useFormatGating } from "@/hooks/useFormatGating";
 
+/**
+ * AppDediche - Entry point per Dediche
+ * 
+ * LOGICA FERREA:
+ * 1. Se format NON ATTIVO → mostra TEASER (DedicheInfo) - sempre visibile, niente PIN
+ * 2. Se format ATTIVO:
+ *    - Senza PIN → accesso diretto al LIVE
+ *    - Con PIN → mostra schermata PIN, poi LIVE
+ */
 const AppDediche: React.FC = () => {
-  const { status, loading } = useSectionStatus("dediche");
-  const { isOtherFormatOnly, loading: availLoading } = useFormatAvailability();
-  const { isActive: isGloballyActive, loading: globalLoading } = useFormatActiveCheck('dediche');
+  const { loading, getGatingDecision } = useFormatGating('dediche');
+  const [pinValidated, setPinValidated] = useState(false);
 
-  if (loading || availLoading || globalLoading) {
+  // Loading state
+  if (loading) {
     return <div className="min-h-screen bg-background" />;
   }
 
-  // Check if format is globally disabled by admin
-  if (!isGloballyActive) {
+  const decision = getGatingDecision();
+
+  // TEASER: format non attivo → mostra pagina promozionale
+  if (decision === 'teaser') {
+    return <DedicheInfo />;
+  }
+
+  // PIN REQUIRED: format attivo ma protetto da PIN
+  if (decision === 'pin-required' && !pinValidated) {
     return (
-      <SectionOffLanding
-        title="Dediche non disponibili"
-        description="Le Dediche non sono attive al momento. Torna presto!"
-        backTo="/"
-        backLabel="Torna al sito"
-        secondaryBackTo="/app"
-        secondaryBackLabel="Torna all'app"
+      <FormatPinGate
+        format="dediche"
+        formatDisplayName="Dediche"
+        onPinValidated={() => setPinValidated(true)}
+        backTo="/app"
+        backLabel="Torna all'app"
       />
     );
   }
 
-  if (status && !status.isEnabled) {
-    return (
-      <SectionOffLanding
-        title="Dediche"
-        description="Le Dediche sono disponibili durante le serate. Per maggiori info e date, contattaci."
-        backTo="/"
-        backLabel="Torna al sito"
-        secondaryBackTo="/app"
-        secondaryBackLabel="Torna all'app"
-      />
-    );
-  }
-
-  // Check if only OpenMic is active (Dediche not protected means unavailable during this live session)
-  if (isOtherFormatOnly('dediche')) {
-    return (
-      <SectionOffLanding
-        title="Dediche non disponibili"
-        description="Stasera è serata Open Mic! Le dediche non sono attive – goditi lo spettacolo e prenota una canzone!"
-        backTo="/app/openmic"
-        backLabel="Vai all'Open Mic"
-        secondaryBackTo="/app"
-        secondaryBackLabel="Torna all'app"
-      />
-    );
-  }
-
+  // LIVE: format attivo senza PIN (o PIN già validato)
   return <Messages appMode />;
 };
 
