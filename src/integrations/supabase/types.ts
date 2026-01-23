@@ -558,6 +558,56 @@ export type Database = {
         }
         Relationships: []
       }
+      pin_sessions: {
+        Row: {
+          created_at: string
+          device_fingerprint: string | null
+          format: string
+          id: string
+          invalidated_at: string | null
+          invalidation_reason: string | null
+          is_valid: boolean
+          last_validated_at: string
+          live_session_id: string
+          pin_code_hash: string
+          session_token: string
+        }
+        Insert: {
+          created_at?: string
+          device_fingerprint?: string | null
+          format: string
+          id?: string
+          invalidated_at?: string | null
+          invalidation_reason?: string | null
+          is_valid?: boolean
+          last_validated_at?: string
+          live_session_id: string
+          pin_code_hash: string
+          session_token: string
+        }
+        Update: {
+          created_at?: string
+          device_fingerprint?: string | null
+          format?: string
+          id?: string
+          invalidated_at?: string | null
+          invalidation_reason?: string | null
+          is_valid?: boolean
+          last_validated_at?: string
+          live_session_id?: string
+          pin_code_hash?: string
+          session_token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pin_sessions_live_session_id_fkey"
+            columns: ["live_session_id"]
+            isOneToOne: false
+            referencedRelation: "live_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       post_comments: {
         Row: {
           content: string
@@ -976,6 +1026,15 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_typing_indicators: { Args: never; Returns: undefined }
+      create_pin_session: {
+        Args: {
+          p_device_fingerprint?: string
+          p_format: string
+          p_live_session_id: string
+          p_pin_code: string
+        }
+        Returns: string
+      }
       get_active_session_for_format: {
         Args: { p_format: string }
         Returns: {
@@ -1007,6 +1066,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      invalidate_pin_sessions: {
+        Args: { p_live_session_id: string; p_reason?: string }
+        Returns: number
+      }
       is_format_protected: { Args: { p_format: string }; Returns: boolean }
       is_live_session_active: { Args: { p_section: string }; Returns: boolean }
       is_owner: { Args: { _user_id: string }; Returns: boolean }
@@ -1022,6 +1085,15 @@ export type Database = {
       validate_live_session_pin: {
         Args: { p_pin: string; p_section: string }
         Returns: boolean
+      }
+      validate_pin_session: {
+        Args: { p_format: string; p_token: string }
+        Returns: {
+          is_valid: boolean
+          live_session_id: string
+          pin_code: string
+          protected_formats: string[]
+        }[]
       }
     }
     Enums: {

@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import Messages from "@/pages/Messages";
 import DedicheInfo from "@/pages/DedicheInfo";
 import { FormatPinGate } from "@/components/FormatPinGate";
 import { useFormatGating } from "@/hooks/useFormatGating";
+import { usePinSession } from "@/hooks/usePinSession";
 
 /**
  * AppDediche - Entry point per Dediche
@@ -11,15 +12,50 @@ import { useFormatGating } from "@/hooks/useFormatGating";
  * 1. Se format NON ATTIVO → mostra TEASER (DedicheInfo) - sempre visibile, niente PIN
  * 2. Se format ATTIVO:
  *    - Senza PIN → accesso diretto al LIVE
- *    - Con PIN → mostra schermata PIN, poi LIVE
+ *    - Con PIN:
+ *      - Se sessione valida → accesso diretto (persistenza)
+ *      - Altrimenti → mostra schermata PIN, poi LIVE
+ * 
+ * SESSIONI PERSISTENTI:
+ * - Dopo PIN corretto → sessione salvata in localStorage + DB
+ * - Utente chiude e rientra → entra senza PIN
+ * - Cambio PIN / reset admin → sessione invalidata → richiede nuovo PIN
  */
 const AppDediche: React.FC = () => {
   const { loading, getGatingDecision } = useFormatGating('dediche');
+  const { 
+    hasValidSession, 
+    loading: sessionLoading, 
+    sessionInvalidated 
+  } = usePinSession('dediche');
   const [pinValidated, setPinValidated] = useState(false);
 
-  // Loading state
-  if (loading) {
-    return <div className="min-h-screen bg-background" />;
+  // Auto-validate if session is valid (persistent login)
+  useEffect(() => {
+    if (!sessionLoading && hasValidSession && !sessionInvalidated) {
+      setPinValidated(true);
+    }
+  }, [sessionLoading, hasValidSession, sessionInvalidated]);
+
+  // Reset pin validation if session is invalidated
+  useEffect(() => {
+    if (sessionInvalidated) {
+      setPinValidated(false);
+    }
+  }, [sessionInvalidated]);
+
+  // Handler for pin validation from FormatPinGate
+  const handlePinValidated = useCallback(() => {
+    setPinValidated(true);
+  }, []);
+
+  // Loading state - wait for both gating and session check
+  if (loading || sessionLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
   }
 
   const decision = getGatingDecision();
@@ -35,14 +71,14 @@ const AppDediche: React.FC = () => {
       <FormatPinGate
         format="dediche"
         formatDisplayName="Dediche"
-        onPinValidated={() => setPinValidated(true)}
+        onPinValidated={handlePinValidated}
         backTo="/app"
         backLabel="Torna all'app"
       />
     );
   }
 
-  // LIVE: format attivo senza PIN (o PIN già validato)
+  // LIVE: format attivo senza PIN (o PIN già validato/sessione persistente)
   return <Messages appMode />;
 };
 
