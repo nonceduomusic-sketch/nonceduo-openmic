@@ -862,6 +862,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           customer_name: string
+          dedication_message: string | null
           id: string
           song_artist: string
           song_key: string | null
@@ -872,6 +873,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           customer_name: string
+          dedication_message?: string | null
           id?: string
           song_artist: string
           song_key?: string | null
@@ -882,6 +884,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           customer_name?: string
+          dedication_message?: string | null
           id?: string
           song_artist?: string
           song_key?: string | null
