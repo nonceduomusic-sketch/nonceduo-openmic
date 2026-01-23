@@ -66,7 +66,9 @@ export function useFormatGating(format: FormatKey): FormatGatingState & {
         const isExpired = liveSession.expires_at && new Date(liveSession.expires_at) < new Date();
         if (!isExpired) {
           const protectedFormats = (liveSession.protected_formats as string[]) || [];
-          needsPin = protectedFormats.includes(format);
+          // PIN required only if format is in the protected list
+          // Empty protected_formats = no PIN required (direct access)
+          needsPin = protectedFormats.length > 0 && protectedFormats.includes(format);
         }
       }
       setRequiresPin(needsPin);
