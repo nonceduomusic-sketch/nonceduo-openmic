@@ -53,23 +53,34 @@ export const FormatPinGate: React.FC<FormatPinGateProps> = ({
     
     const valid = await validatePin(pin);
     if (valid) {
-      // Get live session that protects THIS format (there should be exactly one active)
-      const { data: liveSession } = await supabase
+      // Get the active live session (there should be only one active at a time)
+      const { data: liveSession, error } = await supabase
         .from('live_sessions')
         .select('id, protected_formats, pin_code')
         .eq('is_active', true)
-        .contains('protected_formats', [format])
         .maybeSingle();
 
+      if (error) {
+        console.error('[FormatPinGate] Error fetching live session:', error);
+      }
+
       if (liveSession) {
-        // Create GLOBAL session - works for ALL formats that share the same live session
-        const created = await createSession(liveSession.id, pin);
-        if (created) {
-          console.log(`[FormatPinGate] Global session created for live_session ${liveSession.id}`);
-          console.log(`[FormatPinGate] User now has access to ALL protected formats:`, liveSession.protected_formats);
+        // Verify this live session actually protects our format
+        const protectedFormats = (liveSession.protected_formats as string[]) || [];
+        if (protectedFormats.includes(format)) {
+          // Create GLOBAL session - works for ALL formats that share the same live session
+          const created = await createSession(liveSession.id, pin);
+          if (created) {
+            console.log(`[FormatPinGate] Global session created for live_session ${liveSession.id}`);
+            console.log(`[FormatPinGate] User now has access to ALL protected formats:`, protectedFormats);
+          } else {
+            console.warn('[FormatPinGate] Failed to create pin session');
+          }
+        } else {
+          console.warn(`[FormatPinGate] Format ${format} not in protected_formats:`, protectedFormats);
         }
       } else {
-        console.warn(`[FormatPinGate] No active live session found protecting ${format}`);
+        console.warn(`[FormatPinGate] No active live session found`);
       }
       
       onPinValidated();
