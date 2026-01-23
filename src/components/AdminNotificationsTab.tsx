@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Users,
   Check,
@@ -10,6 +10,14 @@ import {
   Info,
   AlertCircle,
   Lock,
+  Bell,
+  BellOff,
+  CheckCheck,
+  Filter,
+  Mic2,
+  Heart,
+  MessageCircle,
+  Calendar,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -41,6 +49,20 @@ interface AdminNotificationsTabProps {
   isOwner?: boolean;
 }
 
+type NotificationType = 'all' | 'openmic' | 'dediche' | 'community';
+
+interface NotificationItem {
+  id: string;
+  type: 'join_request' | 'reservation' | 'message_dediche' | 'message_community';
+  title: string;
+  subtitle: string;
+  timestamp: Date;
+  isUnread: boolean;
+  section: NotificationType;
+  action?: () => void;
+  data?: any;
+}
+
 export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({ 
   onNavigate,
   access = { openmic: true, dediche: true, community: true },
@@ -66,24 +88,134 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
     rejectJoinRequest,
   } = useAdminNotifications({ formatPreferences: preferences });
 
-  // Sections state
-  const [openSections, setOpenSections] = useState({
-    joinRequests: true,
-    info: false,
-    config: true,
-    activeFormats: true,
-    serataLive: true,
-  });
+  // UI State
+  const [showOnlyUnread, setShowOnlyUnread] = useState(false);
+  const [filterType, setFilterType] = useState<NotificationType>('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
-  const toggleSection = (section: keyof typeof openSections) => {
-    setOpenSections(prev => ({ ...prev, [section]: !prev[section] }));
+  // Calculate total unread count
+  const totalUnread = useMemo(() => {
+    return counts.pendingJoinRequests + 
+           counts.unreadDedicheMessages + 
+           counts.unreadCommunityMessages + 
+           counts.newReservations;
+  }, [counts]);
+
+  // Build unified notification list
+  const notifications = useMemo<NotificationItem[]>(() => {
+    const items: NotificationItem[] = [];
+
+    // Add join requests
+    if (preferences.community && access.community) {
+      joinRequests.forEach(req => {
+        items.push({
+          id: `join-${req.id}`,
+          type: 'join_request',
+          title: req.requester_name,
+          subtitle: `Vuole entrare in: ${req.conversation?.name || 'Gruppo'}`,
+          timestamp: new Date(req.created_at),
+          isUnread: true,
+          section: 'community',
+          data: req,
+        });
+      });
+    }
+
+    // Add placeholder items for counts (these are summaries, not individual items)
+    // In a real implementation, you'd fetch individual notifications
+    if (preferences.openmic && access.openmic && counts.newReservations > 0) {
+      items.push({
+        id: 'reservations-summary',
+        type: 'reservation',
+        title: `${counts.newReservations} prenotazioni oggi`,
+        subtitle: 'Nuove prenotazioni Open Mic',
+        timestamp: new Date(),
+        isUnread: true,
+        section: 'openmic',
+        action: () => onNavigate?.('openmic'),
+      });
+    }
+
+    if (preferences.dediche && access.dediche && counts.unreadDedicheMessages > 0) {
+      items.push({
+        id: 'dediche-summary',
+        type: 'message_dediche',
+        title: `${counts.unreadDedicheMessages} messaggi non letti`,
+        subtitle: 'Nuove dediche da leggere',
+        timestamp: new Date(),
+        isUnread: true,
+        section: 'dediche',
+        action: () => onNavigate?.('dediche'),
+      });
+    }
+
+    if (preferences.community && access.community && counts.unreadCommunityMessages > 0) {
+      items.push({
+        id: 'community-summary',
+        type: 'message_community',
+        title: `${counts.unreadCommunityMessages} messaggi non letti`,
+        subtitle: 'Nuovi messaggi Community',
+        timestamp: new Date(),
+        isUnread: true,
+        section: 'community',
+        action: () => onNavigate?.('community', 'groups'),
+      });
+    }
+
+    // Sort by timestamp (newest first), unread first
+    return items.sort((a, b) => {
+      if (a.isUnread !== b.isUnread) return a.isUnread ? -1 : 1;
+      return b.timestamp.getTime() - a.timestamp.getTime();
+    });
+  }, [joinRequests, counts, preferences, access, onNavigate]);
+
+  // Filter notifications
+  const filteredNotifications = useMemo(() => {
+    let filtered = notifications;
+    
+    if (showOnlyUnread) {
+      filtered = filtered.filter(n => n.isUnread);
+    }
+    
+    if (filterType !== 'all') {
+      filtered = filtered.filter(n => n.section === filterType);
+    }
+    
+    return filtered;
+  }, [notifications, showOnlyUnread, filterType]);
+
+  // Check permissions
+  const canMonitor = isOwner || centroPerms.monitorFormats;
+  const canManageActive = isOwner || centroPerms.activeFormats;
+  const canManageSerata = isOwner || centroPerms.serataLive;
+
+  const getNotificationIcon = (type: NotificationItem['type']) => {
+    switch (type) {
+      case 'join_request':
+        return <Users className="w-5 h-5 text-primary" />;
+      case 'reservation':
+        return <Mic2 className="w-5 h-5 text-warning" />;
+      case 'message_dediche':
+        return <Heart className="w-5 h-5 text-secondary" />;
+      case 'message_community':
+        return <MessageCircle className="w-5 h-5 text-accent" />;
+      default:
+        return <Bell className="w-5 h-5 text-muted-foreground" />;
+    }
   };
 
-  const getSectionBadge = (section?: string) => {
-    if (!section) return null;
-    return section === 'dediche' 
-      ? <Badge className="bg-primary/20 text-primary">Dediche</Badge>
-      : <Badge className="bg-secondary/20 text-secondary">Community</Badge>;
+  const getSectionBadge = (section: NotificationType) => {
+    switch (section) {
+      case 'openmic':
+        return <Badge className="bg-warning/20 text-warning text-xs">Open Mic</Badge>;
+      case 'dediche':
+        return <Badge className="bg-secondary/20 text-secondary text-xs">Dediche</Badge>;
+      case 'community':
+        return <Badge className="bg-accent/20 text-accent text-xs">Community</Badge>;
+      default:
+        return null;
+    }
   };
 
   if (loading || prefsLoading || permsLoading) {
@@ -94,307 +226,336 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
     );
   }
 
-  // Check if user has at least some centro permissions (owner always has all)
-  const canMonitor = isOwner || centroPerms.monitorFormats;
-  const canManageActive = isOwner || centroPerms.activeFormats;
-  const canManageSerata = isOwner || centroPerms.serataLive;
-
   return (
-    <div className="space-y-5 md:space-y-6 overflow-x-hidden pb-4">
-      {/* Format Configuration Card - Monitoring (requires permission) */}
-      {canMonitor && (
-        <Collapsible open={openSections.config} onOpenChange={() => toggleSection('config')}>
-          <CollapsibleTrigger asChild>
-            <div className="flex items-center justify-between cursor-pointer group mb-2 py-1">
-              <h3 className="text-base md:text-sm font-medium text-muted-foreground flex items-center gap-2">
-                {openSections.config ? (
-                  <ChevronDown className="w-5 h-5 md:w-4 md:h-4" />
-                ) : (
-                  <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
-                )}
-                Configurazione Monitoraggio
-              </h3>
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* ========== STICKY HEADER - Numero notifiche in evidenza ========== */}
+      <div className="sticky top-0 z-10 bg-card/98 backdrop-blur-xl border-b border-border/50 px-4 py-4 safe-area-top">
+        {/* Main notification count - VERY PROMINENT */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-3">
+            {/* Big notification badge */}
+            <div className={cn(
+              "relative flex items-center justify-center w-14 h-14 rounded-2xl",
+              totalUnread > 0 
+                ? "bg-destructive/20 border-2 border-destructive" 
+                : "bg-muted border border-border"
+            )}>
+              {totalUnread > 0 ? (
+                <>
+                  <span className="text-2xl font-bold text-destructive">
+                    {totalUnread > 99 ? '99+' : totalUnread}
+                  </span>
+                  {/* Pulsing dot for new notifications */}
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full animate-pulse" />
+                </>
+              ) : (
+                <BellOff className="w-6 h-6 text-muted-foreground" />
+              )}
             </div>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
-            <FormatToggleCard 
-              preferences={preferences} 
-              onToggle={toggleFormat}
-              access={access}
-            />
-          </CollapsibleContent>
-        </Collapsible>
-      )}
-
-      {/* Global Format Settings - Active/Inactive (requires permission) */}
-      {canManageActive && (
-        <Collapsible open={openSections.activeFormats} onOpenChange={() => toggleSection('activeFormats')}>
-          <CollapsibleTrigger asChild>
-            <div className="flex items-center justify-between cursor-pointer group mb-2 py-1">
-              <h3 className="text-base md:text-sm font-medium text-muted-foreground flex items-center gap-2">
-                {openSections.activeFormats ? (
-                  <ChevronDown className="w-5 h-5 md:w-4 md:h-4" />
-                ) : (
-                  <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
-                )}
-                Format Attivi (Pubblico)
-              </h3>
+            
+            {/* Text description */}
+            <div>
+              <h2 className="text-lg font-semibold text-foreground">
+                {totalUnread > 0 
+                  ? `Hai ${totalUnread} ${totalUnread === 1 ? 'nuova notifica' : 'nuove notifiche'}`
+                  : 'Nessuna nuova notifica'
+                }
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {totalUnread > 0 
+                  ? 'Scorri per vedere i dettagli'
+                  : 'Sei aggiornato su tutto!'
+                }
+              </p>
             </div>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
-            <ActiveFormatsCard />
-          </CollapsibleContent>
-        </Collapsible>
-      )}
+          </div>
+        </div>
 
-      {/* Serata Live with PIN - (requires permission) */}
-      {canManageSerata && (access.openmic || access.dediche) && (preferences.openmic || preferences.dediche) && (
-        <Collapsible open={openSections.serataLive} onOpenChange={() => toggleSection('serataLive')}>
-          <CollapsibleTrigger asChild>
-            <div className="flex items-center justify-between cursor-pointer group mb-2 py-1">
-              <h3 className="text-base md:text-sm font-medium text-muted-foreground flex items-center gap-2">
-                {openSections.serataLive ? (
-                  <ChevronDown className="w-5 h-5 md:w-4 md:h-4" />
-                ) : (
-                  <ChevronRight className="w-5 h-5 md:w-4 md:h-4" />
+        {/* Quick filter toggle */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant={showOnlyUnread ? "default" : "outline"}
+            size="sm"
+            className="h-9 px-3 text-sm rounded-xl"
+            onClick={() => setShowOnlyUnread(!showOnlyUnread)}
+          >
+            {showOnlyUnread ? <Bell className="w-4 h-4 mr-1.5" /> : <CheckCheck className="w-4 h-4 mr-1.5" />}
+            {showOnlyUnread ? 'Solo nuove' : 'Tutte'}
+          </Button>
+          
+          <Button
+            variant={showFilters ? "secondary" : "ghost"}
+            size="sm"
+            className="h-9 px-3 text-sm rounded-xl"
+            onClick={() => setShowFilters(!showFilters)}
+          >
+            <Filter className="w-4 h-4 mr-1.5" />
+            Filtra
+          </Button>
+
+          <div className="flex-1" />
+          
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-9 px-3 text-sm rounded-xl text-muted-foreground"
+            onClick={() => setShowSettings(!showSettings)}
+          >
+            Impostazioni
+            {showSettings ? <ChevronDown className="w-4 h-4 ml-1" /> : <ChevronRight className="w-4 h-4 ml-1" />}
+          </Button>
+        </div>
+
+        {/* Filter chips - only show when filters open */}
+        {showFilters && (
+          <div className="flex flex-wrap gap-2 mt-3 animate-in fade-in-0 slide-in-from-top-2 duration-200">
+            {[
+              { key: 'all' as const, label: 'Tutte', count: notifications.length },
+              { key: 'openmic' as const, label: 'Open Mic', count: counts.newReservations, color: 'text-warning' },
+              { key: 'dediche' as const, label: 'Dediche', count: counts.unreadDedicheMessages, color: 'text-secondary' },
+              { key: 'community' as const, label: 'Community', count: counts.pendingJoinRequests + counts.unreadCommunityMessages, color: 'text-accent' },
+            ].map(f => (
+              <Button
+                key={f.key}
+                variant={filterType === f.key ? "default" : "outline"}
+                size="sm"
+                className={cn(
+                  "h-8 px-3 text-sm rounded-full",
+                  filterType === f.key && f.color
                 )}
-                Serata Live con PIN
-                {isOwner && <Lock className="w-4 h-4 text-warning" />}
-              </h3>
-            </div>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="animate-in fade-in-0 slide-in-from-top-2 duration-300">
-            <UnifiedLiveSessionCard title="Serata Live" />
-          </CollapsibleContent>
-        </Collapsible>
-      )}
+                onClick={() => setFilterType(f.key)}
+              >
+                {f.label}
+                {f.count > 0 && (
+                  <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-xs">
+                    {f.count}
+                  </Badge>
+                )}
+              </Button>
+            ))}
+          </div>
+        )}
+      </div>
 
-      {/* No formats active message */}
-      {canMonitor && !hasActiveFormats && (
-        <Card className="glass-card border-warning/30 bg-warning/5">
-          <CardContent className="p-6 md:p-6 text-center">
-            <AlertCircle className="w-12 h-12 md:w-10 md:h-10 text-warning mx-auto mb-3" />
-            <h3 className="font-semibold text-lg md:text-base text-foreground mb-1">
-              Nessun format selezionato
+      {/* ========== NOTIFICATION LIST - Scrollable ========== */}
+      <div className="flex-1 overflow-y-auto px-4 py-3">
+        {filteredNotifications.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
+              <BellOff className="w-8 h-8 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-medium text-foreground mb-1">
+              {showOnlyUnread ? 'Nessuna nuova notifica' : 'Nessuna notifica'}
             </h3>
-            <p className="text-base md:text-sm text-muted-foreground">
-              Attiva almeno un format per vedere le metriche in tempo reale
+            <p className="text-sm text-muted-foreground max-w-[250px]">
+              {showOnlyUnread 
+                ? 'Hai letto tutte le notifiche!' 
+                : 'Le notifiche appariranno qui quando ci saranno novità'}
             </p>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Summary Cards - Clickable Metrics - Mobile: 2 columns, Desktop: 4 columns */}
-      {canMonitor && hasActiveFormats && (
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-          {/* Pending Join Requests - navigates to Community > Invites */}
-          {preferences.community && access.community && (
-            <Card 
-              className={cn(
-                "glass-card border-primary/30 transition-all duration-300 ease-out animate-in fade-in-0 slide-in-from-bottom-2",
-                onNavigate && "cursor-pointer hover:border-primary hover:shadow-lg hover:shadow-primary/10 hover:scale-[1.02] active:scale-[0.98] group"
-              )}
-              onClick={() => onNavigate?.('community', 'invites')}
-            >
-              <CardContent className="p-4 md:p-4 text-center relative">
-                <div className="text-4xl md:text-3xl font-bold text-primary transition-transform group-hover:scale-110">
-                  {counts.pendingJoinRequests}
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {filteredNotifications.map((notification) => (
+              <div
+                key={notification.id}
+                className={cn(
+                  "flex items-start gap-3 p-4 rounded-xl border transition-all duration-200",
+                  "touch-target min-h-[72px]", // Minimum touch target
+                  notification.isUnread 
+                    ? "bg-card border-border shadow-sm" 
+                    : "bg-muted/30 border-transparent",
+                  (notification.action || notification.type === 'join_request') && 
+                    "cursor-pointer hover:bg-muted/50 active:scale-[0.98]"
+                )}
+                onClick={() => {
+                  if (notification.action) {
+                    notification.action();
+                  }
+                }}
+              >
+                {/* Icon */}
+                <div className={cn(
+                  "flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center",
+                  notification.isUnread ? "bg-primary/10" : "bg-muted"
+                )}>
+                  {getNotificationIcon(notification.type)}
                 </div>
-                <div className="text-sm md:text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
-                  Richieste Accesso
-                  {onNavigate && (
-                    <ArrowRight className="w-4 h-4 md:w-3 md:h-3 opacity-0 group-hover:opacity-100 transition-opacity text-primary" />
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={cn(
+                          "font-medium text-base truncate",
+                          notification.isUnread ? "text-foreground" : "text-muted-foreground"
+                        )}>
+                          {notification.title}
+                        </span>
+                        {notification.isUnread && (
+                          <span className="flex-shrink-0 w-2 h-2 rounded-full bg-destructive" />
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
+                        {notification.subtitle}
+                      </p>
+                    </div>
+                    
+                    {/* Timestamp & Section Badge */}
+                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                      <span className="text-xs text-muted-foreground whitespace-nowrap">
+                        {formatDistanceToNow(notification.timestamp, { 
+                          addSuffix: false, 
+                          locale: it 
+                        })}
+                      </span>
+                      {getSectionBadge(notification.section)}
+                    </div>
+                  </div>
+
+                  {/* Actions for join requests */}
+                  {notification.type === 'join_request' && notification.data && (
+                    <div className="flex gap-2 mt-3">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 h-10 border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground rounded-xl"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          approveJoinRequest(notification.data.id);
+                        }}
+                      >
+                        <Check className="w-4 h-4 mr-1.5" />
+                        Approva
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1 h-10 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground rounded-xl"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          rejectJoinRequest(notification.data.id);
+                        }}
+                      >
+                        <X className="w-4 h-4 mr-1.5" />
+                        Rifiuta
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Navigate arrow for summary items */}
+                  {notification.action && notification.type !== 'join_request' && (
+                    <div className="flex items-center gap-1 mt-2 text-primary text-sm">
+                      <span>Vai alla sezione</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </div>
                   )}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-          {/* Unread Dediche Messages - navigates to Dediche */}
-          {preferences.dediche && access.dediche && (
-            <Card 
-              className={cn(
-                "glass-card border-secondary/30 transition-all duration-300 ease-out animate-in fade-in-0 slide-in-from-bottom-2",
-                onNavigate && "cursor-pointer hover:border-secondary hover:shadow-lg hover:shadow-secondary/10 hover:scale-[1.02] active:scale-[0.98] group"
-              )}
-              onClick={() => onNavigate?.('dediche')}
-            >
-              <CardContent className="p-4 md:p-4 text-center relative">
-                <div className="text-4xl md:text-3xl font-bold text-secondary transition-transform group-hover:scale-110">
-                  {counts.unreadDedicheMessages}
-                </div>
-                <div className="text-sm md:text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
-                  Msg Dediche
-                  {onNavigate && (
-                    <ArrowRight className="w-4 h-4 md:w-3 md:h-3 opacity-0 group-hover:opacity-100 transition-opacity text-secondary" />
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+      {/* ========== SETTINGS SECTION - Collapsible at bottom ========== */}
+      {showSettings && (
+        <div className="border-t border-border bg-muted/30 animate-in fade-in-0 slide-in-from-bottom-2 duration-200">
+          <div className="px-4 py-4 space-y-4">
+            <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
+              Impostazioni Centro Notifiche
+            </h3>
 
-          {/* Unread Community Messages - navigates to Community > Groups */}
-          {preferences.community && access.community && (
-            <Card 
-              className={cn(
-                "glass-card border-accent/30 transition-all duration-300 ease-out animate-in fade-in-0 slide-in-from-bottom-2",
-                onNavigate && "cursor-pointer hover:border-accent hover:shadow-lg hover:shadow-accent/10 hover:scale-[1.02] active:scale-[0.98] group"
-              )}
-              onClick={() => onNavigate?.('community', 'groups')}
-            >
-              <CardContent className="p-4 md:p-4 text-center relative">
-                <div className="text-4xl md:text-3xl font-bold text-accent transition-transform group-hover:scale-110">
-                  {counts.unreadCommunityMessages}
-                </div>
-                <div className="text-sm md:text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
-                  Msg Community
-                  {onNavigate && (
-                    <ArrowRight className="w-4 h-4 md:w-3 md:h-3 opacity-0 group-hover:opacity-100 transition-opacity text-accent" />
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+            {/* Format Configuration */}
+            {canMonitor && (
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between h-12 px-3 rounded-xl">
+                    <span className="text-sm">Configurazione Monitoraggio</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <FormatToggleCard 
+                    preferences={preferences} 
+                    onToggle={toggleFormat}
+                    access={access}
+                  />
+                </CollapsibleContent>
+              </Collapsible>
+            )}
 
-          {/* Today's Reservations - navigates to Open Mic */}
-          {preferences.openmic && access.openmic && (
-            <Card 
-              className={cn(
-                "glass-card border-warning/30 transition-all duration-300 ease-out animate-in fade-in-0 slide-in-from-bottom-2",
-                onNavigate && "cursor-pointer hover:border-warning hover:shadow-lg hover:shadow-warning/10 hover:scale-[1.02] active:scale-[0.98] group"
-              )}
-              onClick={() => onNavigate?.('openmic')}
-            >
-              <CardContent className="p-4 md:p-4 text-center relative">
-                <div className="text-4xl md:text-3xl font-bold text-warning transition-transform group-hover:scale-110">
-                  {counts.newReservations}
+            {/* Active Formats */}
+            {canManageActive && (
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between h-12 px-3 rounded-xl">
+                    <span className="text-sm">Format Attivi (Pubblico)</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <ActiveFormatsCard />
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
+            {/* Serata Live */}
+            {canManageSerata && (access.openmic || access.dediche) && (preferences.openmic || preferences.dediche) && (
+              <Collapsible>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" className="w-full justify-between h-12 px-3 rounded-xl">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm">Serata Live con PIN</span>
+                      {isOwner && <Lock className="w-4 h-4 text-warning" />}
+                    </div>
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="pt-2">
+                  <UnifiedLiveSessionCard title="Serata Live" />
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
+            {/* No formats warning */}
+            {canMonitor && !hasActiveFormats && (
+              <Card className="border-warning/30 bg-warning/5">
+                <CardContent className="p-4 text-center">
+                  <AlertCircle className="w-8 h-8 text-warning mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Attiva almeno un format per vedere le metriche
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Info Section */}
+            <Collapsible>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between h-12 px-3 rounded-xl text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <Info className="w-4 h-4" />
+                    <span className="text-sm">Info: Amicizie e Moderazione</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-2 px-3">
+                <div className="text-sm text-muted-foreground space-y-2 bg-muted/50 rounded-xl p-3">
+                  <p>
+                    <strong>Amicizie:</strong> Gli utenti gestiscono le amicizie direttamente. 
+                    Non è necessario approvare le richieste.
+                  </p>
+                  <p>
+                    <strong>Gruppi:</strong> I gruppi con "richiedi approvazione" 
+                    mostrano le richieste qui sopra.
+                  </p>
                 </div>
-                <div className="text-sm md:text-xs text-muted-foreground mt-1 flex items-center justify-center gap-1">
-                  Prenotazioni Oggi
-                  {onNavigate && (
-                    <ArrowRight className="w-4 h-4 md:w-3 md:h-3 opacity-0 group-hover:opacity-100 transition-opacity text-warning" />
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
         </div>
       )}
-
-      {/* Join Requests Section - only show if community is active */}
-      {preferences.community && access.community && (
-        <Collapsible open={openSections.joinRequests} onOpenChange={() => toggleSection('joinRequests')}>
-          <Card className="glass-card animate-in fade-in-0 slide-in-from-bottom-2 duration-300">
-            <CollapsibleTrigger asChild>
-              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4 md:py-3">
-                <CardTitle className="flex items-center justify-between text-lg md:text-base">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-5 h-5 text-primary" />
-                    <span className="text-base md:text-lg">Richieste Accesso Gruppi</span>
-                    {joinRequests.length > 0 && (
-                      <Badge variant="destructive" className="text-sm md:text-xs">{joinRequests.length}</Badge>
-                    )}
-                  </div>
-                  {openSections.joinRequests ? (
-                    <ChevronDown className="w-5 h-5 text-muted-foreground" />
-                  ) : (
-                    <ChevronRight className="w-5 h-5 text-muted-foreground" />
-                  )}
-                </CardTitle>
-              </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <CardContent className="pt-0">
-                {joinRequests.length === 0 ? (
-                  <p className="text-base md:text-sm text-muted-foreground text-center py-4">
-                    Nessuna richiesta in attesa
-                  </p>
-                ) : (
-                  <ScrollArea className="max-h-[300px]">
-                    <div className="space-y-3">
-                      {joinRequests.map((request) => (
-                        <div
-                          key={request.id}
-                          className="flex flex-col gap-3 p-4 md:p-3 rounded-xl bg-muted/30 border border-border min-w-0"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 min-w-0 flex-wrap">
-                              <span className="font-semibold text-base md:text-sm truncate">{request.requester_name}</span>
-                              {getSectionBadge(request.conversation?.section)}
-                            </div>
-                            <p className="text-base md:text-sm text-muted-foreground break-words leading-snug mt-1">
-                              Vuole entrare in: <strong>{request.conversation?.name || 'Gruppo'}</strong>
-                            </p>
-                            <p className="text-sm md:text-xs text-muted-foreground mt-1">
-                              {formatDistanceToNow(new Date(request.created_at), { 
-                                addSuffix: true, 
-                                locale: it 
-                              })}
-                            </p>
-                          </div>
-                          <div className="flex gap-2 w-full">
-                            <Button
-                              size="lg"
-                              variant="outline"
-                              className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground flex-1 h-12 md:h-9 text-base md:text-sm gap-2"
-                              onClick={() => approveJoinRequest(request.id)}
-                            >
-                              <Check className="w-5 h-5 md:w-4 md:h-4" />
-                              <span className="md:hidden">Approva</span>
-                            </Button>
-                            <Button
-                              size="lg"
-                              variant="outline"
-                              className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground flex-1 h-12 md:h-9 text-base md:text-sm gap-2"
-                              onClick={() => rejectJoinRequest(request.id)}
-                            >
-                              <X className="w-5 h-5 md:w-4 md:h-4" />
-                              <span className="md:hidden">Rifiuta</span>
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                )}
-              </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-      )}
-
-      {/* Info Section - Friendships are automatic */}
-      <Collapsible open={openSections.info} onOpenChange={() => toggleSection('info')}>
-        <Card className="glass-card border-muted">
-          <CollapsibleTrigger asChild>
-            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors py-4 md:py-3">
-              <CardTitle className="flex items-center justify-between text-base font-normal">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Info className="w-5 h-5 md:w-4 md:h-4" />
-                  <span className="text-base md:text-sm">Info: Amicizie e Moderazione</span>
-                </div>
-                {openSections.info ? (
-                  <ChevronDown className="w-5 h-5 md:w-4 md:h-4 text-muted-foreground" />
-                ) : (
-                  <ChevronRight className="w-5 h-5 md:w-4 md:h-4 text-muted-foreground" />
-                )}
-              </CardTitle>
-            </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <CardContent className="pt-0">
-              <div className="text-base md:text-sm text-muted-foreground space-y-2">
-                <p>
-                  <strong>Amicizie automatiche:</strong> Gli utenti possono inviare e accettare richieste di amicizia direttamente dalla Community.
-                </p>
-                <p>
-                  <strong>Per moderare:</strong> Usa <em>Audit</em> per visualizzare i log di attività e <em>Permessi</em> per gestire blocchi/blacklist utenti.
-                </p>
-              </div>
-            </CardContent>
-          </CollapsibleContent>
-        </Card>
-      </Collapsible>
     </div>
   );
 };
