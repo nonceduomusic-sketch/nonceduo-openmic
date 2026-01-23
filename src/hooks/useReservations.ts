@@ -105,13 +105,17 @@ export const useReservations = () => {
   const createReservation = async (
     customerName: string,
     songTitle: string,
-    songArtist: string
+    songArtist: string,
+    dedicationMessage?: string
   ) => {
-    const { error } = await supabase.from('reservations').insert({
+    const insertData = {
       customer_name: customerName,
       song_title: songTitle,
       song_artist: songArtist,
-    });
+      dedication_message: dedicationMessage?.trim() || null,
+    };
+
+    const { error } = await supabase.from('reservations').insert([insertData]);
 
     if (error) {
       if (import.meta.env.DEV) {

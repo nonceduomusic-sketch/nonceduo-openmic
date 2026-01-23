@@ -11,6 +11,7 @@ import { useReservationStatuses } from '@/hooks/useReservationStatuses';
 import { SEO } from '@/components/SEO';
 import { UserLoginIndicator } from '@/components/UserLoginIndicator';
 import { useStaffRole } from '@/hooks/useStaffRole';
+import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
 
 interface OpenMicProps {
   /**
@@ -25,6 +26,9 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false }) => {
   const [search, setSearch] = useState('');
   const [artistFilter, setArtistFilter] = useState('all');
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  
+  // Check if dediche format is active (for showing/hiding chat button)
+  const { isActive: isDedicheActive } = useFormatActiveCheck('dediche');
   
   // Use the public statuses hook for real-time updates (no auth required)
   const { isSongBooked, isSongCompleted, activeCount, loading, bookedSongKeys } = useReservationStatuses();
@@ -84,16 +88,19 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false }) => {
 
             <div className="flex items-center gap-2">
               {!appMode && <UserLoginIndicator compact />}
-              <Link to="/app/dediche">
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
-                >
-                  <MessageCircle className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">Chat</span>
-                </Button>
-              </Link>
+              {/* Only show Chat button if dediche format is active */}
+              {isDedicheActive && (
+                <Link to="/app/dediche">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+                  >
+                    <MessageCircle className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Chat</span>
+                  </Button>
+                </Link>
+              )}
               {isStaff && (
                 <Link to="/admin">
                   <Button 

@@ -1,12 +1,16 @@
 import React, { useState } from 'react';
-import { X, CheckCircle, Music, Loader2, FileText } from 'lucide-react';
+import { X, CheckCircle, Music, Loader2, FileText, Heart, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Song } from '@/data/songs';
 import { useReservations } from '@/hooks/useReservations';
+import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
 import { z } from 'zod';
 import { toast } from 'sonner';
 import { getLyricsSearchUrl } from '@/lib/whatsapp';
+import { cn } from '@/lib/utils';
 
 const reservationSchema = z.object({
   customer_name: z.string().trim()
@@ -26,6 +30,9 @@ interface BookingConfirmationModalProps {
  * NOTA: La protezione PIN avviene a livello di PAGINA (AppOpenMic/AppDediche).
  * Una volta che l'utente ha superato il gate PIN ed è entrato nella pagina,
  * può prenotare liberamente senza ulteriori vincoli.
+ * 
+ * DEDICHE: Se il format Dediche è attivo, mostra un'opzione per aggiungere
+ * una dedica personalizzata alla prenotazione.
  */
 export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> = ({ 
   song, 
@@ -35,7 +42,14 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmed, setIsConfirmed] = useState(false);
   
+  // Dedication state
+  const [wantsDedication, setWantsDedication] = useState(false);
+  const [dedicationMessage, setDedicationMessage] = useState('');
+  
   const { createReservation } = useReservations();
+  
+  // Check if dediche format is active (for showing dedication option)
+  const { isActive: isDedicheActive, loading: dedicheLoading } = useFormatActiveCheck('dediche');
 
   const handleSearchLyrics = () => {
     window.open(getLyricsSearchUrl(song.title, song.artist), '_blank');
@@ -51,10 +65,21 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
       toast.error(errorMessage);
       return;
     }
+    
+    // Validate dedication length if provided
+    if (wantsDedication && dedicationMessage.length > 300) {
+      toast.error('Dedica troppo lunga (massimo 300 caratteri)');
+      return;
+    }
 
     setIsSubmitting(true);
     
-    const success = await createReservation(validation.data.customer_name, song.title, song.artist);
+    const success = await createReservation(
+      validation.data.customer_name, 
+      song.title, 
+      song.artist,
+      wantsDedication && dedicationMessage.trim() ? dedicationMessage.trim() : undefined
+    );
     
     if (success) {
       setIsConfirmed(true);
@@ -62,6 +87,9 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
     
     setIsSubmitting(false);
   };
+
+  // Show dedication option only if dediche format is active
+  const showDedicationOption = !dedicheLoading && isDedicheActive;
 
   if (isConfirmed) {
     return (
@@ -78,6 +106,13 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
           <p className="text-muted-foreground mb-4">
             La tua prenotazione per <strong className="text-primary">{song.title}</strong> è stata confermata.
           </p>
+          
+          {wantsDedication && dedicationMessage.trim() && (
+            <p className="text-sm text-primary mb-4 flex items-center justify-center gap-1.5">
+              <Heart className="w-4 h-4" />
+              Dedica inclusa
+            </p>
+          )}
           
           <p className="text-sm text-muted-foreground mb-6">
             Ti chiameremo quando sarà il tuo turno!
@@ -148,6 +183,61 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
               disabled={isSubmitting}
             />
           </div>
+
+          {/* Dedication option - only shown if dediche format is active */}
+          {showDedicationOption && (
+            <div className="space-y-3">
+              <div 
+                className={cn(
+                  "flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all",
+                  wantsDedication 
+                    ? "border-primary/50 bg-primary/5" 
+                    : "border-border/50 hover:border-primary/30 hover:bg-muted/30"
+                )}
+                onClick={() => setWantsDedication(!wantsDedication)}
+              >
+                <Checkbox
+                  id="dedication"
+                  checked={wantsDedication}
+                  onCheckedChange={(checked) => setWantsDedication(checked === true)}
+                  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                />
+                <div className="flex-1">
+                  <label htmlFor="dedication" className="text-sm font-medium cursor-pointer flex items-center gap-2">
+                    <Heart className="w-4 h-4 text-primary" />
+                    Vuoi aggiungere una dedica?
+                  </label>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Scrivi un messaggio speciale da leggere durante la serata
+                  </p>
+                </div>
+                {wantsDedication ? (
+                  <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                )}
+              </div>
+
+              {/* Dedication textarea - animated appearance */}
+              <div className={cn(
+                "overflow-hidden transition-all duration-300",
+                wantsDedication ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+              )}>
+                <Textarea
+                  value={dedicationMessage}
+                  onChange={(e) => setDedicationMessage(e.target.value)}
+                  placeholder="Scrivi la tua dedica... (es: Per Maria, con tutto il mio amore ❤️)"
+                  className="bg-muted border-border focus:border-primary focus:ring-primary resize-none"
+                  rows={3}
+                  maxLength={300}
+                  disabled={isSubmitting}
+                />
+                <p className="text-xs text-muted-foreground text-right mt-1">
+                  {dedicationMessage.length}/300
+                </p>
+              </div>
+            </div>
+          )}
 
           <Button
             type="submit"
