@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Checkbox } from '@/components/ui/checkbox';
 import { SEO } from '@/components/SEO';
 import { useToast } from '@/hooks/use-toast';
 import { SectionOffLanding } from '@/components/SectionOffLanding';
@@ -21,7 +22,8 @@ import {
   EyeOff,
   Loader2,
   CheckCircle,
-  KeyRound
+  KeyRound,
+  Shield
 } from 'lucide-react';
 
 // Validation schemas
@@ -47,7 +49,8 @@ const SocialAuth: React.FC = () => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string; confirmPassword?: string }>({});
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string; confirmPassword?: string; privacy?: string }>({});
 
   // Check for password reset mode (from email link)
   useEffect(() => {
@@ -125,6 +128,11 @@ const SocialAuth: React.FC = () => {
         if (e instanceof z.ZodError) {
           newErrors.displayName = e.errors[0]?.message;
         }
+      }
+      
+      // Privacy checkbox validation
+      if (!privacyAccepted) {
+        newErrors.privacy = 'Devi accettare l\'informativa privacy per registrarti';
       }
     }
     
@@ -815,10 +823,41 @@ const SocialAuth: React.FC = () => {
                     {errors.password && <p className="text-sm text-destructive">{errors.password}</p>}
                   </div>
                   
+                  {/* Privacy Checkbox - GDPR Required */}
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-3 p-3 rounded-lg border border-border bg-muted/30">
+                      <Checkbox
+                        id="privacy-accept"
+                        checked={privacyAccepted}
+                        onCheckedChange={(checked) => setPrivacyAccepted(checked === true)}
+                        className="mt-0.5"
+                        disabled={isLoading}
+                      />
+                      <div className="flex-1">
+                        <Label 
+                          htmlFor="privacy-accept" 
+                          className="text-sm font-normal cursor-pointer leading-relaxed"
+                        >
+                          Ho letto e accetto l'
+                          <Link 
+                            to="/privacy" 
+                            target="_blank"
+                            className="text-primary hover:underline inline-flex items-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Shield className="w-3 h-3" />
+                            Informativa Privacy
+                          </Link>
+                        </Label>
+                      </div>
+                    </div>
+                    {errors.privacy && <p className="text-sm text-destructive">{errors.privacy}</p>}
+                  </div>
+                  
                   <Button 
                     type="submit" 
                     className="w-full bg-gradient-to-r from-secondary to-primary hover:from-secondary/90 hover:to-primary/90"
-                    disabled={isLoading}
+                    disabled={isLoading || !privacyAccepted}
                   >
                     {isLoading ? (
                       <>
@@ -863,7 +902,10 @@ const SocialAuth: React.FC = () => {
             </Tabs>
             
             <p className="text-center text-sm text-muted-foreground mt-6">
-              Registrandoti accetti i nostri termini di servizio
+              Registrandoti accetti i nostri{' '}
+              <Link to="/privacy" className="text-primary hover:underline">
+                termini e l'informativa privacy
+              </Link>
             </p>
           </CardContent>
         </Card>

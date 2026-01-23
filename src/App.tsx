@@ -15,6 +15,7 @@ import PartyBand from "./pages/PartyBand";
 import Social from "./pages/Social";
 import SocialAuth from "./pages/SocialAuth";
 import SocialDashboard from "./pages/SocialDashboard";
+import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
 import AppLauncher from "./pages/AppLauncher";
 import AppOpenMic from "./pages/AppOpenMic";
@@ -38,6 +39,10 @@ const App = () => (
             {/* SITO (vetrina) */}
             <Route path="/openmic" element={<OpenMicInfo />} />
             <Route path="/messaggi" element={<DedicheInfo />} />
+            
+            {/* Privacy Policy - GDPR */}
+            <Route path="/privacy" element={<Privacy />} />
+            <Route path="/informativa-privacy" element={<Privacy />} />
 
             {/* APP (launcher + live) */}
             <Route path="/app" element={<AppLauncher />} />
