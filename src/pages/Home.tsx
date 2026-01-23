@@ -82,41 +82,41 @@ const Home: React.FC = () => {
                 Scopri i nostri format interattivi
               </p>
               <div className="grid grid-cols-3 gap-3 max-w-lg mx-auto px-4">
-                <Link to="/openmic" className="group">
-                  <Card className="bg-card/70 backdrop-blur-sm border-secondary/40 hover:border-secondary hover:scale-105 transition-all duration-300 overflow-hidden">
+                <Link to="/openmic" className="group block touch-manipulation">
+                  <Card className="bg-card/70 backdrop-blur-sm border-secondary/40 hover:border-secondary hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer">
                     <CardContent className="p-4 text-center relative">
-                      <div className="absolute inset-0 bg-gradient-to-t from-secondary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-secondary/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-secondary/30 transition-all">
-                        <Mic2 className="w-6 h-6 text-secondary" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-secondary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                      <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-secondary/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-secondary/30 transition-all pointer-events-none">
+                        <Mic2 className="w-6 h-6 text-secondary pointer-events-none" />
                       </div>
-                      <span className="text-sm font-bold text-foreground block">Open Mic</span>
-                      <p className="text-[10px] text-secondary font-medium mt-0.5">Canta con noi</p>
+                      <span className="text-sm font-bold text-foreground block pointer-events-none">Open Mic</span>
+                      <p className="text-[10px] text-secondary font-medium mt-0.5 pointer-events-none">Canta con noi</p>
                     </CardContent>
                   </Card>
                 </Link>
                 
-                <Link to="/messaggi" className="group">
-                  <Card className="bg-card/70 backdrop-blur-sm border-primary/40 hover:border-primary hover:scale-105 transition-all duration-300 overflow-hidden">
+                <Link to="/messaggi" className="group block touch-manipulation">
+                  <Card className="bg-card/70 backdrop-blur-sm border-primary/40 hover:border-primary hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer">
                     <CardContent className="p-4 text-center relative">
-                      <div className="absolute inset-0 bg-gradient-to-t from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-primary/30 transition-all">
-                        <MessageCircle className="w-6 h-6 text-primary" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                      <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-primary/30 transition-all pointer-events-none">
+                        <MessageCircle className="w-6 h-6 text-primary pointer-events-none" />
                       </div>
-                      <span className="text-sm font-bold text-foreground block">Dediche</span>
-                      <p className="text-[10px] text-primary font-medium mt-0.5">Invia messaggi</p>
+                      <span className="text-sm font-bold text-foreground block pointer-events-none">Dediche</span>
+                      <p className="text-[10px] text-primary font-medium mt-0.5 pointer-events-none">Invia messaggi</p>
                     </CardContent>
                   </Card>
                 </Link>
                 
-                <Link to="/social" className="group">
-                  <Card className="bg-card/70 backdrop-blur-sm border-accent/40 hover:border-accent hover:scale-105 transition-all duration-300 overflow-hidden">
+                <Link to="/social" className="group block touch-manipulation">
+                  <Card className="bg-card/70 backdrop-blur-sm border-accent/40 hover:border-accent hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer">
                     <CardContent className="p-4 text-center relative">
-                      <div className="absolute inset-0 bg-gradient-to-t from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-accent/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-accent/30 transition-all">
-                        <Users className="w-6 h-6 text-accent" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                      <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-accent/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-accent/30 transition-all pointer-events-none">
+                        <Users className="w-6 h-6 text-accent pointer-events-none" />
                       </div>
-                      <span className="text-sm font-bold text-foreground block">Community</span>
-                      <p className="text-[10px] text-accent font-medium mt-0.5">Entra nel club</p>
+                      <span className="text-sm font-bold text-foreground block pointer-events-none">Community</span>
+                      <p className="text-[10px] text-accent font-medium mt-0.5 pointer-events-none">Entra nel club</p>
                     </CardContent>
                   </Card>
                 </Link>
