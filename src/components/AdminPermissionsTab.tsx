@@ -150,6 +150,7 @@ export const AdminPermissionsTab: React.FC = () => {
   const [profiles, setProfiles] = useState<ProfileData[]>([]);
   const [userPermissions, setUserPermissions] = useState<UserPermissionOverride[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'users' | 'roles'>('users');
   const [selectedRole, setSelectedRole] = useState<AppRole | null>(null);
   const [permSearch, setPermSearch] = useState('');
   const [showRoleChangeDialog, setShowRoleChangeDialog] = useState(false);
@@ -593,7 +594,7 @@ export const AdminPermissionsTab: React.FC = () => {
         </Button>
       </div>
 
-      <Tabs defaultValue="users" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'users' | 'roles')} className="space-y-4">
         <TabsList className="bg-muted/50 p-1 rounded-full w-full md:w-auto">
           <TabsTrigger value="users" className="rounded-full gap-2 flex-1 md:flex-none">
             <User className="w-4 h-4" />
