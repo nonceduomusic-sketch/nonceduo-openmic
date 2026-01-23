@@ -628,8 +628,44 @@ export const AdminDashboard: React.FC = () => {
                 </DropdownMenu>
               </div>
 
-              {/* Desktop actions - logout button */}
+              {/* Desktop actions - reset dropdown + logout */}
               <div className="hidden md:flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-xl text-muted-foreground hover:text-foreground"
+                    >
+                      <RotateCcw className="w-4 h-4 mr-1.5" />
+                      Reset
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                    <DropdownMenuItem
+                      onClick={() => { setResetOption('openmic'); setShowResetDialog(true); }}
+                      className="rounded-lg"
+                    >
+                      <Music className="w-4 h-4 mr-2" />
+                      Reset Open Mic
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => { setResetOption('messages'); setShowResetDialog(true); }}
+                      className="rounded-lg"
+                    >
+                      <MessageSquare className="w-4 h-4 mr-2" />
+                      Reset Dediche
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => { setResetOption('all'); setShowResetDialog(true); }}
+                      className="text-destructive focus:text-destructive rounded-lg"
+                    >
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                      Reset Totale
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
                 <Button
                   variant="ghost"
                   size="sm"
