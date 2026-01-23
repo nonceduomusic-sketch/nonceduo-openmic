@@ -48,6 +48,7 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get('authorization');
     if (!authHeader) {
+      console.log('[admin-credentials-update] No auth header provided');
       return new Response(
         JSON.stringify({ error: 'Non autorizzato' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -58,22 +59,30 @@ serve(async (req) => {
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    // Verify the caller is an owner
+    // Use supabase client with the user's token to verify identity
     const token = authHeader.replace('Bearer ', '');
     const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: { Authorization: `Bearer ${token}` }
+      },
       auth: { persistSession: false },
     });
     
-    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    // Get the authenticated user
+    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
     
-    if (claimsError || !claimsData?.claims) {
+    if (userError || !user) {
+      console.log('[admin-credentials-update] Invalid user token:', userError?.message);
       return new Response(
         JSON.stringify({ error: 'Token non valido' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const userId = claimsData.claims.sub;
+    const userId = user.id;
+    console.log('[admin-credentials-update] Authenticated user:', userId);
+    
+    // Use service role for admin operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Check if caller is owner
@@ -84,13 +93,20 @@ serve(async (req) => {
       .eq('role', 'owner')
       .maybeSingle();
 
-    if (roleError || !roleData) {
+    if (roleError) {
+      console.log('[admin-credentials-update] Role check error:', roleError.message);
+    }
+    
+    if (!roleData) {
+      console.log('[admin-credentials-update] User is not owner. User roles:', userId);
       return new Response(
-        JSON.stringify({ error: 'Solo il proprietario può modificare le credenziali' }),
+        JSON.stringify({ error: 'Solo il proprietario può gestire lo Staff' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    console.log('[admin-credentials-update] Owner verified, processing action');
+    
     const { action, username, password, newUsername, role } = await req.json();
 
     switch (action) {
@@ -113,7 +129,7 @@ serve(async (req) => {
             .eq('username', username);
 
           if (error) throw error;
-          console.log(`Updated password for admin: ${username}`);
+          console.log(`[admin-credentials-update] Updated password for admin: ${username}`);
         } else {
           // Create new
           const { error } = await supabase
@@ -121,7 +137,7 @@ serve(async (req) => {
             .insert({ username, password_hash: passwordHash });
 
           if (error) throw error;
-          console.log(`Created new admin: ${username}`);
+          console.log(`[admin-credentials-update] Created new admin: ${username}`);
         }
 
         // Update or create Supabase Auth user
@@ -131,6 +147,7 @@ serve(async (req) => {
 
         if (authUser) {
           await supabase.auth.admin.updateUserById(authUser.id, { password });
+          console.log(`[admin-credentials-update] Updated auth user: ${adminEmail}`);
         } else {
           const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
             email: adminEmail,
@@ -141,10 +158,13 @@ serve(async (req) => {
 
           if (!createError && newUser?.user) {
             // Assign role
-            const userRole = role || (username.toLowerCase() === 'iacopo' ? 'owner' : 'admin');
+            const userRole = role || (username.toLowerCase() === 'iacopo' ? 'owner' : 'moderator');
             await supabase
               .from('user_roles')
               .upsert({ user_id: newUser.user.id, role: userRole }, { onConflict: 'user_id,role' });
+            console.log(`[admin-credentials-update] Created auth user with role ${userRole}: ${adminEmail}`);
+          } else if (createError) {
+            console.error(`[admin-credentials-update] Error creating auth user:`, createError);
           }
         }
 
@@ -178,6 +198,7 @@ serve(async (req) => {
           await supabase.auth.admin.deleteUser(authUser.id);
         }
 
+        console.log(`[admin-credentials-update] Deleted admin: ${username}`);
         return new Response(
           JSON.stringify({ success: true }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -185,12 +206,19 @@ serve(async (req) => {
       }
 
       case 'listAdmins': {
+        console.log('[admin-credentials-update] Listing all admins...');
+        
         const { data: admins, error } = await supabase
           .from('admin_users')
           .select('username, created_at')
           .order('created_at');
 
-        if (error) throw error;
+        if (error) {
+          console.error('[admin-credentials-update] Error listing admins:', error);
+          throw error;
+        }
+
+        console.log(`[admin-credentials-update] Found ${admins?.length || 0} admins`);
 
         // Get roles for each admin
         const adminsWithRoles = await Promise.all(
@@ -199,7 +227,13 @@ serve(async (req) => {
             const { data: users } = await supabase.auth.admin.listUsers();
             const authUser = users?.users.find(u => u.email === adminEmail);
             
-            let role = 'admin';
+            let role = 'moderator'; // default
+            if (admin.username.toLowerCase() === 'iacopo') {
+              role = 'owner';
+            } else if (admin.username.toLowerCase() === 'gianluca') {
+              role = 'admin';
+            }
+            
             if (authUser) {
               const { data: roleData } = await supabase
                 .from('user_roles')
@@ -214,6 +248,7 @@ serve(async (req) => {
           })
         );
 
+        console.log(`[admin-credentials-update] Returning ${adminsWithRoles.length} admins with roles`);
         return new Response(
           JSON.stringify({ admins: adminsWithRoles }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -228,7 +263,7 @@ serve(async (req) => {
     }
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('[admin-credentials-update] Error:', error);
     return new Response(
       JSON.stringify({ error: 'Errore interno del server' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -267,12 +267,55 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
     }
   };
 
+  // Mark all conversations as read for a specific section
+  const markSectionAsRead = async (section: 'dediche' | 'community'): Promise<boolean> => {
+    try {
+      const { error } = await supabase
+        .from('conversations')
+        .update({ is_read: true })
+        .eq('section', section);
+
+      if (error) throw error;
+      
+      await fetchCounts();
+      toast.success(`Tutti i messaggi ${section === 'dediche' ? 'Dediche' : 'Community'} segnati come letti`);
+      return true;
+    } catch (error) {
+      console.error('Error marking section as read:', error);
+      toast.error('Errore nel segna come letto');
+      return false;
+    }
+  };
+
+  // Mark all notifications as read
+  const markAllAsRead = async (): Promise<boolean> => {
+    try {
+      // Mark all conversations as read
+      const { error: convError } = await supabase
+        .from('conversations')
+        .update({ is_read: true })
+        .or('is_read.is.null,is_read.eq.false');
+
+      if (convError) throw convError;
+
+      await fetchCounts();
+      toast.success('Tutte le notifiche segnate come lette');
+      return true;
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+      toast.error('Errore nel segna tutto come letto');
+      return false;
+    }
+  };
+
   return {
     joinRequests,
     counts,
     loading,
     approveJoinRequest,
     rejectJoinRequest,
+    markSectionAsRead,
+    markAllAsRead,
     refetch: async () => {
       await Promise.all([fetchJoinRequests(), fetchCounts()]);
     },

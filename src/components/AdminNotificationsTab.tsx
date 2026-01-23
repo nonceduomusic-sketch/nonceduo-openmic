@@ -137,6 +137,8 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
     loading,
     approveJoinRequest,
     rejectJoinRequest,
+    markSectionAsRead,
+    markAllAsRead,
   } = useAdminNotifications({ formatPreferences: preferences });
 
   // UI State
@@ -170,12 +172,12 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
            counts.newReservations;
   }, [counts]);
 
-  // Build unified notification list
+  // Build unified notification list - ONLY for visible categories
   const notifications = useMemo<NotificationItem[]>(() => {
     const items: NotificationItem[] = [];
 
-    // Add join requests
-    if (preferences.community && access.community) {
+    // Add join requests - only if community is VISIBLE in centro
+    if (preferences.community && access.community && categoryVisibility.community) {
       joinRequests.forEach(req => {
         items.push({
           id: `join-${req.id}`,
@@ -190,8 +192,8 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
       });
     }
 
-    // Add placeholder items for counts (summaries)
-    if (preferences.openmic && access.openmic && counts.newReservations > 0) {
+    // Add placeholder items for counts (summaries) - only for VISIBLE categories
+    if (preferences.openmic && access.openmic && categoryVisibility.openmic && counts.newReservations > 0) {
       items.push({
         id: 'reservations-summary',
         type: 'reservation',
@@ -204,7 +206,7 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
       });
     }
 
-    if (preferences.dediche && access.dediche && counts.unreadDedicheMessages > 0) {
+    if (preferences.dediche && access.dediche && categoryVisibility.dediche && counts.unreadDedicheMessages > 0) {
       items.push({
         id: 'dediche-summary',
         type: 'message_dediche',
@@ -217,7 +219,7 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
       });
     }
 
-    if (preferences.community && access.community && counts.unreadCommunityMessages > 0) {
+    if (preferences.community && access.community && categoryVisibility.community && counts.unreadCommunityMessages > 0) {
       items.push({
         id: 'community-summary',
         type: 'message_community',
@@ -235,7 +237,7 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
       if (a.isUnread !== b.isUnread) return a.isUnread ? -1 : 1;
       return b.timestamp.getTime() - a.timestamp.getTime();
     });
-  }, [joinRequests, counts, preferences, access, onNavigate]);
+  }, [joinRequests, counts, preferences, access, categoryVisibility, onNavigate]);
 
   // Filter notifications
   const filteredNotifications = useMemo(() => {
@@ -257,18 +259,24 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
   const canManageActive = isOwner || centroPerms.activeFormats;
   const canManageSerata = isOwner || centroPerms.serataLive;
 
-  // Get visible category cards
+  // Get visible category cards - COMPLETELY HIDDEN when visibility is off
   const visibleCards = useMemo(() => {
     return CATEGORY_CARDS.filter(card => {
       // Check access permission
       if (card.gatedBy && !access[card.gatedBy]) return false;
-      // Check preferences (monitoring)
+      // Check preferences (monitoring enabled)
       if (card.gatedBy && !preferences[card.gatedBy]) return false;
-      // Check visibility toggle
+      // Check visibility toggle - when OFF, category is completely hidden from Centro
       if (!categoryVisibility[card.key]) return false;
       return true;
     });
   }, [access, preferences, categoryVisibility]);
+
+  // Filter notifications based on visible categories (hidden categories = no notifications shown)
+  const visibleCategoryKeys = useMemo(() => 
+    new Set(visibleCards.map(c => c.key)), 
+    [visibleCards]
+  );
 
   const getNotificationIcon = (type: NotificationItem['type']) => {
     switch (type) {
@@ -349,8 +357,8 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
           </div>
         </div>
 
-        {/* Quick filter toggle - more compact */}
-        <div className="flex items-center gap-2">
+        {/* Quick actions bar */}
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant={showOnlyUnread ? "default" : "outline"}
             size="sm"
@@ -360,6 +368,20 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
             {showOnlyUnread ? <Bell className="w-4 h-4 mr-2" /> : <CheckCheck className="w-4 h-4 mr-2" />}
             {showOnlyUnread ? 'Solo nuove' : 'Mostra tutte'}
           </Button>
+
+          {/* Mark all as read button - only show when there are unread items */}
+          {totalUnread > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-10 px-3 text-sm rounded-xl text-secondary border-secondary/50 hover:bg-secondary/10"
+              onClick={() => markAllAsRead()}
+            >
+              <CheckCheck className="w-4 h-4 mr-1.5" />
+              <span className="hidden sm:inline">Segna tutto letto</span>
+              <span className="sm:hidden">Letto</span>
+            </Button>
+          )}
 
           <div className="flex-1" />
           
@@ -443,19 +465,33 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
       <div className="flex-1 overflow-y-auto px-4 py-3">
         {/* Active filter indicator */}
         {filterType !== 'all' && (
-          <div className="flex items-center justify-between mb-3 p-2 rounded-xl bg-muted/50">
+          <div className="flex items-center justify-between mb-3 p-3 rounded-xl bg-muted/50">
             <span className="text-sm text-muted-foreground">
               Filtro: <strong className="text-foreground">{CATEGORY_CARDS.find(c => c.key === filterType)?.label}</strong>
             </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs"
-              onClick={() => setFilterType('all')}
-            >
-              <X className="w-3 h-3 mr-1" />
-              Rimuovi
-            </Button>
+            <div className="flex items-center gap-2">
+              {/* Mark section as read - only for dediche and community */}
+              {(filterType === 'dediche' || filterType === 'community') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2 text-xs border-secondary/50 text-secondary hover:bg-secondary/10"
+                  onClick={() => markSectionAsRead(filterType as 'dediche' | 'community')}
+                >
+                  <CheckCheck className="w-3 h-3 mr-1" />
+                  Segna letti
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs"
+                onClick={() => setFilterType('all')}
+              >
+                <X className="w-3 h-3 mr-1" />
+                Rimuovi
+              </Button>
+            </div>
           </div>
         )}
 
