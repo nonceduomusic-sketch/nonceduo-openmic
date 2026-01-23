@@ -1,5 +1,5 @@
 import React from "react";
-import { Bell, Database, ListMusic, MessageSquare, Music, Newspaper, Settings, Shield } from "lucide-react";
+import { Bell, ListMusic, MessageSquare, Music, Newspaper } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AdminMainTab } from "@/components/admin/AdminSidebar";
 
@@ -28,11 +28,9 @@ type Item = {
   gatedBy?: "openmic" | "dediche" | "community";
 };
 
-// Keep this minimal: the “Gestione” tabs stay reachable from the header menu.
 const ITEMS: Item[] = [
   { key: "notifications", label: "Centro", icon: Bell, badge: (b) => b.totalNotifications },
   { key: "openmic", label: "Open Mic", icon: Music, badge: (b) => b.openmicActiveCount, gatedBy: "openmic" },
-  // Keep Open Mic + Canzoni adjacent (same format)
   { key: "songs", label: "Canzoni", icon: ListMusic, gatedBy: "openmic" },
   { key: "dediche", label: "Dediche", icon: MessageSquare, badge: (b) => b.dedicheUnread, gatedBy: "dediche" },
   { key: "community", label: "Community", icon: Newspaper, badge: (b) => b.communityUnread, gatedBy: "community" },
@@ -45,8 +43,16 @@ export function AdminMobileTabBar({ value, onChange, onBlockedChange, badges, ac
   };
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-card/98 backdrop-blur-xl border-t border-border/80 safe-area-bottom">
-      <div className="flex items-center justify-around h-16 px-1 max-w-md mx-auto">
+    <nav 
+      className="fixed bottom-0 left-0 right-0 z-50 md:hidden"
+      style={{ 
+        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+      }}
+    >
+      {/* iOS-style blur backdrop */}
+      <div className="absolute inset-0 bg-background/80 backdrop-blur-2xl border-t border-border/50" />
+      
+      <div className="relative flex items-stretch h-[52px]">
         {ITEMS.map((item) => {
           const Icon = item.icon;
           const active = value === item.key;
@@ -65,39 +71,63 @@ export function AdminMobileTabBar({ value, onChange, onBlockedChange, badges, ac
                 onChange(item.key);
               }}
               className={cn(
-                "flex flex-col items-center justify-center flex-1 h-full py-1.5 transition-all duration-200 relative",
-                disabled && "opacity-45 cursor-not-allowed",
-                active ? "text-foreground" : "text-muted-foreground",
+                "relative flex-1 flex flex-col items-center justify-center gap-0.5",
+                "transition-all duration-200 active:scale-95",
+                disabled && "opacity-40",
               )}
               aria-current={active ? "page" : undefined}
               aria-disabled={disabled}
             >
-              {active && <div className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-primary" />}
+              {/* Active indicator - iOS style pill */}
+              {active && (
+                <div className="absolute top-1 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-primary" />
+              )}
 
-              <div
+              {/* Icon container */}
+              <div className="relative">
+                <div
+                  className={cn(
+                    "p-1.5 rounded-xl transition-all duration-200",
+                    active && "bg-primary/10",
+                  )}
+                >
+                  <Icon 
+                    className={cn(
+                      "w-[22px] h-[22px] transition-colors",
+                      active ? "text-primary" : "text-muted-foreground"
+                    )} 
+                  />
+                </div>
+
+                {/* Badge */}
+                {count > 0 && (
+                  <span 
+                    className={cn(
+                      "absolute -top-0.5 -right-1 min-w-[16px] h-[16px] px-1",
+                      "flex items-center justify-center",
+                      "text-[10px] font-semibold leading-none",
+                      "rounded-full bg-destructive text-destructive-foreground",
+                      "shadow-sm"
+                    )}
+                  >
+                    {count > 99 ? "99+" : count}
+                  </span>
+                )}
+              </div>
+
+              {/* Label */}
+              <span 
                 className={cn(
-                  "p-2 rounded-xl transition-all duration-200",
-                  active ? "bg-primary/12 scale-110" : "hover:bg-muted/50",
+                  "text-[10px] font-medium leading-tight",
+                  active ? "text-primary" : "text-muted-foreground"
                 )}
               >
-                <Icon className="w-5 h-5" />
-              </div>
-
-              <div className="flex items-center gap-1">
-                <span className={cn("text-[10px] font-medium mt-0.5", active && "font-semibold")}>{item.label}</span>
-                {count > 0 ? (
-                  <span className="text-[10px] leading-none px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground">
-                    {count}
-                  </span>
-                ) : null}
-              </div>
+                {item.label}
+              </span>
             </button>
           );
         })}
       </div>
-
-      {/* Spacer so iOS home-indicator doesn't cover content */}
-      <div className="h-[env(safe-area-inset-bottom)]" />
     </nav>
   );
 }
