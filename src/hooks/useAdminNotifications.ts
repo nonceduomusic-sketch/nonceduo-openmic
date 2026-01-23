@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { FormatPreferences } from './useFormatPreferences';
 
 export interface GroupJoinRequest {
   id: string;
@@ -25,7 +26,13 @@ export interface AdminNotificationCounts {
   newReservations: number;
 }
 
-export const useAdminNotifications = () => {
+interface UseAdminNotificationsOptions {
+  formatPreferences?: FormatPreferences;
+}
+
+export const useAdminNotifications = (options?: UseAdminNotificationsOptions) => {
+  const { formatPreferences } = options || {};
+  
   const [joinRequests, setJoinRequests] = useState<GroupJoinRequest[]>([]);
   const [counts, setCounts] = useState<AdminNotificationCounts>({
     pendingJoinRequests: 0,
@@ -34,8 +41,18 @@ export const useAdminNotifications = () => {
     newReservations: 0,
   });
   const [loading, setLoading] = useState(true);
+  
+  // Track current channel for cleanup
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const fetchJoinRequests = useCallback(async () => {
+    // Only fetch if community is enabled
+    if (formatPreferences && !formatPreferences.community) {
+      setCounts(prev => ({ ...prev, pendingJoinRequests: 0 }));
+      setJoinRequests([]);
+      return;
+    }
+    
     try {
       const { data, error } = await supabase
         .from('group_join_requests')
@@ -52,47 +69,58 @@ export const useAdminNotifications = () => {
     } catch (error) {
       console.error('Error fetching join requests:', error);
     }
-  }, []);
+  }, [formatPreferences]);
 
   const fetchCounts = useCallback(async () => {
     try {
-      // Get unread dediche messages count
-      // NOTE: `conversations.is_read` is nullable in the schema.
-      // Older rows (or some creation paths) may leave it NULL. Treat NULL as "unread".
-      const { data: dedicheConvs } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('section', 'dediche')
-        .or('is_read.is.null,is_read.eq.false');
+      // Dediche count - only if enabled
+      let dedicheCount = 0;
+      if (!formatPreferences || formatPreferences.dediche) {
+        const { data: dedicheConvs } = await supabase
+          .from('conversations')
+          .select('id')
+          .eq('section', 'dediche')
+          .or('is_read.is.null,is_read.eq.false');
+        dedicheCount = (dedicheConvs || []).length;
+      }
       
-      // Get unread community messages count  
-      const { data: communityConvs } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('section', 'community')
-        .or('is_read.is.null,is_read.eq.false');
+      // Community count - only if enabled
+      let communityCount = 0;
+      if (!formatPreferences || formatPreferences.community) {
+        const { data: communityConvs } = await supabase
+          .from('conversations')
+          .select('id')
+          .eq('section', 'community')
+          .or('is_read.is.null,is_read.eq.false');
+        communityCount = (communityConvs || []).length;
+      }
 
-      // Get today's ACTIVE reservations count (only in_progress, not completed)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      const { count: reservationsCount } = await supabase
-        .from('reservations')
-        .select('*', { count: 'exact', head: true })
-        .eq('status', 'in_progress')
-        .gte('created_at', today.toISOString());
+      // Open Mic reservations - only if enabled
+      let reservationsCount = 0;
+      if (!formatPreferences || formatPreferences.openmic) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const { count } = await supabase
+          .from('reservations')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'in_progress')
+          .gte('created_at', today.toISOString());
+        reservationsCount = count || 0;
+      }
 
       setCounts(prev => ({
         ...prev,
-        unreadDedicheMessages: (dedicheConvs || []).length,
-        unreadCommunityMessages: (communityConvs || []).length,
-        newReservations: reservationsCount || 0,
+        unreadDedicheMessages: dedicheCount,
+        unreadCommunityMessages: communityCount,
+        newReservations: reservationsCount,
       }));
     } catch (error) {
       console.error('Error fetching counts:', error);
     }
-  }, []);
+  }, [formatPreferences]);
 
+  // Setup realtime subscriptions based on active formats
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
@@ -102,51 +130,78 @@ export const useAdminNotifications = () => {
 
     loadAll();
 
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel('admin-notifications')
-      .on(
+    // Clean up previous channel if exists
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    // Build channel with only active format subscriptions
+    const channel = supabase.channel('admin-notifications-dynamic');
+    let hasSubscriptions = false;
+
+    // Community subscriptions
+    if (!formatPreferences || formatPreferences.community) {
+      channel.on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'group_join_requests' },
         () => {
           console.log('[AdminNotifications] group_join_requests changed');
           fetchJoinRequests();
         }
-      )
-      .on(
+      );
+      hasSubscriptions = true;
+    }
+
+    // Conversations (dediche + community) - subscribe if either is active
+    if (!formatPreferences || formatPreferences.dediche || formatPreferences.community) {
+      channel.on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'conversations' },
         () => {
-          console.log('[AdminNotifications] conversations changed - refetching counts');
+          console.log('[AdminNotifications] conversations changed');
           fetchCounts();
         }
-      )
-      // Listen to message inserts/updates for immediate badge updates
-      .on(
+      );
+      channel.on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'chat_messages' },
         () => {
-          console.log('[AdminNotifications] chat_messages changed - refetching counts');
+          console.log('[AdminNotifications] chat_messages changed');
           fetchCounts();
         }
-      )
-      // Reservations: INSERT, UPDATE (for status changes), and DELETE
-      .on(
+      );
+      hasSubscriptions = true;
+    }
+
+    // Reservations (openmic)
+    if (!formatPreferences || formatPreferences.openmic) {
+      channel.on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'reservations' },
         () => {
-          console.log('[AdminNotifications] reservations changed - refetching counts');
+          console.log('[AdminNotifications] reservations changed');
           fetchCounts();
         }
-      )
-      .subscribe((status) => {
+      );
+      hasSubscriptions = true;
+    }
+
+    // Only subscribe if we have at least one active subscription
+    if (hasSubscriptions) {
+      channel.subscribe((status) => {
         console.log('[AdminNotifications] Realtime subscription status:', status);
       });
+      channelRef.current = channel;
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
     };
-  }, [fetchJoinRequests, fetchCounts]);
+  }, [fetchJoinRequests, fetchCounts, formatPreferences]);
 
   // Approve join request
   const approveJoinRequest = async (requestId: string): Promise<boolean> => {
@@ -156,7 +211,6 @@ export const useAdminNotifications = () => {
 
       const { data: { user } } = await supabase.auth.getUser();
 
-      // Update request status
       const { error: updateError } = await supabase
         .from('group_join_requests')
         .update({
@@ -168,7 +222,6 @@ export const useAdminNotifications = () => {
 
       if (updateError) throw updateError;
 
-      // Add user as participant
       const { error: participantError } = await supabase
         .from('conversation_participants')
         .insert([{
