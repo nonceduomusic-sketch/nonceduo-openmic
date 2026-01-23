@@ -271,13 +271,13 @@ export const UnifiedLiveSessionCard: React.FC<UnifiedLiveSessionCardProps> = ({
         isActive ? "border-primary/50 bg-primary/5" : "border-border/50"
       )}>
         <CardHeader className="pb-2 pt-4 px-4">
-          <CardTitle className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2">
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2 md:gap-2">
               <Radio className={cn(
-                "w-4 h-4 transition-colors",
+                "w-5 h-5 md:w-4 md:h-4 transition-colors",
                 isActive ? "text-primary animate-pulse" : "text-muted-foreground"
               )} />
-              <span className="font-medium">
+              <span className="font-semibold text-base md:text-sm">
                 {title || 'Serata Live'}
               </span>
               {isActive && (
@@ -296,11 +296,14 @@ export const UnifiedLiveSessionCard: React.FC<UnifiedLiveSessionCardProps> = ({
                         checked={isActive}
                         onCheckedChange={handleToggle}
                         disabled={isToggling}
-                        className="data-[state=checked]:bg-primary"
+                        className={cn(
+                          "scale-125 md:scale-100",
+                          "data-[state=checked]:bg-primary"
+                        )}
                       />
                     </div>
                   </TooltipTrigger>
-                  <TooltipContent>
+                  <TooltipContent className="hidden md:block">
                     <p>{isActive ? 'Disattiva Serata Live' : 'Attiva Serata Live'}</p>
                   </TooltipContent>
                 </Tooltip>
@@ -311,196 +314,202 @@ export const UnifiedLiveSessionCard: React.FC<UnifiedLiveSessionCardProps> = ({
         
         <CardContent className="px-4 pb-4 pt-2">
           {!isOwner && !isActive && (
-            <p className="text-sm text-muted-foreground">
+            <p className="text-base md:text-sm text-muted-foreground">
               Solo l'owner può attivare la modalità Serata Live
             </p>
           )}
 
           {/* Format Selection (always visible when owner) */}
           {isOwner && (
-            <div className="space-y-3 mb-4">
-              <Label className="text-xs text-muted-foreground">
+            <div className="space-y-4 mb-4 md:space-y-3">
+              <Label className="text-sm md:text-xs text-muted-foreground">
                 Format protetti da PIN:
               </Label>
-              <div className="flex flex-wrap gap-4">
-                <label className="flex items-center gap-2 cursor-pointer">
+              {/* Mobile: vertical stack, Desktop: horizontal */}
+              <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:gap-4">
+                <label className={cn(
+                  "flex items-center gap-3 cursor-pointer p-3 rounded-xl transition-all",
+                  "min-h-[52px] touch-target",
+                  "md:p-2 md:min-h-0",
+                  "bg-muted/30 hover:bg-muted/50 active:scale-[0.98]",
+                  currentFormats.includes('openmic') && "bg-primary/10 border border-primary/30"
+                )}>
                   <Checkbox
                     checked={currentFormats.includes('openmic')}
                     onCheckedChange={(checked) => handleFormatToggle('openmic', !!checked)}
                     disabled={isToggling}
+                    className="w-6 h-6 md:w-4 md:h-4"
                   />
-                  <Mic2 className="w-4 h-4 text-primary" />
-                  <span className="text-sm">Open Mic</span>
+                  <Mic2 className="w-5 h-5 md:w-4 md:h-4 text-primary" />
+                  <span className="text-base md:text-sm font-medium">Open Mic</span>
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer">
+                <label className={cn(
+                  "flex items-center gap-3 cursor-pointer p-3 rounded-xl transition-all",
+                  "min-h-[52px] touch-target",
+                  "md:p-2 md:min-h-0",
+                  "bg-muted/30 hover:bg-muted/50 active:scale-[0.98]",
+                  currentFormats.includes('dediche') && "bg-secondary/10 border border-secondary/30"
+                )}>
                   <Checkbox
                     checked={currentFormats.includes('dediche')}
                     onCheckedChange={(checked) => handleFormatToggle('dediche', !!checked)}
                     disabled={isToggling}
+                    className="w-6 h-6 md:w-4 md:h-4"
                   />
-                  <MessageSquare className="w-4 h-4 text-secondary" />
-                  <span className="text-sm">Dediche</span>
+                  <MessageSquare className="w-5 h-5 md:w-4 md:h-4 text-secondary" />
+                  <span className="text-base md:text-sm font-medium">Dediche</span>
                 </label>
               </div>
-              <p className="text-xs text-muted-foreground italic">
+              <p className="text-sm md:text-xs text-muted-foreground italic">
                 Community resta sempre accessibile senza PIN
               </p>
             </div>
           )}
 
           {!isActive && isOwner && (
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
+            <div className="space-y-4 md:space-y-3">
+              <p className="text-base md:text-sm text-muted-foreground">
                 Attiva per richiedere un PIN per le prenotazioni durante la serata.
               </p>
-              <div className="flex items-center gap-2">
-                <Label htmlFor="expires" className="text-xs text-muted-foreground whitespace-nowrap">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                <Label htmlFor="expires" className="text-sm md:text-xs text-muted-foreground whitespace-nowrap">
                   Scadenza (ore):
                 </Label>
-                <Input
-                  id="expires"
-                  type="number"
-                  min={0}
-                  max={12}
-                  value={expiresInHours}
-                  onChange={(e) => setExpiresInHours(parseInt(e.target.value) || 0)}
-                  className="w-20 h-8 text-sm"
-                  placeholder="0 = mai"
-                />
-                <span className="text-xs text-muted-foreground">
-                  (0 = nessuna scadenza)
-                </span>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="expires"
+                    type="number"
+                    min={0}
+                    max={12}
+                    value={expiresInHours}
+                    onChange={(e) => setExpiresInHours(parseInt(e.target.value) || 0)}
+                    className="w-24 h-12 md:w-20 md:h-8 text-lg md:text-sm text-center"
+                    placeholder="0 = mai"
+                  />
+                  <span className="text-sm md:text-xs text-muted-foreground">
+                    (0 = nessuna scadenza)
+                  </span>
+                </div>
               </div>
             </div>
           )}
 
           {isActive && session && (
             <div className="space-y-4 animate-in fade-in-0 slide-in-from-top-2 duration-300">
-              {/* PIN Display */}
-              <div className="flex items-center justify-between p-3 rounded-xl bg-primary/10 border border-primary/20">
-                <div className="flex items-center gap-3">
-                  <Shield className="w-5 h-5 text-primary" />
-                  <div>
-                    <p className="text-xs text-muted-foreground">PIN Serata</p>
-                    {isEditingPin ? (
-                      <div className="flex items-center gap-2">
-                        <Input
-                          value={editPinValue}
-                          onChange={(e) => setEditPinValue(e.target.value.toUpperCase())}
-                          className="w-32 h-8 text-lg font-mono font-bold tracking-wider"
-                          maxLength={8}
-                          autoFocus
-                        />
-                        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={handleSavePin}>
-                          <Save className="w-4 h-4 text-green-500" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <p className="text-2xl font-mono font-bold tracking-wider text-primary">
-                        {session.pin_code}
-                      </p>
-                    )}
+              {/* PIN Display - Mobile optimized */}
+              <div className="flex flex-col gap-4 p-4 md:p-3 rounded-xl bg-primary/10 border border-primary/20">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Shield className="w-6 h-6 md:w-5 md:h-5 text-primary" />
+                    <div>
+                      <p className="text-sm md:text-xs text-muted-foreground">PIN Serata</p>
+                      {isEditingPin ? (
+                        <div className="flex items-center gap-2 mt-1">
+                          <Input
+                            value={editPinValue}
+                            onChange={(e) => setEditPinValue(e.target.value.toUpperCase())}
+                            className="w-36 h-12 md:w-32 md:h-8 text-xl md:text-lg font-mono font-bold tracking-wider"
+                            maxLength={8}
+                            autoFocus
+                          />
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-12 w-12 md:h-8 md:w-8 touch-target" 
+                            onClick={handleSavePin}
+                          >
+                            <Save className="w-5 h-5 md:w-4 md:h-4 text-secondary" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <p className="text-3xl md:text-2xl font-mono font-bold tracking-wider text-primary">
+                          {session.pin_code}
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
                 
-                <div className="flex gap-1">
+                {/* Action buttons - Mobile: full width row */}
+                <div className="flex gap-2 flex-wrap">
                   {isOwner && !isEditingPin && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button size="icon" variant="ghost" onClick={handleEditPin} className="h-8 w-8">
-                            <Edit2 className="w-4 h-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Modifica PIN</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={handleEditPin} 
+                      className="h-11 md:h-8 px-4 md:px-3 flex-1 md:flex-none gap-2"
+                    >
+                      <Edit2 className="w-4 h-4" />
+                      <span className="md:hidden">Modifica</span>
+                    </Button>
                   )}
                   
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          onClick={() => copyToClipboard(session.pin_code, 'pin')}
-                          className="h-8 w-8"
-                        >
-                          {copied === 'pin' ? (
-                            <CheckCircle2 className="w-4 h-4 text-secondary" />
-                          ) : (
-                            <Copy className="w-4 h-4" />
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{copied === 'pin' ? 'Copiato!' : 'Copia PIN'}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => copyToClipboard(session.pin_code, 'pin')}
+                    className="h-11 md:h-8 px-4 md:px-3 flex-1 md:flex-none gap-2"
+                  >
+                    {copied === 'pin' ? (
+                      <CheckCircle2 className="w-4 h-4 text-secondary" />
+                    ) : (
+                      <Copy className="w-4 h-4" />
+                    )}
+                    <span className="md:hidden">{copied === 'pin' ? 'Copiato!' : 'Copia'}</span>
+                  </Button>
 
                   {isOwner && (
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            onClick={handleRegeneratePin}
-                            className="h-8 w-8"
-                          >
-                            <RefreshCw className="w-4 h-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Genera nuovo PIN</p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleRegeneratePin}
+                      className="h-11 md:h-8 px-4 md:px-3 flex-1 md:flex-none gap-2"
+                    >
+                      <RefreshCw className="w-4 h-4" />
+                      <span className="md:hidden">Rigenera</span>
+                    </Button>
                   )}
                 </div>
               </div>
 
-              {/* Event Link */}
+              {/* Event Link - Mobile optimized */}
               {eventUrl && (
-                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                  <LinkIcon className="w-4 h-4 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground truncate flex-1">
+                <div className="flex items-center gap-2 p-3 md:p-2 rounded-lg bg-muted/30">
+                  <LinkIcon className="w-5 h-5 md:w-4 md:h-4 text-muted-foreground flex-shrink-0" />
+                  <span className="text-sm md:text-xs text-muted-foreground truncate flex-1">
                     {eventUrl}
                   </span>
                   <Button
                     size="icon"
                     variant="ghost"
                     onClick={() => copyToClipboard(eventUrl, 'link')}
-                    className="h-7 w-7"
+                    className="h-10 w-10 md:h-7 md:w-7 flex-shrink-0"
                   >
                     {copied === 'link' ? (
-                      <CheckCircle2 className="w-3 h-3 text-secondary" />
+                      <CheckCircle2 className="w-4 h-4 md:w-3 md:h-3 text-secondary" />
                     ) : (
-                      <Copy className="w-3 h-3" />
+                      <Copy className="w-4 h-4 md:w-3 md:h-3" />
                     )}
                   </Button>
                 </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="flex gap-2">
+              {/* Action Buttons - Mobile: stacked, Desktop: horizontal */}
+              <div className="grid grid-cols-2 gap-3 md:flex md:gap-2">
                 <Dialog open={showQR} onOpenChange={setShowQR}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="flex-1 gap-2">
-                      <QrCode className="w-4 h-4" />
+                    <Button variant="outline" className="h-12 md:h-9 md:flex-1 gap-2 text-base md:text-sm">
+                      <QrCode className="w-5 h-5 md:w-4 md:h-4" />
                       QR Code
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
+                  <DialogContent className="sm:max-w-md max-w-[95vw] mx-auto">
                     <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2">
+                      <DialogTitle className="flex items-center gap-2 text-lg md:text-base">
                         <QrCode className="w-5 h-5 text-primary" />
                         QR Code Serata Live
                       </DialogTitle>
-                      <DialogDescription>
+                      <DialogDescription className="text-base md:text-sm">
                         Mostra questo QR code ai partecipanti per accedere all'evento
                       </DialogDescription>
                     </DialogHeader>
@@ -510,25 +519,33 @@ export const UnifiedLiveSessionCard: React.FC<UnifiedLiveSessionCardProps> = ({
                           <img 
                             src={qrCodeUrl} 
                             alt="QR Code Evento"
-                            className="w-48 h-48"
+                            className="w-56 h-56 md:w-48 md:h-48"
                           />
                         </div>
                       )}
                       <div className="text-center">
-                        <p className="text-sm text-muted-foreground mb-1">
+                        <p className="text-base md:text-sm text-muted-foreground mb-1">
                           PIN da inserire:
                         </p>
-                        <p className="text-3xl font-mono font-bold tracking-wider text-primary">
+                        <p className="text-4xl md:text-3xl font-mono font-bold tracking-wider text-primary">
                           {session.pin_code}
                         </p>
                       </div>
-                      <div className="flex gap-2">
-                        <Button onClick={() => copyToClipboard(session.pin_code, 'pin')} variant="outline" className="gap-2">
+                      <div className="flex flex-col w-full gap-2 md:flex-row md:w-auto">
+                        <Button 
+                          onClick={() => copyToClipboard(session.pin_code, 'pin')} 
+                          variant="outline" 
+                          className="h-12 md:h-10 gap-2 text-base md:text-sm"
+                        >
                           <Copy className="w-4 h-4" />
                           Copia PIN
                         </Button>
                         {eventUrl && (
-                          <Button onClick={() => copyToClipboard(eventUrl, 'link')} variant="outline" className="gap-2">
+                          <Button 
+                            onClick={() => copyToClipboard(eventUrl, 'link')} 
+                            variant="outline" 
+                            className="h-12 md:h-10 gap-2 text-base md:text-sm"
+                          >
                             <LinkIcon className="w-4 h-4" />
                             Copia Link
                           </Button>
@@ -540,42 +557,45 @@ export const UnifiedLiveSessionCard: React.FC<UnifiedLiveSessionCardProps> = ({
 
                 <Dialog open={showStoryGenerator} onOpenChange={setShowStoryGenerator}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="flex-1 gap-2">
-                      <Image className="w-4 h-4" />
+                    <Button variant="outline" className="h-12 md:h-9 md:flex-1 gap-2 text-base md:text-sm">
+                      <Image className="w-5 h-5 md:w-4 md:h-4" />
                       Stories
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
+                  <DialogContent className="sm:max-w-md max-w-[95vw] mx-auto">
                     <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2">
+                      <DialogTitle className="flex items-center gap-2 text-lg md:text-base">
                         <Image className="w-5 h-5 text-primary" />
                         Genera Immagine Stories
                       </DialogTitle>
-                      <DialogDescription>
+                      <DialogDescription className="text-base md:text-sm">
                         Crea un'immagine verticale (1080×1920) ottimizzata per Instagram Stories
                       </DialogDescription>
                     </DialogHeader>
                     <div className="flex flex-col items-center gap-4 py-4">
-                      {/* Preview */}
-                      <div className="w-48 h-80 rounded-2xl bg-gradient-to-b from-[#0a0a1a] via-[#1a1a3a] to-[#0a0a1a] border border-primary/30 p-3 flex flex-col items-center justify-between text-white text-center overflow-hidden">
+                      {/* Preview - larger on mobile */}
+                      <div className="w-52 h-[340px] md:w-48 md:h-80 rounded-2xl bg-gradient-to-b from-[#0a0a1a] via-[#1a1a3a] to-[#0a0a1a] border border-primary/30 p-3 flex flex-col items-center justify-between text-white text-center overflow-hidden">
                         <div>
-                          <p className="text-[8px] opacity-80">Evento Live</p>
-                          <p className="text-[10px] font-bold text-pink-400">Non C'è Duo</p>
-                          <p className="text-[6px] opacity-60">🎤 In corso ora!</p>
+                          <p className="text-[9px] md:text-[8px] opacity-80">Evento Live</p>
+                          <p className="text-[11px] md:text-[10px] font-bold text-pink-400">Non C'è Duo</p>
+                          <p className="text-[7px] md:text-[6px] opacity-60">🎤 In corso ora!</p>
                         </div>
-                        <div className="w-16 h-16 bg-white rounded-lg flex items-center justify-center">
-                          <QrCode className="w-10 h-10 text-gray-800" />
+                        <div className="w-20 h-20 md:w-16 md:h-16 bg-white rounded-lg flex items-center justify-center">
+                          <QrCode className="w-12 h-12 md:w-10 md:h-10 text-gray-800" />
                         </div>
                         <div>
-                          <p className="text-[8px] font-bold tracking-wider text-primary">
+                          <p className="text-[9px] md:text-[8px] font-bold tracking-wider text-primary">
                             {session.pin_code}
                           </p>
-                          <p className="text-[6px] opacity-60 mt-1">nonceduo.com</p>
+                          <p className="text-[7px] md:text-[6px] opacity-60 mt-1">nonceduo.com</p>
                         </div>
                       </div>
 
-                      <Button onClick={generateStoryImage} className="gap-2 w-full">
-                        <Download className="w-4 h-4" />
+                      <Button 
+                        onClick={generateStoryImage} 
+                        className="gap-2 w-full h-12 md:h-10 text-base md:text-sm"
+                      >
+                        <Download className="w-5 h-5 md:w-4 md:h-4" />
                         Scarica Immagine PNG
                       </Button>
                     </div>
@@ -584,16 +604,16 @@ export const UnifiedLiveSessionCard: React.FC<UnifiedLiveSessionCardProps> = ({
               </div>
 
               {/* Session Info */}
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between text-sm md:text-xs text-muted-foreground">
                 <div className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
+                  <Clock className="w-4 h-4 md:w-3 md:h-3" />
                   <span>
                     Attiva da {formatDistanceToNow(new Date(session.created_at), { locale: it })}
                   </span>
                 </div>
                 {session.expires_at && (
                   <div className="flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
+                    <AlertCircle className="w-4 h-4 md:w-3 md:h-3" />
                     <span>
                       Scade {formatDistanceToNow(new Date(session.expires_at), { 
                         addSuffix: true, 
