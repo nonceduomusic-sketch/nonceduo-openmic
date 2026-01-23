@@ -44,34 +44,30 @@ export function useFormatGating(format: FormatKey): FormatGatingState & {
       const globalActive = globalSettings?.is_active ?? false;
       setIsGloballyActive(globalActive);
 
-      // 2. Check section_public_settings (is format live/enabled for tonight?)
-      const { data: sectionSettings } = await supabase
-        .from('section_public_settings')
-        .select('is_enabled')
-        .eq('section_key', format)
-        .maybeSingle();
-
-      const sectionEnabled = sectionSettings?.is_enabled ?? false;
-      setIsLiveSessionActive(sectionEnabled);
-
-      // 3. Check if there's an active live session protecting this format
+      // 2. Check live_sessions table - this is the source of truth for "Serata in corso"
+      // A format is "live" if there's an active live_session that includes it in protected_formats
       const { data: liveSession } = await supabase
         .from('live_sessions')
         .select('id, protected_formats, expires_at')
         .eq('is_active', true)
         .maybeSingle();
 
+      let sessionActive = false;
       let needsPin = false;
+
       if (liveSession) {
         // Check expiration
         const isExpired = liveSession.expires_at && new Date(liveSession.expires_at) < new Date();
         if (!isExpired) {
           const protectedFormats = (liveSession.protected_formats as string[]) || [];
-          // PIN required only if format is in the protected list
-          // Empty protected_formats = no PIN required (direct access)
-          needsPin = protectedFormats.length > 0 && protectedFormats.includes(format);
+          // Format is "live" if it's in the protected_formats array
+          sessionActive = protectedFormats.includes(format);
+          // PIN is required if the format is protected
+          needsPin = sessionActive;
         }
       }
+
+      setIsLiveSessionActive(sessionActive);
       setRequiresPin(needsPin);
 
     } catch (error) {
@@ -92,9 +88,6 @@ export function useFormatGating(format: FormatKey): FormatGatingState & {
     const channels = [
       supabase.channel(`gating-global-${format}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'global_format_settings' }, checkGating)
-        .subscribe(),
-      supabase.channel(`gating-section-${format}`)
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'section_public_settings' }, checkGating)
         .subscribe(),
       supabase.channel(`gating-live-${format}`)
         .on('postgres_changes', { event: '*', schema: 'public', table: 'live_sessions' }, checkGating)
