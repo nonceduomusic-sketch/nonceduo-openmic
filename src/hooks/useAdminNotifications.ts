@@ -73,27 +73,27 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
 
   const fetchCounts = useCallback(async () => {
     try {
-      // Dediche count - only if enabled
+      // Dediche count - count conversations with unread user messages (not admin messages)
+      // We count distinct conversations that have messages from users that are not read
       let dedicheCount = 0;
       if (!formatPreferences || formatPreferences.dediche) {
-        const { data: dedicheConvs } = await supabase
-          .from('conversations')
-          .select('id')
-          .eq('section', 'dediche')
-          .or('is_read.is.null,is_read.eq.false');
-        dedicheCount = (dedicheConvs || []).length;
+        // Get dediche conversations that have unread messages from users
+        const { data: unreadDediche } = await supabase
+          .from('chat_messages')
+          .select('conversation_id, conversations!inner(section)')
+          .eq('sender_type', 'user')
+          .is('read_at', null)
+          .eq('conversations.section', 'dediche');
+        
+        // Count unique conversations
+        const uniqueDedicheConvs = new Set((unreadDediche || []).map(m => m.conversation_id));
+        dedicheCount = uniqueDedicheConvs.size;
       }
       
-      // Community count - only if enabled
-      let communityCount = 0;
-      if (!formatPreferences || formatPreferences.community) {
-        const { data: communityConvs } = await supabase
-          .from('conversations')
-          .select('id')
-          .eq('section', 'community')
-          .or('is_read.is.null,is_read.eq.false');
-        communityCount = (communityConvs || []).length;
-      }
+      // Community count - for public groups, we don't track unread messages for admin
+      // since these are group chats, not admin-user conversations
+      // The admin only needs to know about join requests, which are counted separately
+      const communityCount = 0;
 
       // Open Mic reservations - only if enabled
       let reservationsCount = 0;
