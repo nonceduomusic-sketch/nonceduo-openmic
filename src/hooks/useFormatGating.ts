@@ -17,11 +17,16 @@ interface FormatGatingState {
 /**
  * Hook per determinare lo stato di gating di un format.
  * 
- * LOGICA FERREA:
- * 1. Se format NON ATTIVO (isGloballyActive=false o isLiveSessionActive=false) → mostra TEASER
- * 2. Se format ATTIVO:
- *    - Se NON ha PIN (requiresPin=false) → accesso diretto al LIVE
- *    - Se ha PIN (requiresPin=true) → mostra schermata PIN
+ * LOGICA CORRETTA:
+ * 1. Se format NON ATTIVO globalmente (isGloballyActive=false) → mostra TEASER
+ * 2. Se format ATTIVO globalmente:
+ *    - Se NON c'è sessione live attiva → accesso diretto al LIVE (format attivo = pubblico)
+ *    - Se c'è sessione live attiva:
+ *      - Se format NON è in protected_formats → accesso diretto al LIVE
+ *      - Se format È in protected_formats → mostra schermata PIN
+ * 
+ * In pratica: global_format_settings.is_active = true significa che il format è accessibile.
+ * La sessione live con PIN è un EXTRA di protezione, non un requisito.
  */
 export function useFormatGating(format: FormatKey): FormatGatingState & {
   getGatingDecision: () => 'teaser' | 'live' | 'pin-required';
@@ -44,8 +49,8 @@ export function useFormatGating(format: FormatKey): FormatGatingState & {
       const globalActive = globalSettings?.is_active ?? false;
       setIsGloballyActive(globalActive);
 
-      // 2. Check live_sessions table - this is the source of truth for "Serata in corso"
-      // A format is "live" if there's an active live_session that includes it in protected_formats
+      // 2. Check live_sessions table - this determines if PIN is required
+      // PIN is only required if there's an active session AND format is in protected_formats
       const { data: liveSession } = await supabase
         .from('live_sessions')
         .select('id, protected_formats, expires_at')
@@ -59,11 +64,10 @@ export function useFormatGating(format: FormatKey): FormatGatingState & {
         // Check expiration
         const isExpired = liveSession.expires_at && new Date(liveSession.expires_at) < new Date();
         if (!isExpired) {
+          sessionActive = true;
           const protectedFormats = (liveSession.protected_formats as string[]) || [];
-          // Format is "live" if it's in the protected_formats array
-          sessionActive = protectedFormats.includes(format);
-          // PIN is required if the format is protected
-          needsPin = sessionActive;
+          // PIN is required ONLY if the format is explicitly in the protected_formats array
+          needsPin = protectedFormats.includes(format);
         }
       }
 
@@ -72,7 +76,7 @@ export function useFormatGating(format: FormatKey): FormatGatingState & {
 
     } catch (error) {
       console.error('Error checking format gating:', error);
-      // Fail safe: show teaser on error
+      // Fail safe: show live if globally active (don't block users on error)
       setIsGloballyActive(true);
       setIsLiveSessionActive(false);
       setRequiresPin(false);
@@ -101,21 +105,19 @@ export function useFormatGating(format: FormatKey): FormatGatingState & {
 
   /**
    * Determina quale schermata mostrare:
-   * - 'teaser': pagina promozionale (format chiuso/non disponibile)
+   * - 'teaser': pagina promozionale (format disattivato globalmente)
    * - 'live': accesso diretto al contenuto live
-   * - 'pin-required': mostra form inserimento PIN
+   * - 'pin-required': mostra form inserimento PIN (solo se in protected_formats)
    */
   const getGatingDecision = useCallback((): 'teaser' | 'live' | 'pin-required' => {
     // Se format non globalmente attivo → teaser
     if (!isGloballyActive) return 'teaser';
     
-    // Se format non in sessione live → teaser
-    if (!isLiveSessionActive) return 'teaser';
+    // Format è globalmente attivo!
+    // Controlla se c'è una sessione live con PIN per questo format
+    if (isLiveSessionActive && requiresPin) return 'pin-required';
     
-    // Format è attivo! Ora controlla PIN
-    if (requiresPin) return 'pin-required';
-    
-    // Format attivo senza PIN → accesso diretto
+    // Format attivo (con o senza sessione live, senza PIN) → accesso diretto
     return 'live';
   }, [isGloballyActive, isLiveSessionActive, requiresPin]);
 
