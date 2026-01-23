@@ -386,34 +386,43 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          custom_pin: string | null
           deactivated_at: string | null
           deactivated_by: string | null
+          event_link_code: string | null
           expires_at: string | null
           id: string
           is_active: boolean
           pin_code: string
+          protected_formats: string[] | null
           section: string
         }
         Insert: {
           created_at?: string
           created_by?: string | null
+          custom_pin?: string | null
           deactivated_at?: string | null
           deactivated_by?: string | null
+          event_link_code?: string | null
           expires_at?: string | null
           id?: string
           is_active?: boolean
           pin_code: string
+          protected_formats?: string[] | null
           section: string
         }
         Update: {
           created_at?: string
           created_by?: string | null
+          custom_pin?: string | null
           deactivated_at?: string | null
           deactivated_by?: string | null
+          event_link_code?: string | null
           expires_at?: string | null
           id?: string
           is_active?: boolean
           pin_code?: string
+          protected_formats?: string[] | null
           section?: string
         }
         Relationships: []
@@ -946,6 +955,26 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_typing_indicators: { Args: never; Returns: undefined }
+      get_active_session_for_format: {
+        Args: { p_format: string }
+        Returns: {
+          event_link_code: string
+          expires_at: string
+          id: string
+          pin_code: string
+          protected_formats: string[]
+        }[]
+      }
+      get_session_by_link_code: {
+        Args: { p_link_code: string }
+        Returns: {
+          expires_at: string
+          id: string
+          is_active: boolean
+          pin_code: string
+          protected_formats: string[]
+        }[]
+      }
       has_permission: {
         Args: { _permission_name: string; _user_id: string }
         Returns: boolean
@@ -957,6 +986,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_format_protected: { Args: { p_format: string }; Returns: boolean }
       is_live_session_active: { Args: { p_section: string }; Returns: boolean }
       is_owner: { Args: { _user_id: string }; Returns: boolean }
       is_session_participant: {
@@ -964,6 +994,10 @@ export type Database = {
         Returns: boolean
       }
       normalize_song_text: { Args: { t: string }; Returns: string }
+      validate_format_pin: {
+        Args: { p_format: string; p_pin: string }
+        Returns: boolean
+      }
       validate_live_session_pin: {
         Args: { p_pin: string; p_section: string }
         Returns: boolean

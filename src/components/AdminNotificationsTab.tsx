@@ -22,7 +22,7 @@ import {
 import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 import { useFormatPreferences, FormatPreferences } from '@/hooks/useFormatPreferences';
 import { FormatToggleCard } from '@/components/admin/FormatToggleCard';
-import { LiveSessionCard } from '@/components/admin/LiveSessionCard';
+import { UnifiedLiveSessionCard } from '@/components/admin/UnifiedLiveSessionCard';
 import { formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -109,16 +109,9 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Live Session Cards - Only for owner, Open Mic and Dediche */}
-      {isOwner && (access.openmic || access.dediche) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {access.openmic && preferences.openmic && (
-            <LiveSessionCard section="openmic" title="Serata Live Open Mic" />
-          )}
-          {access.dediche && preferences.dediche && (
-            <LiveSessionCard section="dediche" title="Serata Live Dediche" />
-          )}
-        </div>
+      {/* Unified Live Session Card - Only for owner, when Open Mic or Dediche are enabled */}
+      {isOwner && (access.openmic || access.dediche) && (preferences.openmic || preferences.dediche) && (
+        <UnifiedLiveSessionCard title="Serata Live" />
       )}
 
       {/* No formats active message */}
