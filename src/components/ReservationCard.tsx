@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Check, RotateCcw, Music, Clock, MessageCircle, Trash2, FileText, AlertTriangle } from 'lucide-react';
+import { Check, RotateCcw, Music, Clock, Heart, Trash2, FileText, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Reservation } from '@/hooks/useReservations';
-import { formatWhatsAppMessage } from '@/lib/whatsapp';
 import { LyricsDialog } from './LyricsDialog';
+import { cn } from '@/lib/utils';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -54,13 +54,8 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
     });
   };
 
-  const message = formatWhatsAppMessage(
-    reservation.customer_name,
-    reservation.song_title,
-    reservation.song_artist
-  );
-
   const isCompleted = reservation.status === 'completed';
+  const hasDedication = reservation.dedication_message && reservation.dedication_message.trim().length > 0;
 
   return (
     <>
@@ -118,21 +113,35 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
           </div>
         </div>
 
-        {compact ? (
-          <details className="mt-2 rounded-lg bg-muted/30 border border-border px-3 py-2">
-            <summary className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer select-none">
-              <MessageCircle className="w-3 h-3" />
-              Messaggio WhatsApp
-            </summary>
-            <p className="text-xs text-foreground italic mt-2">"{message}"</p>
-          </details>
-        ) : (
-          <div className="mt-3 p-2 rounded-lg bg-muted/30 border border-border">
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-              <MessageCircle className="w-3 h-3" />
-              Messaggio:
+        {/* Dedication section - Instagram style */}
+        {hasDedication && (
+          <div className={cn(
+            "mt-3 relative overflow-hidden",
+            "rounded-xl",
+            "bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10",
+            "border border-primary/20"
+          )}>
+            {/* Header con icona cuore */}
+            <div className="flex items-center gap-2 px-3 pt-3 pb-2">
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                <Heart className="w-3 h-3 text-primary-foreground fill-current" />
+              </div>
+              <span className="text-xs font-semibold text-primary">Dedica speciale</span>
             </div>
-            <p className="text-xs text-foreground italic">"{message}"</p>
+            
+            {/* Messaggio della dedica */}
+            <div className="px-3 pb-3">
+              <p className={cn(
+                "text-sm text-foreground leading-relaxed",
+                "italic",
+                compact ? "line-clamp-3" : ""
+              )}>
+                "{reservation.dedication_message}"
+              </p>
+            </div>
+            
+            {/* Decorazione sfumata in basso */}
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary/50 via-secondary/50 to-primary/50" />
           </div>
         )}
 

@@ -10,6 +10,7 @@ export interface Reservation {
   status: 'in_progress' | 'completed';
   completed_at: string | null;
   created_at: string;
+  dedication_message: string | null;
 }
 
 // Helper to call admin-reservations edge function
