@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { Check, CheckCheck } from 'lucide-react';
 
 interface MessageStatusIndicatorProps {
@@ -12,35 +12,42 @@ interface MessageStatusIndicatorProps {
  * - delivered: double gray checks
  * - read: double blue checks
  */
-export const MessageStatusIndicator: React.FC<MessageStatusIndicatorProps> = ({ 
-  status, 
-  className = '' 
-}) => {
-  if (status === 'sent') {
+export const MessageStatusIndicator = forwardRef<HTMLSpanElement, MessageStatusIndicatorProps>(
+  ({ status, className = '' }, ref) => {
+    if (status === 'sent') {
+      return (
+        <span ref={ref} className="inline-flex">
+          <Check 
+            className={`w-3.5 h-3.5 text-muted-foreground/60 ${className}`} 
+            strokeWidth={2.5}
+          />
+        </span>
+      );
+    }
+
+    if (status === 'delivered') {
+      return (
+        <span ref={ref} className="inline-flex">
+          <CheckCheck 
+            className={`w-3.5 h-3.5 text-muted-foreground/60 ${className}`} 
+            strokeWidth={2.5}
+          />
+        </span>
+      );
+    }
+
+    // read status
     return (
-      <Check 
-        className={`w-3.5 h-3.5 text-muted-foreground/60 ${className}`} 
-        strokeWidth={2.5}
-      />
+      <span ref={ref} className="inline-flex">
+        <CheckCheck 
+          className={`w-3.5 h-3.5 text-blue-500 ${className}`} 
+          strokeWidth={2.5}
+        />
+      </span>
     );
   }
+);
 
-  if (status === 'delivered') {
-    return (
-      <CheckCheck 
-        className={`w-3.5 h-3.5 text-muted-foreground/60 ${className}`} 
-        strokeWidth={2.5}
-      />
-    );
-  }
-
-  // read status
-  return (
-    <CheckCheck 
-      className={`w-3.5 h-3.5 text-blue-500 ${className}`} 
-      strokeWidth={2.5}
-    />
-  );
-};
+MessageStatusIndicator.displayName = 'MessageStatusIndicator';
 
 export default MessageStatusIndicator;

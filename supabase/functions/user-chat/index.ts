@@ -108,6 +108,7 @@ serve(async (req: Request): Promise<Response> => {
       const senderName = asTrimmedString(body.sender_name);
       const messageText = asTrimmedString(body.message_text);
       const sessionId = asTrimmedString(body.session_id);
+      const section = asTrimmedString(body.section) || "dediche"; // Default to dediche
 
       if (!senderName) return json(400, { error: "Inserisci il tuo nome" });
       if (!messageText) return json(400, { error: "Inserisci un messaggio" });
@@ -119,7 +120,7 @@ serve(async (req: Request): Promise<Response> => {
 
       const { data: convData, error: convError } = await supabase
         .from("conversations")
-        .insert([{ is_group: false, is_public: false, is_read: false }])
+        .insert([{ is_group: false, is_public: false, is_read: false, section }])
         .select("*")
         .single();
 
