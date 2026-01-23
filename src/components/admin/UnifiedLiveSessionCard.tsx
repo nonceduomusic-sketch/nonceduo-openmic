@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -14,6 +14,17 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import {
   Tooltip,
   TooltipContent,
@@ -36,12 +47,16 @@ import {
   Link as LinkIcon,
   Edit2,
   Save,
+  Users,
+  Trash2,
 } from 'lucide-react';
 import { useUnifiedLiveSession, FormatType } from '@/hooks/useUnifiedLiveSession';
+import { useAdminPinSessionReset } from '@/hooks/usePinSession';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { adminAuditLog } from '@/lib/adminAudit';
 
 interface UnifiedLiveSessionCardProps {
   title?: string;
@@ -63,6 +78,8 @@ export const UnifiedLiveSessionCard: React.FC<UnifiedLiveSessionCardProps> = ({
     getEventUrl,
   } = useUnifiedLiveSession();
 
+  const { resetAllSessions, countActiveSessions, resetting } = useAdminPinSessionReset();
+
   const [showQR, setShowQR] = useState(false);
   const [showStoryGenerator, setShowStoryGenerator] = useState(false);
   const [expiresInHours, setExpiresInHours] = useState<number>(4);
@@ -71,7 +88,33 @@ export const UnifiedLiveSessionCard: React.FC<UnifiedLiveSessionCardProps> = ({
   const [selectedFormats, setSelectedFormats] = useState<FormatType[]>(['openmic', 'dediche']);
   const [isEditingPin, setIsEditingPin] = useState(false);
   const [editPinValue, setEditPinValue] = useState('');
+  const [activeSessionsCount, setActiveSessionsCount] = useState<number>(0);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Fetch active sessions count
+  useEffect(() => {
+    if (session?.id && isActive) {
+      countActiveSessions(session.id).then(setActiveSessionsCount);
+    }
+  }, [session?.id, isActive, countActiveSessions]);
+
+  // Handle reset all sessions
+  const handleResetSessions = async () => {
+    if (!session) return;
+    
+    const count = await resetAllSessions(session.id, 'admin_reset');
+    
+    await adminAuditLog({
+      action: 'live_session_reset_all',
+      section: 'global',
+      entity: 'pin_sessions',
+      entity_id: session.id,
+      metadata: { invalidated_count: count }
+    });
+    
+    toast.success(`${count} sessioni invalidate. Tutti gli utenti devono reinserire il PIN.`);
+    setActiveSessionsCount(0);
+  };
 
   const handleToggle = async (enabled: boolean) => {
     setIsToggling(true);
@@ -602,6 +645,64 @@ export const UnifiedLiveSessionCard: React.FC<UnifiedLiveSessionCardProps> = ({
                   </DialogContent>
                 </Dialog>
               </div>
+
+              {/* Active Sessions & Reset */}
+              {isOwner && (
+                <div className="flex flex-col gap-3 p-3 rounded-lg bg-muted/20 border border-border/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm text-muted-foreground">
+                        Sessioni attive: <span className="font-bold text-foreground">{activeSessionsCount}</span>
+                      </span>
+                    </div>
+                    
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="destructive" 
+                          size="sm" 
+                          className="h-9 md:h-8 gap-2"
+                          disabled={activeSessionsCount === 0 || resetting}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span className="hidden md:inline">Reset Sessioni</span>
+                          <span className="md:hidden">Reset</span>
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="max-w-[95vw] sm:max-w-md">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="flex items-center gap-2">
+                            <Trash2 className="w-5 h-5 text-destructive" />
+                            Reset Sessioni PIN
+                          </AlertDialogTitle>
+                          <AlertDialogDescription className="text-base md:text-sm">
+                            Questa azione invaliderà <span className="font-bold">{activeSessionsCount}</span> sessioni attive.
+                            Tutti gli utenti dovranno reinserire il PIN per accedere.
+                            <br /><br />
+                            <span className="text-muted-foreground">
+                              Utile se vuoi forzare tutti a reinserire il codice (es. cambio location, pausa serata).
+                            </span>
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter className="flex-col gap-2 sm:flex-row">
+                          <AlertDialogCancel className="h-11 md:h-10">Annulla</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={handleResetSessions}
+                            className="h-11 md:h-10 bg-destructive hover:bg-destructive/90"
+                          >
+                            {resetting ? 'Reset in corso...' : 'Conferma Reset'}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                  
+                  <p className="text-xs text-muted-foreground">
+                    Gli utenti con sessione valida possono rientrare senza PIN. Cambiando PIN, tutte le sessioni vengono invalidate automaticamente.
+                  </p>
+                </div>
+              )}
 
               {/* Session Info */}
               <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between text-sm md:text-xs text-muted-foreground">
