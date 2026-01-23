@@ -121,20 +121,28 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
   }, []);
 
   const fetchConversations = useCallback(async () => {
+    // Don't fetch if we're anonymous and don't have a sessionId yet
+    const { data: authSession } = await supabase.auth.getSession();
+    const isAnon = !authSession?.session;
+    
+    if (isAnon && !sessionId) {
+      console.log('[useConversations] Waiting for sessionId before fetching...');
+      return;
+    }
+    
     try {
       // For anonymous users we cannot rely on client-side RLS to list conversations
       // because it depends on request headers (x-session-id). Use the backend function.
       let data: any[] | null = null;
 
-      const { data: authSession } = await supabase.auth.getSession();
-      const isAnon = !authSession?.session;
-
       if (isAnon && sessionId) {
+        console.log('[useConversations] Fetching via user-chat API for session:', sessionId.slice(0, 8) + '...');
         const fromApi = await callUserChatApi<{ conversations: any[] }>('listConversations', {
           session_id: sessionId,
           section: section ?? undefined,
         });
         data = fromApi.conversations || [];
+        console.log('[useConversations] Got', data.length, 'conversations from API');
       } else {
         // Authenticated (or admin) can use direct queries.
         let query = supabase
@@ -218,6 +226,12 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
       checkIfBlocked(sessionId);
     }
 
+    // Polling backup: refresh every 10 seconds to catch missed realtime updates
+    // This ensures users always see new messages even if websocket has issues
+    const pollInterval = setInterval(() => {
+      fetchConversations();
+    }, 10000);
+
     // Subscribe to realtime changes
     const conversationsChannel = supabase
       .channel('conversations-changes')
@@ -231,6 +245,7 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
         (payload) => {
           const newMessage = payload.new as ChatMessage;
+          console.log('[useConversations] New message received via realtime:', newMessage.id?.slice(0, 8));
           window.dispatchEvent(
             new CustomEvent('new-chat-message', { detail: newMessage })
           );
@@ -281,9 +296,12 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[useConversations] Realtime subscription status:', status);
+      });
 
     return () => {
+      clearInterval(pollInterval);
       supabase.removeChannel(conversationsChannel);
     };
   }, [fetchConversations, sessionId, checkIfBlocked]);
@@ -316,6 +334,7 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
         sender_name: senderName,
         message_text: messageText,
         session_id: senderSessionId,
+        section: section || 'dediche',
       });
 
       toast.success('Messaggio inviato!');
