@@ -63,7 +63,7 @@ serve(async (req: Request): Promise<Response> => {
 
       if (!sessionId) return json(400, { error: "Sessione non valida" });
 
-      // Find conversation ids for this session
+      // Find conversation ids for this session (where user is participant)
       const { data: parts, error: partsError } = await supabase
         .from("conversation_participants")
         .select("conversation_id")
@@ -74,34 +74,69 @@ serve(async (req: Request): Promise<Response> => {
         return json(500, { error: "Errore caricamento conversazioni" });
       }
 
-      const ids = Array.from(new Set((parts || []).map((p: any) => p.conversation_id).filter(Boolean)));
+      const participantIds = Array.from(new Set((parts || []).map((p: any) => p.conversation_id).filter(Boolean)));
 
-      if (ids.length === 0) {
-        return json(200, { conversations: [] });
+      // Fetch user's conversations (where they are participant)
+      let userConvs: any[] = [];
+      if (participantIds.length > 0) {
+        let convQuery = supabase
+          .from("conversations")
+          .select(`
+            *,
+            participants:conversation_participants(*),
+            messages:chat_messages(*)
+          `)
+          .in("id", participantIds)
+          .order("updated_at", { ascending: false });
+
+        if (section) {
+          convQuery = convQuery.eq("section", section);
+        }
+
+        const { data: convs, error: convsError } = await convQuery;
+
+        if (convsError) {
+          console.error("listConversations convs error:", convsError);
+          return json(500, { error: "Errore caricamento conversazioni" });
+        }
+        userConvs = convs || [];
       }
 
-      let convQuery = supabase
+      // Also fetch public groups that the user is NOT a participant of
+      // These are groups they can join
+      let publicGroupsQuery = supabase
         .from("conversations")
         .select(`
           *,
           participants:conversation_participants(*),
           messages:chat_messages(*)
         `)
-        .in("id", ids)
+        .eq("is_group", true)
+        .eq("is_public", true)
         .order("updated_at", { ascending: false });
 
       if (section) {
-        convQuery = convQuery.eq("section", section);
+        publicGroupsQuery = publicGroupsQuery.eq("section", section);
       }
 
-      const { data: convs, error: convsError } = await convQuery;
+      const { data: publicGroups, error: publicError } = await publicGroupsQuery;
 
-      if (convsError) {
-        console.error("listConversations convs error:", convsError);
-        return json(500, { error: "Errore caricamento conversazioni" });
+      if (publicError) {
+        console.error("listConversations publicGroups error:", publicError);
+        // Don't fail, just continue with user convs
       }
 
-      return json(200, { conversations: convs || [] });
+      // Merge: user convs + public groups not already in user convs
+      const allConvs = [...userConvs];
+      const existingIds = new Set(userConvs.map((c: any) => c.id));
+      
+      for (const pg of (publicGroups || [])) {
+        if (!existingIds.has(pg.id)) {
+          allConvs.push(pg);
+        }
+      }
+
+      return json(200, { conversations: allConvs });
     }
 
     if (action === "startConversation") {
