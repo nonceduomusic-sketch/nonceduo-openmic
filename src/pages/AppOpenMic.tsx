@@ -1,60 +1,48 @@
-import React from "react";
+import React, { useState } from "react";
 import OpenMic from "@/pages/OpenMic";
-import { SectionOffLanding } from "@/components/SectionOffLanding";
-import { useSectionStatus } from "@/hooks/useSectionStatus";
-import { useFormatAvailability } from "@/hooks/useUnifiedLiveSession";
-import { useFormatActiveCheck } from "@/hooks/useGlobalFormatSettings";
+import OpenMicInfo from "@/pages/OpenMicInfo";
+import { FormatPinGate } from "@/components/FormatPinGate";
+import { useFormatGating } from "@/hooks/useFormatGating";
 
+/**
+ * AppOpenMic - Entry point per Open Mic
+ * 
+ * LOGICA FERREA:
+ * 1. Se format NON ATTIVO → mostra TEASER (OpenMicInfo) - sempre visibile, niente PIN
+ * 2. Se format ATTIVO:
+ *    - Senza PIN → accesso diretto al LIVE
+ *    - Con PIN → mostra schermata PIN, poi LIVE
+ */
 const AppOpenMic: React.FC = () => {
-  const { status, loading } = useSectionStatus("openmic");
-  const { isOtherFormatOnly, loading: availLoading } = useFormatAvailability();
-  const { isActive: isGloballyActive, loading: globalLoading } = useFormatActiveCheck('openmic');
+  const { loading, getGatingDecision } = useFormatGating('openmic');
+  const [pinValidated, setPinValidated] = useState(false);
 
-  if (loading || availLoading || globalLoading) {
+  // Loading state
+  if (loading) {
     return <div className="min-h-screen bg-background" />;
   }
 
-  // Check if format is globally disabled by admin
-  if (!isGloballyActive) {
+  const decision = getGatingDecision();
+
+  // TEASER: format non attivo → mostra pagina promozionale
+  if (decision === 'teaser') {
+    return <OpenMicInfo />;
+  }
+
+  // PIN REQUIRED: format attivo ma protetto da PIN
+  if (decision === 'pin-required' && !pinValidated) {
     return (
-      <SectionOffLanding
-        title="Open Mic non disponibile"
-        description="L'Open Mic non è attivo al momento. Torna presto!"
-        backTo="/"
-        backLabel="Torna al sito"
-        secondaryBackTo="/app"
-        secondaryBackLabel="Torna all'app"
+      <FormatPinGate
+        format="openmic"
+        formatDisplayName="Open Mic"
+        onPinValidated={() => setPinValidated(true)}
+        backTo="/app"
+        backLabel="Torna all'app"
       />
     );
   }
 
-  if (status && !status.isEnabled) {
-    return (
-      <SectionOffLanding
-        title="Open Mic"
-        description="Open Mic è disponibile durante le serate. Per maggiori info e date, contattaci."
-        backTo="/"
-        backLabel="Torna al sito"
-        secondaryBackTo="/app"
-        secondaryBackLabel="Torna all'app"
-      />
-    );
-  }
-
-  // Check if only Dediche is active (OpenMic not protected means unavailable during this live session)
-  if (isOtherFormatOnly('openmic')) {
-    return (
-      <SectionOffLanding
-        title="Open Mic non disponibile"
-        description="Stasera è serata Dediche! L'Open Mic non è attivo – invia una dedica speciale!"
-        backTo="/app/dediche"
-        backLabel="Vai alle Dediche"
-        secondaryBackTo="/app"
-        secondaryBackLabel="Torna all'app"
-      />
-    );
-  }
-
+  // LIVE: format attivo senza PIN (o PIN già validato)
   return <OpenMic appMode />;
 };
 
