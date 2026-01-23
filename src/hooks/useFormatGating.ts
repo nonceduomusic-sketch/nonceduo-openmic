@@ -40,7 +40,8 @@ export function useFormatGating(format: FormatKey): FormatGatingState & {
         .eq('format_key', format)
         .maybeSingle();
 
-      const globalActive = globalSettings?.is_active ?? true;
+      // Default to FALSE if not found - safer to show teaser than fake "live" state
+      const globalActive = globalSettings?.is_active ?? false;
       setIsGloballyActive(globalActive);
 
       // 2. Check section_public_settings (is format live/enabled for tonight?)
