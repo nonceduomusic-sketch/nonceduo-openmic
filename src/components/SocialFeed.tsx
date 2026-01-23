@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { Heart, MessageCircle, Trash2, Send, Loader2 } from 'lucide-react';
+import { Heart, MessageCircle, Trash2, Send, Loader2, Link as LinkIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
 import { Post, Comment, useSocialFeed } from '@/hooks/useSocialFeed';
+import { LinkPreview, extractUrls } from '@/components/LinkPreview';
+import { ShareButtons } from '@/components/ShareButtons';
 import { formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -55,6 +57,13 @@ const PostCard: React.FC<PostCardProps> = ({
   };
 
   const isOwner = currentUserId === post.user_id;
+  
+  // Extract URLs from content for link preview
+  const contentUrls = extractUrls(post.content);
+  const linkUrl = post.link_url || contentUrls[0];
+  
+  // Generate post URL for sharing
+  const postUrl = `${window.location.origin}/social?post=${post.id}`;
 
   return (
     <div className="glass-card p-4 space-y-3">
@@ -97,9 +106,17 @@ const PostCard: React.FC<PostCardProps> = ({
 
       {/* Content */}
       <p className="text-foreground whitespace-pre-wrap">{post.content}</p>
+      
+      {/* Link Preview */}
+      {linkUrl && (
+        <LinkPreview 
+          url={linkUrl} 
+          preview={post.link_preview as any}
+        />
+      )}
 
       {/* Actions */}
-      <div className="flex items-center gap-4 pt-2 border-t border-border">
+      <div className="flex items-center gap-2 pt-2 border-t border-border">
         <Button
           variant="ghost"
           size="sm"
@@ -118,6 +135,13 @@ const PostCard: React.FC<PostCardProps> = ({
           <MessageCircle className="w-4 h-4" />
           <span>{post.comments_count}</span>
         </Button>
+        
+        {/* Share Button */}
+        <ShareButtons 
+          url={postUrl} 
+          title={post.content.substring(0, 50)} 
+          type="post"
+        />
       </div>
 
       {/* Comments Section */}
@@ -186,11 +210,16 @@ interface SocialFeedProps {
 
 export const SocialFeed: React.FC<SocialFeedProps> = ({ userId }) => {
   const [newPostContent, setNewPostContent] = useState('');
+  const [newPostLink, setNewPostLink] = useState('');
+  const [showLinkInput, setShowLinkInput] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   
   const {
     posts,
     loading,
+    loadingMore,
+    hasMore,
+    loadMore,
     createPost,
     deletePost,
     toggleLike,
@@ -203,9 +232,11 @@ export const SocialFeed: React.FC<SocialFeedProps> = ({ userId }) => {
     if (!newPostContent.trim()) return;
     
     setIsPosting(true);
-    const success = await createPost(newPostContent);
+    const success = await createPost(newPostContent, newPostLink.trim() || undefined);
     if (success) {
       setNewPostContent('');
+      setNewPostLink('');
+      setShowLinkInput(false);
     }
     setIsPosting(false);
   };
@@ -226,14 +257,59 @@ export const SocialFeed: React.FC<SocialFeedProps> = ({ userId }) => {
           <Textarea
             value={newPostContent}
             onChange={(e) => setNewPostContent(e.target.value)}
-            placeholder="Cosa stai pensando?"
+            placeholder="Cosa stai pensando? 💭"
             className="min-h-[80px] resize-none"
             maxLength={1000}
           />
+          
+          {/* Link Input */}
+          {showLinkInput && (
+            <div className="flex gap-2">
+              <Input
+                type="url"
+                value={newPostLink}
+                onChange={(e) => setNewPostLink(e.target.value)}
+                placeholder="https://youtube.com/... o tiktok.com/..."
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setShowLinkInput(false);
+                  setNewPostLink('');
+                }}
+              >
+                ✕
+              </Button>
+            </div>
+          )}
+          
+          {/* Preview extracted link */}
+          {(newPostLink || extractUrls(newPostContent)[0]) && (
+            <LinkPreview 
+              url={newPostLink || extractUrls(newPostContent)[0]} 
+              compact 
+            />
+          )}
+          
           <div className="flex justify-between items-center">
-            <span className="text-xs text-muted-foreground">
-              {newPostContent.length}/1000
-            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowLinkInput(!showLinkInput)}
+                className={showLinkInput ? 'text-primary' : 'text-muted-foreground'}
+              >
+                <LinkIcon className="w-4 h-4 mr-1" />
+                Link
+              </Button>
+              <span className="text-xs text-muted-foreground">
+                {newPostContent.length}/1000
+              </span>
+            </div>
             <Button
               type="submit"
               disabled={!newPostContent.trim() || isPosting}
@@ -270,6 +346,22 @@ export const SocialFeed: React.FC<SocialFeedProps> = ({ userId }) => {
               onAddComment={addComment}
             />
           ))}
+          
+          {/* Load More Button */}
+          {hasMore && (
+            <div className="text-center pt-2">
+              <Button
+                variant="outline"
+                onClick={loadMore}
+                disabled={loadingMore}
+              >
+                {loadingMore ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : null}
+                Carica altri post
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>

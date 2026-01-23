@@ -14,6 +14,8 @@ export interface Post {
   id: string;
   user_id: string;
   content: string;
+  link_url?: string | null;
+  link_preview?: any; // JSONB from DB
   likes_count: number;
   comments_count: number;
   created_at: string;
@@ -143,19 +145,28 @@ export const useSocialFeed = (userId?: string) => {
     };
   }, [fetchPosts, page]);
 
-  const createPost = async (content: string): Promise<boolean> => {
+  const createPost = async (content: string, linkUrl?: string): Promise<boolean> => {
     if (!userId) {
       toast.error('Devi essere autenticato');
       return false;
     }
 
     try {
+      const postData: { user_id: string; content: string; link_url?: string } = {
+        user_id: userId,
+        content: content.trim(),
+      };
+      
+      if (linkUrl) {
+        postData.link_url = linkUrl;
+      }
+
       const { error } = await supabase
         .from('posts')
-        .insert([{ user_id: userId, content: content.trim() }]);
+        .insert([postData]);
 
       if (error) throw error;
-      toast.success('Post pubblicato!');
+      toast.success('Post pubblicato! 🎉');
       // Refresh to show new post at top
       refresh();
       return true;
