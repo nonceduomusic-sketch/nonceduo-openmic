@@ -62,15 +62,18 @@ export function AdminSidebar({
     if (key === "songs") return !access.openmic;
     if (key === "dediche") return !access.dediche;
     if (key === "community") return !access.community;
-    // Staff tab is owner-only
+    // Staff, permissions, and audit tabs are owner-only
     if (key === "staff") return !isOwner;
+    if (key === "permissions") return !isOwner;
+    if (key === "audit") return !isOwner;
     return false;
   };
 
-  // Filter items based on visibility
+  // Filter items based on visibility - owner-only tabs hidden from non-owners
   const visibleItems = ITEMS.filter((item) => {
-    // Staff tab only visible to owners
     if (item.key === "staff" && !isOwner) return false;
+    if (item.key === "permissions" && !isOwner) return false;
+    if (item.key === "audit" && !isOwner) return false;
     return true;
   });
 
