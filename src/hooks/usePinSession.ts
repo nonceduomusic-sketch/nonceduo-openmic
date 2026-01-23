@@ -68,30 +68,21 @@ export function usePinSession(format: FormatKey) {
     }
 
     try {
-      // First, verify the token is still valid in pin_sessions table
-      const { data: pinSession, error: pinError } = await supabase
-        .from('pin_sessions')
-        .select('is_valid, live_session_id')
-        .eq('session_token', stored.token)
-        .eq('is_valid', true)
+      // 1) Validate the referenced live session first (public table, cheap check)
+      const { data: liveSession, error: liveError } = await supabase
+        .from('live_sessions')
+        .select('id, protected_formats, is_active, expires_at')
+        .eq('id', stored.liveSessionId)
         .maybeSingle();
 
-      if (pinError || !pinSession) {
-        console.warn('[PinSession] Token not valid or not found:', stored.token?.substring(0, 8));
+      if (liveError || !liveSession) {
+        console.warn('[PinSession] Live session not active:', stored.liveSessionId);
         removeSession();
         return false;
       }
 
-      // Then verify the live session is still active and protects this format
-      const { data: liveSession, error: liveError } = await supabase
-        .from('live_sessions')
-        .select('id, pin_code, protected_formats, is_active, expires_at')
-        .eq('id', pinSession.live_session_id)
-        .eq('is_active', true)
-        .maybeSingle();
-
-      if (liveError || !liveSession) {
-        console.warn('[PinSession] Live session not active:', pinSession.live_session_id);
+      if (!liveSession.is_active) {
+        console.warn('[PinSession] Live session deactivated');
         removeSession();
         return false;
       }
@@ -108,7 +99,33 @@ export function usePinSession(format: FormatKey) {
       if (!protectedFormats?.includes(format)) {
         // Format is NOT protected by this session = doesn't need PIN = let through
         console.log(`[PinSession] Format ${format} not protected, no PIN needed`);
-        return false; // Return false to indicate "no session needed" not "session invalid"
+        // IMPORTANT: don't delete the stored session here, it may still be used for other formats.
+        return false;
+      }
+
+      // 2) Now validate the token via backend RPC (avoids RLS issues on pin_sessions)
+      const { data: validationRows, error: validationError } = await supabase.rpc('validate_pin_session', {
+        p_token: stored.token,
+        p_format: format,
+      });
+
+      if (validationError) {
+        console.error('[PinSession] validate_pin_session error:', {
+          message: (validationError as any)?.message,
+          code: (validationError as any)?.code,
+          details: (validationError as any)?.details,
+        });
+        // Transient failure: don't remove the session, just treat as not validated right now.
+        return false;
+      }
+
+      const row = Array.isArray(validationRows) ? validationRows[0] : (validationRows as any);
+      const isValid = Boolean(row?.is_valid);
+
+      if (!isValid) {
+        console.warn('[PinSession] Token invalid for protected format:', stored.token?.substring(0, 8));
+        removeSession();
+        return false;
       }
 
       // Session is valid and format is protected - user has access!
@@ -229,14 +246,29 @@ export function usePinSession(format: FormatKey) {
           table: 'live_sessions',
           filter: `id=eq.${stored.liveSessionId}`
         },
-        async (payload) => {
-          console.log('[PinSession] Live session changed:', payload.eventType);
-          // Re-validate session when live session changes
-          const isValid = await validateStoredSession();
-          if (!isValid && hasValidSession) {
+        (payload) => {
+          // IMPORTANT: avoid invalidating on unrelated updates (e.g. updated_at).
+          // We only hard-invalidate on clear lock-breaking events.
+          if (payload.eventType !== 'UPDATE') return;
+
+          const next = payload.new as { is_active?: boolean; expires_at?: string | null };
+
+          if (next?.is_active === false) {
+            console.log('[PinSession] Live session deactivated -> invalidate');
             setHasValidSession(false);
             setSessionInvalidated(true);
-            setInvalidationReason('session_changed');
+            setInvalidationReason('session_deactivated');
+            removeSession();
+            return;
+          }
+
+          if (next?.expires_at && new Date(next.expires_at) < new Date()) {
+            console.log('[PinSession] Live session expired -> invalidate');
+            setHasValidSession(false);
+            setSessionInvalidated(true);
+            setInvalidationReason('session_expired');
+            removeSession();
+            return;
           }
         }
       )
