@@ -91,7 +91,18 @@ const ROLE_COLORS: Record<AppRole, string> = {
   user: 'bg-muted text-muted-foreground border-border',
 };
 
-export const AdminUsersTab: React.FC = () => {
+interface UsersPermissions {
+  canManageUsers?: boolean;
+  isOwner?: boolean;
+}
+
+interface AdminUsersTabProps {
+  permissions?: UsersPermissions;
+}
+
+export const AdminUsersTab: React.FC<AdminUsersTabProps> = ({ 
+  permissions = { canManageUsers: true, isOwner: false } 
+}) => {
   const [activeSubTab, setActiveSubTab] = useState<'community' | 'staff'>('community');
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
@@ -372,17 +383,19 @@ export const AdminUsersTab: React.FC = () => {
         </div>
       </div>
 
-      {/* Sub-tabs */}
+      {/* Sub-tabs - Staff tab only visible to Owner */}
       <Tabs value={activeSubTab} onValueChange={(v) => setActiveSubTab(v as 'community' | 'staff')}>
-        <TabsList className="w-full grid grid-cols-2">
+        <TabsList className={`w-full grid ${permissions.isOwner ? 'grid-cols-2' : 'grid-cols-1'}`}>
           <TabsTrigger value="community" className="gap-2">
             <Users className="w-4 h-4" />
             Community ({users.length})
           </TabsTrigger>
-          <TabsTrigger value="staff" className="gap-2">
-            <Shield className="w-4 h-4" />
-            Staff ({adminUsers.length})
-          </TabsTrigger>
+          {permissions.isOwner && (
+            <TabsTrigger value="staff" className="gap-2">
+              <Shield className="w-4 h-4" />
+              Staff ({adminUsers.length})
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {/* Community Tab */}
@@ -466,25 +479,30 @@ export const AdminUsersTab: React.FC = () => {
                             <Edit className="w-4 h-4 mr-2" />
                             Modifica
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => {
-                            setSelectedUser(user);
-                            setNewRole(user.role || 'user');
-                            setShowRoleDialog(true);
-                          }}>
-                            <Crown className="w-4 h-4 mr-2" />
-                            Cambia ruolo
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            onClick={() => {
-                              setSelectedUser(user);
-                              setShowDeleteDialog(true);
-                            }}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Elimina
-                          </DropdownMenuItem>
+                          {/* Only Owner can change roles and delete users */}
+                          {permissions.isOwner && (
+                            <>
+                              <DropdownMenuItem onClick={() => {
+                                setSelectedUser(user);
+                                setNewRole(user.role || 'user');
+                                setShowRoleDialog(true);
+                              }}>
+                                <Crown className="w-4 h-4 mr-2" />
+                                Cambia ruolo
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  setSelectedUser(user);
+                                  setShowDeleteDialog(true);
+                                }}
+                                className="text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="w-4 h-4 mr-2" />
+                                Elimina
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
