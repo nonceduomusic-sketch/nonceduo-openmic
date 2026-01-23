@@ -531,482 +531,201 @@ export const AdminDashboard: React.FC = () => {
         />
       ))}
 
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-card/90 backdrop-blur-md border-b border-border">
-        <div className="px-3 md:container py-3 md:py-4">
-          <div className="flex items-center justify-between">
-            <div>
+      {/* Header - Apple-style minimal */}
+      <header className="admin-header">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex items-center justify-between gap-3">
+            {/* Left: Title */}
+            <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
-                {/* Desktop-only: on mobile the sidebar sheet covers too much and we already have bottom nav */}
                 <SidebarTrigger className="-ml-1 hidden md:inline-flex" />
-                <h1 className="font-display text-xl md:text-2xl font-bold neon-text-cyan">Admin Panel</h1>
+                <h1 className="font-display text-lg md:text-xl font-bold truncate">
+                  Admin Panel
+                </h1>
               </div>
-              <p className="text-sm text-muted-foreground">
-                Ciao, {currentUser?.username}
-              </p>
-              <div className="mt-2 inline-flex items-center gap-2">
-                <Badge variant="secondary" className="capitalize">{staffLabel}</Badge>
-                {staffEmail ? (
-                  <span className="text-xs text-muted-foreground truncate max-w-[240px]">{staffEmail}</span>
-                ) : null}
-                <span className="text-xs text-muted-foreground">• Stai operando come Staff</span>
+              <div className="flex items-center gap-2 mt-0.5">
+                <Badge variant="secondary" className="capitalize text-[10px] h-5">{staffLabel}</Badge>
+                <span className="text-xs text-muted-foreground truncate hidden sm:inline">
+                  {currentUser?.username}
+                </span>
               </div>
             </div>
 
-            {/* Mobile quick action - site link only */}
-            <div className="flex md:hidden items-center">
+            {/* Right: Actions */}
+            <div className="flex items-center gap-1.5">
+              {/* Mobile: Site link */}
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={openMainSite}
-                className="h-9 w-9 text-primary hover:bg-primary/10"
-                title="Torna al sito"
+                className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50"
               >
                 <Home className="w-5 h-5" />
               </Button>
-            </div>
 
-            {/* Desktop actions */}
-            <div className="hidden md:flex items-center gap-2">
-              {/* Notification permission button */}
-              {typeof Notification !== 'undefined' && notificationPermission !== 'granted' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={requestNotificationPermission}
-                  className="border-accent text-accent hover:bg-accent hover:text-accent-foreground"
-                  title="Attiva notifiche push"
-                >
-                  <Bell className="w-4 h-4 md:mr-2" />
-                  <span className="hidden md:inline">Notifiche</span>
-                </Button>
-              )}
-              {typeof Notification !== 'undefined' && notificationPermission === 'granted' && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground px-2">
-                  <Bell className="w-3 h-3" />
-                  <span className="hidden md:inline">On</span>
-                </div>
-              )}
-
-              {/* Manual link */}
-              <Link to="/admin/manual">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-accent text-accent hover:bg-accent hover:text-accent-foreground"
-                  title="Manuale Admin"
-                >
-                  <Book className="w-4 h-4" />
-                </Button>
-              </Link>
-
-              {/* Main site button - always visible */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={openMainSite}
-                className="border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200"
-                title="Torna al sito principale"
-              >
-                <Home className="w-4 h-4 md:mr-2" />
-                <span className="hidden md:inline">Sito</span>
-                <ExternalLink className="w-3 h-3 ml-1 opacity-60" />
-              </Button>
-
-
-              {/* Reset Serata button with options */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-warning text-warning hover:bg-warning hover:text-warning-foreground"
-                    title="Reset serata"
-                  >
-                    <RotateCcw className="w-4 h-4 md:mr-2" />
-                    <span className="hidden md:inline">Reset</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setResetOption('openmic');
-                      setShowResetDialog(true);
-                    }}
-                  >
-                    <Mic className="w-4 h-4 mr-2" />
-                    Solo Open Mic
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setResetOption('messages');
-                      setShowResetDialog(true);
-                    }}
-                  >
-                    <MessageSquare className="w-4 h-4 mr-2" />
-                    Solo Messaggi
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setResetOption('songs');
-                      setShowResetDialog(true);
-                    }}
-                  >
-                    <ListMusic className="w-4 h-4 mr-2" />
-                    Ripristina Canzoni
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => {
-                      setResetOption('all');
-                      setShowResetDialog(true);
-                    }}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Database className="w-4 h-4 mr-2" />
-                    Reset Totale
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* Reset confirmation dialog */}
-              <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-                <AlertDialogContent className="glass-card border-warning">
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2 text-warning">
-                      <AlertTriangle className="w-5 h-5" />
-                      {resetOption === 'openmic' && 'Reset Open Mic'}
-                      {resetOption === 'messages' && 'Reset Messaggi'}
-                      {resetOption === 'songs' && 'Ripristina Canzoni'}
-                      {resetOption === 'all' && 'Reset Totale Serata'}
-                    </AlertDialogTitle>
-                    <AlertDialogDescription asChild>
-                      <div>
-                        {resetOption === 'openmic' && (
-                          <p>Verranno cancellate tutte le prenotazioni Open Mic (in corso e completate).</p>
-                        )}
-                        {resetOption === 'messages' && (
-                          <p>Verranno cancellati tutti i messaggi, le chat e le conversazioni.</p>
-                        )}
-                        {resetOption === 'songs' && (
-                          <p>Tutte le canzoni torneranno prenotabili (gli stati "prenotata/completata" verranno rimossi).</p>
-                        )}
-                        {resetOption === 'all' && (
-                          <>
-                            <p>Verranno cancellati <strong>TUTTI</strong> i dati:</p>
-                            <ul className="list-disc list-inside mt-2 space-y-1">
-                              <li>Tutte le prenotazioni (Open Mic)</li>
-                              <li>Tutti i messaggi e le chat</li>
-                              <li>Tutti gli stati delle canzoni</li>
-                            </ul>
-                          </>
-                        )}
-                        <p className="mt-3 text-destructive font-medium">
-                          Questa azione è irreversibile!
-                        </p>
-                      </div>
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => setShowResetDialog(false)}>
-                      Annulla
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={async () => {
-                        setIsResetting(true);
-                        let success = false;
-                        
-                        if (resetOption === 'openmic') {
-                          success = await resetOpenMic();
-                          if (success) adminAuditLog({ action: 'openmic.reset', section: 'openmic' });
-                        } else if (resetOption === 'messages') {
-                          success = await resetMessages();
-                          if (success) adminAuditLog({ action: 'messages.reset', section: 'dediche', metadata: { scope: 'messages' } });
-                        } else if (resetOption === 'songs') {
-                          success = await resetSongStatuses();
-                          if (success) adminAuditLog({ action: 'songs.reset_statuses', section: 'openmic' });
-                        } else if (resetOption === 'all') {
-                          success = await resetEverything();
-                          if (success) adminAuditLog({ action: 'night.reset_all', section: null, metadata: { scope: 'all' } });
-                        }
-                        
-                        setIsResetting(false);
-                        setShowResetDialog(false);
-                        setResetOption(null);
-                      }}
-                      disabled={isResetting}
-                      className={resetOption === 'all' 
-                        ? "bg-destructive hover:bg-destructive/90"
-                        : "bg-warning hover:bg-warning/90 text-warning-foreground"
-                      }
-                    >
-                      {isResetting ? 'Reset in corso...' : 'Conferma'}
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-              {/* Undo button - visible when there's an action to undo (only for Open Mic tab) */}
-              {lastAction && mainTab === 'openmic' && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleUndoAction}
-                  className="border-warning text-warning hover:bg-warning hover:text-warning-foreground animate-pulse"
-                  title={`Annulla: ${lastAction.description}`}
-                >
-                  <Undo2 className="w-4 h-4 md:mr-2" />
-                  <span className="hidden md:inline">Annulla</span>
-                </Button>
-              )}
-
-              {mainTab === 'openmic' && !selectionMode && (
+              {/* Mobile: More menu */}
+              <div className="md:hidden">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-                    >
-                      <MoreVertical className="w-4 h-4" />
+                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
+                      <MoreVertical className="w-5 h-5" />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={() => setSelectionMode(true)}
-                      disabled={currentReservations.length === 0}
-                    >
-                      <CheckSquare className="w-4 h-4 mr-2" />
-                      Seleziona multipli
+                  <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                    {typeof Notification !== 'undefined' && notificationPermission !== 'granted' && (
+                      <DropdownMenuItem onClick={requestNotificationPermission} className="rounded-lg">
+                        <Bell className="w-4 h-4 mr-2" />
+                        Attiva notifiche
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setMainTab('permissions')} className="rounded-lg">
+                      <Shield className="w-4 h-4 mr-2" />
+                      Permessi
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setMainTab('settings')} className="rounded-lg">
+                      <Settings className="w-4 h-4 mr-2" />
+                      Impostazioni
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setMainTab('audit')} className="rounded-lg">
+                      <Database className="w-4 h-4 mr-2" />
+                      Audit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="rounded-lg">
+                      <Link to="/admin/manual">
+                        <Book className="w-4 h-4 mr-2" />
+                        Manuale
+                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      onClick={() => {
-                        if (currentReservations.length === 0) return;
-                        // Trigger reset dialog
-                        handleResetCurrent();
-                      }}
-                      disabled={currentReservations.length === 0}
-                      className="text-destructive focus:text-destructive"
+                      onClick={() => { setResetOption('openmic'); setShowResetDialog(true); }}
+                      className="rounded-lg"
                     >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Reset {activeTab === 'active' ? 'In Corso' : 'Completate'}
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Reset Open Mic
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => { setResetOption('all'); setShowResetDialog(true); }}
+                      className="text-destructive focus:text-destructive rounded-lg"
+                    >
+                      <Database className="w-4 h-4 mr-2" />
+                      Reset Totale
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={logout} className="rounded-lg">
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Esci
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              )}
+              </div>
 
-              {mainTab === 'openmic' && selectionMode && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSelectAll}
-                    className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
-                  >
-                    {selectedIds.size === currentReservations.length ? (
-                      <Square className="w-4 h-4 md:mr-2" />
-                    ) : (
-                      <CheckSquare className="w-4 h-4 md:mr-2" />
-                    )}
-                    <span className="hidden md:inline">
-                      {selectedIds.size === currentReservations.length
-                        ? 'Nessuno'
-                        : 'Tutti'}
-                    </span>
-                  </Button>
-
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
-                        disabled={selectedIds.size === 0}
-                      >
-                        <Trash2 className="w-4 h-4 md:mr-2" />
-                        <span className="hidden md:inline">
-                          ({selectedIds.size})
-                        </span>
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="glass-card border-destructive">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2 text-destructive">
-                          <AlertTriangle className="w-5 h-5" />
-                          Elimina Selezionate
-                        </AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Sei sicuro di voler eliminare {selectedIds.size} prenotazioni
-                          selezionate?
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel className="border-border">
-                          Annulla
-                        </AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleDeleteSelected}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Elimina
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={exitSelectionMode}
-                    className="border-muted-foreground text-muted-foreground hover:bg-muted"
-                  >
-                    <X className="w-4 h-4" />
-                  </Button>
-                </>
-              )}
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={logout}
-                className="border-muted-foreground text-muted-foreground hover:bg-muted"
-              >
-                <LogOut className="w-4 h-4 md:mr-2" />
-                <span className="hidden md:inline">Esci</span>
-              </Button>
-            </div>
-          </div>
-
-          {/* Mobile actions: compact menu */}
-          <div className="md:hidden mt-3 flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <Badge variant="secondary" className="capitalize shrink-0">{staffLabel}</Badge>
-              <span className="text-xs text-muted-foreground truncate">{staffEmail || currentUser?.username}</span>
-            </div>
-
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="shrink-0">
-                  <MoreVertical className="w-4 h-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                {typeof Notification !== 'undefined' && notificationPermission !== 'granted' && (
-                  <DropdownMenuItem onClick={requestNotificationPermission}>
-                    <Bell className="w-4 h-4 mr-2" />
-                    Attiva notifiche
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    setCommunitySubTab("users");
-                    setMainTab('community');
-                  }}
+              {/* Desktop actions - logout button */}
+              <div className="hidden md:flex items-center gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={logout}
+                  className="rounded-xl text-muted-foreground hover:text-foreground"
                 >
-                  <Shield className="w-4 h-4 mr-2" />
-                  Utenti & Staff
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setMainTab('permissions')}>
-                  <Shield className="w-4 h-4 mr-2" />
-                  Permessi
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setMainTab('settings')}>
-                  <Settings className="w-4 h-4 mr-2" />
-                  Impostazioni
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setMainTab('audit')}>
-                  <Database className="w-4 h-4 mr-2" />
-                  Audit
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/admin/manual">
-                    <Book className="w-4 h-4 mr-2" />
-                    Manuale Admin
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    setResetOption('openmic');
-                    setShowResetDialog(true);
-                  }}
-                >
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Reset Open Mic
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setResetOption('messages');
-                    setShowResetDialog(true);
-                  }}
-                >
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Reset Messaggi
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => {
-                    setResetOption('songs');
-                    setShowResetDialog(true);
-                  }}
-                >
-                  <ListMusic className="w-4 h-4 mr-2" />
-                  Ripristina Canzoni
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    setResetOption('all');
-                    setShowResetDialog(true);
-                  }}
-                  className="text-destructive focus:text-destructive"
-                >
-                  <Database className="w-4 h-4 mr-2" />
-                  Reset Totale
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout}>
-                  <LogOut className="w-4 h-4 mr-2" />
+                  <LogOut className="w-4 h-4 mr-1.5" />
                   Esci
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                </Button>
+              </div>
+            </div>
           </div>
+        </div>
 
-          {/* On mobile, navigation lives in the bottom bar (thumb-friendly). */}
-
-          {/* Sub-tabs for Open Mic */}
-          {mainTab === 'openmic' && (
-            <div className="flex gap-2 mt-3">
+        {/* Sub-tabs for Open Mic */}
+        {mainTab === 'openmic' && (
+          <div className="max-w-5xl mx-auto px-4 py-2 border-t border-border/30">
+            <div className="admin-segment-control">
               <button
                 onClick={() => setActiveTab('active')}
-                className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
-                  activeTab === 'active'
-                    ? 'bg-primary text-primary-foreground neon-glow-pink'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                }`}
+                className={`admin-segment-button ${activeTab === 'active' ? 'admin-segment-button-active' : ''}`}
               >
-                <Music className="w-4 h-4 inline-block mr-2" />
+                <Music className="w-4 h-4 inline-block mr-1.5" />
                 In Corso ({activeReservations.length})
               </button>
               <button
                 onClick={() => setActiveTab('completed')}
-                className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
-                  activeTab === 'completed'
-                    ? 'bg-secondary text-secondary-foreground neon-glow-cyan'
-                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                }`}
+                className={`admin-segment-button ${activeTab === 'completed' ? 'admin-segment-button-active' : ''}`}
               >
-                <CheckCircle className="w-4 h-4 inline-block mr-2" />
+                <CheckCircle className="w-4 h-4 inline-block mr-1.5" />
                 Completate ({completedReservations.length})
               </button>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </header>
 
+      {/* Reset confirmation dialog */}
+      <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <AlertDialogContent className="admin-card border-warning/50 mx-4 max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-warning">
+              <AlertTriangle className="w-5 h-5" />
+              {resetOption === 'openmic' && 'Reset Open Mic'}
+              {resetOption === 'messages' && 'Reset Messaggi'}
+              {resetOption === 'songs' && 'Ripristina Canzoni'}
+              {resetOption === 'all' && 'Reset Totale Serata'}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="text-sm">
+                {resetOption === 'openmic' && (
+                  <p>Verranno cancellate tutte le prenotazioni Open Mic.</p>
+                )}
+                {resetOption === 'messages' && (
+                  <p>Verranno cancellati tutti i messaggi e le chat.</p>
+                )}
+                {resetOption === 'songs' && (
+                  <p>Tutte le canzoni torneranno prenotabili.</p>
+                )}
+                {resetOption === 'all' && (
+                  <p>Verranno cancellati TUTTI i dati della serata.</p>
+                )}
+                <p className="mt-2 text-destructive font-medium">Azione irreversibile!</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-xl">Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                setIsResetting(true);
+                let success = false;
+                
+                if (resetOption === 'openmic') {
+                  success = await resetOpenMic();
+                  if (success) adminAuditLog({ action: 'openmic.reset', section: 'openmic' });
+                } else if (resetOption === 'messages') {
+                  success = await resetMessages();
+                  if (success) adminAuditLog({ action: 'messages.reset', section: 'dediche' });
+                } else if (resetOption === 'songs') {
+                  success = await resetSongStatuses();
+                  if (success) adminAuditLog({ action: 'songs.reset_statuses', section: 'openmic' });
+                } else if (resetOption === 'all') {
+                  success = await resetEverything();
+                  if (success) adminAuditLog({ action: 'night.reset_all', section: null });
+                }
+                
+                setIsResetting(false);
+                setShowResetDialog(false);
+                setResetOption(null);
+              }}
+              disabled={isResetting}
+              className={`rounded-xl ${resetOption === 'all' ? 'bg-destructive hover:bg-destructive/90' : 'bg-warning hover:bg-warning/90 text-warning-foreground'}`}
+            >
+              {isResetting ? 'Reset...' : 'Conferma'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Content */}
-      <main className="px-3 md:container py-6 pb-24 md:pb-6 overflow-x-hidden">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden pb-20 md:pb-6">
+        <div className="admin-container py-4">
         {isMainTabBlocked(mainTab) ? (
           <div className="max-w-xl mx-auto">
             <div className="rounded-xl border bg-card p-6">
@@ -1096,6 +815,7 @@ export const AdminDashboard: React.FC = () => {
             isOwner={staffRole === 'owner'}
           />
         ) : null}
+        </div>
       </main>
 
       <AdminOpenMicMobileActions
