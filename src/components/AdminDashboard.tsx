@@ -458,9 +458,6 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const openHomePage = () => {
-    window.open('/openmic', '_blank');
-  };
 
   const openMainSite = () => {
     window.open('/', '_blank');
@@ -556,8 +553,8 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
-            {/* Mobile quick actions */}
-            <div className="flex md:hidden items-center gap-1.5">
+            {/* Mobile quick action - site link only */}
+            <div className="flex md:hidden items-center">
               <Button
                 variant="ghost"
                 size="icon"
@@ -566,15 +563,6 @@ export const AdminDashboard: React.FC = () => {
                 title="Torna al sito"
               >
                 <Home className="w-5 h-5" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={openHomePage}
-                className="h-9 w-9 text-secondary hover:bg-secondary/10"
-                title="Apri Open Mic"
-              >
-                <Music className="w-5 h-5" />
               </Button>
             </div>
 
@@ -625,18 +613,6 @@ export const AdminDashboard: React.FC = () => {
                 <ExternalLink className="w-3 h-3 ml-1 opacity-60" />
               </Button>
 
-              {/* Open Mic button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={openHomePage}
-                className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground transition-all duration-200"
-                title="Apri Open Mic"
-              >
-                <Music className="w-4 h-4 md:mr-2" />
-                <span className="hidden md:inline">Open Mic</span>
-                <ExternalLink className="w-3 h-3 ml-1 opacity-60" />
-              </Button>
 
               {/* Reset Serata button with options */}
               <DropdownMenu>
@@ -948,10 +924,6 @@ export const AdminDashboard: React.FC = () => {
                     <Book className="w-4 h-4 mr-2" />
                     Manuale Admin
                   </Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={openHomePage}>
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Apri Open Mic
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
