@@ -49,10 +49,10 @@ export function AdminMobileTabBar({ value, onChange, onBlockedChange, badges, ac
         paddingBottom: 'env(safe-area-inset-bottom, 0px)',
       }}
     >
-      {/* iOS-style blur backdrop */}
-      <div className="absolute inset-0 bg-background/80 backdrop-blur-2xl border-t border-border/50" />
+      {/* iOS-style frosted glass backdrop */}
+      <div className="absolute inset-0 bg-background/85 backdrop-blur-2xl border-t border-border/40" />
       
-      <div className="relative flex items-stretch h-[52px]">
+      <div className="relative flex items-stretch h-[56px]">
         {ITEMS.map((item) => {
           const Icon = item.icon;
           const active = value === item.key;
@@ -72,42 +72,37 @@ export function AdminMobileTabBar({ value, onChange, onBlockedChange, badges, ac
               }}
               className={cn(
                 "relative flex-1 flex flex-col items-center justify-center gap-0.5",
-                "transition-all duration-200 active:scale-95",
-                disabled && "opacity-40",
+                "transition-all duration-150 active:scale-95",
+                disabled && "opacity-35",
               )}
               aria-current={active ? "page" : undefined}
               aria-disabled={disabled}
             >
-              {/* Active indicator - iOS style pill */}
-              {active && (
-                <div className="absolute top-1 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-primary" />
-              )}
-
-              {/* Icon container */}
+              {/* Icon with highlight background when active */}
               <div className="relative">
                 <div
                   className={cn(
-                    "p-1.5 rounded-xl transition-all duration-200",
-                    active && "bg-primary/10",
+                    "p-2 rounded-2xl transition-all duration-150",
+                    active && "bg-primary/15",
                   )}
                 >
                   <Icon 
                     className={cn(
-                      "w-[22px] h-[22px] transition-colors",
+                      "w-6 h-6 transition-colors duration-150",
                       active ? "text-primary" : "text-muted-foreground"
                     )} 
                   />
                 </div>
 
-                {/* Badge */}
+                {/* Badge - positioned top-right of icon */}
                 {count > 0 && (
                   <span 
                     className={cn(
-                      "absolute -top-0.5 -right-1 min-w-[16px] h-[16px] px-1",
+                      "absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1.5",
                       "flex items-center justify-center",
-                      "text-[10px] font-semibold leading-none",
+                      "text-[11px] font-bold leading-none",
                       "rounded-full bg-destructive text-destructive-foreground",
-                      "shadow-sm"
+                      "shadow-sm shadow-destructive/30"
                     )}
                   >
                     {count > 99 ? "99+" : count}
@@ -118,8 +113,8 @@ export function AdminMobileTabBar({ value, onChange, onBlockedChange, badges, ac
               {/* Label */}
               <span 
                 className={cn(
-                  "text-[10px] font-medium leading-tight",
-                  active ? "text-primary" : "text-muted-foreground"
+                  "text-[10px] font-medium leading-tight tracking-tight",
+                  active ? "text-primary" : "text-muted-foreground/80"
                 )}
               >
                 {item.label}
