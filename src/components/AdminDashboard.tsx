@@ -534,35 +534,30 @@ export const AdminDashboard: React.FC = () => {
       ))}
 
       {/* Header - Apple-style minimal */}
-      <header className="admin-header">
+      <header className="admin-header safe-area-top">
         <div className="max-w-5xl mx-auto">
-          <div className="flex items-center justify-between gap-3">
-            {/* Left: Title */}
-            <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            {/* Left: Title & role badge */}
+            <div className="min-w-0 flex-1 flex items-center gap-2.5">
+              <SidebarTrigger className="-ml-1 hidden lg:inline-flex" />
               <div className="flex items-center gap-2">
-                <SidebarTrigger className="-ml-1 hidden lg:inline-flex" />
-                <h1 className="font-display text-lg md:text-xl font-bold truncate">
-                  Admin Panel
+                <h1 className="font-display text-base sm:text-lg font-bold tracking-tight">
+                  Admin
                 </h1>
-              </div>
-              <div className="flex items-center gap-2 mt-0.5">
-                <Badge variant="secondary" className="capitalize text-[10px] h-5">{staffLabel}</Badge>
-                <span className="text-xs text-muted-foreground truncate hidden sm:inline">
-                  {currentUser?.username}
-                </span>
+                <Badge variant="secondary" className="capitalize text-[10px] h-5 font-medium">{staffLabel}</Badge>
               </div>
             </div>
 
-            {/* Right: Actions */}
-            <div className="flex items-center gap-1.5">
-              {/* Mobile: Site link */}
+            {/* Right: Actions - compact */}
+            <div className="flex items-center gap-1">
+              {/* Site link */}
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={openMainSite}
-                className="h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                className="h-9 w-9 rounded-xl text-muted-foreground"
               >
-                <Home className="w-5 h-5" />
+                <Home className="w-4.5 h-4.5" />
               </Button>
 
               {/* Mobile: More menu */}
@@ -570,7 +565,7 @@ export const AdminDashboard: React.FC = () => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
-                      <MoreVertical className="w-5 h-5" />
+                      <MoreVertical className="w-4.5 h-4.5" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-56 rounded-xl">
@@ -776,9 +771,9 @@ export const AdminDashboard: React.FC = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Content */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden pb-20 md:pb-6">
-        <div className="admin-container py-4">
+      {/* Content - optimized padding for mobile bottom nav */}
+      <main className="flex-1 overflow-y-auto overflow-x-hidden pb-24 md:pb-6">
+        <div className="admin-container py-3">
         {isMainTabBlocked(mainTab) ? (
           <div className="max-w-xl mx-auto">
             <div className="rounded-xl border bg-card p-6">

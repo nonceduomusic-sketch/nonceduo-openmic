@@ -366,11 +366,17 @@ html, body, #root {
     @apply text-xs text-muted-foreground font-medium;
   }
 
-  /* Header - clean, minimal */
+  /* Header - clean, minimal, Apple-style */
   .admin-header {
-    @apply sticky top-0 z-40 px-4 py-3;
-    @apply bg-background/80 backdrop-blur-xl;
-    @apply border-b border-border/50;
+    @apply sticky top-0 z-40 px-4 py-2.5;
+    @apply bg-background/90 backdrop-blur-2xl;
+    @apply border-b border-border/30;
+  }
+
+  @media (min-width: 768px) {
+    .admin-header {
+      @apply py-3;
+    }
   }
 
   /* Floating action button - iOS style */
@@ -382,12 +388,18 @@ html, body, #root {
     @apply flex items-center justify-center;
     @apply transition-all duration-200;
     @apply active:scale-90;
-    bottom: calc(68px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
   }
 
   /* Container for tablet responsiveness */
   .admin-container {
-    @apply w-full max-w-3xl mx-auto px-4;
+    @apply w-full max-w-3xl mx-auto px-3;
+  }
+
+  @media (min-width: 640px) {
+    .admin-container {
+      @apply px-4;
+    }
   }
 
   @media (min-width: 768px) {

@@ -316,91 +316,83 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
 
   return (
     <div className="flex flex-col h-full overflow-hidden no-horizontal-scroll">
-      {/* ========== STICKY HEADER - Numero notifiche in evidenza ========== */}
-      <div className="sticky top-0 z-10 bg-card/98 backdrop-blur-xl border-b border-border/50 px-4 py-3 safe-area-top">
-        {/* Main notification count - VERY PROMINENT */}
-        <div className="flex items-center gap-4 mb-3">
-          {/* Big notification badge - larger and more eye-catching */}
+      {/* ========== STICKY HEADER - Compact mobile header ========== */}
+      <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-2xl border-b border-border/30 px-3 py-3">
+        {/* Main row: badge + actions */}
+        <div className="flex items-center gap-3">
+          {/* Notification count badge - compact but eye-catching */}
           <div className={cn(
-            "relative flex items-center justify-center w-16 h-16 rounded-2xl transition-all",
+            "relative flex items-center justify-center w-12 h-12 rounded-xl transition-all shrink-0",
             totalUnread > 0 
-              ? "bg-gradient-to-br from-destructive/30 to-destructive/10 border-2 border-destructive shadow-lg shadow-destructive/20" 
-              : "bg-muted border border-border"
+              ? "bg-gradient-to-br from-destructive/25 to-destructive/10 border border-destructive/50" 
+              : "bg-muted/50 border border-border/50"
           )}>
             {totalUnread > 0 ? (
               <>
-                <span className="text-3xl font-bold text-destructive">
+                <span className="text-xl font-bold text-destructive">
                   {totalUnread > 99 ? '99+' : totalUnread}
                 </span>
-                {/* Pulsing dot for new notifications */}
-                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-destructive rounded-full animate-pulse shadow-lg shadow-destructive/50" />
+                <span className="absolute -top-1 -right-1 w-3 h-3 bg-destructive rounded-full animate-pulse" />
               </>
             ) : (
-              <BellOff className="w-7 h-7 text-muted-foreground" />
+              <BellOff className="w-5 h-5 text-muted-foreground" />
             )}
           </div>
           
-          {/* Text description */}
+          {/* Text + quick actions */}
           <div className="flex-1 min-w-0">
-            <h2 className="text-xl font-bold text-foreground leading-tight">
+            <h2 className="text-base font-semibold text-foreground leading-tight truncate">
               {totalUnread > 0 
                 ? `${totalUnread} ${totalUnread === 1 ? 'notifica' : 'notifiche'}`
-                : 'Tutto in ordine!'
+                : 'Tutto in ordine'
               }
             </h2>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {totalUnread > 0 
-                ? 'Da gestire'
-                : 'Nessuna azione richiesta'
-              }
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {totalUnread > 0 ? 'Da gestire' : 'Nessuna azione richiesta'}
             </p>
           </div>
+
+          {/* Settings button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-10 w-10 rounded-xl text-muted-foreground shrink-0"
+            onClick={() => setShowSettings(!showSettings)}
+          >
+            <Settings className="w-5 h-5" />
+          </Button>
         </div>
 
-        {/* Quick actions bar */}
-        <div className="flex items-center gap-2 flex-wrap">
+        {/* Quick actions bar - simpler */}
+        <div className="flex items-center gap-2 mt-2.5">
           <Button
             variant={showOnlyUnread ? "default" : "outline"}
             size="sm"
-            className="h-10 px-4 text-sm rounded-xl font-medium"
+            className="h-9 px-3 text-xs rounded-xl font-medium"
             onClick={() => setShowOnlyUnread(!showOnlyUnread)}
           >
-            {showOnlyUnread ? <Bell className="w-4 h-4 mr-2" /> : <CheckCheck className="w-4 h-4 mr-2" />}
-            {showOnlyUnread ? 'Solo nuove' : 'Mostra tutte'}
+            {showOnlyUnread ? <Bell className="w-3.5 h-3.5 mr-1.5" /> : <CheckCheck className="w-3.5 h-3.5 mr-1.5" />}
+            {showOnlyUnread ? 'Solo nuove' : 'Tutte'}
           </Button>
 
-          {/* Mark all as read button - only show when there are unread items */}
           {totalUnread > 0 && (
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="h-10 px-3 text-sm rounded-xl text-secondary border-secondary/50 hover:bg-secondary/10"
+              className="h-9 px-3 text-xs rounded-xl text-muted-foreground"
               onClick={() => markAllAsRead()}
             >
-              <CheckCheck className="w-4 h-4 mr-1.5" />
-              <span className="hidden sm:inline">Segna tutto letto</span>
-              <span className="sm:hidden">Letto</span>
+              <CheckCheck className="w-3.5 h-3.5 mr-1.5" />
+              Segna letto
             </Button>
           )}
-
-          <div className="flex-1" />
-          
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-10 px-3 text-sm rounded-xl text-muted-foreground"
-            onClick={() => setShowSettings(!showSettings)}
-          >
-            <Settings className="w-4 h-4 mr-1.5" />
-            <span className="hidden sm:inline">Impostazioni</span>
-          </Button>
         </div>
       </div>
 
-      {/* ========== CATEGORY CARDS GRID - Larger touch targets ========== */}
+      {/* ========== CATEGORY CARDS GRID - Compact mobile ========== */}
       {visibleCards.length > 0 && (
-        <div className="px-3 py-4 border-b border-border/30 overflow-hidden bg-gradient-to-b from-card to-background">
-          <div className="grid grid-cols-3 gap-3 max-w-full">
+        <div className="px-3 py-3 border-b border-border/20 bg-gradient-to-b from-card/50 to-transparent">
+          <div className="grid grid-cols-3 gap-2">
             {visibleCards.map((card) => {
               const count = card.getCount(counts);
               const isActive = filterType === card.key;
@@ -420,44 +412,35 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
                     }
                   }}
                   className={cn(
-                    "relative flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all duration-200",
-                    "min-h-[100px] w-full overflow-hidden touch-target",
-                    "hover:scale-[1.02] active:scale-[0.98]",
+                    "relative flex flex-col items-center justify-center p-3 rounded-xl border transition-all duration-150",
+                    "min-h-[80px] w-full overflow-hidden",
+                    "active:scale-[0.97]",
                     card.bgColor,
-                    isActive ? card.borderColor : "border-transparent",
-                    isActive && "ring-2 ring-offset-2 ring-offset-background ring-current shadow-lg"
+                    isActive 
+                      ? cn(card.borderColor, "shadow-md") 
+                      : "border-transparent",
                   )}
                 >
-                  {/* Unread badge - positioned inside card, larger */}
+                  {/* Unread badge */}
                   {count > 0 && (
-                    <div className="absolute top-2 right-2 flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full bg-destructive text-destructive-foreground text-sm font-bold shadow-md">
+                    <div className="absolute top-1.5 right-1.5 flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold">
                       {count > 99 ? '99+' : count}
                     </div>
                   )}
                   
-                  {/* Icon - larger */}
-                  <div className={cn("mb-2", card.textColor)}>
-                    {React.cloneElement(card.icon as React.ReactElement, { className: "w-7 h-7" })}
+                  {/* Icon */}
+                  <div className={cn("mb-1.5", card.textColor)}>
+                    {React.cloneElement(card.icon as React.ReactElement, { className: "w-6 h-6" })}
                   </div>
                   
-                  {/* Label - larger */}
-                  <span className={cn("text-sm font-semibold truncate max-w-full", card.textColor)}>
+                  {/* Label */}
+                  <span className={cn("text-xs font-medium truncate max-w-full", card.textColor)}>
                     {card.label}
                   </span>
-                  
-                  {/* Selected indicator */}
-                  {isActive && (
-                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-current opacity-60" />
-                  )}
                 </button>
               );
             })}
           </div>
-          
-          {/* Hint text - only on larger screens */}
-          <p className="text-[11px] text-muted-foreground text-center mt-3 hidden sm:block">
-            Tocca per filtrare • Doppio tap per aprire sezione
-          </p>
         </div>
       )}
 
