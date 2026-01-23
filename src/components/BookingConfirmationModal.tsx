@@ -191,12 +191,14 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
                 )}
                 onClick={() => setWantsDedication(!wantsDedication)}
               >
-                <Checkbox
-                  id="dedication"
-                  checked={wantsDedication}
-                  onCheckedChange={(checked) => setWantsDedication(checked === true)}
-                  className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
-                />
+                <div onClick={(e) => e.stopPropagation()}>
+                  <Checkbox
+                    id="dedication"
+                    checked={wantsDedication}
+                    onCheckedChange={(checked) => setWantsDedication(checked === true)}
+                    className="data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                  />
+                </div>
                 <div className="flex-1">
                   <label htmlFor="dedication" className="text-sm font-medium cursor-pointer flex items-center gap-2">
                     <Heart className="w-4 h-4 text-primary" />
