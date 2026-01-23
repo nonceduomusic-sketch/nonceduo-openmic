@@ -48,44 +48,51 @@ export const FormatPinGate: React.FC<FormatPinGateProps> = ({
     }
   }, [sessionLoading, hasValidSession, sessionInvalidated, onPinValidated, format]);
 
+  const [sessionError, setSessionError] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSessionError(null);
     
     const valid = await validatePin(pin);
     if (valid) {
       // Resolve the correct active live session for THIS format via backend (handles the case of >1 active session)
-      const { data: sessions, error: sessionError } = await supabase.rpc('get_active_session_for_format', {
+      const { data: sessions, error: rpcError } = await supabase.rpc('get_active_session_for_format', {
         p_format: format,
       });
 
-      if (sessionError) {
+      if (rpcError) {
         console.error('[FormatPinGate] Error resolving active session for format:', {
           format,
-          message: (sessionError as any)?.message,
-          code: (sessionError as any)?.code,
-          details: (sessionError as any)?.details,
+          message: (rpcError as any)?.message,
+          code: (rpcError as any)?.code,
+          details: (rpcError as any)?.details,
         });
+        setSessionError('Errore di connessione. Riprova.');
+        return;
       }
 
       const liveSession = Array.isArray(sessions) ? sessions[0] : sessions;
 
-      if (liveSession?.id) {
-        const protectedFormats = (liveSession.protected_formats as string[]) || [];
-
-        // Create GLOBAL session - works for ALL formats that share the same live session
-        const created = await createSession(liveSession.id as string, pin);
-        if (created) {
-          console.log(`[FormatPinGate] Global session created for live_session ${liveSession.id}`);
-          console.log(`[FormatPinGate] User now has access to ALL protected formats:`, protectedFormats);
-        } else {
-          console.warn('[FormatPinGate] Failed to create pin session');
-        }
-      } else {
+      if (!liveSession?.id) {
         // PIN was valid, but we couldn't resolve a session id to persist the access.
-        console.warn('[FormatPinGate] No active live session resolved for format (cannot persist PIN session):', {
-          format,
-        });
+        console.warn('[FormatPinGate] No active live session resolved for format:', format);
+        setSessionError('Sessione live non trovata. Riprova o contatta lo staff.');
+        return;
       }
+
+      const protectedFormats = (liveSession.protected_formats as string[]) || [];
+
+      // Create GLOBAL session - works for ALL formats that share the same live session
+      const created = await createSession(liveSession.id as string, pin);
+      if (!created) {
+        console.error('[FormatPinGate] Failed to create pin session - blocking entry');
+        setSessionError('Errore salvataggio sessione. Riprova.');
+        return;
+      }
+
+      console.log(`[FormatPinGate] Global session created for live_session ${liveSession.id}`);
+      console.log(`[FormatPinGate] User now has access to ALL protected formats:`, protectedFormats);
       
       onPinValidated();
     }
@@ -220,9 +227,16 @@ export const FormatPinGate: React.FC<FormatPinGateProps> = ({
                   <span>PIN non valido – chiedi il codice al performer o al locale</span>
                 </div>
               )}
+              
+              {sessionError && (
+                <div className="flex items-center gap-2 text-destructive text-sm justify-center">
+                  <AlertCircle className="w-4 h-4" />
+                  <span>{sessionError}</span>
+                </div>
+              )}
             </div>
 
-            <Button 
+            <Button
               type="submit" 
               className="w-full h-12 text-lg neon-button-cyan"
               disabled={pin.length < 4 || validating}
