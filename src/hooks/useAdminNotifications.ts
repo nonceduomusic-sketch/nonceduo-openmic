@@ -72,13 +72,14 @@ export const useAdminNotifications = () => {
         .eq('section', 'community')
         .or('is_read.is.null,is_read.eq.false');
 
-      // Get today's reservations count
+      // Get today's ACTIVE reservations count (only in_progress, not completed)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
       const { count: reservationsCount } = await supabase
         .from('reservations')
         .select('*', { count: 'exact', head: true })
+        .eq('status', 'in_progress')
         .gte('created_at', today.toISOString());
 
       setCounts(prev => ({
