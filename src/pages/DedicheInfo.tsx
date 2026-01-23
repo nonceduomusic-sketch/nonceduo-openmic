@@ -14,7 +14,7 @@ const DedicheInfo: React.FC = () => {
 
   // "Serata in corso" SOLO se:
   // 1. Il format è globalmente attivo (abilitato in "Format attivi")
-  // 2. E la sessione live è attiva (section_public_settings.is_enabled = true)
+  // 2. E c'è una live_session attiva con questo format in protected_formats
   // Se uno dei due è false → mostra teaser "Prossimamente"
   const isActuallyLive = isGloballyActive && isLiveSessionActive;
 
