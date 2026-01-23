@@ -108,7 +108,7 @@ export const AdminDashboard: React.FC = () => {
   const [reservationNotifications, setReservationNotifications] = useState<Reservation[]>([]);
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
   const [chatNotifications, setChatNotifications] = useState<{ message: ChatMessage; conversation?: Conversation }[]>([]);
-  const [mainTab, setMainTab] = useState<AdminMainTab>('openmic');
+  const [mainTab, setMainTab] = useState<AdminMainTab>('notifications');
   const [communitySubTab, setCommunitySubTab] = useState<"groups" | "invites" | "users" | "feed" | "blocked">("groups");
   const [didInitTabFromAccess, setDidInitTabFromAccess] = useState(false);
   
@@ -207,15 +207,10 @@ export const AdminDashboard: React.FC = () => {
     setSelectionMode(false);
   }, [activeTab, mainTab]);
 
+  // Always start on "Centro" (notifications) tab - it's the dashboard overview
   const getNextAllowedTab = useCallback((): AdminMainTab => {
-    return access.openmic
-      ? 'openmic'
-      : access.dediche
-        ? 'dediche'
-        : access.community
-          ? 'community'
-          : 'notifications';
-  }, [access.community, access.dediche, access.openmic]);
+    return 'notifications';
+  }, []);
 
   const isMainTabBlocked = useCallback(
     (tab: AdminMainTab) => {
@@ -467,6 +462,10 @@ export const AdminDashboard: React.FC = () => {
     window.open('/openmic', '_blank');
   };
 
+  const openMainSite = () => {
+    window.open('/', '_blank');
+  };
+
   const staffLabel =
     staffRole === 'owner'
       ? 'Owner'
@@ -557,6 +556,28 @@ export const AdminDashboard: React.FC = () => {
               </div>
             </div>
 
+            {/* Mobile quick actions */}
+            <div className="flex md:hidden items-center gap-1.5">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={openMainSite}
+                className="h-9 w-9 text-primary hover:bg-primary/10"
+                title="Torna al sito"
+              >
+                <Home className="w-5 h-5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={openHomePage}
+                className="h-9 w-9 text-secondary hover:bg-secondary/10"
+                title="Apri Open Mic"
+              >
+                <Music className="w-5 h-5" />
+              </Button>
+            </div>
+
             {/* Desktop actions */}
             <div className="hidden md:flex items-center gap-2">
               {/* Notification permission button */}
@@ -591,14 +612,28 @@ export const AdminDashboard: React.FC = () => {
                 </Button>
               </Link>
 
-              {/* Home button - always visible */}
+              {/* Main site button - always visible */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openMainSite}
+                className="border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200"
+                title="Torna al sito principale"
+              >
+                <Home className="w-4 h-4 md:mr-2" />
+                <span className="hidden md:inline">Sito</span>
+                <ExternalLink className="w-3 h-3 ml-1 opacity-60" />
+              </Button>
+
+              {/* Open Mic button */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={openHomePage}
-                className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+                className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground transition-all duration-200"
+                title="Apri Open Mic"
               >
-                <Home className="w-4 h-4 md:mr-2" />
+                <Music className="w-4 h-4 md:mr-2" />
                 <span className="hidden md:inline">Open Mic</span>
                 <ExternalLink className="w-3 h-3 ml-1 opacity-60" />
               </Button>
