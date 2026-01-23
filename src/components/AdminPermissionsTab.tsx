@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { adminAuditLog } from '@/lib/adminAudit';
@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,12 +36,17 @@ import {
   User, 
   RefreshCw, 
   Search,
-  UserPlus,
-  Settings,
+  Mic,
+  Heart,
+  Users,
+  Zap,
   Check,
-  X
+  Settings,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
+// Types
 interface Permission {
   id: string;
   name: string;
@@ -58,7 +64,13 @@ interface UserRole {
   user_id: string;
   role: string;
   created_at: string;
-  user_email?: string;
+}
+
+interface ProfileData {
+  user_id: string;
+  display_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
 }
 
 interface UserPermissionOverride {
@@ -68,6 +80,33 @@ interface UserPermissionOverride {
   granted: boolean;
   granted_by: string | null;
 }
+
+type AppRole = 'owner' | 'admin' | 'moderator' | 'user';
+
+// Staff presets for quick assignment
+const STAFF_PRESETS = [
+  { 
+    key: 'staff_openmic', 
+    label: 'Staff Open Mic', 
+    icon: Mic,
+    color: 'bg-accent/20 text-accent-foreground border-accent/30',
+    permissions: ['openmic.view', 'openmic.manage']
+  },
+  { 
+    key: 'staff_dediche', 
+    label: 'Staff Dediche', 
+    icon: Heart,
+    color: 'bg-secondary/20 text-secondary-foreground border-secondary/30',
+    permissions: ['dediche.view', 'dediche.moderate', 'dediche.manage']
+  },
+  { 
+    key: 'staff_community', 
+    label: 'Staff Community', 
+    icon: Users,
+    color: 'bg-primary/20 text-primary-foreground border-primary/30',
+    permissions: ['community.view', 'community.moderate', 'community.manage_groups']
+  },
+] as const;
 
 const ROLE_ICONS: Record<string, React.ReactNode> = {
   owner: <Crown className="w-4 h-4 text-accent" />,
@@ -88,78 +127,66 @@ const PERMISSION_GROUP_LABELS: Record<string, string> = {
   dediche: 'Dediche',
   community: 'Community',
   settings: 'Impostazioni',
-  social: 'Social',
-  admin: 'Admin',
+  users: 'Utenti',
   altro: 'Altro',
 };
 
 const PRIMARY_PERMISSION_GROUPS = ['openmic', 'dediche', 'community'] as const;
 
-type AppRole = 'owner' | 'admin' | 'moderator' | 'user';
-
 const ROLE_COLORS: Record<AppRole, string> = {
-  owner: 'bg-accent text-accent-foreground',
-  admin: 'bg-primary/10 text-primary',
-  moderator: 'bg-secondary text-secondary-foreground',
-  user: 'bg-muted text-muted-foreground',
+  owner: 'bg-amber-50 text-amber-700 border-amber-200',
+  admin: 'bg-blue-50 text-blue-700 border-blue-200',
+  moderator: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  user: 'bg-gray-50 text-gray-600 border-gray-200',
 };
 
 export const AdminPermissionsTab: React.FC = () => {
   const { toast } = useToast();
+  const isMobile = useIsMobile();
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [rolePermissions, setRolePermissions] = useState<RolePermission[]>([]);
   const [userRoles, setUserRoles] = useState<UserRole[]>([]);
+  const [profiles, setProfiles] = useState<ProfileData[]>([]);
   const [userPermissions, setUserPermissions] = useState<UserPermissionOverride[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRole, setSelectedRole] = useState<AppRole | null>(null);
   const [permSearch, setPermSearch] = useState('');
   const [showRoleChangeDialog, setShowRoleChangeDialog] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<UserRole | null>(null);
-  const [newRole, setNewRole] = useState<AppRole>('admin');
+  const [selectedUser, setSelectedUser] = useState<(UserRole & { profile?: ProfileData }) | null>(null);
+  const [newRole, setNewRole] = useState<AppRole>('moderator');
   const [groupEnableDialog, setGroupEnableDialog] = useState<{
     open: boolean;
     role: AppRole;
     groupKey: string;
   } | null>(null);
+  const [presetApplyDialog, setPresetApplyDialog] = useState<{
+    open: boolean;
+    user: UserRole & { profile?: ProfileData };
+    preset: typeof STAFF_PRESETS[number];
+  } | null>(null);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch permissions
-      const { data: permsData, error: permsError } = await supabase
-        .from('permissions')
-        .select('*')
-        .order('name');
-      
-      if (permsError) throw permsError;
-      setPermissions(permsData || []);
+      const [permsRes, rolePermsRes, userRolesRes, userPermsRes, profilesRes] = await Promise.all([
+        supabase.from('permissions').select('*').order('name'),
+        supabase.from('role_permissions').select('*'),
+        supabase.from('user_roles').select('*').order('role', { ascending: true }),
+        supabase.from('user_permissions').select('*'),
+        supabase.from('profiles').select('user_id, display_name, username, avatar_url'),
+      ]);
 
-      // Fetch role permissions
-      const { data: rolePermsData, error: rolePermsError } = await supabase
-        .from('role_permissions')
-        .select('*');
+      if (permsRes.error) throw permsRes.error;
+      if (rolePermsRes.error) throw rolePermsRes.error;
+      if (userRolesRes.error) throw userRolesRes.error;
+      if (userPermsRes.error) throw userPermsRes.error;
       
-      if (rolePermsError) throw rolePermsError;
-      setRolePermissions(rolePermsData || []);
-
-      // Fetch user roles
-      const { data: userRolesData, error: userRolesError } = await supabase
-        .from('user_roles')
-        .select('*')
-        .order('role', { ascending: true });
-      
-      if (userRolesError) throw userRolesError;
-      setUserRoles(userRolesData || []);
-
-      // Fetch user permission overrides
-      const { data: userPermsData, error: userPermsError } = await supabase
-        .from('user_permissions')
-        .select('*');
-      
-      if (userPermsError) throw userPermsError;
-      setUserPermissions(userPermsData || []);
-
+      setPermissions(permsRes.data || []);
+      setRolePermissions(rolePermsRes.data || []);
+      setUserRoles(userRolesRes.data || []);
+      setUserPermissions(userPermsRes.data || []);
+      setProfiles(profilesRes.data || []);
     } catch (error) {
       console.error('Error fetching permissions data:', error);
       toast({
@@ -176,6 +203,11 @@ export const AdminPermissionsTab: React.FC = () => {
     fetchData();
   }, [fetchData]);
 
+  // Profile lookup helper
+  const getProfile = useCallback((userId: string) => {
+    return profiles.find(p => p.user_id === userId);
+  }, [profiles]);
+
   const getRolePermissions = (role: string): string[] => {
     return rolePermissions
       .filter(rp => rp.role === role)
@@ -191,11 +223,81 @@ export const AdminPermissionsTab: React.FC = () => {
     return raw.trim() || 'altro';
   };
 
-  const toggleRolePermissionGroup = async (
-    role: AppRole,
-    groupKey: string,
-    enable: boolean,
-  ) => {
+  // Check if user has a specific permission via user_permissions override
+  const hasUserPermissionOverride = useCallback((userId: string, permissionName: string): boolean | null => {
+    const perm = permissions.find(p => p.name === permissionName);
+    if (!perm) return null;
+    
+    const override = userPermissions.find(up => up.user_id === userId && up.permission_id === perm.id);
+    return override ? override.granted : null;
+  }, [permissions, userPermissions]);
+
+  // Apply staff preset to a user
+  const applyStaffPreset = async (user: UserRole, preset: typeof STAFF_PRESETS[number]) => {
+    try {
+      // First, ensure user is at least moderator role
+      if (user.role === 'user') {
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .update({ role: 'moderator' })
+          .eq('id', user.id);
+        
+        if (roleError) throw roleError;
+      }
+
+      // Get permission IDs for the preset
+      const permIds = preset.permissions.map(pName => {
+        const p = permissions.find(perm => perm.name === pName);
+        return p?.id;
+      }).filter(Boolean) as string[];
+
+      // Insert user permission overrides
+      const rows = permIds.map(permission_id => ({
+        user_id: user.user_id,
+        permission_id,
+        granted: true,
+      }));
+
+      // Upsert - delete existing then insert
+      for (const permission_id of permIds) {
+        await supabase
+          .from('user_permissions')
+          .delete()
+          .eq('user_id', user.user_id)
+          .eq('permission_id', permission_id);
+      }
+
+      if (rows.length > 0) {
+        const { error } = await supabase.from('user_permissions').insert(rows);
+        if (error) throw error;
+      }
+
+      const profile = getProfile(user.user_id);
+      toast({
+        title: 'Preset applicato',
+        description: `${preset.label} assegnato a ${profile?.display_name || 'utente'}`,
+      });
+
+      adminAuditLog({
+        action: 'permissions.apply_preset',
+        section: 'settings',
+        entity: 'user_permissions',
+        entity_id: user.user_id,
+        metadata: { preset: preset.key, permissions: preset.permissions },
+      });
+
+      fetchData();
+    } catch (error) {
+      console.error('Error applying preset:', error);
+      toast({
+        title: 'Errore',
+        description: 'Impossibile applicare il preset',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const toggleRolePermissionGroup = async (role: AppRole, groupKey: string, enable: boolean) => {
     try {
       const groupPermissionIds = permissions
         .filter((p) => getPermissionGroupKey(p.name) === groupKey)
@@ -212,11 +314,8 @@ export const AdminPermissionsTab: React.FC = () => {
 
         if (error) throw error;
       } else {
-        // Insert missing only (ignore duplicates)
         const existing = new Set(
-          rolePermissions
-            .filter((rp) => rp.role === role)
-            .map((rp) => rp.permission_id),
+          rolePermissions.filter((rp) => rp.role === role).map((rp) => rp.permission_id)
         );
 
         const rows = groupPermissionIds
@@ -254,17 +353,12 @@ export const AdminPermissionsTab: React.FC = () => {
 
   const toggleRolePermissionGroupRecommended = async (role: AppRole, groupKey: string) => {
     try {
-      // For Admin/Owner, “recommended” == full.
       if (role === 'admin' || role === 'owner') {
         await toggleRolePermissionGroup(role, groupKey, true);
         return;
       }
 
       const inGroup = permissions.filter((p) => getPermissionGroupKey(p.name) === groupKey);
-
-      // Minimal & safe defaults for Staff/User:
-      // - allow viewing/reading/listing
-      // - avoid destructive/admin actions by default
       const recommended = inGroup.filter((p) => {
         const name = p.name.toLowerCase();
         return (
@@ -279,7 +373,6 @@ export const AdminPermissionsTab: React.FC = () => {
 
       const recommendedIds = recommended.map((p) => p.id);
       if (recommendedIds.length === 0) {
-        // Fallback: at least enable the base "{group}.view" if present.
         const baseView = inGroup.find((p) => p.name.toLowerCase() === `${groupKey}.view`);
         if (baseView) recommendedIds.push(baseView.id);
       }
@@ -287,14 +380,14 @@ export const AdminPermissionsTab: React.FC = () => {
       if (recommendedIds.length === 0) {
         toast({
           title: 'Nessun permesso consigliato',
-          description: 'Non trovo permessi “view/read/list” per questa sezione.',
+          description: 'Non trovo permessi "view/read/list" per questa sezione.',
           variant: 'destructive',
         });
         return;
       }
 
       const existing = new Set(
-        rolePermissions.filter((rp) => rp.role === role).map((rp) => rp.permission_id),
+        rolePermissions.filter((rp) => rp.role === role).map((rp) => rp.permission_id)
       );
       const rows = recommendedIds
         .filter((id) => !existing.has(id))
@@ -322,7 +415,7 @@ export const AdminPermissionsTab: React.FC = () => {
       console.error('Error enabling recommended group permissions:', error);
       toast({
         title: 'Errore',
-        description: 'Impossibile applicare l’abilitazione consigliata',
+        description: "Impossibile applicare l'abilitazione consigliata",
         variant: 'destructive',
       });
     }
@@ -331,20 +424,16 @@ export const AdminPermissionsTab: React.FC = () => {
   const toggleRolePermission = async (role: AppRole, permissionId: string, hasPermission: boolean) => {
     try {
       if (hasPermission) {
-        // Remove permission
         const { error } = await supabase
           .from('role_permissions')
           .delete()
           .eq('role', role)
           .eq('permission_id', permissionId);
-        
         if (error) throw error;
       } else {
-        // Add permission
         const { error } = await supabase
           .from('role_permissions')
           .insert({ role: role as AppRole, permission_id: permissionId });
-        
         if (error) throw error;
       }
 
@@ -360,7 +449,7 @@ export const AdminPermissionsTab: React.FC = () => {
         entity: 'role_permissions',
         metadata: { role, permission: perm?.name ?? permissionId, enabled: !hasPermission },
       });
-      
+
       fetchData();
     } catch (error) {
       console.error('Error toggling role permission:', error);
@@ -376,7 +465,6 @@ export const AdminPermissionsTab: React.FC = () => {
     if (!selectedUser || !newRole) return;
 
     try {
-      // Update the role
       const { error } = await supabase
         .from('user_roles')
         .update({ role: newRole as AppRole })
@@ -384,9 +472,10 @@ export const AdminPermissionsTab: React.FC = () => {
 
       if (error) throw error;
 
+      const profile = selectedUser.profile;
       toast({
         title: 'Ruolo aggiornato',
-        description: `Ruolo cambiato a ${ROLE_LABELS[newRole]}`,
+        description: `${profile?.display_name || 'Utente'} è ora ${ROLE_LABELS[newRole]}`,
       });
 
       adminAuditLog({
@@ -394,12 +483,12 @@ export const AdminPermissionsTab: React.FC = () => {
         section: 'settings',
         entity: 'user_roles',
         entity_id: selectedUser.user_id,
-        metadata: { from: selectedUser.role, to: newRole },
+        metadata: { from: selectedUser.role, to: newRole, display_name: profile?.display_name },
       });
 
       setShowRoleChangeDialog(false);
       setSelectedUser(null);
-      setNewRole('admin');
+      setNewRole('moderator');
       fetchData();
     } catch (error) {
       console.error('Error changing role:', error);
@@ -411,9 +500,23 @@ export const AdminPermissionsTab: React.FC = () => {
     }
   };
 
-  const filteredUsers = userRoles.filter(ur => {
+  // Merge user roles with profiles
+  const usersWithProfiles = useMemo(() => {
+    return userRoles.map(ur => ({
+      ...ur,
+      profile: getProfile(ur.user_id),
+    }));
+  }, [userRoles, getProfile]);
+
+  const filteredUsers = usersWithProfiles.filter(ur => {
     if (!searchQuery) return true;
-    return ur.user_id.toLowerCase().includes(searchQuery.toLowerCase());
+    const q = searchQuery.toLowerCase();
+    const profile = ur.profile;
+    return (
+      ur.user_id.toLowerCase().includes(q) ||
+      profile?.display_name?.toLowerCase().includes(q) ||
+      profile?.username?.toLowerCase().includes(q)
+    );
   });
 
   const groupedUsers = {
@@ -426,92 +529,170 @@ export const AdminPermissionsTab: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-3">
+          <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground animate-pulse">Caricamento...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-6 pb-24 md:pb-6">
+      {/* Header - Apple style minimal */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold">Gestione Permessi</h2>
-          <p className="text-muted-foreground">
-            Gestisci ruoli e permessi degli utenti
+          <h2 className="text-2xl font-semibold tracking-tight">Permessi</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Gestisci ruoli e accessi dello staff
           </p>
         </div>
-        <Button onClick={fetchData} variant="outline" size="sm">
+        <Button 
+          onClick={fetchData} 
+          variant="outline" 
+          size="sm"
+          className="self-start md:self-auto rounded-full"
+        >
           <RefreshCw className="w-4 h-4 mr-2" />
           Aggiorna
         </Button>
       </div>
 
       <Tabs defaultValue="users" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="users" className="gap-2">
+        <TabsList className="bg-muted/50 p-1 rounded-full w-full md:w-auto">
+          <TabsTrigger value="users" className="rounded-full gap-2 flex-1 md:flex-none">
             <User className="w-4 h-4" />
-            Utenti ({userRoles.length})
+            <span>Utenti</span>
+            <Badge variant="secondary" className="ml-1 rounded-full text-xs">
+              {userRoles.length}
+            </Badge>
           </TabsTrigger>
-          <TabsTrigger value="roles" className="gap-2">
+          <TabsTrigger value="roles" className="rounded-full gap-2 flex-1 md:flex-none">
             <Settings className="w-4 h-4" />
-            Ruoli
+            <span>Ruoli</span>
           </TabsTrigger>
         </TabsList>
 
+        {/* ========== USERS TAB ========== */}
         <TabsContent value="users" className="space-y-4">
+          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Cerca per ID utente..."
+              placeholder="Cerca per nome o username..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 rounded-full bg-muted/50 border-0 focus-visible:ring-1"
             />
           </div>
 
+          {/* Staff Presets - Quick Actions */}
+          <Card className="border-dashed">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Zap className="w-4 h-4 text-accent" />
+                Preset rapidi Staff
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Clicca su un utente e applica un preset per assegnare permessi in blocco
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex flex-wrap gap-2">
+                {STAFF_PRESETS.map(preset => (
+                  <Badge
+                    key={preset.key}
+                    variant="outline"
+                    className={cn("cursor-default", preset.color)}
+                  >
+                    <preset.icon className="w-3 h-3 mr-1" />
+                    {preset.label}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Users List */}
           <div className="grid gap-4">
             {(['owner', 'admin', 'moderator', 'user'] as const).map(role => (
               groupedUsers[role].length > 0 && (
-                <Card key={role}>
-                  <CardHeader className="py-3">
-                    <CardTitle className="flex items-center gap-2 text-lg">
+                <Card key={role} className="overflow-hidden">
+                  <CardHeader className="py-3 bg-muted/30">
+                    <CardTitle className="flex items-center gap-2 text-base font-medium">
                       {ROLE_ICONS[role]}
                       {ROLE_LABELS[role]}
-                      <Badge variant="secondary">{groupedUsers[role].length}</Badge>
+                      <Badge variant="secondary" className="rounded-full ml-auto">
+                        {groupedUsers[role].length}
+                      </Badge>
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="pt-0">
-                    <ScrollArea className="max-h-60">
-                      <div className="space-y-2">
-                        {groupedUsers[role].map(user => (
+                  <CardContent className="p-0">
+                    <div className="divide-y">
+                      {groupedUsers[role].map(user => {
+                        const profile = user.profile;
+                        return (
                           <div 
                             key={user.id}
-                            className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                            className="flex items-center justify-between p-4 hover:bg-muted/20 transition-colors"
                           >
-                            <div className="flex items-center gap-3">
-                              <Badge className={ROLE_COLORS[user.role]}>
-                                {ROLE_LABELS[user.role]}
-                              </Badge>
-                              <code className="text-xs bg-background px-2 py-1 rounded">
-                                {user.user_id.slice(0, 8)}...
-                              </code>
+                            {/* User Info */}
+                            <div className="flex items-center gap-3 min-w-0">
+                              <Avatar className="h-10 w-10 shrink-0">
+                                <AvatarImage src={profile?.avatar_url || undefined} />
+                                <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                                  {(profile?.display_name || 'U')[0].toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0">
+                                <p className="font-medium truncate">
+                                  {profile?.display_name || 'Utente senza nome'}
+                                </p>
+                                <p className="text-xs text-muted-foreground truncate">
+                                  @{profile?.username || user.user_id.slice(0, 8)}
+                                </p>
+                              </div>
                             </div>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setNewRole(user.role as AppRole);
-                                setShowRoleChangeDialog(true);
-                              }}
-                              disabled={role === 'owner'}
-                            >
-                              Cambia ruolo
-                            </Button>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-2 shrink-0">
+                              {/* Preset buttons for non-owner users */}
+                              {role !== 'owner' && !isMobile && (
+                                <div className="flex gap-1">
+                                  {STAFF_PRESETS.map(preset => (
+                                    <Button
+                                      key={preset.key}
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 rounded-full"
+                                      title={`Applica ${preset.label}`}
+                                      onClick={() => setPresetApplyDialog({ open: true, user, preset })}
+                                    >
+                                      <preset.icon className="w-4 h-4" />
+                                    </Button>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Role change */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-full"
+                                onClick={() => {
+                                  setSelectedUser(user);
+                                  setNewRole(user.role as AppRole);
+                                  setShowRoleChangeDialog(true);
+                                }}
+                                disabled={role === 'owner'}
+                              >
+                                {isMobile ? 'Ruolo' : 'Cambia ruolo'}
+                              </Button>
+                            </div>
                           </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
+                        );
+                      })}
+                    </div>
                   </CardContent>
                 </Card>
               )
@@ -519,61 +700,77 @@ export const AdminPermissionsTab: React.FC = () => {
           </div>
 
           {filteredUsers.length === 0 && (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                <User className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Nessun utente trovato</p>
+            <Card className="border-dashed">
+              <CardContent className="py-12 text-center">
+                <User className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                <p className="text-muted-foreground">Nessun utente trovato</p>
               </CardContent>
             </Card>
           )}
         </TabsContent>
 
+        {/* ========== ROLES TAB ========== */}
         <TabsContent value="roles" className="space-y-4">
-          <div className="grid md:grid-cols-4 gap-4">
-            {(['owner', 'admin', 'moderator', 'user'] as const).map(role => (
-              <Card 
-                key={role}
-                className={`cursor-pointer transition-all ${
-                  selectedRole === role ? 'ring-2 ring-primary' : ''
-                }`}
-                onClick={() => setSelectedRole(selectedRole === role ? null : role)}
-              >
-                <CardHeader className="pb-2">
-                  <CardTitle className="flex items-center gap-2">
-                    {ROLE_ICONS[role]}
-                    {ROLE_LABELS[role]}
-                  </CardTitle>
-                  <CardDescription>
-                    {getRolePermissions(role).length} permessi
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            ))}
+          {/* Role Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            {(['owner', 'admin', 'moderator', 'user'] as const).map(role => {
+              const count = getRolePermissions(role).length;
+              return (
+                <Card 
+                  key={role}
+                  className={cn(
+                    "cursor-pointer transition-all duration-200 hover:shadow-md",
+                    selectedRole === role 
+                      ? 'ring-2 ring-primary shadow-md' 
+                      : 'hover:ring-1 hover:ring-primary/30'
+                  )}
+                  onClick={() => setSelectedRole(selectedRole === role ? null : role)}
+                >
+                  <CardHeader className="p-4">
+                    <div className="flex items-center gap-2">
+                      {ROLE_ICONS[role]}
+                      <CardTitle className="text-sm font-medium">
+                        {ROLE_LABELS[role]}
+                      </CardTitle>
+                    </div>
+                    <CardDescription className="text-xs mt-1">
+                      {count} permessi
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              );
+            })}
           </div>
 
+          {/* Permissions Panel */}
           {selectedRole && (
-            <Card>
-              <CardHeader>
+            <Card className="animate-in fade-in-50 slide-in-from-top-2 duration-200">
+              <CardHeader className="border-b bg-muted/30">
                 <CardTitle className="flex items-center gap-2">
                   {ROLE_ICONS[selectedRole]}
                   Permessi per {ROLE_LABELS[selectedRole]}
                 </CardTitle>
                 <CardDescription>
-                  Attiva o disattiva i permessi per questo ruolo
+                  {selectedRole === 'owner' 
+                    ? 'L\'owner ha accesso completo a tutto - i permessi non possono essere modificati'
+                    : 'Attiva o disattiva i permessi per questo ruolo'
+                  }
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-4">
                 <div className="space-y-4">
+                  {/* Search */}
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                     <Input
                       value={permSearch}
                       onChange={(e) => setPermSearch(e.target.value)}
-                      placeholder="Cerca (opzionale) — es. reset, manage_groups, settings…"
-                      className="pl-10"
+                      placeholder="Cerca permessi..."
+                      className="pl-10 rounded-full bg-muted/50 border-0"
                     />
                   </div>
 
+                  {/* Permission Groups */}
                   {(() => {
                     const q = permSearch.trim().toLowerCase();
                     const filtered = !q
@@ -597,92 +794,90 @@ export const AdminPermissionsTab: React.FC = () => {
                     ];
 
                     const renderPermissionRow = (permission: Permission) => {
-                      const hasPermission = hasRolePermission(selectedRole, permission.id);
+                      const hasPerm = hasRolePermission(selectedRole, permission.id);
                       const isOwnerOnly = permission.name === 'manage_owners';
                       const isDisabled =
-                        (selectedRole === ('owner' as AppRole)) ||
-                        (isOwnerOnly && selectedRole !== ('owner' as AppRole));
+                        selectedRole === 'owner' ||
+                        (isOwnerOnly && selectedRole !== 'admin');
 
                       const prettyName = permission.name.includes('.')
-                        ? permission.name.replace(/\./g, ' › ')
+                        ? permission.name.split('.').pop()
                         : permission.name;
 
                       return (
                         <div
                           key={permission.id}
-                          className="flex items-start justify-between gap-4 py-3"
+                          className="flex items-center justify-between gap-4 py-3 px-1"
                         >
-                          <div className="min-w-0 space-y-1">
-                            <Label className="font-medium break-words">
-                              {prettyName}
+                          <div className="min-w-0 space-y-0.5">
+                            <Label className="font-medium text-sm capitalize">
+                              {prettyName?.replace(/_/g, ' ')}
                             </Label>
-                            <p className="text-sm text-muted-foreground break-words">
+                            <p className="text-xs text-muted-foreground line-clamp-1">
                               {permission.description}
                             </p>
                           </div>
-                          <div className="shrink-0 pt-1">
-                            <Switch
-                              checked={hasPermission}
-                              onCheckedChange={() =>
-                                toggleRolePermission(selectedRole, permission.id, hasPermission)
-                              }
-                              disabled={isDisabled}
-                            />
-                          </div>
+                          <Switch
+                            checked={hasPerm}
+                            onCheckedChange={() =>
+                              toggleRolePermission(selectedRole, permission.id, hasPerm)
+                            }
+                            disabled={isDisabled}
+                            className="shrink-0"
+                          />
                         </div>
                       );
                     };
 
                     const renderGroupBlock = (g: string) => {
                       const items = groups[g] ?? [];
-                      if (items.length === 0) {
-                        return (
-                          <div className="text-sm text-muted-foreground py-6">
-                            Nessun permesso in questa sezione.
-                          </div>
-                        );
-                      }
+                      if (items.length === 0) return null;
 
                       const enabledCount = items.filter((p) => hasRolePermission(selectedRole, p.id)).length;
                       const allEnabled = enabledCount === items.length;
                       const anyEnabled = enabledCount > 0;
 
                       return (
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2">
+                        <div className="space-y-2">
+                          {/* Group Header */}
+                          <div className="flex items-center justify-between gap-3 rounded-xl border bg-muted/30 px-4 py-3">
                             <div className="min-w-0">
                               <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium">
+                                <span className="font-medium text-sm">
                                   {PERMISSION_GROUP_LABELS[g] ?? g}
                                 </span>
                                 {!allEnabled && anyEnabled && (
-                                  <Badge variant="secondary">Parziale</Badge>
+                                  <Badge variant="secondary" className="text-xs rounded-full">
+                                    Parziale
+                                  </Badge>
                                 )}
                               </div>
-                              <p className="text-xs text-muted-foreground">
-                                {enabledCount}/{items.length} permessi attivi
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                {enabledCount}/{items.length} attivi
                               </p>
                             </div>
 
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">Tutto</span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-muted-foreground hidden md:block">
+                                Tutto
+                              </span>
                               <Switch
                                 checked={allEnabled}
                                 onCheckedChange={(checked) => {
-                                  if (selectedRole === ('owner' as AppRole)) return;
+                                  if (selectedRole === 'owner') return;
                                   if (!checked) {
                                     toggleRolePermissionGroup(selectedRole, g, false);
                                     return;
                                   }
-
                                   setGroupEnableDialog({ open: true, role: selectedRole, groupKey: g });
                                 }}
-                                disabled={selectedRole === ('owner' as AppRole)}
+                                disabled={selectedRole === 'owner'}
                               />
                             </div>
                           </div>
 
-                          <div className="divide-y">
+                          {/* Permission List */}
+                          <div className="divide-y rounded-xl border overflow-hidden bg-background">
                             {items.map(renderPermissionRow)}
                           </div>
                         </div>
@@ -691,38 +886,42 @@ export const AdminPermissionsTab: React.FC = () => {
 
                     return (
                       <Tabs defaultValue="openmic" className="space-y-4">
-                        <TabsList className="w-full flex flex-wrap justify-start h-auto">
-                          <TabsTrigger value="openmic">Open Mic</TabsTrigger>
-                          <TabsTrigger value="dediche">Dediche</TabsTrigger>
-                          <TabsTrigger value="community">Community</TabsTrigger>
-                          <TabsTrigger value="all">Tutti</TabsTrigger>
+                        <TabsList className="w-full flex flex-wrap justify-start h-auto gap-1 bg-transparent p-0">
+                          <TabsTrigger value="openmic" className="rounded-full">
+                            <Mic className="w-3 h-3 mr-1" />
+                            Open Mic
+                          </TabsTrigger>
+                          <TabsTrigger value="dediche" className="rounded-full">
+                            <Heart className="w-3 h-3 mr-1" />
+                            Dediche
+                          </TabsTrigger>
+                          <TabsTrigger value="community" className="rounded-full">
+                            <Users className="w-3 h-3 mr-1" />
+                            Community
+                          </TabsTrigger>
+                          <TabsTrigger value="all" className="rounded-full">
+                            Tutti
+                          </TabsTrigger>
                         </TabsList>
 
-                        <TabsContent value="openmic" className="space-y-2">
+                        <TabsContent value="openmic" className="mt-4">
                           {renderGroupBlock('openmic')}
                         </TabsContent>
 
-                        <TabsContent value="dediche" className="space-y-2">
+                        <TabsContent value="dediche" className="mt-4">
                           {renderGroupBlock('dediche')}
                         </TabsContent>
 
-                        <TabsContent value="community" className="space-y-2">
+                        <TabsContent value="community" className="mt-4">
                           {renderGroupBlock('community')}
                         </TabsContent>
 
-                        <TabsContent value="all" className="space-y-6">
+                        <TabsContent value="all" className="mt-4 space-y-6">
                           {groupKeysInOrder
                             .filter((g, idx, arr) => arr.indexOf(g) === idx)
                             .filter((g) => (groups[g]?.length ?? 0) > 0)
                             .map((g) => (
-                              <div key={g} className="space-y-2">
-                                <div className="flex items-center gap-3">
-                                  <Separator className="flex-1" />
-                                  <span className="text-xs text-muted-foreground uppercase tracking-wide">
-                                    {PERMISSION_GROUP_LABELS[g] ?? g}
-                                  </span>
-                                  <Separator className="flex-1" />
-                                </div>
+                              <div key={g}>
                                 {renderGroupBlock(g)}
                               </div>
                             ))}
@@ -736,48 +935,53 @@ export const AdminPermissionsTab: React.FC = () => {
           )}
 
           {!selectedRole && (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground">
-                <Settings className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Seleziona un ruolo per gestirne i permessi</p>
+            <Card className="border-dashed">
+              <CardContent className="py-12 text-center">
+                <Shield className="w-12 h-12 mx-auto mb-4 text-muted-foreground/50" />
+                <p className="text-muted-foreground">Seleziona un ruolo per gestirne i permessi</p>
               </CardContent>
             </Card>
           )}
         </TabsContent>
       </Tabs>
 
+      {/* ========== DIALOGS ========== */}
+
       {/* Role Change Dialog */}
       <AlertDialog open={showRoleChangeDialog} onOpenChange={setShowRoleChangeDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="sm:rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Cambia ruolo utente</AlertDialogTitle>
+            <AlertDialogTitle>Cambia ruolo</AlertDialogTitle>
             <AlertDialogDescription>
-              Seleziona il nuovo ruolo per questo utente
+              {selectedUser?.profile?.display_name 
+                ? `Stai modificando il ruolo di ${selectedUser.profile.display_name}`
+                : 'Seleziona il nuovo ruolo per questo utente'
+              }
             </AlertDialogDescription>
           </AlertDialogHeader>
           
           <div className="py-4">
             <Select value={newRole} onValueChange={(v) => setNewRole(v as AppRole)}>
-              <SelectTrigger>
+              <SelectTrigger className="rounded-xl">
                 <SelectValue placeholder="Seleziona ruolo" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="admin">
                   <div className="flex items-center gap-2">
                     {ROLE_ICONS.admin}
-                    Admin
+                    Admin - Accesso completo customizzabile
                   </div>
                 </SelectItem>
                 <SelectItem value="moderator">
                   <div className="flex items-center gap-2">
                     {ROLE_ICONS.moderator}
-                    Staff
+                    Staff - Modifica limitata
                   </div>
                 </SelectItem>
                 <SelectItem value="user">
                   <div className="flex items-center gap-2">
                     {ROLE_ICONS.user}
-                    Utente
+                    Utente - Solo accesso base
                   </div>
                 </SelectItem>
               </SelectContent>
@@ -785,56 +989,116 @@ export const AdminPermissionsTab: React.FC = () => {
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel>Annulla</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRoleChange}>
+            <AlertDialogCancel className="rounded-full">Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRoleChange} className="rounded-full">
               Conferma
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Enable group dialog (recommended vs full) */}
+      {/* Group Enable Dialog */}
       <AlertDialog
         open={!!groupEnableDialog?.open}
         onOpenChange={(open) => {
-          if (!groupEnableDialog) return;
-          setGroupEnableDialog(open ? groupEnableDialog : null);
+          if (!open) setGroupEnableDialog(null);
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="sm:rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Abilita sezione</AlertDialogTitle>
             <AlertDialogDescription>
-              Vuoi abilitare la sezione <strong>{PERMISSION_GROUP_LABELS[groupEnableDialog?.groupKey ?? ''] ?? groupEnableDialog?.groupKey}</strong> con un set
-              <strong> consigliato</strong> (più sicuro) oppure <strong>completo</strong> (tutti i permessi)?
+              Come vuoi abilitare <strong>{PERMISSION_GROUP_LABELS[groupEnableDialog?.groupKey ?? ''] ?? groupEnableDialog?.groupKey}</strong>?
             </AlertDialogDescription>
           </AlertDialogHeader>
 
           <div className="grid gap-3 py-2">
             <Button
               variant="default"
+              className="rounded-xl justify-start h-auto py-3"
               onClick={async () => {
                 if (!groupEnableDialog) return;
                 await toggleRolePermissionGroupRecommended(groupEnableDialog.role, groupEnableDialog.groupKey);
                 setGroupEnableDialog(null);
               }}
             >
-              Abilitazione consigliata
+              <div className="text-left">
+                <div className="font-medium">Abilitazione consigliata</div>
+                <div className="text-xs opacity-80">Solo permessi di visualizzazione (più sicuro)</div>
+              </div>
             </Button>
             <Button
               variant="secondary"
+              className="rounded-xl justify-start h-auto py-3"
               onClick={async () => {
                 if (!groupEnableDialog) return;
                 await toggleRolePermissionGroup(groupEnableDialog.role, groupEnableDialog.groupKey, true);
                 setGroupEnableDialog(null);
               }}
             >
-              Abilitazione completa
+              <div className="text-left">
+                <div className="font-medium">Abilitazione completa</div>
+                <div className="text-xs opacity-80">Tutti i permessi della sezione</div>
+              </div>
             </Button>
           </div>
 
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setGroupEnableDialog(null)}>Annulla</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-full" onClick={() => setGroupEnableDialog(null)}>
+              Annulla
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Preset Apply Dialog */}
+      <AlertDialog
+        open={!!presetApplyDialog?.open}
+        onOpenChange={(open) => {
+          if (!open) setPresetApplyDialog(null);
+        }}
+      >
+        <AlertDialogContent className="sm:rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              {presetApplyDialog?.preset && <presetApplyDialog.preset.icon className="w-5 h-5" />}
+              Applica {presetApplyDialog?.preset.label}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Vuoi assegnare il preset <strong>{presetApplyDialog?.preset.label}</strong> a{' '}
+              <strong>{presetApplyDialog?.user.profile?.display_name || 'questo utente'}</strong>?
+              {presetApplyDialog?.user.role === 'user' && (
+                <span className="block mt-2 text-destructive">
+                  L'utente verrà anche promosso al ruolo Staff.
+                </span>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="py-2">
+            <p className="text-sm text-muted-foreground mb-2">Permessi inclusi:</p>
+            <div className="flex flex-wrap gap-1">
+              {presetApplyDialog?.preset.permissions.map(pName => (
+                <Badge key={pName} variant="secondary" className="text-xs">
+                  {pName}
+                </Badge>
+              ))}
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-full">Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              className="rounded-full"
+              onClick={async () => {
+                if (!presetApplyDialog) return;
+                await applyStaffPreset(presetApplyDialog.user, presetApplyDialog.preset);
+                setPresetApplyDialog(null);
+              }}
+            >
+              <Check className="w-4 h-4 mr-2" />
+              Applica
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
