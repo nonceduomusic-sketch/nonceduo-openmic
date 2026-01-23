@@ -13,21 +13,23 @@ import {
   Bell,
   BellOff,
   CheckCheck,
-  Filter,
   Mic2,
   Heart,
   MessageCircle,
   Calendar,
+  Eye,
+  EyeOff,
+  Settings,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { Switch } from '@/components/ui/switch';
 import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 import { useFormatPreferences, FormatPreferences } from '@/hooks/useFormatPreferences';
 import { useCentroPermissions } from '@/hooks/useCentroPermissions';
@@ -63,6 +65,55 @@ interface NotificationItem {
   data?: any;
 }
 
+// Category card configuration
+interface CategoryCard {
+  key: NotificationType;
+  label: string;
+  icon: React.ReactNode;
+  bgColor: string;
+  borderColor: string;
+  textColor: string;
+  getCount: (counts: { newReservations: number; unreadDedicheMessages: number; unreadCommunityMessages: number; pendingJoinRequests: number }) => number;
+  navigateTo?: { tab: AdminMainTab; subTab?: string };
+  gatedBy?: 'openmic' | 'dediche' | 'community';
+}
+
+const CATEGORY_CARDS: CategoryCard[] = [
+  {
+    key: 'openmic',
+    label: 'Open Mic',
+    icon: <Mic2 className="w-6 h-6" />,
+    bgColor: 'bg-amber-500/20',
+    borderColor: 'border-amber-500/40',
+    textColor: 'text-amber-400',
+    getCount: (c) => c.newReservations,
+    navigateTo: { tab: 'openmic' },
+    gatedBy: 'openmic',
+  },
+  {
+    key: 'dediche',
+    label: 'Dediche',
+    icon: <Heart className="w-6 h-6" />,
+    bgColor: 'bg-pink-500/20',
+    borderColor: 'border-pink-500/40',
+    textColor: 'text-pink-400',
+    getCount: (c) => c.unreadDedicheMessages,
+    navigateTo: { tab: 'dediche' },
+    gatedBy: 'dediche',
+  },
+  {
+    key: 'community',
+    label: 'Community',
+    icon: <MessageCircle className="w-6 h-6" />,
+    bgColor: 'bg-cyan-500/20',
+    borderColor: 'border-cyan-500/40',
+    textColor: 'text-cyan-400',
+    getCount: (c) => c.unreadCommunityMessages + c.pendingJoinRequests,
+    navigateTo: { tab: 'community', subTab: 'groups' },
+    gatedBy: 'community',
+  },
+];
+
 export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({ 
   onNavigate,
   access = { openmic: true, dediche: true, community: true },
@@ -91,8 +142,25 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
   // UI State
   const [showOnlyUnread, setShowOnlyUnread] = useState(false);
   const [filterType, setFilterType] = useState<NotificationType>('all');
-  const [showFilters, setShowFilters] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  
+  // Category visibility state (persisted in localStorage)
+  const [categoryVisibility, setCategoryVisibility] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('admin-centro-category-visibility');
+      return saved ? JSON.parse(saved) : { openmic: true, dediche: true, community: true };
+    } catch {
+      return { openmic: true, dediche: true, community: true };
+    }
+  });
+
+  const toggleCategoryVisibility = (key: string) => {
+    setCategoryVisibility(prev => {
+      const updated = { ...prev, [key]: !prev[key] };
+      localStorage.setItem('admin-centro-category-visibility', JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   // Calculate total unread count
   const totalUnread = useMemo(() => {
@@ -122,8 +190,7 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
       });
     }
 
-    // Add placeholder items for counts (these are summaries, not individual items)
-    // In a real implementation, you'd fetch individual notifications
+    // Add placeholder items for counts (summaries)
     if (preferences.openmic && access.openmic && counts.newReservations > 0) {
       items.push({
         id: 'reservations-summary',
@@ -190,16 +257,29 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
   const canManageActive = isOwner || centroPerms.activeFormats;
   const canManageSerata = isOwner || centroPerms.serataLive;
 
+  // Get visible category cards
+  const visibleCards = useMemo(() => {
+    return CATEGORY_CARDS.filter(card => {
+      // Check access permission
+      if (card.gatedBy && !access[card.gatedBy]) return false;
+      // Check preferences (monitoring)
+      if (card.gatedBy && !preferences[card.gatedBy]) return false;
+      // Check visibility toggle
+      if (!categoryVisibility[card.key]) return false;
+      return true;
+    });
+  }, [access, preferences, categoryVisibility]);
+
   const getNotificationIcon = (type: NotificationItem['type']) => {
     switch (type) {
       case 'join_request':
         return <Users className="w-5 h-5 text-primary" />;
       case 'reservation':
-        return <Mic2 className="w-5 h-5 text-warning" />;
+        return <Mic2 className="w-5 h-5 text-amber-400" />;
       case 'message_dediche':
-        return <Heart className="w-5 h-5 text-secondary" />;
+        return <Heart className="w-5 h-5 text-pink-400" />;
       case 'message_community':
-        return <MessageCircle className="w-5 h-5 text-accent" />;
+        return <MessageCircle className="w-5 h-5 text-cyan-400" />;
       default:
         return <Bell className="w-5 h-5 text-muted-foreground" />;
     }
@@ -208,11 +288,11 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
   const getSectionBadge = (section: NotificationType) => {
     switch (section) {
       case 'openmic':
-        return <Badge className="bg-warning/20 text-warning text-xs">Open Mic</Badge>;
+        return <Badge className="bg-amber-500/20 text-amber-400 text-xs">Open Mic</Badge>;
       case 'dediche':
-        return <Badge className="bg-secondary/20 text-secondary text-xs">Dediche</Badge>;
+        return <Badge className="bg-pink-500/20 text-pink-400 text-xs">Dediche</Badge>;
       case 'community':
-        return <Badge className="bg-accent/20 text-accent text-xs">Community</Badge>;
+        return <Badge className="bg-cyan-500/20 text-cyan-400 text-xs">Community</Badge>;
       default:
         return null;
     }
@@ -227,7 +307,7 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden no-horizontal-scroll">
       {/* ========== STICKY HEADER - Numero notifiche in evidenza ========== */}
       <div className="sticky top-0 z-10 bg-card/98 backdrop-blur-xl border-b border-border/50 px-4 py-4 safe-area-top">
         {/* Main notification count - VERY PROMINENT */}
@@ -282,16 +362,6 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
             {showOnlyUnread ? <Bell className="w-4 h-4 mr-1.5" /> : <CheckCheck className="w-4 h-4 mr-1.5" />}
             {showOnlyUnread ? 'Solo nuove' : 'Tutte'}
           </Button>
-          
-          <Button
-            variant={showFilters ? "secondary" : "ghost"}
-            size="sm"
-            className="h-9 px-3 text-sm rounded-xl"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            <Filter className="w-4 h-4 mr-1.5" />
-            Filtra
-          </Button>
 
           <div className="flex-1" />
           
@@ -301,44 +371,98 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
             className="h-9 px-3 text-sm rounded-xl text-muted-foreground"
             onClick={() => setShowSettings(!showSettings)}
           >
+            <Settings className="w-4 h-4 mr-1.5" />
             Impostazioni
-            {showSettings ? <ChevronDown className="w-4 h-4 ml-1" /> : <ChevronRight className="w-4 h-4 ml-1" />}
           </Button>
         </div>
-
-        {/* Filter chips - only show when filters open */}
-        {showFilters && (
-          <div className="flex flex-wrap gap-2 mt-3 animate-in fade-in-0 slide-in-from-top-2 duration-200">
-            {[
-              { key: 'all' as const, label: 'Tutte', count: notifications.length },
-              { key: 'openmic' as const, label: 'Open Mic', count: counts.newReservations, color: 'text-warning' },
-              { key: 'dediche' as const, label: 'Dediche', count: counts.unreadDedicheMessages, color: 'text-secondary' },
-              { key: 'community' as const, label: 'Community', count: counts.pendingJoinRequests + counts.unreadCommunityMessages, color: 'text-accent' },
-            ].map(f => (
-              <Button
-                key={f.key}
-                variant={filterType === f.key ? "default" : "outline"}
-                size="sm"
-                className={cn(
-                  "h-8 px-3 text-sm rounded-full",
-                  filterType === f.key && f.color
-                )}
-                onClick={() => setFilterType(f.key)}
-              >
-                {f.label}
-                {f.count > 0 && (
-                  <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-xs">
-                    {f.count}
-                  </Badge>
-                )}
-              </Button>
-            ))}
-          </div>
-        )}
       </div>
+
+      {/* ========== CATEGORY CARDS GRID - Tappable squares ========== */}
+      {visibleCards.length > 0 && (
+        <div className="px-4 py-4 border-b border-border/30">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {visibleCards.map((card) => {
+              const count = card.getCount(counts);
+              const isActive = filterType === card.key;
+              
+              return (
+                <button
+                  key={card.key}
+                  type="button"
+                  onClick={() => {
+                    // Toggle filter or navigate
+                    if (card.navigateTo) {
+                      setFilterType(isActive ? 'all' : card.key);
+                    }
+                  }}
+                  onDoubleClick={() => {
+                    // Double tap to navigate directly
+                    if (card.navigateTo) {
+                      onNavigate?.(card.navigateTo.tab, card.navigateTo.subTab);
+                    }
+                  }}
+                  className={cn(
+                    "relative flex flex-col items-center justify-center p-5 rounded-2xl border-2 transition-all duration-200",
+                    "min-h-[100px] touch-target",
+                    "hover:scale-[1.02] active:scale-[0.98]",
+                    card.bgColor,
+                    isActive ? card.borderColor : "border-transparent",
+                    isActive && "ring-2 ring-offset-2 ring-offset-background ring-current"
+                  )}
+                >
+                  {/* Unread badge */}
+                  {count > 0 && (
+                    <div className="absolute -top-2 -right-2 flex items-center justify-center min-w-[28px] h-7 px-2 rounded-full bg-destructive text-destructive-foreground text-sm font-bold shadow-lg">
+                      {count > 99 ? '99+' : count}
+                    </div>
+                  )}
+                  
+                  {/* Icon */}
+                  <div className={cn("mb-2", card.textColor)}>
+                    {card.icon}
+                  </div>
+                  
+                  {/* Label */}
+                  <span className={cn("text-sm font-medium", card.textColor)}>
+                    {card.label}
+                  </span>
+                  
+                  {/* Selected indicator */}
+                  {isActive && (
+                    <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-current opacity-50" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          
+          {/* Hint text */}
+          <p className="text-xs text-muted-foreground text-center mt-3">
+            Tocca per filtrare • Doppio tap per aprire sezione
+          </p>
+        </div>
+      )}
 
       {/* ========== NOTIFICATION LIST - Scrollable ========== */}
       <div className="flex-1 overflow-y-auto px-4 py-3">
+        {/* Active filter indicator */}
+        {filterType !== 'all' && (
+          <div className="flex items-center justify-between mb-3 p-2 rounded-xl bg-muted/50">
+            <span className="text-sm text-muted-foreground">
+              Filtro: <strong className="text-foreground">{CATEGORY_CARDS.find(c => c.key === filterType)?.label}</strong>
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => setFilterType('all')}
+            >
+              <X className="w-3 h-3 mr-1" />
+              Rimuovi
+            </Button>
+          </div>
+        )}
+
         {filteredNotifications.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mb-4">
@@ -350,7 +474,9 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
             <p className="text-sm text-muted-foreground max-w-[250px]">
               {showOnlyUnread 
                 ? 'Hai letto tutte le notifiche!' 
-                : 'Le notifiche appariranno qui quando ci saranno novità'}
+                : filterType !== 'all'
+                  ? `Nessuna notifica per ${CATEGORY_CARDS.find(c => c.key === filterType)?.label}`
+                  : 'Le notifiche appariranno qui quando ci saranno novità'}
             </p>
           </div>
         ) : (
@@ -360,7 +486,7 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
                 key={notification.id}
                 className={cn(
                   "flex items-start gap-3 p-4 rounded-xl border transition-all duration-200",
-                  "touch-target min-h-[72px]", // Minimum touch target
+                  "touch-target min-h-[72px]",
                   notification.isUnread 
                     ? "bg-card border-border shadow-sm" 
                     : "bg-muted/30 border-transparent",
@@ -419,7 +545,7 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
                       <Button
                         size="sm"
                         variant="outline"
-                        className="flex-1 h-10 border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground rounded-xl"
+                        className="flex-1 h-10 border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 rounded-xl"
                         onClick={(e) => {
                           e.stopPropagation();
                           approveJoinRequest(notification.data.id);
@@ -431,7 +557,7 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
                       <Button
                         size="sm"
                         variant="outline"
-                        className="flex-1 h-10 border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground rounded-xl"
+                        className="flex-1 h-10 border-destructive/50 text-destructive hover:bg-destructive/20 rounded-xl"
                         onClick={(e) => {
                           e.stopPropagation();
                           rejectJoinRequest(notification.data.id);
@@ -460,10 +586,57 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
       {/* ========== SETTINGS SECTION - Collapsible at bottom ========== */}
       {showSettings && (
         <div className="border-t border-border bg-muted/30 animate-in fade-in-0 slide-in-from-bottom-2 duration-200">
-          <div className="px-4 py-4 space-y-4">
+          <div className="px-4 py-4 space-y-4 max-h-[50vh] overflow-y-auto">
             <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">
               Impostazioni Centro Notifiche
             </h3>
+
+            {/* Category Visibility Toggles */}
+            <Card className="border-border/50">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium flex items-center gap-2">
+                  <Eye className="w-4 h-4" />
+                  Visibilità Categorie
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {CATEGORY_CARDS.map(card => {
+                  const hasAccess = !card.gatedBy || access[card.gatedBy];
+                  const isEnabled = preferences[card.gatedBy || 'openmic'];
+                  
+                  return (
+                    <div 
+                      key={card.key}
+                      className={cn(
+                        "flex items-center justify-between p-3 rounded-xl",
+                        card.bgColor
+                      )}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={card.textColor}>
+                          {card.icon}
+                        </div>
+                        <div>
+                          <span className={cn("font-medium text-sm", card.textColor)}>
+                            {card.label}
+                          </span>
+                          {(!hasAccess || !isEnabled) && (
+                            <p className="text-xs text-muted-foreground">
+                              {!hasAccess ? 'Accesso non autorizzato' : 'Monitoraggio disabilitato'}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <Switch
+                        checked={categoryVisibility[card.key] && hasAccess && isEnabled}
+                        onCheckedChange={() => toggleCategoryVisibility(card.key)}
+                        disabled={!hasAccess || !isEnabled}
+                      />
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
 
             {/* Format Configuration */}
             {canMonitor && (
