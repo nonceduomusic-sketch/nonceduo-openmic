@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { User, Session } from '@supabase/supabase-js';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,6 @@ import { UserSearch } from '@/components/UserSearch';
 import { FriendRequests } from '@/components/FriendRequests';
 import { SocialGroupsList } from '@/components/SocialGroupsList';
 import { ProfileEditModal } from '@/components/ProfileEditModal';
-import { SectionOffLanding } from '@/components/SectionOffLanding';
 import { useSectionStatus } from '@/hooks/useSectionStatus';
 import { 
   Home,
@@ -252,16 +251,10 @@ const SocialDashboard: React.FC = () => {
   }
 
   if (communityStatus && !communityStatus.isEnabled) {
-    return (
-      <SectionOffLanding
-        title="Community"
-        description="La Community è momentaneamente non disponibile, ma tornerà attiva durante gli eventi. Per info e date, contattaci."
-        backTo="/"
-        backLabel="Torna al sito"
-        secondaryBackTo="/app"
-        secondaryBackLabel="Torna all'app"
-      />
-    );
+    // La vetrina /social resta sempre accessibile.
+    // Se la Community è disattivata, blocchiamo l'accesso alla dashboard rimandando alla pagina auth,
+    // che mostrerà la schermata "Community Privata".
+    return <Navigate to="/social/auth" replace />;
   }
 
   return (

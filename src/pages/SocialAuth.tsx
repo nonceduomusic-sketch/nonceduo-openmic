@@ -52,6 +52,9 @@ const SocialAuth: React.FC = () => {
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string; displayName?: string; confirmPassword?: string; privacy?: string }>({});
 
+  // IMPORTANT: computed value used by effects + render gating
+  const communityDisabled = !communityLoading && !!communityStatus && !communityStatus.isEnabled;
+
   // Check for password reset mode (from email link)
   useEffect(() => {
     const accessToken = searchParams.get('access_token');
@@ -66,7 +69,7 @@ const SocialAuth: React.FC = () => {
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (session && !isResetMode) {
+      if (session && !isResetMode && !communityDisabled) {
         navigate('/social/dashboard');
       }
     };
@@ -76,16 +79,15 @@ const SocialAuth: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
         setIsResetMode(true);
-      } else if (session && !isResetMode) {
+      } else if (session && !isResetMode && !communityDisabled) {
         navigate('/social/dashboard');
       }
     });
     
     return () => subscription.unsubscribe();
-  }, [navigate, isResetMode]);
+  }, [navigate, isResetMode, communityDisabled]);
 
   // IMPORTANT: keep gating AFTER all hooks (useState/useEffect) to respect React Rules of Hooks.
-  const communityDisabled = !communityLoading && !!communityStatus && !communityStatus.isEnabled;
   if (communityLoading) {
     return <div className="min-h-screen bg-background" />;
   }
