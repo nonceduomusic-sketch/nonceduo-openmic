@@ -3,13 +3,29 @@ import OpenMic from "@/pages/OpenMic";
 import { SectionOffLanding } from "@/components/SectionOffLanding";
 import { useSectionStatus } from "@/hooks/useSectionStatus";
 import { useFormatAvailability } from "@/hooks/useUnifiedLiveSession";
+import { useFormatActiveCheck } from "@/hooks/useGlobalFormatSettings";
 
 const AppOpenMic: React.FC = () => {
   const { status, loading } = useSectionStatus("openmic");
   const { isOtherFormatOnly, loading: availLoading } = useFormatAvailability();
+  const { isActive: isGloballyActive, loading: globalLoading } = useFormatActiveCheck('openmic');
 
-  if (loading || availLoading) {
+  if (loading || availLoading || globalLoading) {
     return <div className="min-h-screen bg-background" />;
+  }
+
+  // Check if format is globally disabled by admin
+  if (!isGloballyActive) {
+    return (
+      <SectionOffLanding
+        title="Open Mic non disponibile"
+        description="L'Open Mic non è attivo al momento. Torna presto!"
+        backTo="/"
+        backLabel="Torna al sito"
+        secondaryBackTo="/app"
+        secondaryBackLabel="Torna all'app"
+      />
+    );
   }
 
   if (status && !status.isEnabled) {
