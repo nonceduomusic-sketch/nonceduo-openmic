@@ -75,7 +75,13 @@ export function usePinSession(format: FormatKey) {
       });
 
       if (error) {
-        console.error('[PinSession] Error validating session:', error);
+        console.error('[PinSession] Error validating session:', {
+          format,
+          tokenPrefix: stored.token?.substring(0, 8),
+          message: (error as any)?.message,
+          code: (error as any)?.code,
+          details: (error as any)?.details,
+        });
         
         // Se l'errore è perché il formato non corrisponde, proviamo una validazione globale
         // chiamando la funzione senza filtro formato o verificando il live_session direttamente
@@ -116,14 +122,27 @@ export function usePinSession(format: FormatKey) {
 
       // RPC returns array, get first result
       const result = Array.isArray(data) ? data[0] : data;
+
+      if (!result) {
+        console.warn('[PinSession] validate_pin_session returned no rows', {
+          format,
+          tokenPrefix: stored.token?.substring(0, 8),
+        });
+        removeSession();
+        return false;
+      }
       
       if (result?.is_valid) {
         // Verify the format is still protected by the same PIN/live session
         const protectedFormats = result.protected_formats as string[] | null;
-        if (protectedFormats && protectedFormats.includes(format)) {
-          return true;
+        if (protectedFormats && !protectedFormats.includes(format)) {
+          console.warn('[PinSession] PIN session mismatch: token valid but format not in protected_formats', {
+            format,
+            protectedFormats,
+            tokenPrefix: stored.token?.substring(0, 8),
+          });
+          // In questo caso NON blocchiamo: se il format non è più protetto, la UI entrerà comunque via gating.
         }
-        // Format might have been removed from protection - still valid session though
         return true;
       } else {
         removeSession();
@@ -149,7 +168,13 @@ export function usePinSession(format: FormatKey) {
       });
 
       if (error) {
-        console.error('[PinSession] Error creating session:', error);
+        console.error('[PinSession] Error creating session:', {
+          format,
+          liveSessionId,
+          message: (error as any)?.message,
+          code: (error as any)?.code,
+          details: (error as any)?.details,
+        });
         return false;
       }
 
@@ -165,6 +190,11 @@ export function usePinSession(format: FormatKey) {
         console.log('[PinSession] Global session created for live_session:', liveSessionId);
         return true;
       }
+
+      console.error('[PinSession] create_pin_session returned empty token', {
+        format,
+        liveSessionId,
+      });
 
       return false;
     } catch (error) {
