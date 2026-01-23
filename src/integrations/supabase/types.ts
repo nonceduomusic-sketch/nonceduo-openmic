@@ -263,6 +263,7 @@ export type Database = {
       conversations: {
         Row: {
           allowed_participants: string[] | null
+          category: string | null
           created_at: string
           created_by_user_id: string | null
           id: string
@@ -275,10 +276,12 @@ export type Database = {
           password_hint: string | null
           requires_approval: boolean | null
           section: string | null
+          slug: string | null
           updated_at: string
         }
         Insert: {
           allowed_participants?: string[] | null
+          category?: string | null
           created_at?: string
           created_by_user_id?: string | null
           id?: string
@@ -291,10 +294,12 @@ export type Database = {
           password_hint?: string | null
           requires_approval?: boolean | null
           section?: string | null
+          slug?: string | null
           updated_at?: string
         }
         Update: {
           allowed_participants?: string[] | null
+          category?: string | null
           created_at?: string
           created_by_user_id?: string | null
           id?: string
@@ -307,6 +312,7 @@ export type Database = {
           password_hint?: string | null
           requires_approval?: boolean | null
           section?: string | null
+          slug?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -502,6 +508,39 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          data: Json | null
+          id: string
+          read_at: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          data?: Json | null
+          id?: string
+          read_at?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          data?: Json | null
+          id?: string
+          read_at?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       password_reset_tokens: {
         Row: {
           admin_user_id: string
@@ -679,6 +718,8 @@ export type Database = {
           created_at: string
           id: string
           likes_count: number
+          link_preview: Json | null
+          link_url: string | null
           updated_at: string
           user_id: string
         }
@@ -688,6 +729,8 @@ export type Database = {
           created_at?: string
           id?: string
           likes_count?: number
+          link_preview?: Json | null
+          link_url?: string | null
           updated_at?: string
           user_id: string
         }
@@ -697,6 +740,8 @@ export type Database = {
           created_at?: string
           id?: string
           likes_count?: number
+          link_preview?: Json | null
+          link_url?: string | null
           updated_at?: string
           user_id?: string
         }
