@@ -44,6 +44,7 @@ import { AdminNotificationsTab } from './AdminNotificationsTab';
 import { AdminDedichePanel } from '@/components/admin/AdminDedichePanel';
 import { AdminCommunityPanel } from '@/components/admin/AdminCommunityPanel';
 import { AdminAuditTab } from '@/components/admin/AdminAuditTab';
+import { AdminStaffTab } from '@/components/admin/AdminStaffTab';
 import { AdminSidebar, type AdminMainTab } from '@/components/admin/AdminSidebar';
 import {
   AlertDialog,
@@ -499,6 +500,7 @@ export const AdminDashboard: React.FC = () => {
               onSelect={setMainTab}
               onBlockedSelect={handleBlockedSelect}
               access={access}
+              isOwner={staffRole === 'owner'}
             />
           )}
         <SidebarInset>
@@ -579,6 +581,12 @@ export const AdminDashboard: React.FC = () => {
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
+                    {staffRole === 'owner' && (
+                      <DropdownMenuItem onClick={() => setMainTab('staff')} className="rounded-lg">
+                        <Crown className="w-4 h-4 mr-2" />
+                        Gestione Staff
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onClick={() => setMainTab('permissions')} className="rounded-lg">
                       <Shield className="w-4 h-4 mr-2" />
                       Permessi
@@ -842,6 +850,8 @@ export const AdminDashboard: React.FC = () => {
           <AdminPermissionsTab />
         ) : mainTab === 'songs' ? (
           <AdminSongManagementTab />
+        ) : mainTab === 'staff' ? (
+          <AdminStaffTab />
         ) : mainTab === 'settings' ? (
           <AdminSettingsTab />
         ) : mainTab === 'audit' ? (

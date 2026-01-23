@@ -10,7 +10,7 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { Bell, Database, ListMusic, MessageSquare, Music, Newspaper, Settings, Shield } from "lucide-react";
+import { Bell, Database, ListMusic, MessageSquare, Music, Newspaper, Settings, Shield, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AdminSectionKey } from "@/hooks/useAdminSectionAccess";
 
@@ -20,6 +20,7 @@ export type AdminMainTab =
   | "dediche"
   | "community"
   | "songs"
+  | "staff"
   | "permissions"
   | "settings"
   | "audit";
@@ -37,6 +38,7 @@ const ITEMS: Item[] = [
   { key: "dediche", label: "Dediche", icon: MessageSquare, group: "Operativo" },
   { key: "community", label: "Community", icon: Newspaper, group: "Operativo" },
   { key: "songs", label: "Canzoni", icon: ListMusic, group: "Operativo" },
+  { key: "staff", label: "Staff", icon: Users, group: "Gestione" },
   { key: "permissions", label: "Permessi", icon: Shield, group: "Gestione" },
   { key: "settings", label: "Impostazioni", icon: Settings, group: "Gestione" },
   { key: "audit", label: "Audit", icon: Database, group: "Gestione" },
@@ -47,19 +49,30 @@ export function AdminSidebar({
   onSelect,
   access,
   onBlockedSelect,
+  isOwner = false,
 }: {
   active: AdminMainTab;
   onSelect: (tab: AdminMainTab) => void;
   access: Record<AdminSectionKey, boolean>;
   onBlockedSelect?: (tab: AdminMainTab) => void;
+  isOwner?: boolean;
 }) {
   const isBlocked = (key: AdminMainTab) => {
     if (key === "openmic") return !access.openmic;
     if (key === "songs") return !access.openmic;
     if (key === "dediche") return !access.dediche;
     if (key === "community") return !access.community;
+    // Staff tab is owner-only
+    if (key === "staff") return !isOwner;
     return false;
   };
+
+  // Filter items based on visibility
+  const visibleItems = ITEMS.filter((item) => {
+    // Staff tab only visible to owners
+    if (item.key === "staff" && !isOwner) return false;
+    return true;
+  });
 
   return (
     <Sidebar variant="inset" collapsible="icon" className="border-r border-border">
@@ -68,7 +81,7 @@ export function AdminSidebar({
           <SidebarGroupLabel>Operativo</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {ITEMS.filter((i) => i.group === "Operativo").map((item) => {
+              {visibleItems.filter((i) => i.group === "Operativo").map((item) => {
                 const Icon = item.icon;
                 const isActive = active === item.key;
                 const blocked = isBlocked(item.key);
@@ -107,7 +120,7 @@ export function AdminSidebar({
           <SidebarGroupLabel>Gestione</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {ITEMS.filter((i) => i.group === "Gestione").map((item) => {
+              {visibleItems.filter((i) => i.group === "Gestione").map((item) => {
                 const Icon = item.icon;
                 const isActive = active === item.key;
                 return (
