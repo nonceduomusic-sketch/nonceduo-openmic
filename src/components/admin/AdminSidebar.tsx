@@ -35,9 +35,9 @@ type Item = {
 const ITEMS: Item[] = [
   { key: "notifications", label: "Centro", icon: Bell, group: "Operativo" },
   { key: "openmic", label: "Open Mic", icon: Music, group: "Operativo" },
+  { key: "songs", label: "Canzoni", icon: ListMusic, group: "Operativo" },
   { key: "dediche", label: "Dediche", icon: MessageSquare, group: "Operativo" },
   { key: "community", label: "Community", icon: Newspaper, group: "Operativo" },
-  { key: "songs", label: "Canzoni", icon: ListMusic, group: "Operativo" },
   { key: "staff", label: "Staff", icon: Users, group: "Gestione" },
   { key: "permissions", label: "Permessi", icon: Shield, group: "Gestione" },
   { key: "settings", label: "Impostazioni", icon: Settings, group: "Gestione" },
