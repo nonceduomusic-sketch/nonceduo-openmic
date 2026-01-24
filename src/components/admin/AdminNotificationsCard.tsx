@@ -137,22 +137,26 @@ export const AdminNotificationsCard: React.FC = () => {
       return;
     }
 
-    // Play sound if enabled
+    // Play sound if enabled - use Web Audio API directly (no mp3 file needed)
     if (soundEnabled) {
-      const audio = new Audio('/notification-sound.mp3');
-      audio.volume = 0.5;
-      audio.play().catch(() => {
-        // Fallback: use Web Audio API for a simple beep
+      try {
         const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
-        oscillator.frequency.value = 800;
-        gainNode.gain.value = 0.3;
-        oscillator.start();
-        setTimeout(() => oscillator.stop(), 200);
-      });
+        
+        // Create a pleasant notification sound (two-tone chime)
+        oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5
+        oscillator.frequency.setValueAtTime(1100, audioContext.currentTime + 0.1); // C#6
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+      } catch (e) {
+        console.log('Audio not available');
+      }
     }
 
     // Vibrate if enabled and available
