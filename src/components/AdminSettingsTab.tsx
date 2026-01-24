@@ -6,9 +6,12 @@ import {
   VolumeX, 
   Smartphone,
   Moon,
+  Sun,
+  Monitor,
   Clock,
   Save,
-  CheckCircle
+  CheckCircle,
+  Palette
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -17,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { adminAuditLog } from '@/lib/adminAudit';
+import { useTheme } from 'next-themes';
 
 type SectionKey = 'openmic' | 'dediche' | 'community';
 
@@ -52,6 +56,8 @@ const DEFAULT_SETTINGS: NotificationSettings = {
 
 export const AdminSettingsTab: React.FC = () => {
   const { toast } = useToast();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [settings, setSettings] = useState<NotificationSettings>(DEFAULT_SETTINGS);
   const [sectionSettings, setSectionSettings] = useState<SectionSettingRow[]>([]);
   const [sectionsLoading, setSectionsLoading] = useState(false);
@@ -60,6 +66,11 @@ export const AdminSettingsTab: React.FC = () => {
   );
   const [isSaved, setIsSaved] = useState(false);
   const [seeding, setSeeding] = useState(false);
+
+  // Avoid hydration mismatch for theme
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchSectionSettings = async () => {
     setSectionsLoading(true);
@@ -186,13 +197,77 @@ export const AdminSettingsTab: React.FC = () => {
     setIsSaved(false);
   };
 
+  const handleThemeChange = (newTheme: string) => {
+    setTheme(newTheme);
+    toast({
+      title: 'Tema aggiornato',
+      description: newTheme === 'dark' ? 'Tema scuro attivato' : newTheme === 'light' ? 'Tema chiaro attivato' : 'Tema automatico attivato',
+    });
+    adminAuditLog({
+      action: 'settings.theme_change',
+      section: 'settings',
+      entity: 'theme',
+      entity_id: null,
+      metadata: { theme: newTheme },
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="mb-6">
         <h2 className="font-display text-xl font-bold text-foreground mb-2">Impostazioni</h2>
         <p className="text-sm text-muted-foreground">
-          Gestisci format e notifiche dell'admin
+          Gestisci aspetto, format e notifiche
         </p>
+      </div>
+
+      {/* Theme Settings */}
+      <div className="glass-card p-4 space-y-4">
+        <div className="flex items-center gap-3">
+          <Palette className="w-5 h-5 text-primary" />
+          <div>
+            <h3 className="font-medium text-foreground">Aspetto del Sito</h3>
+            <p className="text-xs text-muted-foreground">
+              Scegli il tema visivo per tutto il sito
+            </p>
+          </div>
+        </div>
+
+        {mounted && (
+          <div className="grid grid-cols-3 gap-2 pt-2">
+            <Button
+              variant={theme === 'dark' ? 'default' : 'outline'}
+              className={theme === 'dark' ? 'neon-button-pink' : ''}
+              onClick={() => handleThemeChange('dark')}
+            >
+              <Moon className="w-4 h-4 mr-2" />
+              Scuro
+            </Button>
+            <Button
+              variant={theme === 'light' ? 'default' : 'outline'}
+              className={theme === 'light' ? 'neon-button-cyan' : ''}
+              onClick={() => handleThemeChange('light')}
+            >
+              <Sun className="w-4 h-4 mr-2" />
+              Chiaro
+            </Button>
+            <Button
+              variant={theme === 'system' ? 'default' : 'outline'}
+              className={theme === 'system' ? 'bg-accent text-accent-foreground' : ''}
+              onClick={() => handleThemeChange('system')}
+            >
+              <Monitor className="w-4 h-4 mr-2" />
+              Auto
+            </Button>
+          </div>
+        )}
+
+        {mounted && (
+          <p className="text-xs text-muted-foreground text-center pt-1">
+            Attualmente: <span className="font-medium text-foreground">{resolvedTheme === 'dark' ? 'Tema scuro' : 'Tema chiaro'}</span>
+            {theme === 'system' && ' (automatico)'}
+          </p>
+        )}
       </div>
 
       {/* Format (Sections) */}

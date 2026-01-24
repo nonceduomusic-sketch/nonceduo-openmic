@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Mic2, ArrowLeft, Settings, Shield, Music } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { UserLoginIndicator } from '@/components/UserLoginIndicator';
-import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
 
 interface MobileHeaderProps {
@@ -123,7 +122,6 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
         {/* Right side */}
         <div className="flex items-center gap-1.5">
           {rightContent}
-          <ThemeToggle />
           {(variant === 'community' || variant === 'admin') && <UserLoginIndicator />}
           {showAdmin && (
             <Link to="/admin">
