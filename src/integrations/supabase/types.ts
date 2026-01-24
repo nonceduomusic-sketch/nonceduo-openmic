@@ -816,6 +816,42 @@ export type Database = {
         }
         Relationships: []
       }
+      push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          device_info: Json | null
+          endpoint: string
+          id: string
+          last_used_at: string
+          p256dh: string
+          user_identifier: string | null
+          user_type: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          device_info?: Json | null
+          endpoint: string
+          id?: string
+          last_used_at?: string
+          p256dh: string
+          user_identifier?: string | null
+          user_type?: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          device_info?: Json | null
+          endpoint?: string
+          id?: string
+          last_used_at?: string
+          p256dh?: string
+          user_identifier?: string | null
+          user_type?: string
+        }
+        Relationships: []
+      }
       reservation_statuses: {
         Row: {
           created_at: string

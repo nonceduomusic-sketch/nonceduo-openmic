@@ -20,3 +20,6 @@ verify_jwt = false
 
 [functions.admin-audit]
 verify_jwt = false
+
+[functions.push-notifications]
+verify_jwt = false
