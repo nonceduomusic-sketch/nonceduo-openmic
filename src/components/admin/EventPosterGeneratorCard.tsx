@@ -18,6 +18,8 @@ import {
   Layout,
   Music,
   Type,
+  Sparkles,
+  Wand2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,6 +47,7 @@ interface EventPosterConfig {
   overlayPosition: OverlayPosition;
   additionalInfo: string;
   uploadedImage: string | null;
+  aiTheme: string;
 }
 
 const STYLE_PRESETS: Record<StylePreset, { label: string; accent: string }> = {
@@ -89,12 +92,25 @@ const OVERLAY_POSITIONS: Record<OverlayPosition, { label: string; icon: React.Re
   center: { label: 'Centrale', icon: <Type className="w-4 h-4" /> },
 };
 
+// AI Theme presets
+const AI_THEME_SUGGESTIONS = [
+  'matrimonio',
+  'evento elegante',
+  'sagra paesana',
+  'festa estiva',
+  'serata jazz',
+  'notte latina',
+  'aperitivo',
+];
+
 export const EventPosterGeneratorCard: React.FC = () => {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [aiGeneratedBg, setAiGeneratedBg] = useState<string | null>(null);
   
   const [config, setConfig] = useState<EventPosterConfig>({
     venueName: '',
@@ -106,6 +122,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
     overlayPosition: 'bottom',
     additionalInfo: '',
     uploadedImage: null,
+    aiTheme: '',
   });
 
   const updateConfig = <K extends keyof EventPosterConfig>(key: K, value: EventPosterConfig[K]) => {
@@ -138,6 +155,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
     const reader = new FileReader();
     reader.onload = (event) => {
       updateConfig('uploadedImage', event.target?.result as string);
+      setAiGeneratedBg(null); // Clear AI bg when uploading custom image
     };
     reader.readAsDataURL(file);
   }, [toast]);
@@ -149,11 +167,86 @@ export const EventPosterGeneratorCard: React.FC = () => {
     }
   }, []);
 
+  // Generate AI background based on theme
+  const generateAIBackground = useCallback(async () => {
+    if (!config.aiTheme.trim()) {
+      toast({
+        title: 'Tema mancante',
+        description: 'Scrivi un tema (es. matrimonio, sagra, jazz...)',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsGeneratingAI(true);
+
+    try {
+      const formatConfig = IMAGE_FORMATS[config.imageFormat];
+      const aspectRatio = formatConfig.width / formatConfig.height;
+      
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_LOVABLE_API_KEY || ''}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash-image-preview',
+          messages: [
+            {
+              role: 'user',
+              content: `Generate a professional, elegant event poster background for a "${config.aiTheme}" themed music event. 
+              Style: Artistic, sophisticated with rich textures.
+              Requirements:
+              - Format ${formatConfig.width}x${formatConfig.height}px (${aspectRatio < 1 ? 'portrait' : aspectRatio > 1 ? 'landscape' : 'square'})
+              - Color palette suitable for text overlay
+              - Abstract, artistic background without text
+              - Professional quality for Instagram/Facebook poster
+              - Theme: ${config.aiTheme}
+              - Should work well with event text overlay
+              Ultra high resolution.`
+            }
+          ],
+          modalities: ['image', 'text'],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('AI generation failed');
+      }
+
+      const data = await response.json();
+      const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+      
+      if (imageUrl) {
+        setAiGeneratedBg(imageUrl);
+        updateConfig('uploadedImage', null); // Clear uploaded image
+        toast({
+          title: 'Sfondo AI generato!',
+          description: 'Ora genera la locandina completa.',
+        });
+      } else {
+        throw new Error('No image in response');
+      }
+    } catch (error) {
+      console.error('AI generation error:', error);
+      toast({
+        title: 'Errore generazione AI',
+        description: 'Riprova o carica una foto manualmente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  }, [config.aiTheme, config.imageFormat, toast]);
+
   const generatePosterImage = useCallback(async () => {
-    if (!config.uploadedImage) {
+    const backgroundImage = config.uploadedImage || aiGeneratedBg;
+    
+    if (!backgroundImage) {
       toast({
         title: 'Immagine mancante',
-        description: 'Carica una foto prima di generare la locandina.',
+        description: 'Carica una foto o genera uno sfondo AI prima.',
         variant: 'destructive',
       });
       return;
@@ -174,7 +267,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
 
       const style = STYLE_PRESETS[config.stylePreset];
 
-      // Load and draw the uploaded image
+      // Load and draw the background image
       const img = new Image();
       img.crossOrigin = 'anonymous';
       
@@ -202,7 +295,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
           resolve();
         };
         img.onerror = reject;
-        img.src = config.uploadedImage!;
+        img.src = backgroundImage;
       });
 
       // Determine overlay area based on position
@@ -250,7 +343,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
         ctx.shadowBlur = 20;
       }
 
-      // Draw venue name if provided
+      // Draw venue name if provided - OPTIONAL
       let currentY = textCenterY - 60;
       
       if (config.venueName) {
@@ -285,7 +378,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
 
-      // Draw date and time if provided
+      // Draw date and time if provided - OPTIONAL
       if (config.eventDate || config.eventTime) {
         let dateTimeText = '';
         
@@ -313,7 +406,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
         ctx.shadowBlur = 0;
       }
 
-      // Draw event type badge if relevant
+      // Draw event type badge if private - OPTIONAL
       if (config.eventType === 'private') {
         const badgeText = 'EVENTO PRIVATO';
         ctx.font = '500 24px "Inter", sans-serif';
@@ -339,7 +432,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
         currentY += 55;
       }
 
-      // Draw additional info if provided
+      // Draw additional info if provided - OPTIONAL
       if (config.additionalInfo) {
         ctx.font = '400 24px "Inter", sans-serif';
         ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
@@ -395,7 +488,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [config, toast]);
+  }, [config, aiGeneratedBg, toast]);
 
   const downloadImage = useCallback(() => {
     if (!previewUrl) return;
@@ -415,6 +508,8 @@ export const EventPosterGeneratorCard: React.FC = () => {
     });
   }, [previewUrl, config, toast]);
 
+  const hasBackground = config.uploadedImage || aiGeneratedBg;
+
   return (
     <Card className="border-accent/20">
       <CardHeader className="pb-3">
@@ -423,16 +518,93 @@ export const EventPosterGeneratorCard: React.FC = () => {
           Locandina Evento
         </CardTitle>
         <CardDescription>
-          Carica una foto e genera una locandina professionale per Instagram e Facebook.
-          Tutti i campi sono opzionali tranne la foto.
+          Carica una foto o genera uno sfondo AI, poi aggiungi i dettagli.
+          Tutti i campi di testo sono opzionali!
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* AI Theme Generator - NEW */}
+        <div className="space-y-3 p-4 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20">
+          <Label className="flex items-center gap-2 text-sm font-medium">
+            <Sparkles className="w-4 h-4 text-purple-400" />
+            Genera Sfondo AI a Tema
+            <span className="text-xs text-muted-foreground">(alternativo alla foto)</span>
+          </Label>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Es. matrimonio, sagra, jazz, elegante..."
+              value={config.aiTheme}
+              onChange={(e) => updateConfig('aiTheme', e.target.value)}
+              className="bg-background/50 flex-1"
+            />
+            <Button
+              onClick={generateAIBackground}
+              disabled={isGeneratingAI || !config.aiTheme.trim()}
+              variant="secondary"
+              className="gap-2 shrink-0"
+            >
+              {isGeneratingAI ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Wand2 className="w-4 h-4" />
+              )}
+              Genera
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {AI_THEME_SUGGESTIONS.map((theme) => (
+              <button
+                key={theme}
+                onClick={() => updateConfig('aiTheme', theme)}
+                className={cn(
+                  "text-xs px-2 py-1 rounded-full border transition-colors",
+                  config.aiTheme === theme
+                    ? "bg-purple-500/20 border-purple-500/50 text-purple-300"
+                    : "border-border hover:border-purple-500/30 text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {theme}
+              </button>
+            ))}
+          </div>
+          {aiGeneratedBg && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs text-green-400">
+                <Check className="w-3 h-3" />
+                Sfondo AI pronto!
+              </div>
+              <div className="relative">
+                <img
+                  src={aiGeneratedBg}
+                  alt="AI generated background"
+                  className="w-full h-32 object-cover rounded-lg border border-border"
+                />
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  className="absolute top-2 right-2 h-6 w-6"
+                  onClick={() => setAiGeneratedBg(null)}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3">
+          <div className="flex-1 border-t border-border" />
+          <span className="text-xs text-muted-foreground">oppure</span>
+          <div className="flex-1 border-t border-border" />
+        </div>
+
         {/* Image Upload */}
         <div className="space-y-2">
           <Label className="flex items-center gap-2">
             <ImagePlus className="w-4 h-4" />
-            Foto di Base *
+            Carica Foto
+            <span className="text-xs text-muted-foreground">(alternativo all'AI)</span>
           </Label>
           
           {config.uploadedImage ? (
@@ -453,12 +625,12 @@ export const EventPosterGeneratorCard: React.FC = () => {
             </div>
           ) : (
             <div
-              className="flex flex-col items-center justify-center gap-3 p-8 rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/30 cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-all"
+              className="flex flex-col items-center justify-center gap-3 p-6 rounded-xl border-2 border-dashed border-muted-foreground/30 bg-muted/30 cursor-pointer hover:border-primary/50 hover:bg-muted/50 transition-all"
               onClick={() => fileInputRef.current?.click()}
             >
-              <Upload className="w-8 h-8 text-muted-foreground" />
+              <Upload className="w-6 h-6 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
-                Clicca per caricare una foto
+                Clicca per caricare
               </span>
               <span className="text-xs text-muted-foreground/60">
                 JPG, PNG, WEBP • Max 10MB
@@ -483,7 +655,10 @@ export const EventPosterGeneratorCard: React.FC = () => {
           </Label>
           <RadioGroup
             value={config.imageFormat}
-            onValueChange={(value) => updateConfig('imageFormat', value as ImageFormat)}
+            onValueChange={(value) => {
+              updateConfig('imageFormat', value as ImageFormat);
+              setAiGeneratedBg(null); // Reset AI bg when format changes
+            }}
             className="grid grid-cols-3 gap-2"
           >
             {(Object.keys(IMAGE_FORMATS) as ImageFormat[]).map((fmt) => {
@@ -708,7 +883,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
         {/* Generate Button */}
         <Button
           onClick={generatePosterImage}
-          disabled={!config.uploadedImage || isGenerating}
+          disabled={!hasBackground || isGenerating}
           className="w-full gap-2"
           size="lg"
         >

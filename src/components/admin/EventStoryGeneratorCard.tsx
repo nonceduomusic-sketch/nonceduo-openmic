@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import {
-  Image,
+  Image as ImageIcon,
   Download,
   Calendar,
   Clock,
@@ -14,6 +14,8 @@ import {
   Check,
   Instagram,
   Layout,
+  Sparkles,
+  Wand2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,6 +38,7 @@ interface EventStoryConfig {
   eventType: EventType;
   stylePreset: StylePreset;
   imageFormat: ImageFormat;
+  aiTheme: string;
 }
 
 const STYLE_PRESETS: Record<StylePreset, { label: string; description: string; bg: string; accent: string }> = {
@@ -80,11 +83,24 @@ const IMAGE_FORMATS: Record<ImageFormat, { label: string; description: string; w
   },
 };
 
+// AI Theme presets
+const AI_THEME_SUGGESTIONS = [
+  'matrimonio',
+  'evento elegante',
+  'sagra paesana',
+  'festa estiva',
+  'serata jazz',
+  'notte latina',
+  'aperitivo',
+];
+
 export const EventStoryGeneratorCard: React.FC = () => {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [aiGeneratedBg, setAiGeneratedBg] = useState<string | null>(null);
   
   const [config, setConfig] = useState<EventStoryConfig>({
     venueName: '',
@@ -93,6 +109,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
     eventType: 'public',
     stylePreset: 'neon',
     imageFormat: 'story',
+    aiTheme: '',
   });
 
   const updateConfig = <K extends keyof EventStoryConfig>(key: K, value: EventStoryConfig[K]) => {
@@ -100,16 +117,78 @@ export const EventStoryGeneratorCard: React.FC = () => {
     setPreviewUrl(null);
   };
 
-  const generateStoryImage = useCallback(async () => {
-    if (!config.venueName || !config.eventDate || !config.eventTime) {
+  // Generate AI background based on theme
+  const generateAIBackground = useCallback(async () => {
+    if (!config.aiTheme.trim()) {
       toast({
-        title: 'Dati mancanti',
-        description: 'Compila tutti i campi prima di generare la grafica.',
+        title: 'Tema mancante',
+        description: 'Scrivi un tema (es. matrimonio, sagra, jazz...)',
         variant: 'destructive',
       });
       return;
     }
 
+    setIsGeneratingAI(true);
+
+    try {
+      const formatConfig = IMAGE_FORMATS[config.imageFormat];
+      const aspectRatio = formatConfig.width / formatConfig.height;
+      
+      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${import.meta.env.VITE_LOVABLE_API_KEY || ''}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'google/gemini-2.5-flash-image-preview',
+          messages: [
+            {
+              role: 'user',
+              content: `Generate a professional, elegant event poster background for a "${config.aiTheme}" themed music event. 
+              Style: Dark, moody, sophisticated with subtle textures and gradients.
+              Requirements:
+              - Vertical format ${formatConfig.width}x${formatConfig.height}px (${aspectRatio < 1 ? 'portrait' : aspectRatio > 1 ? 'landscape' : 'square'})
+              - Dark color palette suitable for white text overlay
+              - Abstract, artistic background without text
+              - Professional quality for Instagram/Facebook
+              - Theme: ${config.aiTheme}
+              Ultra high resolution.`
+            }
+          ],
+          modalities: ['image', 'text'],
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('AI generation failed');
+      }
+
+      const data = await response.json();
+      const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+      
+      if (imageUrl) {
+        setAiGeneratedBg(imageUrl);
+        toast({
+          title: 'Sfondo AI generato!',
+          description: 'Ora genera la grafica completa.',
+        });
+      } else {
+        throw new Error('No image in response');
+      }
+    } catch (error) {
+      console.error('AI generation error:', error);
+      toast({
+        title: 'Errore generazione AI',
+        description: 'Riprova o usa lo stile predefinito.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  }, [config.aiTheme, config.imageFormat, toast]);
+
+  const generateStoryImage = useCallback(async () => {
     setIsGenerating(true);
 
     try {
@@ -125,49 +204,83 @@ export const EventStoryGeneratorCard: React.FC = () => {
 
       const style = STYLE_PRESETS[config.stylePreset];
       
-      // Draw background gradient
-      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      if (config.stylePreset === 'minimal') {
-        gradient.addColorStop(0, '#0a0a0a');
-        gradient.addColorStop(1, '#1a1a1a');
-      } else if (config.stylePreset === 'gradient') {
-        gradient.addColorStop(0, '#1a0a2e');
-        gradient.addColorStop(0.5, '#16213e');
-        gradient.addColorStop(1, '#0f3460');
+      // If AI background exists, use it
+      if (aiGeneratedBg) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        await new Promise<void>((resolve, reject) => {
+          img.onload = () => {
+            // Cover the canvas
+            const imgRatio = img.width / img.height;
+            const canvasRatio = canvas.width / canvas.height;
+            
+            let drawWidth, drawHeight, drawX, drawY;
+            
+            if (imgRatio > canvasRatio) {
+              drawHeight = canvas.height;
+              drawWidth = drawHeight * imgRatio;
+              drawX = (canvas.width - drawWidth) / 2;
+              drawY = 0;
+            } else {
+              drawWidth = canvas.width;
+              drawHeight = drawWidth / imgRatio;
+              drawX = 0;
+              drawY = (canvas.height - drawHeight) / 2;
+            }
+            
+            ctx.drawImage(img, drawX, drawY, drawWidth, drawHeight);
+            
+            // Add dark overlay for text readability
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            resolve();
+          };
+          img.onerror = reject;
+          img.src = aiGeneratedBg;
+        });
       } else {
-        gradient.addColorStop(0, '#0d0d1a');
-        gradient.addColorStop(0.5, '#1a0d1a');
-        gradient.addColorStop(1, '#0d0d1a');
-      }
-      ctx.fillStyle = gradient;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // Add subtle noise/texture overlay
-      ctx.globalAlpha = 0.03;
-      for (let i = 0; i < 5000; i++) {
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        ctx.fillStyle = Math.random() > 0.5 ? '#ffffff' : '#000000';
-        ctx.fillRect(x, y, 1, 1);
-      }
-      ctx.globalAlpha = 1;
-
-      // Add glow effects for neon style
-      if (config.stylePreset === 'neon') {
-        const glowY = config.imageFormat === 'story' ? canvas.height * 0.3 : canvas.height * 0.4;
-        const glowGradient = ctx.createRadialGradient(
-          canvas.width / 2, glowY, 0,
-          canvas.width / 2, glowY, 400
-        );
-        glowGradient.addColorStop(0, 'rgba(255, 45, 146, 0.15)');
-        glowGradient.addColorStop(1, 'transparent');
-        ctx.fillStyle = glowGradient;
+        // Draw default gradient background
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        if (config.stylePreset === 'minimal') {
+          gradient.addColorStop(0, '#0a0a0a');
+          gradient.addColorStop(1, '#1a1a1a');
+        } else if (config.stylePreset === 'gradient') {
+          gradient.addColorStop(0, '#1a0a2e');
+          gradient.addColorStop(0.5, '#16213e');
+          gradient.addColorStop(1, '#0f3460');
+        } else {
+          gradient.addColorStop(0, '#0d0d1a');
+          gradient.addColorStop(0.5, '#1a0d1a');
+          gradient.addColorStop(1, '#0d0d1a');
+        }
+        ctx.fillStyle = gradient;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-      }
 
-      // Format date
-      const formattedDate = format(config.eventDate, "EEEE d MMMM", { locale: it });
-      const formattedDateUpper = formattedDate.toUpperCase();
+        // Add subtle noise/texture overlay
+        ctx.globalAlpha = 0.03;
+        for (let i = 0; i < 5000; i++) {
+          const x = Math.random() * canvas.width;
+          const y = Math.random() * canvas.height;
+          ctx.fillStyle = Math.random() > 0.5 ? '#ffffff' : '#000000';
+          ctx.fillRect(x, y, 1, 1);
+        }
+        ctx.globalAlpha = 1;
+
+        // Add glow effects for neon style
+        if (config.stylePreset === 'neon') {
+          const glowY = config.imageFormat === 'story' ? canvas.height * 0.3 : canvas.height * 0.4;
+          const glowGradient = ctx.createRadialGradient(
+            canvas.width / 2, glowY, 0,
+            canvas.width / 2, glowY, 400
+          );
+          glowGradient.addColorStop(0, 'rgba(255, 45, 146, 0.15)');
+          glowGradient.addColorStop(1, 'transparent');
+          ctx.fillStyle = glowGradient;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+      }
 
       // Adjust sizing based on format
       const isCompact = config.imageFormat !== 'story';
@@ -183,76 +296,92 @@ export const EventStoryGeneratorCard: React.FC = () => {
       // Calculate vertical positions based on format
       const titleStartY = isCompact ? canvas.height * 0.2 : 380;
 
-      // Draw venue name (main title)
       ctx.textAlign = 'center';
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `bold ${titleSize}px "Orbitron", sans-serif`;
-      
-      if (config.stylePreset === 'neon') {
-        ctx.shadowColor = style.accent;
-        ctx.shadowBlur = 30;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
-      }
-      
-      // Word wrap venue name
-      const maxWidth = canvas.width - 120;
-      const words = config.venueName.toUpperCase().split(' ');
-      let lines: string[] = [];
-      let currentLine = '';
-      
-      for (const word of words) {
-        const testLine = currentLine ? `${currentLine} ${word}` : word;
-        const metrics = ctx.measureText(testLine);
-        if (metrics.width > maxWidth && currentLine) {
-          lines.push(currentLine);
-          currentLine = word;
-        } else {
-          currentLine = testLine;
+
+      // Draw venue name (main title) - OPTIONAL
+      let currentY = titleStartY;
+      if (config.venueName) {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold ${titleSize}px "Orbitron", sans-serif`;
+        
+        if (config.stylePreset === 'neon' && !aiGeneratedBg) {
+          ctx.shadowColor = style.accent;
+          ctx.shadowBlur = 30;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 0;
         }
+        
+        // Word wrap venue name
+        const maxWidth = canvas.width - 120;
+        const words = config.venueName.toUpperCase().split(' ');
+        let lines: string[] = [];
+        let currentLine = '';
+        
+        for (const word of words) {
+          const testLine = currentLine ? `${currentLine} ${word}` : word;
+          const metrics = ctx.measureText(testLine);
+          if (metrics.width > maxWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+          } else {
+            currentLine = testLine;
+          }
+        }
+        if (currentLine) lines.push(currentLine);
+
+        const lineHeight = isCompact ? 70 : 90;
+        lines.forEach((line, i) => {
+          ctx.fillText(line, canvas.width / 2, currentY + i * lineHeight);
+        });
+
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+
+        // Draw decorative line
+        const lineY = currentY + lines.length * lineHeight + (isCompact ? 40 : 60);
+        const lineGradient = ctx.createLinearGradient(200, lineY, canvas.width - 200, lineY);
+        lineGradient.addColorStop(0, 'transparent');
+        lineGradient.addColorStop(0.3, style.accent);
+        lineGradient.addColorStop(0.7, style.accent);
+        lineGradient.addColorStop(1, 'transparent');
+        ctx.strokeStyle = lineGradient;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(200, lineY);
+        ctx.lineTo(canvas.width - 200, lineY);
+        ctx.stroke();
+        
+        currentY = lineY + (isCompact ? 70 : 100);
       }
-      if (currentLine) lines.push(currentLine);
 
-      const lineHeight = isCompact ? 70 : 90;
-      lines.forEach((line, i) => {
-        ctx.fillText(line, canvas.width / 2, titleStartY + i * lineHeight);
-      });
-
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-
-      // Draw decorative line
-      const lineY = titleStartY + lines.length * lineHeight + (isCompact ? 40 : 60);
-      const lineGradient = ctx.createLinearGradient(200, lineY, canvas.width - 200, lineY);
-      lineGradient.addColorStop(0, 'transparent');
-      lineGradient.addColorStop(0.3, style.accent);
-      lineGradient.addColorStop(0.7, style.accent);
-      lineGradient.addColorStop(1, 'transparent');
-      ctx.strokeStyle = lineGradient;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(200, lineY);
-      ctx.lineTo(canvas.width - 200, lineY);
-      ctx.stroke();
-
-      // Draw date
-      ctx.font = `600 ${dateSize}px "Orbitron", sans-serif`;
-      ctx.fillStyle = style.accent;
-      if (config.stylePreset === 'neon') {
-        ctx.shadowColor = style.accent;
-        ctx.shadowBlur = 20;
+      // Draw date - OPTIONAL
+      if (config.eventDate) {
+        const formattedDate = format(config.eventDate, "EEEE d MMMM", { locale: it });
+        const formattedDateUpper = formattedDate.toUpperCase();
+        
+        ctx.font = `600 ${dateSize}px "Orbitron", sans-serif`;
+        ctx.fillStyle = style.accent;
+        if (config.stylePreset === 'neon' && !aiGeneratedBg) {
+          ctx.shadowColor = style.accent;
+          ctx.shadowBlur = 20;
+        }
+        ctx.fillText(formattedDateUpper, canvas.width / 2, currentY);
+        currentY += isCompact ? 50 : 70;
+        
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
       }
-      ctx.fillText(formattedDateUpper, canvas.width / 2, lineY + (isCompact ? 70 : 100));
       
-      // Draw time
-      ctx.font = `500 ${timeSize}px "Inter", sans-serif`;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.fillText(`ORE ${config.eventTime}`, canvas.width / 2, lineY + (isCompact ? 120 : 170));
+      // Draw time - OPTIONAL
+      if (config.eventTime) {
+        ctx.font = `500 ${timeSize}px "Inter", sans-serif`;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.fillText(`ORE ${config.eventTime}`, canvas.width / 2, currentY);
+        currentY += isCompact ? 80 : 110;
+      }
 
       // Draw event type badge
-      const badgeY = lineY + (isCompact ? 200 : 280);
+      const badgeY = currentY + (isCompact ? 30 : 50);
       const badgeText = config.eventType === 'public' ? 'EVENTO PUBBLICO' : 'EVENTO PRIVATO';
       const badgeIcon = config.eventType === 'public' ? '🌐' : '🔒';
       
@@ -294,7 +423,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
 
       ctx.font = `700 ${pinTitleSize}px "Orbitron", sans-serif`;
       ctx.fillStyle = style.accent;
-      if (config.stylePreset === 'neon') {
+      if (config.stylePreset === 'neon' && !aiGeneratedBg) {
         ctx.shadowColor = style.accent;
         ctx.shadowBlur = 15;
       }
@@ -321,7 +450,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
         
         ctx.font = '700 36px "Inter", sans-serif';
         ctx.fillStyle = style.accent;
-        if (config.stylePreset === 'neon') {
+        if (config.stylePreset === 'neon' && !aiGeneratedBg) {
           ctx.shadowColor = style.accent;
           ctx.shadowBlur = 15;
         }
@@ -352,14 +481,17 @@ export const EventStoryGeneratorCard: React.FC = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [config, toast]);
+  }, [config, aiGeneratedBg, toast]);
 
   const downloadImage = useCallback(() => {
     if (!previewUrl) return;
 
     const formatConfig = IMAGE_FORMATS[config.imageFormat];
+    const nameStr = config.venueName ? config.venueName.toLowerCase().replace(/\s+/g, '-') : 'grafica';
+    const dateStr = config.eventDate ? format(config.eventDate, 'yyyy-MM-dd') : 'evento';
+    
     const link = document.createElement('a');
-    link.download = `grafica-${config.venueName.toLowerCase().replace(/\s+/g, '-')}-${format(config.eventDate || new Date(), 'yyyy-MM-dd')}-${formatConfig.width}x${formatConfig.height}.png`;
+    link.download = `story-${nameStr}-${dateStr}-${formatConfig.width}x${formatConfig.height}.png`;
     link.href = previewUrl;
     link.click();
 
@@ -369,8 +501,6 @@ export const EventStoryGeneratorCard: React.FC = () => {
     });
   }, [previewUrl, config, toast]);
 
-  const isFormValid = config.venueName && config.eventDate && config.eventTime;
-
   return (
     <Card className="border-accent/20">
       <CardHeader className="pb-3">
@@ -379,12 +509,64 @@ export const EventStoryGeneratorCard: React.FC = () => {
           Grafica Storia Evento
         </CardTitle>
         <CardDescription>
-          Genera una grafica professionale per social con sfondo generato.
-          I dati restano in sessione e non vengono salvati.
+          Genera una grafica professionale per social. Tutti i campi sono opzionali.
+          Usa l'AI per generare uno sfondo a tema!
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Image Format - NEW */}
+        {/* AI Theme Generator - NEW */}
+        <div className="space-y-3 p-4 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20">
+          <Label className="flex items-center gap-2 text-sm font-medium">
+            <Sparkles className="w-4 h-4 text-purple-400" />
+            Genera Sfondo AI a Tema
+            <span className="text-xs text-muted-foreground">(opzionale)</span>
+          </Label>
+          <div className="flex gap-2">
+            <Input
+              placeholder="Es. matrimonio, sagra, jazz, elegante..."
+              value={config.aiTheme}
+              onChange={(e) => updateConfig('aiTheme', e.target.value)}
+              className="bg-background/50 flex-1"
+            />
+            <Button
+              onClick={generateAIBackground}
+              disabled={isGeneratingAI || !config.aiTheme.trim()}
+              variant="secondary"
+              className="gap-2 shrink-0"
+            >
+              {isGeneratingAI ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Wand2 className="w-4 h-4" />
+              )}
+              Genera
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {AI_THEME_SUGGESTIONS.map((theme) => (
+              <button
+                key={theme}
+                onClick={() => updateConfig('aiTheme', theme)}
+                className={cn(
+                  "text-xs px-2 py-1 rounded-full border transition-colors",
+                  config.aiTheme === theme
+                    ? "bg-purple-500/20 border-purple-500/50 text-purple-300"
+                    : "border-border hover:border-purple-500/30 text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {theme}
+              </button>
+            ))}
+          </div>
+          {aiGeneratedBg && (
+            <div className="flex items-center gap-2 text-xs text-green-400">
+              <Check className="w-3 h-3" />
+              Sfondo AI pronto! Genera la grafica.
+            </div>
+          )}
+        </div>
+
+        {/* Image Format */}
         <div className="space-y-3">
           <Label className="flex items-center gap-2">
             <Layout className="w-4 h-4" />
@@ -392,7 +574,10 @@ export const EventStoryGeneratorCard: React.FC = () => {
           </Label>
           <RadioGroup
             value={config.imageFormat}
-            onValueChange={(value) => updateConfig('imageFormat', value as ImageFormat)}
+            onValueChange={(value) => {
+              updateConfig('imageFormat', value as ImageFormat);
+              setAiGeneratedBg(null); // Reset AI bg when format changes
+            }}
             className="grid grid-cols-3 gap-2"
           >
             {(Object.keys(IMAGE_FORMATS) as ImageFormat[]).map((fmt) => {
@@ -417,11 +602,12 @@ export const EventStoryGeneratorCard: React.FC = () => {
           </RadioGroup>
         </div>
 
-        {/* Venue Name */}
+        {/* Venue Name - OPTIONAL */}
         <div className="space-y-2">
           <Label htmlFor="venue-name" className="flex items-center gap-2">
             <MapPin className="w-4 h-4" />
-            Nome del Locale *
+            Nome del Locale
+            <span className="text-xs text-muted-foreground">(opzionale)</span>
           </Label>
           <Input
             id="venue-name"
@@ -432,12 +618,13 @@ export const EventStoryGeneratorCard: React.FC = () => {
           />
         </div>
 
-        {/* Date & Time Row */}
+        {/* Date & Time Row - OPTIONAL */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
-              Data Evento *
+              Data
+              <span className="text-xs text-muted-foreground">(opz.)</span>
             </Label>
             <Popover>
               <PopoverTrigger asChild>
@@ -470,7 +657,8 @@ export const EventStoryGeneratorCard: React.FC = () => {
           <div className="space-y-2">
             <Label htmlFor="event-time" className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
-              Orario *
+              Orario
+              <span className="text-xs text-muted-foreground">(opz.)</span>
             </Label>
             <Input
               id="event-time"
@@ -534,53 +722,55 @@ export const EventStoryGeneratorCard: React.FC = () => {
           </RadioGroup>
         </div>
 
-        {/* Style Preset */}
-        <div className="space-y-3">
-          <Label className="flex items-center gap-2">
-            <Palette className="w-4 h-4" />
-            Stile Grafico
-          </Label>
-          <RadioGroup
-            value={config.stylePreset}
-            onValueChange={(value) => updateConfig('stylePreset', value as StylePreset)}
-            className="grid grid-cols-3 gap-2"
-          >
-            {(Object.keys(STYLE_PRESETS) as StylePreset[]).map((preset) => {
-              const presetStyle = STYLE_PRESETS[preset];
-              return (
-                <div key={preset}>
-                  <RadioGroupItem value={preset} id={`story-style-${preset}`} className="peer sr-only" />
-                  <Label
-                    htmlFor={`story-style-${preset}`}
-                    className={cn(
-                      "flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 cursor-pointer transition-all",
-                      "border-muted hover:border-muted-foreground/50",
-                      config.stylePreset === preset && "border-primary bg-primary/10"
-                    )}
-                  >
-                    <div
-                      className="w-8 h-8 rounded-lg border border-white/20"
-                      style={{ background: presetStyle.bg }}
+        {/* Style Preset - Only shown if NO AI background */}
+        {!aiGeneratedBg && (
+          <div className="space-y-3">
+            <Label className="flex items-center gap-2">
+              <Palette className="w-4 h-4" />
+              Stile Grafico
+            </Label>
+            <RadioGroup
+              value={config.stylePreset}
+              onValueChange={(value) => updateConfig('stylePreset', value as StylePreset)}
+              className="grid grid-cols-3 gap-2"
+            >
+              {(Object.keys(STYLE_PRESETS) as StylePreset[]).map((preset) => {
+                const presetStyle = STYLE_PRESETS[preset];
+                return (
+                  <div key={preset}>
+                    <RadioGroupItem value={preset} id={`story-style-${preset}`} className="peer sr-only" />
+                    <Label
+                      htmlFor={`story-style-${preset}`}
+                      className={cn(
+                        "flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 cursor-pointer transition-all",
+                        "border-muted hover:border-muted-foreground/50",
+                        config.stylePreset === preset && "border-primary bg-primary/10"
+                      )}
                     >
-                      <div className="w-full h-full rounded-lg flex items-center justify-center">
-                        <div
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: presetStyle.accent }}
-                        />
+                      <div
+                        className="w-8 h-8 rounded-lg border border-white/20"
+                        style={{ background: presetStyle.bg }}
+                      >
+                        <div className="w-full h-full rounded-lg flex items-center justify-center">
+                          <div
+                            className="w-3 h-3 rounded-full"
+                            style={{ backgroundColor: presetStyle.accent }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <span className="text-xs font-medium text-center">{presetStyle.label}</span>
-                  </Label>
-                </div>
-              );
-            })}
-          </RadioGroup>
-        </div>
+                      <span className="text-xs font-medium text-center">{presetStyle.label}</span>
+                    </Label>
+                  </div>
+                );
+              })}
+            </RadioGroup>
+          </div>
+        )}
 
         {/* Generate Button */}
         <Button
           onClick={generateStoryImage}
-          disabled={!isFormValid || isGenerating}
+          disabled={isGenerating}
           className="w-full gap-2"
           size="lg"
         >
@@ -596,7 +786,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
             </>
           ) : (
             <>
-              <Image className="w-4 h-4" />
+              <ImageIcon className="w-4 h-4" />
               Genera Grafica
             </>
           )}

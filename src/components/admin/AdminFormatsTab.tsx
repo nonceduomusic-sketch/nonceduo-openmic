@@ -61,7 +61,30 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
         </p>
       </div>
 
-      {/* Section 1: Format Attivi (Pubblico) */}
+      {/* Section 1: Configurazione Monitoraggio - MOVED TO TOP */}
+      {canMonitor && (
+        <Card className="border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Settings className="w-5 h-5 text-muted-foreground" />
+              Configurazione Monitoraggio
+            </CardTitle>
+            <CardDescription>
+              Scegli quali format vuoi monitorare nel Centro. 
+              Non influisce sulla visibilità pubblica.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <FormatToggleCard 
+              preferences={preferences} 
+              onToggle={toggleFormat}
+              access={access}
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Section 2: Format Attivi (Pubblico) */}
       {canManageActive && (
         <Card className="border-primary/20">
           <CardHeader className="pb-3">
@@ -80,7 +103,23 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
         </Card>
       )}
 
-      {/* Section 2: Serata Live - TWO SEPARATE CARDS */}
+      {/* Section 3: Notifiche Android - MOVED BEFORE GESTIONE EVENTO */}
+      <Card className="border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Bell className="w-5 h-5 text-blue-400" />
+            Notifiche Android
+          </CardTitle>
+          <CardDescription>
+            Configura le notifiche per ricevere avvisi anche in background.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AdminNotificationsCard />
+        </CardContent>
+      </Card>
+
+      {/* Section 4: Gestione Evento */}
       {canManageSerata && (access.openmic || access.dediche) && (
         <Card className="border-secondary/20">
           <CardHeader className="pb-3">
@@ -104,50 +143,11 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
         </Card>
       )}
 
-      {/* Section 3: Notifiche Android */}
-      <Card className="border-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Bell className="w-5 h-5 text-blue-400" />
-            Notifiche Android
-          </CardTitle>
-          <CardDescription>
-            Configura le notifiche per ricevere avvisi anche in background.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <AdminNotificationsCard />
-        </CardContent>
-      </Card>
-
-      {/* Section 4: Grafica Storia Evento */}
+      {/* Section 5: Grafica Storia Evento */}
       <EventStoryGeneratorCard />
 
-      {/* Section 5: Locandina Evento - NEW INDEPENDENT SECTION */}
+      {/* Section 6: Locandina Evento */}
       <EventPosterGeneratorCard />
-
-      {/* Section 6: Configurazione Monitoraggio */}
-      {canMonitor && (
-        <Card className="border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Settings className="w-5 h-5 text-muted-foreground" />
-              Configurazione Monitoraggio
-            </CardTitle>
-            <CardDescription>
-              Scegli quali format vuoi monitorare nel Centro. 
-              Non influisce sulla visibilità pubblica.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FormatToggleCard 
-              preferences={preferences} 
-              onToggle={toggleFormat}
-              access={access}
-            />
-          </CardContent>
-        </Card>
-      )}
 
       {/* Info Box */}
       <Alert className="bg-muted/30 border-muted-foreground/20">
