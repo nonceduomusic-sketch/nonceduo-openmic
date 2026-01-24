@@ -243,10 +243,20 @@ export const EventPosterGeneratorCard: React.FC = () => {
   const generatePosterImage = useCallback(async () => {
     const backgroundImage = config.uploadedImage || aiGeneratedBg;
     
+    // If no image at all and user has a theme, auto-generate AI background first
+    if (!backgroundImage && config.aiTheme.trim()) {
+      toast({
+        title: 'Generazione sfondo AI...',
+        description: 'Attendi qualche secondo.',
+      });
+      await generateAIBackground();
+      return; // The user will click generate again after AI bg is ready
+    }
+    
     if (!backgroundImage) {
       toast({
-        title: 'Immagine mancante',
-        description: 'Carica una foto o genera uno sfondo AI prima.',
+        title: 'Sfondo mancante',
+        description: 'Scrivi un tema per generare lo sfondo AI, oppure carica una foto.',
         variant: 'destructive',
       });
       return;
@@ -488,7 +498,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
     } finally {
       setIsGenerating(false);
     }
-  }, [config, aiGeneratedBg, toast]);
+  }, [config, aiGeneratedBg, toast, generateAIBackground]);
 
   const downloadImage = useCallback(() => {
     if (!previewUrl) return;

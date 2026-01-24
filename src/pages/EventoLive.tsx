@@ -329,9 +329,17 @@ const EventoLive: React.FC = () => {
                 )}
               </Button>
 
-              <p className="text-xs text-center text-muted-foreground">
+              <p className="text-xs text-center text-muted-foreground mb-4">
                 Non hai il PIN? Chiedilo al performer o al locale.
               </p>
+
+              {/* Back to site link */}
+              <div className="pt-4 border-t border-border">
+                <Link to="/" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-2">
+                  <Home className="w-4 h-4" />
+                  Torna al sito
+                </Link>
+              </div>
             </CardContent>
           </Card>
         ) : (
