@@ -35,7 +35,8 @@ import { useFormatPreferences, FormatPreferences } from '@/hooks/useFormatPrefer
 import { useCentroPermissions } from '@/hooks/useCentroPermissions';
 import { FormatToggleCard } from '@/components/admin/FormatToggleCard';
 import { ActiveFormatsCard } from '@/components/admin/ActiveFormatsCard';
-import { UnifiedLiveSessionCard } from '@/components/admin/UnifiedLiveSessionCard';
+import { LiveStatusCard } from '@/components/admin/LiveStatusCard';
+import { PinProtectionCard } from '@/components/admin/PinProtectionCard';
 import { formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -699,8 +700,9 @@ export const AdminNotificationsTab: React.FC<AdminNotificationsTabProps> = ({
                     <ChevronRight className="w-4 h-4" />
                   </Button>
                 </CollapsibleTrigger>
-                <CollapsibleContent className="pt-2">
-                  <UnifiedLiveSessionCard title="Serata Live" />
+                <CollapsibleContent className="pt-2 space-y-3">
+                  <LiveStatusCard title="Stato Evento" />
+                  <PinProtectionCard title="Protezione PIN" />
                 </CollapsibleContent>
               </Collapsible>
             )}
