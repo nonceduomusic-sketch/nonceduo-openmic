@@ -302,18 +302,57 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false }) => {
     }
   }, [selectedConversation?.messages?.length]);
 
-  // Update selected conversation when conversations change (real-time sync for status updates)
+  // Update selected conversation when conversations change (real-time sync)
+  // This ensures new messages from admin are visible immediately
   useEffect(() => {
     if (selectedConversation) {
       const updated = conversations.find(c => c.id === selectedConversation.id);
       if (updated) {
-        // Deep compare to detect any message status changes
-        const hasChanges = 
-          JSON.stringify(updated.messages?.map(m => ({ id: m.id, status: m.status }))) !== 
-          JSON.stringify(selectedConversation.messages?.map(m => ({ id: m.id, status: m.status })));
+        // Get message IDs from server (excluding temp IDs)
+        const serverMessageIds = (updated.messages || [])
+          .filter(m => !m.id.startsWith('temp-'))
+          .map(m => m.id)
+          .sort()
+          .join(',');
         
-        if (hasChanges || updated.messages?.length !== selectedConversation.messages?.length) {
-          setSelectedConversation(updated);
+        // Get current message IDs (excluding temp IDs)
+        const currentMessageIds = (selectedConversation.messages || [])
+          .filter(m => !m.id.startsWith('temp-'))
+          .map(m => m.id)
+          .sort()
+          .join(',');
+        
+        // Check if there are new messages or status changes
+        const hasNewMessages = serverMessageIds !== currentMessageIds;
+        const hasStatusChanges = (updated.messages || []).some(serverMsg => {
+          const localMsg = (selectedConversation.messages || []).find(m => m.id === serverMsg.id);
+          return localMsg && (localMsg.status !== serverMsg.status || localMsg.read_at !== serverMsg.read_at);
+        });
+        
+        if (hasNewMessages || hasStatusChanges) {
+          // Merge: keep pending temp messages, update with server data
+          const tempMessages = (selectedConversation.messages || []).filter(m => m.id.startsWith('temp-'));
+          const serverMessages = updated.messages || [];
+          
+          // Remove temp messages that match server messages (by text + time proximity)
+          const mergedMessages = [...serverMessages];
+          tempMessages.forEach(temp => {
+            const matchingServer = serverMessages.find(s => 
+              s.message_text === temp.message_text && 
+              s.sender_session_id === temp.sender_session_id &&
+              Math.abs(new Date(s.created_at).getTime() - new Date(temp.created_at).getTime()) < 5000
+            );
+            if (!matchingServer) {
+              mergedMessages.unshift(temp);
+            }
+          });
+          
+          setSelectedConversation({
+            ...updated,
+            messages: mergedMessages.sort((a, b) => 
+              new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            ),
+          });
         }
       }
     }
