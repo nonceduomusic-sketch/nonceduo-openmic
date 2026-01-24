@@ -412,17 +412,55 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false }) => {
       return;
     }
 
+    // Save message text before clearing
+    const messageText = validation.data.message_text;
+    const senderName = validation.data.sender_name;
+
     setIsSubmitting(true);
     
+    // Optimistic update: add message to UI immediately
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMessage = {
+      id: tempId,
+      conversation_id: selectedConversation.id,
+      sender_type: 'user',
+      sender_name: senderName,
+      sender_session_id: userSessionId,
+      message_text: messageText,
+      status: 'sending',
+      created_at: new Date().toISOString(),
+      read_at: null,
+      edited_at: null,
+    };
+
+    // Update local state immediately
+    setSelectedConversation(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        messages: [optimisticMessage as any, ...(prev.messages || [])],
+      };
+    });
+    setMessage(''); // Clear input immediately for better UX
+
     const success = await sendChatMessage(
       selectedConversation.id,
-      validation.data.sender_name,
-      validation.data.message_text,
+      senderName,
+      messageText,
       userSessionId
     );
     
-    if (success) {
-      setMessage('');
+    if (!success) {
+      // Rollback optimistic update on failure
+      setSelectedConversation(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          messages: (prev.messages || []).filter(m => m.id !== tempId),
+        };
+      });
+      setMessage(messageText); // Restore message
+      toast.error('Errore nell\'invio del messaggio');
     }
     
     setIsSubmitting(false);

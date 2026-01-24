@@ -415,12 +415,31 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
     senderSessionId: string
   ): Promise<boolean> => {
     try {
-      await callUserChatApi<{ message: ChatMessage }>('sendMessage', {
+      const response = await callUserChatApi<{ message: ChatMessage }>('sendMessage', {
         conversation_id: conversationId,
         sender_name: senderName,
         message_text: messageText,
         session_id: senderSessionId,
       });
+
+      // Optimistic update: add message to local state immediately
+      if (response?.message) {
+        setConversations(prev => prev.map(conv => {
+          if (conv.id === conversationId) {
+            const newMessages = [response.message, ...(conv.messages || [])];
+            return {
+              ...conv,
+              messages: newMessages,
+              last_message: response.message,
+              updated_at: new Date().toISOString(),
+            };
+          }
+          return conv;
+        }));
+      }
+
+      // Also trigger a background refresh to ensure sync
+      setTimeout(() => fetchConversations(), 500);
 
       return true;
     } catch (error) {

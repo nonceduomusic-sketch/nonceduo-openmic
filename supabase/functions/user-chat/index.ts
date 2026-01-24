@@ -255,10 +255,10 @@ serve(async (req: Request): Promise<Response> => {
         return json(500, { error: "Errore invio messaggio" });
       }
 
-      // Mark conversation as unread for admin (new user message)
+      // Mark conversation as unread for admin AND update updated_at timestamp
       await supabase
         .from("conversations")
-        .update({ is_read: false })
+        .update({ is_read: false, updated_at: new Date().toISOString() })
         .eq("id", conversationId);
 
       // Mark admin messages in this conversation as read
