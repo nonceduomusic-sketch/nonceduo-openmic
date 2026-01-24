@@ -232,9 +232,14 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
       fetchConversations();
     }, 10000);
 
-    // Subscribe to realtime changes
+    // Subscribe to realtime changes - use unique channel name to avoid conflicts
+    const channelName = `conversations-changes-${sessionId || 'admin'}-${Date.now()}`;
     const conversationsChannel = supabase
-      .channel('conversations-changes')
+      .channel(channelName, {
+        config: {
+          broadcast: { self: true },
+        },
+      })
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'conversations' },
@@ -245,7 +250,7 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
         { event: 'INSERT', schema: 'public', table: 'chat_messages' },
         (payload) => {
           const newMessage = payload.new as ChatMessage;
-          console.log('[useConversations] New message received via realtime:', newMessage.id?.slice(0, 8));
+          if (import.meta.env.DEV) console.log('[useConversations] New message received via realtime:', newMessage.id?.slice(0, 8));
           window.dispatchEvent(
             new CustomEvent('new-chat-message', { detail: newMessage })
           );
@@ -296,8 +301,11 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
           }
         }
       )
-      .subscribe((status) => {
-        console.log('[useConversations] Realtime subscription status:', status);
+      .subscribe((status, err) => {
+        if (import.meta.env.DEV) {
+          console.log('[useConversations] Realtime subscription status:', status);
+          if (err) console.error('[useConversations] Subscription error:', err);
+        }
       });
 
     return () => {
