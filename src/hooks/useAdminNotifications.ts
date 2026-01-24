@@ -121,6 +121,7 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
   }, [formatPreferences]);
 
   // Setup realtime subscriptions based on active formats
+  // Android WebSocket connections can be unreliable, so we use polling as backup
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
@@ -137,13 +138,14 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
     }
 
     // Build unique channel name to avoid conflicts
-    const channelName = `admin-notifications-${Date.now()}`;
+    const channelName = `admin-notifications-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const channel = supabase.channel(channelName, {
       config: {
         broadcast: { self: true },
       },
     });
     let hasSubscriptions = false;
+    let isRealtimeConnected = false;
 
     // Community subscriptions
     if (!formatPreferences || formatPreferences.community) {
@@ -199,11 +201,38 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
           console.log('[AdminNotifications] Realtime subscription status:', status);
           if (err) console.error('[AdminNotifications] Subscription error:', err);
         }
+        isRealtimeConnected = status === 'SUBSCRIBED';
       });
       channelRef.current = channel;
     }
 
+    // Backup polling for Android - check every 5 seconds if realtime isn't working
+    // This ensures notifications still update even if WebSocket fails
+    const pollInterval = setInterval(() => {
+      // Always poll on mobile/Android as WebSocket can be unreliable
+      const isAndroid = /android/i.test(navigator.userAgent);
+      const isMobile = /mobile|tablet/i.test(navigator.userAgent);
+      
+      if (!isRealtimeConnected || isAndroid || isMobile) {
+        if (import.meta.env.DEV) console.log('[AdminNotifications] Polling fallback triggered');
+        fetchJoinRequests();
+        fetchCounts();
+      }
+    }, 5000);
+
+    // Also refresh when page becomes visible (tab switch, screen on)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        if (import.meta.env.DEV) console.log('[AdminNotifications] Page visible, refreshing...');
+        fetchJoinRequests();
+        fetchCounts();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
+      clearInterval(pollInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
         channelRef.current = null;
