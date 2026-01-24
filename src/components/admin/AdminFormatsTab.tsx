@@ -5,7 +5,6 @@ import {
   Radio,
   Lock,
   Info,
-  Shield,
   Bell,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -14,6 +13,7 @@ import { ActiveFormatsCard } from '@/components/admin/ActiveFormatsCard';
 import { LiveStatusCard } from '@/components/admin/LiveStatusCard';
 import { PinProtectionCard } from '@/components/admin/PinProtectionCard';
 import { AdminNotificationsCard } from '@/components/admin/AdminNotificationsCard';
+import { EventStoryGeneratorCard } from '@/components/admin/EventStoryGeneratorCard';
 import { useFormatPreferences } from '@/hooks/useFormatPreferences';
 import { useCentroPermissions } from '@/hooks/useCentroPermissions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -119,7 +119,10 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
         </CardContent>
       </Card>
 
-      {/* Section 4: Configurazione Monitoraggio */}
+      {/* Section 4: Grafica Storia Evento - NEW INDEPENDENT SECTION */}
+      <EventStoryGeneratorCard />
+
+      {/* Section 5: Configurazione Monitoraggio */}
       {canMonitor && (
         <Card className="border-border">
           <CardHeader className="pb-3">
