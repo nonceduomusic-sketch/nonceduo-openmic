@@ -123,7 +123,7 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
         setIsBlocked(false);
       }
     } catch (error) {
-      console.error('Error checking block status:', error);
+      if (import.meta.env.DEV) console.error('Error checking block status:', error);
     }
   }, []);
 
@@ -232,7 +232,7 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
       setConversations(userConvs);
       setPublicGroups(availableGroups);
     } catch (error) {
-      console.error('Error fetching conversations:', error);
+      if (import.meta.env.DEV) console.error('Error fetching conversations:', error);
       toast.error('Errore nel caricamento delle conversazioni');
     } finally {
       setLoading(false);

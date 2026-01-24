@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { MessageCircle, Ban, Eye, Users } from "lucide-react";
+import { MessageCircle, Ban } from "lucide-react";
 import { AdminMessagesTab } from "@/components/AdminMessagesTab";
 import { AdminBlockedUsersTab } from "@/components/AdminBlockedUsersTab";
 

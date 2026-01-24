@@ -137,25 +137,39 @@ export const AdminNotificationsCard: React.FC = () => {
       return;
     }
 
-    // Play sound if enabled - use Web Audio API directly (no mp3 file needed)
+    // Play elegant Apple-style notification sound
     if (soundEnabled) {
       try {
-        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
+        const audioContext = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
         
-        // Create a pleasant notification sound (two-tone chime)
-        oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // A5
-        oscillator.frequency.setValueAtTime(1100, audioContext.currentTime + 0.1); // C#6
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        // Create a softer, more elegant chime (Apple Watch style)
+        const playNote = (frequency: number, startTime: number, duration: number, volume: number) => {
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+          
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+          
+          oscillator.type = 'sine'; // Softer sine wave
+          oscillator.frequency.setValueAtTime(frequency, startTime);
+          
+          // Soft attack and decay
+          gainNode.gain.setValueAtTime(0, startTime);
+          gainNode.gain.linearRampToValueAtTime(volume, startTime + 0.02);
+          gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+          
+          oscillator.start(startTime);
+          oscillator.stop(startTime + duration);
+        };
         
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.3);
+        const now = audioContext.currentTime;
+        // Three-tone ascending chime (C6, E6, G6)
+        playNote(1047, now, 0.15, 0.2);        // C6
+        playNote(1319, now + 0.08, 0.15, 0.15); // E6
+        playNote(1568, now + 0.16, 0.2, 0.12);  // G6 (longer, softer fade)
+        
       } catch (e) {
-        console.log('Audio not available');
+        if (import.meta.env.DEV) console.log('Audio not available');
       }
     }
 
