@@ -40,7 +40,7 @@ import { ChatNotificationPopup } from './ChatNotificationPopup';
 import { AdminSettingsTab } from './AdminSettingsTab';
 import { AdminSongManagementTab } from './AdminSongManagementTab';
 import { AdminPermissionsTab } from './AdminPermissionsTab';
-import { AdminNotificationsTab } from './AdminNotificationsTab';
+import { LiveCentroTab } from './admin/LiveCentroTab';
 import { AdminDedichePanel } from '@/components/admin/AdminDedichePanel';
 import { AdminCommunityPanel } from '@/components/admin/AdminCommunityPanel';
 import { AdminAuditTab } from '@/components/admin/AdminAuditTab';
@@ -882,7 +882,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
           )
         ) : mainTab === 'notifications' ? (
-          <AdminNotificationsTab 
+          <LiveCentroTab 
             onNavigate={(tab, subTab) => {
               setMainTab(tab);
               if (tab === 'community' && subTab) {
@@ -890,7 +890,6 @@ export const AdminDashboard: React.FC = () => {
               }
             }}
             access={access}
-            isOwner={staffRole === 'owner'}
           />
         ) : null}
         </div>
