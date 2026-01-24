@@ -13,6 +13,7 @@ import {
   RefreshCw,
   Check,
   Instagram,
+  Layout,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,6 +27,7 @@ import { useToast } from '@/hooks/use-toast';
 
 type EventType = 'public' | 'private';
 type StylePreset = 'minimal' | 'gradient' | 'neon';
+type ImageFormat = 'story' | 'square' | 'portrait';
 
 interface EventStoryConfig {
   venueName: string;
@@ -33,6 +35,7 @@ interface EventStoryConfig {
   eventTime: string;
   eventType: EventType;
   stylePreset: StylePreset;
+  imageFormat: ImageFormat;
 }
 
 const STYLE_PRESETS: Record<StylePreset, { label: string; description: string; bg: string; accent: string }> = {
@@ -56,6 +59,27 @@ const STYLE_PRESETS: Record<StylePreset, { label: string; description: string; b
   },
 };
 
+const IMAGE_FORMATS: Record<ImageFormat, { label: string; description: string; width: number; height: number }> = {
+  story: {
+    label: 'Storia 9:16',
+    description: 'Storie IG/FB',
+    width: 1080,
+    height: 1920,
+  },
+  square: {
+    label: 'Quadrato 1:1',
+    description: 'Post IG/FB',
+    width: 1080,
+    height: 1080,
+  },
+  portrait: {
+    label: 'Verticale 4:5',
+    description: 'Feed Instagram',
+    width: 1080,
+    height: 1350,
+  },
+};
+
 export const EventStoryGeneratorCard: React.FC = () => {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -68,11 +92,12 @@ export const EventStoryGeneratorCard: React.FC = () => {
     eventTime: '',
     eventType: 'public',
     stylePreset: 'neon',
+    imageFormat: 'story',
   });
 
   const updateConfig = <K extends keyof EventStoryConfig>(key: K, value: EventStoryConfig[K]) => {
     setConfig(prev => ({ ...prev, [key]: value }));
-    setPreviewUrl(null); // Reset preview when config changes
+    setPreviewUrl(null);
   };
 
   const generateStoryImage = useCallback(async () => {
@@ -94,9 +119,9 @@ export const EventStoryGeneratorCard: React.FC = () => {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // Instagram Story dimensions (1080x1920)
-      canvas.width = 1080;
-      canvas.height = 1920;
+      const formatConfig = IMAGE_FORMATS[config.imageFormat];
+      canvas.width = formatConfig.width;
+      canvas.height = formatConfig.height;
 
       const style = STYLE_PRESETS[config.stylePreset];
       
@@ -129,9 +154,10 @@ export const EventStoryGeneratorCard: React.FC = () => {
 
       // Add glow effects for neon style
       if (config.stylePreset === 'neon') {
+        const glowY = config.imageFormat === 'story' ? canvas.height * 0.3 : canvas.height * 0.4;
         const glowGradient = ctx.createRadialGradient(
-          canvas.width / 2, canvas.height * 0.3, 0,
-          canvas.width / 2, canvas.height * 0.3, 400
+          canvas.width / 2, glowY, 0,
+          canvas.width / 2, glowY, 400
         );
         glowGradient.addColorStop(0, 'rgba(255, 45, 146, 0.15)');
         glowGradient.addColorStop(1, 'transparent');
@@ -143,12 +169,25 @@ export const EventStoryGeneratorCard: React.FC = () => {
       const formattedDate = format(config.eventDate, "EEEE d MMMM", { locale: it });
       const formattedDateUpper = formattedDate.toUpperCase();
 
+      // Adjust sizing based on format
+      const isCompact = config.imageFormat !== 'story';
+      const titleSize = isCompact ? 56 : 72;
+      const dateSize = isCompact ? 38 : 48;
+      const timeSize = isCompact ? 32 : 42;
+      const badgeSize = isCompact ? 26 : 32;
+      const pinTitleSize = isCompact ? 28 : 36;
+      const pinBoxSize = isCompact ? 48 : 64;
+      const subtitleSize = isCompact ? 22 : 28;
+      const footerSize = isCompact ? 20 : 24;
+
+      // Calculate vertical positions based on format
+      const titleStartY = isCompact ? canvas.height * 0.2 : 380;
+
       // Draw venue name (main title)
       ctx.textAlign = 'center';
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 72px "Orbitron", sans-serif';
+      ctx.font = `bold ${titleSize}px "Orbitron", sans-serif`;
       
-      // Add glow to text for neon style
       if (config.stylePreset === 'neon') {
         ctx.shadowColor = style.accent;
         ctx.shadowBlur = 30;
@@ -174,17 +213,16 @@ export const EventStoryGeneratorCard: React.FC = () => {
       }
       if (currentLine) lines.push(currentLine);
 
-      const titleStartY = 380;
+      const lineHeight = isCompact ? 70 : 90;
       lines.forEach((line, i) => {
-        ctx.fillText(line, canvas.width / 2, titleStartY + i * 90);
+        ctx.fillText(line, canvas.width / 2, titleStartY + i * lineHeight);
       });
 
-      // Reset shadow
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
 
       // Draw decorative line
-      const lineY = titleStartY + lines.length * 90 + 60;
+      const lineY = titleStartY + lines.length * lineHeight + (isCompact ? 40 : 60);
       const lineGradient = ctx.createLinearGradient(200, lineY, canvas.width - 200, lineY);
       lineGradient.addColorStop(0, 'transparent');
       lineGradient.addColorStop(0.3, style.accent);
@@ -198,30 +236,29 @@ export const EventStoryGeneratorCard: React.FC = () => {
       ctx.stroke();
 
       // Draw date
-      ctx.font = '600 48px "Orbitron", sans-serif';
+      ctx.font = `600 ${dateSize}px "Orbitron", sans-serif`;
       ctx.fillStyle = style.accent;
       if (config.stylePreset === 'neon') {
         ctx.shadowColor = style.accent;
         ctx.shadowBlur = 20;
       }
-      ctx.fillText(formattedDateUpper, canvas.width / 2, lineY + 100);
+      ctx.fillText(formattedDateUpper, canvas.width / 2, lineY + (isCompact ? 70 : 100));
       
       // Draw time
-      ctx.font = '500 42px "Inter", sans-serif';
+      ctx.font = `500 ${timeSize}px "Inter", sans-serif`;
       ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
-      ctx.fillText(`ORE ${config.eventTime}`, canvas.width / 2, lineY + 170);
+      ctx.fillText(`ORE ${config.eventTime}`, canvas.width / 2, lineY + (isCompact ? 120 : 170));
 
       // Draw event type badge
-      const badgeY = lineY + 280;
+      const badgeY = lineY + (isCompact ? 200 : 280);
       const badgeText = config.eventType === 'public' ? 'EVENTO PUBBLICO' : 'EVENTO PRIVATO';
       const badgeIcon = config.eventType === 'public' ? '🌐' : '🔒';
       
-      ctx.font = '600 32px "Inter", sans-serif';
+      ctx.font = `600 ${badgeSize}px "Inter", sans-serif`;
       const badgeWidth = ctx.measureText(badgeText).width + 100;
       
-      // Badge background
       ctx.fillStyle = config.eventType === 'public' 
         ? 'rgba(34, 197, 94, 0.2)' 
         : 'rgba(255, 45, 146, 0.2)';
@@ -235,29 +272,27 @@ export const EventStoryGeneratorCard: React.FC = () => {
       );
       ctx.fill();
       
-      // Badge border
       ctx.strokeStyle = config.eventType === 'public' 
         ? 'rgba(34, 197, 94, 0.5)' 
         : 'rgba(255, 45, 146, 0.5)';
       ctx.lineWidth = 2;
       ctx.stroke();
       
-      // Badge text
       ctx.fillStyle = config.eventType === 'public' ? '#22c55e' : style.accent;
       ctx.fillText(`${badgeIcon}  ${badgeText}`, canvas.width / 2, badgeY + 12);
 
       // Draw secret PIN teaser section
-      const pinSectionY = canvas.height - 650;
+      const pinSectionY = isCompact 
+        ? canvas.height - (config.imageFormat === 'square' ? 320 : 380)
+        : canvas.height - 650;
       
-      // Decorative frame
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.roundRect(100, pinSectionY - 40, canvas.width - 200, 280, 20);
+      ctx.roundRect(100, pinSectionY - 40, canvas.width - 200, isCompact ? 200 : 280, 20);
       ctx.stroke();
 
-      // PIN teaser title
-      ctx.font = '700 36px "Orbitron", sans-serif';
+      ctx.font = `700 ${pinTitleSize}px "Orbitron", sans-serif`;
       ctx.fillStyle = style.accent;
       if (config.stylePreset === 'neon') {
         ctx.shadowColor = style.accent;
@@ -268,18 +303,16 @@ export const EventStoryGeneratorCard: React.FC = () => {
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
       
-      // PIN mystery boxes
-      ctx.font = '800 64px "Orbitron", sans-serif';
+      ctx.font = `800 ${pinBoxSize}px "Orbitron", sans-serif`;
       ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-      ctx.fillText('? ? ? ?', canvas.width / 2, pinSectionY + 120);
+      ctx.fillText('? ? ? ?', canvas.width / 2, pinSectionY + (isCompact ? 90 : 120));
       
-      // PIN subtitle
-      ctx.font = '400 28px "Inter", sans-serif';
+      ctx.font = `400 ${subtitleSize}px "Inter", sans-serif`;
       ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-      ctx.fillText('Scoprilo partecipando all\'evento!', canvas.width / 2, pinSectionY + 190);
+      ctx.fillText('Scoprilo partecipando all\'evento!', canvas.width / 2, pinSectionY + (isCompact ? 140 : 190));
 
-      // Draw private event CTA if applicable
-      if (config.eventType === 'private') {
+      // Draw private event CTA if applicable (only for story format)
+      if (config.eventType === 'private' && config.imageFormat === 'story') {
         const ctaY = canvas.height - 320;
         
         ctx.font = '500 28px "Inter", sans-serif';
@@ -298,11 +331,10 @@ export const EventStoryGeneratorCard: React.FC = () => {
       }
 
       // Draw footer branding
-      ctx.font = '400 24px "Inter", sans-serif';
+      ctx.font = `400 ${footerSize}px "Inter", sans-serif`;
       ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-      ctx.fillText('NONCE DUO • LIVE MUSIC', canvas.width / 2, canvas.height - 100);
+      ctx.fillText('NONCE DUO • LIVE MUSIC', canvas.width / 2, canvas.height - (isCompact ? 40 : 100));
 
-      // Generate preview URL
       const url = canvas.toDataURL('image/png');
       setPreviewUrl(url);
 
@@ -325,8 +357,9 @@ export const EventStoryGeneratorCard: React.FC = () => {
   const downloadImage = useCallback(() => {
     if (!previewUrl) return;
 
+    const formatConfig = IMAGE_FORMATS[config.imageFormat];
     const link = document.createElement('a');
-    link.download = `story-${config.venueName.toLowerCase().replace(/\s+/g, '-')}-${format(config.eventDate || new Date(), 'yyyy-MM-dd')}.png`;
+    link.download = `grafica-${config.venueName.toLowerCase().replace(/\s+/g, '-')}-${format(config.eventDate || new Date(), 'yyyy-MM-dd')}-${formatConfig.width}x${formatConfig.height}.png`;
     link.href = previewUrl;
     link.click();
 
@@ -334,7 +367,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
       title: 'Download avviato',
       description: 'La grafica è stata scaricata.',
     });
-  }, [previewUrl, config.venueName, config.eventDate, toast]);
+  }, [previewUrl, config, toast]);
 
   const isFormValid = config.venueName && config.eventDate && config.eventTime;
 
@@ -346,16 +379,49 @@ export const EventStoryGeneratorCard: React.FC = () => {
           Grafica Storia Evento
         </CardTitle>
         <CardDescription>
-          Genera una grafica professionale per le storie Instagram del locale.
+          Genera una grafica professionale per social con sfondo generato.
           I dati restano in sessione e non vengono salvati.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Image Format - NEW */}
+        <div className="space-y-3">
+          <Label className="flex items-center gap-2">
+            <Layout className="w-4 h-4" />
+            Formato Immagine
+          </Label>
+          <RadioGroup
+            value={config.imageFormat}
+            onValueChange={(value) => updateConfig('imageFormat', value as ImageFormat)}
+            className="grid grid-cols-3 gap-2"
+          >
+            {(Object.keys(IMAGE_FORMATS) as ImageFormat[]).map((fmt) => {
+              const fmtConfig = IMAGE_FORMATS[fmt];
+              return (
+                <div key={fmt}>
+                  <RadioGroupItem value={fmt} id={`story-fmt-${fmt}`} className="peer sr-only" />
+                  <Label
+                    htmlFor={`story-fmt-${fmt}`}
+                    className={cn(
+                      "flex flex-col items-center gap-1 p-3 rounded-xl border-2 cursor-pointer transition-all text-center",
+                      "border-muted hover:border-muted-foreground/50",
+                      config.imageFormat === fmt && "border-primary bg-primary/10"
+                    )}
+                  >
+                    <span className="text-xs font-medium">{fmtConfig.label}</span>
+                    <span className="text-[10px] text-muted-foreground">{fmtConfig.description}</span>
+                  </Label>
+                </div>
+              );
+            })}
+          </RadioGroup>
+        </div>
+
         {/* Venue Name */}
         <div className="space-y-2">
           <Label htmlFor="venue-name" className="flex items-center gap-2">
             <MapPin className="w-4 h-4" />
-            Nome del Locale
+            Nome del Locale *
           </Label>
           <Input
             id="venue-name"
@@ -368,11 +434,10 @@ export const EventStoryGeneratorCard: React.FC = () => {
 
         {/* Date & Time Row */}
         <div className="grid grid-cols-2 gap-4">
-          {/* Date Picker */}
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
-              Data Evento
+              Data Evento *
             </Label>
             <Popover>
               <PopoverTrigger asChild>
@@ -402,11 +467,10 @@ export const EventStoryGeneratorCard: React.FC = () => {
             </Popover>
           </div>
 
-          {/* Time Input */}
           <div className="space-y-2">
             <Label htmlFor="event-time" className="flex items-center gap-2">
               <Clock className="w-4 h-4" />
-              Orario
+              Orario *
             </Label>
             <Input
               id="event-time"
@@ -420,18 +484,16 @@ export const EventStoryGeneratorCard: React.FC = () => {
 
         {/* Event Type */}
         <div className="space-y-3">
-          <Label className="flex items-center gap-2">
-            Tipologia Evento
-          </Label>
+          <Label>Tipologia Evento</Label>
           <RadioGroup
             value={config.eventType}
             onValueChange={(value) => updateConfig('eventType', value as EventType)}
             className="grid grid-cols-2 gap-3"
           >
             <div>
-              <RadioGroupItem value="public" id="public" className="peer sr-only" />
+              <RadioGroupItem value="public" id="story-public" className="peer sr-only" />
               <Label
-                htmlFor="public"
+                htmlFor="story-public"
                 className={cn(
                   "flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all",
                   "border-muted hover:border-muted-foreground/50",
@@ -450,9 +512,9 @@ export const EventStoryGeneratorCard: React.FC = () => {
             </div>
             
             <div>
-              <RadioGroupItem value="private" id="private" className="peer sr-only" />
+              <RadioGroupItem value="private" id="story-private" className="peer sr-only" />
               <Label
-                htmlFor="private"
+                htmlFor="story-private"
                 className={cn(
                   "flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 cursor-pointer transition-all",
                   "border-muted hover:border-muted-foreground/50",
@@ -484,12 +546,12 @@ export const EventStoryGeneratorCard: React.FC = () => {
             className="grid grid-cols-3 gap-2"
           >
             {(Object.keys(STYLE_PRESETS) as StylePreset[]).map((preset) => {
-              const style = STYLE_PRESETS[preset];
+              const presetStyle = STYLE_PRESETS[preset];
               return (
                 <div key={preset}>
-                  <RadioGroupItem value={preset} id={preset} className="peer sr-only" />
+                  <RadioGroupItem value={preset} id={`story-style-${preset}`} className="peer sr-only" />
                   <Label
-                    htmlFor={preset}
+                    htmlFor={`story-style-${preset}`}
                     className={cn(
                       "flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 cursor-pointer transition-all",
                       "border-muted hover:border-muted-foreground/50",
@@ -498,18 +560,16 @@ export const EventStoryGeneratorCard: React.FC = () => {
                   >
                     <div
                       className="w-8 h-8 rounded-lg border border-white/20"
-                      style={{ background: style.bg }}
+                      style={{ background: presetStyle.bg }}
                     >
-                      <div
-                        className="w-full h-full rounded-lg flex items-center justify-center"
-                      >
+                      <div className="w-full h-full rounded-lg flex items-center justify-center">
                         <div
                           className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: style.accent }}
+                          style={{ backgroundColor: presetStyle.accent }}
                         />
                       </div>
                     </div>
-                    <span className="text-xs font-medium text-center">{style.label}</span>
+                    <span className="text-xs font-medium text-center">{presetStyle.label}</span>
                   </Label>
                 </div>
               );
@@ -561,7 +621,12 @@ export const EventStoryGeneratorCard: React.FC = () => {
               </Button>
             </div>
             
-            <div className="relative aspect-[9/16] max-h-[400px] mx-auto rounded-xl overflow-hidden border border-border bg-black">
+            <div className={cn(
+              "relative mx-auto rounded-xl overflow-hidden border border-border bg-black",
+              config.imageFormat === 'story' && "aspect-[9/16] max-h-[400px]",
+              config.imageFormat === 'portrait' && "aspect-[4/5] max-h-[350px]",
+              config.imageFormat === 'square' && "aspect-square max-h-[300px]"
+            )}>
               <img
                 src={previewUrl}
                 alt="Story preview"
@@ -570,7 +635,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
             </div>
             
             <p className="text-xs text-muted-foreground text-center">
-              Formato: 1080×1920px (Instagram Story)
+              Formato: {IMAGE_FORMATS[config.imageFormat].width}×{IMAGE_FORMATS[config.imageFormat].height}px
             </p>
           </div>
         )}
