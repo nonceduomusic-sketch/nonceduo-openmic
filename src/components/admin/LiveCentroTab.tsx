@@ -7,8 +7,7 @@ import {
   Trash2,
   RefreshCw,
   ArrowRight,
-  Filter,
-  ChevronDown,
+  Bell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -261,21 +260,32 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
     <div className="flex flex-col h-full overflow-hidden">
       {/* ========== STICKY HEADER ========== */}
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-2xl border-b border-border/30 px-3 py-3 space-y-3">
-        {/* Counter row */}
+        {/* Title + Counter row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+            {/* Title with live indicator */}
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Bell className="w-5 h-5 text-primary" />
+                {newCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-destructive animate-pulse" />
+                )}
+              </div>
+              <h1 className="font-display text-lg font-bold text-foreground">Centro</h1>
+            </div>
+
             {/* Total counter */}
             <div className={cn(
-              "flex items-center gap-2 px-3 py-2 rounded-xl",
+              "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg",
               filteredItems.length > 0 
                 ? "bg-gradient-to-br from-primary/20 to-secondary/20 border border-primary/30"
                 : "bg-muted/50 border border-border/50"
             )}>
-              <span className="text-2xl font-bold text-foreground">
+              <span className="text-xl font-bold text-foreground">
                 {filteredItems.length}
               </span>
-              <span className="text-sm text-muted-foreground">
-                {showCompleted ? 'completate' : 'in coda'}
+              <span className="text-xs text-muted-foreground">
+                {showCompleted ? 'fatte' : 'in coda'}
               </span>
             </div>
 
@@ -283,9 +293,9 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
             {newCount > 0 && !showCompleted && (
               <Badge 
                 variant="destructive" 
-                className="h-7 px-3 text-sm font-semibold animate-pulse"
+                className="h-6 px-2 text-xs font-semibold animate-pulse"
               >
-                {newCount} nuove
+                +{newCount}
               </Badge>
             )}
           </div>
@@ -294,21 +304,21 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
           <Button
             variant={showCompleted ? "secondary" : "outline"}
             size="sm"
-            className="h-9 px-3 rounded-xl text-xs"
+            className="h-8 px-2.5 rounded-lg text-xs"
             onClick={() => setShowCompleted(!showCompleted)}
           >
-            <Check className={cn("w-4 h-4 mr-1", showCompleted && "text-emerald-500")} />
-            {showCompleted ? 'Completate' : 'Fatte'}
+            <Check className={cn("w-4 h-4", showCompleted && "text-emerald-500")} />
+            <span className="ml-1 hidden sm:inline">{showCompleted ? 'Fatte' : 'Vedi fatte'}</span>
           </Button>
         </div>
 
         {/* Filter tabs */}
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar">
           {[
-            { key: 'all' as const, label: 'Tutte', count: unifiedItems.length },
+            { key: 'queue' as const, label: 'In coda', count: unifiedItems.filter(i => i.status === 'pending').length },
             { key: 'songs' as const, label: 'Canzoni', count: songCount, icon: Music },
             { key: 'dediche' as const, label: 'Dediche', count: dedicheCount, icon: Heart },
-            { key: 'queue' as const, label: 'In coda', count: unifiedItems.filter(i => i.status === 'pending').length },
+            { key: 'all' as const, label: 'Tutte', count: unifiedItems.length },
           ].map(tab => (
             <button
               key={tab.key}
