@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -82,17 +82,42 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
   const [editPinValue, setEditPinValue] = useState('');
   const [activeSessionsCount, setActiveSessionsCount] = useState<number>(0);
   const [isTogglingPin, setIsTogglingPin] = useState(false);
+  const [loadingSessionCount, setLoadingSessionCount] = useState(false);
 
-  // Fetch active sessions count
-  useEffect(() => {
-    if (session?.id && isActive) {
-      countActiveSessions(session.id).then(setActiveSessionsCount);
+  // Fetch active sessions count - refetch periodically and after actions
+  const refreshSessionCount = useCallback(async () => {
+    if (!session?.id || !isActive) {
+      setActiveSessionsCount(0);
+      return;
+    }
+    setLoadingSessionCount(true);
+    try {
+      const count = await countActiveSessions(session.id);
+      setActiveSessionsCount(count);
+    } finally {
+      setLoadingSessionCount(false);
     }
   }, [session?.id, isActive, countActiveSessions]);
+
+  useEffect(() => {
+    refreshSessionCount();
+    // Also refresh every 30 seconds while component is mounted
+    const interval = setInterval(refreshSessionCount, 30000);
+    return () => clearInterval(interval);
+  }, [refreshSessionCount]);
 
   // Handle reset all sessions
   const handleResetSessions = async () => {
     if (!session) return;
+    
+    // Re-check count before invalidating to give accurate feedback
+    const currentCount = await countActiveSessions(session.id);
+    
+    if (currentCount === 0) {
+      toast.info('Nessuna sessione attiva da invalidare.');
+      setActiveSessionsCount(0);
+      return;
+    }
     
     const count = await resetAllSessions(session.id, 'admin_reset');
     
@@ -106,6 +131,9 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
     
     toast.success(`${count} sessioni invalidate. Tutti gli utenti devono reinserire il PIN.`);
     setActiveSessionsCount(0);
+    
+    // Refresh count after a short delay to confirm
+    setTimeout(refreshSessionCount, 1000);
   };
 
   const handleFormatToggle = async (format: FormatType, checked: boolean) => {
