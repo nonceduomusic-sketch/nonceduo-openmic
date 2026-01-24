@@ -61,8 +61,8 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
 
   const { conversations, loading: conversationsLoading } = useConversations();
 
-  // Filter state
-  const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
+  // Filter state - default to 'queue' so completed items are hidden by default
+  const [activeFilter, setActiveFilter] = useState<FilterTab>('queue');
   const [showCompleted, setShowCompleted] = useState(false);
 
   // Swipe state

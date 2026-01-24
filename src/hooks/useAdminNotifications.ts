@@ -136,8 +136,13 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
       channelRef.current = null;
     }
 
-    // Build channel with only active format subscriptions
-    const channel = supabase.channel('admin-notifications-dynamic');
+    // Build unique channel name to avoid conflicts
+    const channelName = `admin-notifications-${Date.now()}`;
+    const channel = supabase.channel(channelName, {
+      config: {
+        broadcast: { self: true },
+      },
+    });
     let hasSubscriptions = false;
 
     // Community subscriptions
@@ -146,7 +151,7 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
         'postgres_changes',
         { event: '*', schema: 'public', table: 'group_join_requests' },
         () => {
-          console.log('[AdminNotifications] group_join_requests changed');
+          if (import.meta.env.DEV) console.log('[AdminNotifications] group_join_requests changed');
           fetchJoinRequests();
         }
       );
@@ -159,7 +164,7 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
         'postgres_changes',
         { event: '*', schema: 'public', table: 'conversations' },
         () => {
-          console.log('[AdminNotifications] conversations changed');
+          if (import.meta.env.DEV) console.log('[AdminNotifications] conversations changed');
           fetchCounts();
         }
       );
@@ -167,7 +172,7 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
         'postgres_changes',
         { event: '*', schema: 'public', table: 'chat_messages' },
         () => {
-          console.log('[AdminNotifications] chat_messages changed');
+          if (import.meta.env.DEV) console.log('[AdminNotifications] chat_messages changed');
           fetchCounts();
         }
       );
@@ -180,7 +185,7 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
         'postgres_changes',
         { event: '*', schema: 'public', table: 'reservations' },
         () => {
-          console.log('[AdminNotifications] reservations changed');
+          if (import.meta.env.DEV) console.log('[AdminNotifications] reservations changed');
           fetchCounts();
         }
       );
@@ -189,8 +194,11 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
 
     // Only subscribe if we have at least one active subscription
     if (hasSubscriptions) {
-      channel.subscribe((status) => {
-        console.log('[AdminNotifications] Realtime subscription status:', status);
+      channel.subscribe((status, err) => {
+        if (import.meta.env.DEV) {
+          console.log('[AdminNotifications] Realtime subscription status:', status);
+          if (err) console.error('[AdminNotifications] Subscription error:', err);
+        }
       });
       channelRef.current = channel;
     }
