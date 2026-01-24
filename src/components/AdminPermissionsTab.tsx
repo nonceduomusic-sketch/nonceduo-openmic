@@ -212,7 +212,7 @@ export const AdminPermissionsTab: React.FC = () => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'user_permissions' },
         () => {
-          console.log('[Realtime] user_permissions changed');
+          if (import.meta.env.DEV) console.log('[Realtime] user_permissions changed');
           fetchData();
         }
       )
@@ -220,7 +220,7 @@ export const AdminPermissionsTab: React.FC = () => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'user_roles' },
         () => {
-          console.log('[Realtime] user_roles changed');
+          if (import.meta.env.DEV) console.log('[Realtime] user_roles changed');
           fetchData();
         }
       )
@@ -228,7 +228,7 @@ export const AdminPermissionsTab: React.FC = () => {
         'postgres_changes',
         { event: '*', schema: 'public', table: 'role_permissions' },
         () => {
-          console.log('[Realtime] role_permissions changed');
+          if (import.meta.env.DEV) console.log('[Realtime] role_permissions changed');
           fetchData();
         }
       )

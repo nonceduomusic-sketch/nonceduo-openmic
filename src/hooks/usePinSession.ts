@@ -76,20 +76,20 @@ export function usePinSession(format: FormatKey) {
         .maybeSingle();
 
       if (liveError || !liveSession) {
-        console.warn('[PinSession] Live session not active:', stored.liveSessionId);
+        if (import.meta.env.DEV) console.warn('[PinSession] Live session not active:', stored.liveSessionId);
         removeSession();
         return false;
       }
 
       if (!liveSession.is_active) {
-        console.warn('[PinSession] Live session deactivated');
+        if (import.meta.env.DEV) console.warn('[PinSession] Live session deactivated');
         removeSession();
         return false;
       }
 
       // Check expiration
       if (liveSession.expires_at && new Date(liveSession.expires_at) < new Date()) {
-        console.warn('[PinSession] Live session expired');
+        if (import.meta.env.DEV) console.warn('[PinSession] Live session expired');
         removeSession();
         return false;
       }
@@ -98,7 +98,7 @@ export function usePinSession(format: FormatKey) {
       const protectedFormats = liveSession.protected_formats as string[] | null;
       if (!protectedFormats?.includes(format)) {
         // Format is NOT protected by this session = doesn't need PIN = let through
-        console.log(`[PinSession] Format ${format} not protected, no PIN needed`);
+        if (import.meta.env.DEV) console.log(`[PinSession] Format ${format} not protected, no PIN needed`);
         // IMPORTANT: don't delete the stored session here, it may still be used for other formats.
         return false;
       }
@@ -110,11 +110,7 @@ export function usePinSession(format: FormatKey) {
       });
 
       if (validationError) {
-        console.error('[PinSession] validate_pin_session error:', {
-          message: (validationError as any)?.message,
-          code: (validationError as any)?.code,
-          details: (validationError as any)?.details,
-        });
+        if (import.meta.env.DEV) console.error('[PinSession] validate_pin_session error:', validationError);
         // Transient failure: don't remove the session, just treat as not validated right now.
         return false;
       }
@@ -123,16 +119,16 @@ export function usePinSession(format: FormatKey) {
       const isValid = Boolean(row?.is_valid);
 
       if (!isValid) {
-        console.warn('[PinSession] Token invalid for protected format:', stored.token?.substring(0, 8));
+        if (import.meta.env.DEV) console.warn('[PinSession] Token invalid for protected format:', stored.token?.substring(0, 8));
         removeSession();
         return false;
       }
 
       // Session is valid and format is protected - user has access!
-      console.log(`[PinSession] Valid global session for ${format}, live_session:`, liveSession.id);
+      if (import.meta.env.DEV) console.log(`[PinSession] Valid global session for ${format}, live_session:`, liveSession.id);
       return true;
     } catch (error) {
-      console.error('[PinSession] Error validating session:', error);
+      if (import.meta.env.DEV) console.error('[PinSession] Error validating session:', error);
       // Don't remove session on transient errors - just return false
       return false;
     }
