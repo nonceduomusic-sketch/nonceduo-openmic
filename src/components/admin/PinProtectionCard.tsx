@@ -72,6 +72,7 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
     removePin,
     restorePin,
     getEventUrl,
+    regenerateLinkCode,
   } = useUnifiedLiveSession();
 
   const { resetAllSessions, countActiveSessions, resetting } = useAdminPinSessionReset();
@@ -399,21 +400,36 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
 
             {/* Event Link */}
             {eventUrl && (
-              <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 text-sm">
-                <LinkIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                <span className="truncate text-muted-foreground">{eventUrl}</span>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => copyToClipboard(eventUrl, 'link')}
-                  className="h-6 w-6 flex-shrink-0"
-                >
-                  {copied === 'link' ? (
-                    <CheckCircle2 className="w-3 h-3 text-secondary" />
-                  ) : (
-                    <Copy className="w-3 h-3" />
-                  )}
-                </Button>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 text-sm">
+                  <LinkIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  <span className="truncate text-muted-foreground flex-1">{eventUrl}</span>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => copyToClipboard(eventUrl, 'link')}
+                    className="h-6 w-6 flex-shrink-0"
+                  >
+                    {copied === 'link' ? (
+                      <CheckCircle2 className="w-3 h-3 text-secondary" />
+                    ) : (
+                      <Copy className="w-3 h-3" />
+                    )}
+                  </Button>
+                </div>
+                {isOwner && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      await regenerateLinkCode();
+                    }}
+                    className="w-full text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    <RefreshCw className="w-3 h-3 mr-1" />
+                    Rigenera link (cambierà URL)
+                  </Button>
+                )}
               </div>
             )}
 

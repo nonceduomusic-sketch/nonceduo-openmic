@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +14,8 @@ import {
   CheckCircle2, 
   Loader2,
   Home,
-  Radio
+  Radio,
+  Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -27,64 +28,152 @@ interface EventSession {
   is_active: boolean;
 }
 
+// Generate SHA-256 hash for PIN storage
+const hashPin = async (pin: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(pin.toUpperCase().trim());
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
+// Generate session token
+const generateSessionToken = async (): Promise<string> => {
+  const array = new Uint8Array(32);
+  crypto.getRandomValues(array);
+  return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
 const EventoLive: React.FC = () => {
   const { linkCode } = useParams<{ linkCode: string }>();
+  const navigate = useNavigate();
   const [session, setSession] = useState<EventSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [notActive, setNotActive] = useState(false);
   const [pin, setPin] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [isValid, setIsValid] = useState(false);
   const [validatedFormats, setValidatedFormats] = useState<string[]>([]);
 
-  useEffect(() => {
-    const fetchSession = async () => {
-      if (!linkCode) {
+  const fetchSession = useCallback(async () => {
+    if (!linkCode) {
+      setNotFound(true);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // First check if there's ANY session with this link code (active or not)
+      const { data: anySession, error: anyError } = await supabase
+        .from('live_sessions')
+        .select('id, pin_code, protected_formats, expires_at, is_active')
+        .eq('event_link_code', linkCode)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (anyError) throw anyError;
+
+      if (!anySession) {
+        // No session with this link code exists at all
         setNotFound(true);
-        setLoading(false);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase
-          .from('live_sessions')
-          .select('id, pin_code, protected_formats, expires_at, is_active')
-          .eq('event_link_code', linkCode)
-          .eq('is_active', true)
-          .maybeSingle();
-
-        if (error) throw error;
-
-        if (!data) {
-          setNotFound(true);
-        } else if (data.expires_at && new Date(data.expires_at) < new Date()) {
-          setNotFound(true);
-        } else {
-          setSession(data as EventSession);
+      } else if (!anySession.is_active) {
+        // Session exists but is not active
+        setNotActive(true);
+      } else if (anySession.expires_at && new Date(anySession.expires_at) < new Date()) {
+        // Session is expired
+        setNotActive(true);
+      } else {
+        // Session is active and valid
+        setSession(anySession as EventSession);
+        
+        // Check if formats are protected - if no formats are protected, go directly to app
+        if (!anySession.protected_formats || anySession.protected_formats.length === 0) {
+          setIsValid(true);
+          setValidatedFormats(['openmic', 'dediche']); // All formats accessible
         }
-      } catch (error) {
-        console.error('Error fetching session:', error);
-        setNotFound(true);
-      } finally {
-        setLoading(false);
       }
-    };
-
-    fetchSession();
+    } catch (error) {
+      console.error('Error fetching session:', error);
+      setNotFound(true);
+    } finally {
+      setLoading(false);
+    }
   }, [linkCode]);
+
+  useEffect(() => {
+    fetchSession();
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel(`evento-live-${linkCode}`)
+      .on(
+        'postgres_changes',
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'live_sessions',
+        },
+        () => {
+          fetchSession();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [linkCode, fetchSession]);
 
   const handleValidatePin = async () => {
     if (!session || !pin.trim()) return;
 
     setIsValidating(true);
     
-    // Simple local validation
-    const isCorrect = pin.toUpperCase().trim() === session.pin_code;
+    const inputPin = pin.toUpperCase().trim();
+    const isCorrect = inputPin === session.pin_code;
     
     if (isCorrect) {
-      setIsValid(true);
-      setValidatedFormats(session.protected_formats);
-      toast.success('PIN corretto! Ora puoi prenotare.');
+      try {
+        // Create a proper PIN session in the database
+        const sessionToken = await generateSessionToken();
+        const pinHash = await hashPin(inputPin);
+
+        const { error } = await supabase
+          .from('pin_sessions')
+          .insert({
+            live_session_id: session.id,
+            session_token: sessionToken,
+            pin_code_hash: pinHash,
+            format: session.protected_formats[0] || 'openmic',
+            is_valid: true,
+          });
+
+        if (error) {
+          console.error('Error creating PIN session:', error);
+        }
+
+        // Store session in localStorage using the same key as usePinSession hook
+        // This ensures compatibility with the format gating system
+        const storedSession = {
+          token: sessionToken,
+          liveSessionId: session.id,
+          pinCodeHash: pinHash.substring(0, 16), // Simple hash for matching
+          createdAt: new Date().toISOString(),
+        };
+        localStorage.setItem('ncd_pin_sessions_v2', JSON.stringify(storedSession));
+
+        setIsValid(true);
+        setValidatedFormats(session.protected_formats);
+        toast.success('PIN corretto! Ora puoi accedere.');
+      } catch (error) {
+        console.error('Error saving PIN session:', error);
+        // Still allow access even if session save fails
+        setIsValid(true);
+        setValidatedFormats(session.protected_formats);
+        toast.success('PIN corretto!');
+      }
     } else {
       toast.error('PIN non valido - chiedi il codice al performer o al locale');
     }
@@ -106,6 +195,7 @@ const EventoLive: React.FC = () => {
     );
   }
 
+  // Event not found (link code doesn't exist)
   if (notFound) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -113,19 +203,62 @@ const EventoLive: React.FC = () => {
           title="Evento non trovato | Non C'è Duo"
           description="L'evento live non è più attivo o il link non è valido."
         />
-        <Card className="max-w-md w-full">
+        <Card className="max-w-md w-full glass-card">
           <CardContent className="pt-6 text-center">
             <AlertCircle className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
             <h1 className="text-xl font-bold mb-2">Evento non trovato</h1>
             <p className="text-muted-foreground mb-6">
-              Questo evento live non è più attivo o il link non è valido.
+              Questo link non è valido. Controlla l'URL o scansiona di nuovo il QR code.
             </p>
-            <Link to="/app">
-              <Button className="gap-2">
-                <Home className="w-4 h-4" />
-                Torna all'app
-              </Button>
-            </Link>
+            <div className="flex flex-col gap-3">
+              <Link to="/app">
+                <Button className="w-full gap-2">
+                  <Home className="w-4 h-4" />
+                  Vai all'app
+                </Button>
+              </Link>
+              <Link to="/">
+                <Button variant="outline" className="w-full">
+                  Vai al sito
+                </Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Event exists but not currently active
+  if (notActive) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <SEO 
+          title="Evento non attivo | Non C'è Duo"
+          description="L'evento live non è attualmente in corso."
+        />
+        <Card className="max-w-md w-full glass-card border-accent/30">
+          <CardContent className="pt-6 text-center">
+            <div className="w-16 h-16 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
+              <Clock className="w-8 h-8 text-accent" />
+            </div>
+            <h1 className="text-xl font-bold mb-2">Evento non attivo</h1>
+            <p className="text-muted-foreground mb-6">
+              Al momento non c'è nessun evento live in corso. Torna durante la prossima serata!
+            </p>
+            <div className="flex flex-col gap-3">
+              <Link to="/app">
+                <Button className="w-full gap-2 neon-button-cyan">
+                  <Home className="w-4 h-4" />
+                  Vai all'app
+                </Button>
+              </Link>
+              <Link to="/">
+                <Button variant="outline" className="w-full">
+                  Scopri le prossime date
+                </Button>
+              </Link>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -215,14 +348,14 @@ const EventoLive: React.FC = () => {
           </Card>
         ) : (
           <div className="space-y-4 animate-in fade-in-0 slide-in-from-bottom-4 duration-500">
-            <Card className="glass-card border-green-500/30 bg-green-500/5">
+            <Card className="glass-card border-accent/30 bg-accent/5">
               <CardContent className="pt-6 text-center">
-                <CheckCircle2 className="w-12 h-12 text-green-500 mx-auto mb-3" />
-                <p className="text-lg font-semibold text-green-500">
-                  PIN validato!
+                <CheckCircle2 className="w-12 h-12 text-accent mx-auto mb-3" />
+                <p className="text-lg font-semibold text-accent">
+                  Accesso sbloccato!
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Ora puoi prenotare canzoni e dediche
+                  Scegli cosa vuoi fare
                 </p>
               </CardContent>
             </Card>
@@ -273,7 +406,7 @@ const EventoLive: React.FC = () => {
             </div>
 
             <p className="text-xs text-center text-muted-foreground mt-4">
-              Il PIN è stato salvato per questa sessione.
+              L'accesso è stato salvato per questa sessione.
             </p>
           </div>
         )}
