@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import {
@@ -16,6 +16,7 @@ import {
   Layout,
   Sparkles,
   Wand2,
+  RotateCcw,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,18 @@ interface EventStoryConfig {
   imageFormat: ImageFormat;
   aiTheme: string;
 }
+
+const STORAGE_KEY = 'ncd_story_generator_config';
+
+const DEFAULT_CONFIG: EventStoryConfig = {
+  venueName: '',
+  eventDate: undefined,
+  eventTime: '',
+  eventType: 'public',
+  stylePreset: 'neon',
+  imageFormat: 'story',
+  aiTheme: '',
+};
 
 const STYLE_PRESETS: Record<StylePreset, { label: string; description: string; bg: string; accent: string }> = {
   minimal: {
@@ -94,6 +107,26 @@ const AI_THEME_SUGGESTIONS = [
   'aperitivo',
 ];
 
+// Helper to serialize/deserialize config with Date
+const serializeConfig = (config: EventStoryConfig): string => {
+  return JSON.stringify({
+    ...config,
+    eventDate: config.eventDate ? config.eventDate.toISOString() : null,
+  });
+};
+
+const deserializeConfig = (json: string): EventStoryConfig | null => {
+  try {
+    const parsed = JSON.parse(json);
+    return {
+      ...parsed,
+      eventDate: parsed.eventDate ? new Date(parsed.eventDate) : undefined,
+    };
+  } catch {
+    return null;
+  }
+};
+
 export const EventStoryGeneratorCard: React.FC = () => {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -102,20 +135,36 @@ export const EventStoryGeneratorCard: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [aiGeneratedBg, setAiGeneratedBg] = useState<string | null>(null);
   
-  const [config, setConfig] = useState<EventStoryConfig>({
-    venueName: '',
-    eventDate: undefined,
-    eventTime: '',
-    eventType: 'public',
-    stylePreset: 'neon',
-    imageFormat: 'story',
-    aiTheme: '',
+  // Load config from localStorage on mount
+  const [config, setConfig] = useState<EventStoryConfig>(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = deserializeConfig(stored);
+      if (parsed) return parsed;
+    }
+    return DEFAULT_CONFIG;
   });
+
+  // Save config to localStorage on change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, serializeConfig(config));
+  }, [config]);
 
   const updateConfig = <K extends keyof EventStoryConfig>(key: K, value: EventStoryConfig[K]) => {
     setConfig(prev => ({ ...prev, [key]: value }));
     setPreviewUrl(null);
   };
+
+  const resetConfig = useCallback(() => {
+    setConfig(DEFAULT_CONFIG);
+    setPreviewUrl(null);
+    setAiGeneratedBg(null);
+    localStorage.removeItem(STORAGE_KEY);
+    toast({
+      title: 'Dati resettati',
+      description: 'Tutti i campi sono stati svuotati.',
+    });
+  }, [toast]);
 
   // Generate AI background based on theme
   const generateAIBackground = useCallback(async () => {
@@ -504,10 +553,21 @@ export const EventStoryGeneratorCard: React.FC = () => {
   return (
     <Card className="border-accent/20">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Instagram className="w-5 h-5 text-pink-400" />
-          Grafica Storia Evento
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Instagram className="w-5 h-5 text-pink-400" />
+            Grafica Storia Evento
+          </CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={resetConfig}
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <RotateCcw className="w-4 h-4 mr-1" />
+            Reset
+          </Button>
+        </div>
         <CardDescription>
           Genera una grafica professionale per social. Tutti i campi sono opzionali.
           Usa l'AI per generare uno sfondo a tema!
