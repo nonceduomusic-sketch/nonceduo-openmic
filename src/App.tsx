@@ -23,6 +23,7 @@ import AppDediche from "./pages/AppDediche";
 import OpenMicInfo from "./pages/OpenMicInfo";
 import DedicheInfo from "./pages/DedicheInfo";
 import EventoLive from "./pages/EventoLive";
+import Installa from "./pages/Installa";
 
 const queryClient = new QueryClient();
 
@@ -43,6 +44,9 @@ const App = () => (
             {/* Privacy Policy - GDPR */}
             <Route path="/privacy" element={<Privacy />} />
             <Route path="/informativa-privacy" element={<Privacy />} />
+            
+            {/* PWA Install page */}
+            <Route path="/installa" element={<Installa />} />
 
             {/* APP (launcher + live) */}
             <Route path="/app" element={<AppLauncher />} />
