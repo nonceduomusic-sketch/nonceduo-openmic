@@ -2,23 +2,26 @@ import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import {
   Music,
   Heart,
-  Clock,
   Check,
   Trash2,
-  RefreshCw,
-  ArrowRight,
   Bell,
+  TrendingUp,
+  Loader2,
+  Clock,
+  ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useReservations, Reservation } from '@/hooks/useReservations';
-import { useConversations } from '@/hooks/useConversations';
+import { useConversations, Conversation } from '@/hooks/useConversations';
 import { formatDistanceToNow } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { LyricsDialog } from '@/components/LyricsDialog';
 import { toast } from 'sonner';
 import type { AdminMainTab } from '@/components/admin/AdminSidebar';
+import { triggerHaptic } from '@/lib/haptics';
 
 interface LiveCentroTabProps {
   onNavigate?: (tab: AdminMainTab, subTab?: string) => void;
@@ -42,7 +45,7 @@ interface UnifiedItem {
   hasDedication?: boolean;
   dedicationText?: string;
   status: 'pending' | 'completed';
-  originalData: any;
+  originalData: Reservation | Conversation;
 }
 
 export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
@@ -176,6 +179,11 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
   const songCount = unifiedItems.filter(i => i.type === 'song').length;
   const dedicheCount = unifiedItems.filter(i => i.type === 'dedica').length;
   const newCount = unifiedItems.filter(i => i.isNew).length;
+  const completedToday = completedReservations.filter(r => {
+    const today = new Date();
+    const completedDate = r.completed_at ? new Date(r.completed_at) : new Date(r.created_at);
+    return completedDate.toDateString() === today.toDateString();
+  }).length;
 
   // Handle touch swipe
   const handleTouchStart = (e: React.TouchEvent, id: string) => {
@@ -204,7 +212,8 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
   // Actions
   const handleComplete = async (item: UnifiedItem) => {
     if (item.type === 'song') {
-      const success = await completeReservation(item.originalData.id);
+      triggerHaptic('success');
+      const success = await completeReservation((item.originalData as Reservation).id);
       if (success) {
         markAsSeen(item.id);
         setSwipedId(null);
@@ -215,7 +224,8 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
 
   const handleDelete = async (item: UnifiedItem) => {
     if (item.type === 'song') {
-      const success = await deleteReservation(item.originalData.id);
+      triggerHaptic('warning');
+      const success = await deleteReservation((item.originalData as Reservation).id);
       if (success) {
         setSwipedId(null);
         toast.success('Rimossa');
@@ -250,8 +260,10 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <RefreshCw className="w-8 h-8 animate-spin text-muted-foreground" />
+      <div className="flex flex-col gap-3 p-4">
+        {[1, 2, 3].map(i => (
+          <Skeleton key={i} className="h-[88px] w-full rounded-xl" />
+        ))}
       </div>
     );
   }
@@ -260,7 +272,7 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
     <div className="flex flex-col h-full overflow-hidden">
       {/* ========== STICKY HEADER ========== */}
       <div className="sticky top-0 z-10 bg-card/95 backdrop-blur-2xl border-b border-border/30 px-3 py-3 space-y-3">
-        {/* Title + Counter row */}
+        {/* Title + Stats row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {/* Title with live indicator */}
@@ -274,30 +286,43 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
               <h1 className="font-display text-lg font-bold text-foreground">Centro</h1>
             </div>
 
-            {/* Total counter */}
-            <div className={cn(
-              "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg",
-              filteredItems.length > 0 
-                ? "bg-gradient-to-br from-primary/20 to-secondary/20 border border-primary/30"
-                : "bg-muted/50 border border-border/50"
-            )}>
-              <span className="text-xl font-bold text-foreground">
-                {filteredItems.length}
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {showCompleted ? 'fatte' : 'in coda'}
-              </span>
-            </div>
+            {/* Compact stats */}
+            <div className="flex items-center gap-2">
+              {/* Queue counter */}
+              <div className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all",
+                filteredItems.length > 0 
+                  ? "bg-gradient-to-br from-primary/20 to-secondary/20 border border-primary/30"
+                  : "bg-muted/50 border border-border/50"
+              )}>
+                <span className="text-xl font-bold text-foreground">
+                  {filteredItems.length}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {showCompleted ? 'fatte' : 'in coda'}
+                </span>
+              </div>
 
-            {/* New badge */}
-            {newCount > 0 && !showCompleted && (
-              <Badge 
-                variant="destructive" 
-                className="h-6 px-2 text-xs font-semibold animate-pulse"
-              >
-                +{newCount}
-              </Badge>
-            )}
+              {/* Completed today - mini stat */}
+              {completedToday > 0 && !showCompleted && (
+                <div className="hidden sm:flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                  <TrendingUp className="w-3.5 h-3.5 text-emerald-500" />
+                  <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                    {completedToday}
+                  </span>
+                </div>
+              )}
+
+              {/* New badge */}
+              {newCount > 0 && !showCompleted && (
+                <Badge 
+                  variant="destructive" 
+                  className="h-6 px-2 text-xs font-semibold animate-pulse"
+                >
+                  +{newCount}
+                </Badge>
+              )}
+            </div>
           </div>
 
           {/* Toggle completed */}
@@ -479,7 +504,7 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                   </div>
 
                   {/* Arrow indicator */}
-                  <ArrowRight className="w-5 h-5 text-muted-foreground/50 flex-shrink-0" />
+                  <ChevronRight className="w-5 h-5 text-muted-foreground/50 flex-shrink-0" />
                 </div>
               </div>
             ))}
