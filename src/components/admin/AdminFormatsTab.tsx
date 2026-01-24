@@ -14,6 +14,7 @@ import { LiveStatusCard } from '@/components/admin/LiveStatusCard';
 import { PinProtectionCard } from '@/components/admin/PinProtectionCard';
 import { AdminNotificationsCard } from '@/components/admin/AdminNotificationsCard';
 import { EventStoryGeneratorCard } from '@/components/admin/EventStoryGeneratorCard';
+import { EventPosterGeneratorCard } from '@/components/admin/EventPosterGeneratorCard';
 import { useFormatPreferences } from '@/hooks/useFormatPreferences';
 import { useCentroPermissions } from '@/hooks/useCentroPermissions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -119,10 +120,13 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
         </CardContent>
       </Card>
 
-      {/* Section 4: Grafica Storia Evento - NEW INDEPENDENT SECTION */}
+      {/* Section 4: Grafica Storia Evento */}
       <EventStoryGeneratorCard />
 
-      {/* Section 5: Configurazione Monitoraggio */}
+      {/* Section 5: Locandina Evento - NEW INDEPENDENT SECTION */}
+      <EventPosterGeneratorCard />
+
+      {/* Section 6: Configurazione Monitoraggio */}
       {canMonitor && (
         <Card className="border-border">
           <CardHeader className="pb-3">
