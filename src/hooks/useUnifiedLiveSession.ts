@@ -307,6 +307,18 @@ export const useUnifiedLiveSession = () => {
 
       setSession({ ...session, pin_code: cleanPin, custom_pin: cleanPin });
 
+      // IMPORTANT: changing the PIN must invalidate all existing sessions
+      // so everyone is forced to re-enter the new PIN.
+      const { error: invalidateError } = await supabase.rpc('invalidate_pin_sessions', {
+        p_live_session_id: session.id,
+        p_reason: 'pin_changed',
+      });
+
+      if (invalidateError) {
+        console.error('Error invalidating pin sessions after pin change:', invalidateError);
+        toast.warning('PIN aggiornato, ma non sono riuscito a resettare le sessioni. Usa “Invalida tutti”.');
+      }
+
       // Audit log
       await adminAuditLog({
         action: 'live_session_update_pin',
@@ -341,6 +353,17 @@ export const useUnifiedLiveSession = () => {
 
       setSession({ ...session, pin_code: newPin, custom_pin: null });
 
+      // IMPORTANT: new PIN -> invalidate all sessions
+      const { error: invalidateError } = await supabase.rpc('invalidate_pin_sessions', {
+        p_live_session_id: session.id,
+        p_reason: 'pin_regenerated',
+      });
+
+      if (invalidateError) {
+        console.error('Error invalidating pin sessions after pin regeneration:', invalidateError);
+        toast.warning('Nuovo PIN generato, ma non sono riuscito a resettare le sessioni. Usa “Invalida tutti”.');
+      }
+
       // Audit log
       await adminAuditLog({
         action: 'live_session_regenerate_pin',
@@ -368,8 +391,10 @@ export const useUnifiedLiveSession = () => {
   // Get event URL - always use nonceduo.com for production
   const getEventUrl = (): string | null => {
     if (!session?.event_link_code) return null;
-    // Always use the branded domain for links/QR
-    return `https://nonceduo.com/evento-live/${session.event_link_code}`;
+    // Use current origin so the link always works in Preview + Published.
+    // (No hardcoded domains.)
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    return `${origin}/evento-live/${session.event_link_code}`;
   };
 
   // Regenerate the event link code (manual action)

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,25 +28,20 @@ interface EventSession {
   is_active: boolean;
 }
 
-// Generate SHA-256 hash for PIN storage
-const hashPin = async (pin: string): Promise<string> => {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(pin.toUpperCase().trim());
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-};
-
-// Generate session token
-const generateSessionToken = async (): Promise<string> => {
-  const array = new Uint8Array(32);
-  crypto.getRandomValues(array);
-  return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
+// Same lightweight hash strategy used by usePinSession (client-side matching only)
+const hashPinLight = (pin: string): string => {
+  const cleanPin = pin.toUpperCase().trim();
+  let hash = 0;
+  for (let i = 0; i < cleanPin.length; i++) {
+    const char = cleanPin.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return hash.toString(36);
 };
 
 const EventoLive: React.FC = () => {
   const { linkCode } = useParams<{ linkCode: string }>();
-  const navigate = useNavigate();
   const [session, setSession] = useState<EventSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -136,33 +131,26 @@ const EventoLive: React.FC = () => {
     
     if (isCorrect) {
       try {
-        // Create a proper PIN session in the database
-        const sessionToken = await generateSessionToken();
-        const pinHash = await hashPin(inputPin);
+        // Use the same backend RPC used by the app gating flow.
+        // This ensures session tokens + invalidation are consistent.
+        const { data: token, error } = await supabase.rpc('create_pin_session', {
+          p_live_session_id: session.id,
+          p_format: session.protected_formats?.[0] || 'openmic',
+          p_pin_code: inputPin,
+          p_device_fingerprint: navigator.userAgent.substring(0, 100),
+        });
 
-        const { error } = await supabase
-          .from('pin_sessions')
-          .insert({
-            live_session_id: session.id,
-            session_token: sessionToken,
-            pin_code_hash: pinHash,
-            format: session.protected_formats[0] || 'openmic',
-            is_valid: true,
-          });
-
-        if (error) {
-          console.error('Error creating PIN session:', error);
+        if (error || !token) {
+          console.error('Error creating PIN session via RPC:', error);
+        } else {
+          const storedSession = {
+            token: token as string,
+            liveSessionId: session.id,
+            pinCodeHash: hashPinLight(inputPin),
+            createdAt: new Date().toISOString(),
+          };
+          localStorage.setItem('ncd_pin_sessions_v2', JSON.stringify(storedSession));
         }
-
-        // Store session in localStorage using the same key as usePinSession hook
-        // This ensures compatibility with the format gating system
-        const storedSession = {
-          token: sessionToken,
-          liveSessionId: session.id,
-          pinCodeHash: pinHash.substring(0, 16), // Simple hash for matching
-          createdAt: new Date().toISOString(),
-        };
-        localStorage.setItem('ncd_pin_sessions_v2', JSON.stringify(storedSession));
 
         setIsValid(true);
         setValidatedFormats(session.protected_formats);
