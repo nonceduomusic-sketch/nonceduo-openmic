@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -12,16 +11,26 @@ import {
   Smartphone,
   Volume2,
   Vibrate,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 export const AdminNotificationsCard: React.FC = () => {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [vibrationEnabled, setVibrationEnabled] = useState(true);
-  const [backgroundEnabled, setBackgroundEnabled] = useState(false);
-  const [isRequesting, setIsRequesting] = useState(false);
+  
+  // Use the push notifications hook for real background notifications
+  const { 
+    isSupported: isPushSupported, 
+    isSubscribed: isPushSubscribed, 
+    isLoading: isPushLoading,
+    subscribe: subscribePush,
+    unsubscribe: unsubscribePush,
+    sendTest: sendTestPush,
+  } = usePushNotifications('admin');
 
   // Check notification permission on mount
   useEffect(() => {
@@ -32,41 +41,58 @@ export const AdminNotificationsCard: React.FC = () => {
     // Load saved preferences
     const savedSound = localStorage.getItem('admin_notification_sound');
     const savedVibration = localStorage.getItem('admin_notification_vibration');
-    const savedBackground = localStorage.getItem('admin_notification_background');
     
     if (savedSound !== null) setSoundEnabled(savedSound === 'true');
     if (savedVibration !== null) setVibrationEnabled(savedVibration === 'true');
-    if (savedBackground !== null) setBackgroundEnabled(savedBackground === 'true');
   }, []);
 
-  // Request notification permission
+  // Request notification permission and subscribe to push
   const requestPermission = async () => {
     if (typeof Notification === 'undefined') {
       toast.error('Le notifiche non sono supportate in questo browser');
       return;
     }
 
-    setIsRequesting(true);
     try {
+      // First request basic notification permission
       const result = await Notification.requestPermission();
       setPermission(result);
       
       if (result === 'granted') {
-        toast.success('Notifiche attivate!');
-        // Show test notification
-        new Notification('Notifiche Attive! 🎉', {
-          body: 'Riceverai avvisi per nuove prenotazioni e messaggi',
-          icon: '/pwa-192x192.png',
-          tag: 'test-notification',
-        });
+        // Now try to subscribe to push notifications for background delivery
+        if (isPushSupported) {
+          const pushSuccess = await subscribePush();
+          if (pushSuccess) {
+            toast.success('Notifiche push attivate! Funzioneranno anche in background.');
+            // Show test notification
+            new Notification('Notifiche Attive! 🎉', {
+              body: 'Riceverai avvisi anche quando l\'app è chiusa',
+              icon: '/pwa-192x192.png',
+              tag: 'test-notification',
+            });
+          } else {
+            // Fallback to basic notifications
+            toast.success('Notifiche attivate (modalità base)');
+            new Notification('Notifiche Attive! 🎉', {
+              body: 'Riceverai avvisi per nuove prenotazioni e messaggi',
+              icon: '/pwa-192x192.png',
+              tag: 'test-notification',
+            });
+          }
+        } else {
+          toast.success('Notifiche attivate!');
+          new Notification('Notifiche Attive! 🎉', {
+            body: 'Riceverai avvisi per nuove prenotazioni e messaggi',
+            icon: '/pwa-192x192.png',
+            tag: 'test-notification',
+          });
+        }
       } else if (result === 'denied') {
         toast.error('Permesso negato. Vai nelle impostazioni del browser per abilitare le notifiche.');
       }
     } catch (error) {
       console.error('Error requesting notification permission:', error);
       toast.error('Errore nella richiesta permesso');
-    } finally {
-      setIsRequesting(false);
     }
   };
 
@@ -87,37 +113,25 @@ export const AdminNotificationsCard: React.FC = () => {
     toast.success(enabled ? 'Vibrazione attivata' : 'Vibrazione disattivata');
   };
 
-  // Toggle background notifications
-  const toggleBackground = async (enabled: boolean) => {
-    if (enabled && permission !== 'granted') {
-      toast.error('Prima attiva le notifiche base');
-      return;
-    }
-
-    setBackgroundEnabled(enabled);
-    localStorage.setItem('admin_notification_background', String(enabled));
-    
+  // Toggle push subscription
+  const togglePushSubscription = async (enabled: boolean) => {
     if (enabled) {
-      // Register for background sync if available
-      if ('serviceWorker' in navigator && 'sync' in (window as any).SyncManager?.prototype) {
-        try {
-          const registration = await navigator.serviceWorker.ready;
-          await (registration as any).sync.register('background-notifications');
-          toast.success('Notifiche background attivate per Android');
-        } catch (error) {
-          console.log('Background sync not available, using fallback');
-          toast.success('Notifiche potenziate attivate');
-        }
+      const success = await subscribePush();
+      if (success) {
+        toast.success('Notifiche background attivate!');
       } else {
-        toast.success('Notifiche potenziate attivate');
+        toast.error('Errore attivazione notifiche background');
       }
     } else {
-      toast.success('Notifiche background disattivate');
+      const success = await unsubscribePush();
+      if (success) {
+        toast.success('Notifiche background disattivate');
+      }
     }
   };
 
   // Test notification
-  const sendTestNotification = () => {
+  const sendTestNotification = async () => {
     if (permission !== 'granted') {
       toast.error('Attiva prima le notifiche');
       return;
@@ -146,15 +160,30 @@ export const AdminNotificationsCard: React.FC = () => {
       navigator.vibrate([100, 50, 100]);
     }
 
-    // Show notification
-    new Notification('Test Notifica 🔔', {
-      body: 'Questa è una notifica di test. Se la vedi, tutto funziona!',
-      icon: '/pwa-192x192.png',
-      tag: 'test-notification',
-      requireInteraction: false,
-    });
-
-    toast.success('Notifica di test inviata');
+    // If push is subscribed, test via server
+    if (isPushSubscribed) {
+      const success = await sendTestPush();
+      if (success) {
+        toast.success('Notifica push inviata! Controlla anche se arriva con app chiusa.');
+      } else {
+        // Fallback to local notification
+        new Notification('Test Notifica 🔔', {
+          body: 'Questa è una notifica di test locale.',
+          icon: '/pwa-192x192.png',
+          tag: 'test-notification',
+        });
+        toast.info('Notifica locale mostrata (push non disponibile)');
+      }
+    } else {
+      // Show local notification
+      new Notification('Test Notifica 🔔', {
+        body: 'Questa è una notifica di test. Se la vedi, tutto funziona!',
+        icon: '/pwa-192x192.png',
+        tag: 'test-notification',
+        requireInteraction: false,
+      });
+      toast.success('Notifica di test inviata');
+    }
   };
 
   const isNotificationsSupported = typeof Notification !== 'undefined';
@@ -199,7 +228,7 @@ export const AdminNotificationsCard: React.FC = () => {
         {permission !== 'granted' && permission !== 'denied' && (
           <Button 
             onClick={requestPermission} 
-            disabled={isRequesting || !isNotificationsSupported}
+            disabled={!isNotificationsSupported}
             size="sm"
             className="gap-2"
           >
@@ -250,33 +279,45 @@ export const AdminNotificationsCard: React.FC = () => {
             />
           </div>
 
-          {/* Background Notifications - Android specific */}
-          <div className={cn(
-            "flex items-center justify-between p-3 rounded-lg",
-            isAndroid ? "bg-blue-500/10 border border-blue-500/20" : "bg-muted/20"
-          )}>
-            <div className="flex items-center gap-3">
-              <Smartphone className={cn("w-4 h-4", backgroundEnabled ? "text-blue-500" : "text-muted-foreground")} />
-              <div>
-                <p className="text-sm font-medium flex items-center gap-2">
-                  Notifiche Background
-                  {isAndroid && (
-                    <Badge variant="outline" className="text-xs text-blue-500 border-blue-500/30">
-                      Android
-                    </Badge>
-                  )}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Ricevi notifiche anche quando l'app è in background
-                </p>
+          {/* Push Notifications - Works in background */}
+          {isPushSupported && (
+            <div className={cn(
+              "flex items-center justify-between p-3 rounded-lg",
+              isPushSubscribed ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-blue-500/10 border border-blue-500/20"
+            )}>
+              <div className="flex items-center gap-3">
+                <Smartphone className={cn("w-4 h-4", isPushSubscribed ? "text-emerald-500" : "text-blue-500")} />
+                <div>
+                  <p className="text-sm font-medium flex items-center gap-2">
+                    Notifiche Background
+                    {isAndroid && (
+                      <Badge variant="outline" className="text-xs text-blue-500 border-blue-500/30">
+                        Android
+                      </Badge>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {isPushSubscribed 
+                      ? '✓ Ricevi notifiche anche con app chiusa' 
+                      : 'Ricevi notifiche anche quando l\'app è in background'}
+                  </p>
+                </div>
               </div>
+              {isPushLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+              ) : (
+                <Switch
+                  checked={isPushSubscribed}
+                  onCheckedChange={togglePushSubscription}
+                  className={cn(
+                    isPushSubscribed 
+                      ? "data-[state=checked]:bg-emerald-500" 
+                      : "data-[state=checked]:bg-blue-500"
+                  )}
+                />
+              )}
             </div>
-            <Switch
-              checked={backgroundEnabled}
-              onCheckedChange={toggleBackground}
-              className="data-[state=checked]:bg-blue-500"
-            />
-          </div>
+          )}
 
           {/* Test Button */}
           <Button 
@@ -287,6 +328,12 @@ export const AdminNotificationsCard: React.FC = () => {
             <BellRing className="w-4 h-4" />
             Invia notifica di test
           </Button>
+          
+          {isPushSubscribed && (
+            <p className="text-xs text-center text-muted-foreground">
+              💡 Prova a chiudere l'app e inviare un test da un altro dispositivo
+            </p>
+          )}
         </div>
       )}
 
