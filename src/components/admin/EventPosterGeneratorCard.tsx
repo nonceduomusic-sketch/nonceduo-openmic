@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import {
@@ -20,6 +20,7 @@ import {
   Type,
   Sparkles,
   Wand2,
+  RotateCcw,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -49,6 +50,21 @@ interface EventPosterConfig {
   uploadedImage: string | null;
   aiTheme: string;
 }
+
+const STORAGE_KEY = 'ncd_poster_generator_config';
+
+const DEFAULT_CONFIG: EventPosterConfig = {
+  venueName: '',
+  eventDate: undefined,
+  eventTime: '',
+  eventType: 'public',
+  stylePreset: 'neon',
+  imageFormat: 'square',
+  overlayPosition: 'bottom',
+  additionalInfo: '',
+  uploadedImage: null,
+  aiTheme: '',
+};
 
 const STYLE_PRESETS: Record<StylePreset, { label: string; accent: string }> = {
   minimal: {
@@ -103,6 +119,26 @@ const AI_THEME_SUGGESTIONS = [
   'aperitivo',
 ];
 
+// Helper to serialize/deserialize config with Date
+const serializeConfig = (config: EventPosterConfig): string => {
+  return JSON.stringify({
+    ...config,
+    eventDate: config.eventDate ? config.eventDate.toISOString() : null,
+  });
+};
+
+const deserializeConfig = (json: string): EventPosterConfig | null => {
+  try {
+    const parsed = JSON.parse(json);
+    return {
+      ...parsed,
+      eventDate: parsed.eventDate ? new Date(parsed.eventDate) : undefined,
+    };
+  } catch {
+    return null;
+  }
+};
+
 export const EventPosterGeneratorCard: React.FC = () => {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -112,23 +148,39 @@ export const EventPosterGeneratorCard: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [aiGeneratedBg, setAiGeneratedBg] = useState<string | null>(null);
   
-  const [config, setConfig] = useState<EventPosterConfig>({
-    venueName: '',
-    eventDate: undefined,
-    eventTime: '',
-    eventType: 'public',
-    stylePreset: 'neon',
-    imageFormat: 'square',
-    overlayPosition: 'bottom',
-    additionalInfo: '',
-    uploadedImage: null,
-    aiTheme: '',
+  // Load config from localStorage on mount
+  const [config, setConfig] = useState<EventPosterConfig>(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = deserializeConfig(stored);
+      if (parsed) return parsed;
+    }
+    return DEFAULT_CONFIG;
   });
+
+  // Save config to localStorage on change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, serializeConfig(config));
+  }, [config]);
 
   const updateConfig = <K extends keyof EventPosterConfig>(key: K, value: EventPosterConfig[K]) => {
     setConfig(prev => ({ ...prev, [key]: value }));
     setPreviewUrl(null);
   };
+
+  const resetConfig = useCallback(() => {
+    setConfig(DEFAULT_CONFIG);
+    setPreviewUrl(null);
+    setAiGeneratedBg(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+    localStorage.removeItem(STORAGE_KEY);
+    toast({
+      title: 'Dati resettati',
+      description: 'Tutti i campi sono stati svuotati.',
+    });
+  }, [toast]);
 
   const handleImageUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -523,12 +575,23 @@ export const EventPosterGeneratorCard: React.FC = () => {
   return (
     <Card className="border-accent/20">
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Facebook className="w-5 h-5 text-blue-400" />
-          Locandina Evento
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Facebook className="w-5 h-5 text-blue-400" />
+            Locandina Evento
+          </CardTitle>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={resetConfig}
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <RotateCcw className="w-4 h-4 mr-1" />
+            Reset
+          </Button>
+        </div>
         <CardDescription>
-          Carica una foto o genera uno sfondo AI, poi aggiungi i dettagli.
+          Scrivi un tema AI oppure carica una foto, poi aggiungi i dettagli.
           Tutti i campi di testo sono opzionali!
         </CardDescription>
       </CardHeader>
