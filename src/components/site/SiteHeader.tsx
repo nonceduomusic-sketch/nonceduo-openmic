@@ -10,6 +10,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -48,6 +49,8 @@ export const SiteHeader: React.FC<{ className?: string }> = ({ className }) => {
         </Link>
 
         <div className="flex items-center gap-2">
+          <ThemeToggle />
+          
           <Link to="/app" className="hidden sm:block">
             <Button variant="outline" size="sm" className="gap-2">
               Apri App
