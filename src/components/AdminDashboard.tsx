@@ -45,6 +45,7 @@ import { AdminDedichePanel } from '@/components/admin/AdminDedichePanel';
 import { AdminCommunityPanel } from '@/components/admin/AdminCommunityPanel';
 import { AdminAuditTab } from '@/components/admin/AdminAuditTab';
 import { AdminStaffTab } from '@/components/admin/AdminStaffTab';
+import { AdminFormatsTab } from '@/components/admin/AdminFormatsTab';
 import { AdminSidebar, type AdminMainTab } from '@/components/admin/AdminSidebar';
 import {
   AlertDialog,
@@ -872,6 +873,8 @@ export const AdminDashboard: React.FC = () => {
           )
         ) : mainTab === 'settings' ? (
           <AdminSettingsTab />
+        ) : mainTab === 'formats' ? (
+          <AdminFormatsTab access={access} isOwner={staffRole === 'owner'} />
         ) : mainTab === 'audit' ? (
           staffRole === 'owner' ? (
             <AdminAuditTab />
