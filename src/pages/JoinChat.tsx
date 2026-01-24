@@ -299,6 +299,16 @@ const JoinChat: React.FC = () => {
         <p className="mt-6 text-center text-xs text-muted-foreground">
           Nessuna registrazione richiesta. Entra e chatta subito! 💬
         </p>
+        
+        {/* Back to site link */}
+        <div className="mt-4 text-center">
+          <Link 
+            to="/" 
+            className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            ← Torna al sito
+          </Link>
+        </div>
       </div>
     </div>
   );
