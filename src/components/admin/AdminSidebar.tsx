@@ -10,7 +10,7 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { Bell, Database, ListMusic, MessageSquare, Music, Newspaper, Settings, Shield, Users } from "lucide-react";
+import { Bell, Database, ListMusic, MessageSquare, Music, Newspaper, Settings, Shield, Sliders, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AdminSectionKey } from "@/hooks/useAdminSectionAccess";
 
@@ -20,6 +20,7 @@ export type AdminMainTab =
   | "dediche"
   | "community"
   | "songs"
+  | "formats"
   | "staff"
   | "permissions"
   | "settings"
@@ -38,6 +39,7 @@ const ITEMS: Item[] = [
   { key: "songs", label: "Canzoni", icon: ListMusic, group: "Operativo" },
   { key: "dediche", label: "Dediche", icon: MessageSquare, group: "Operativo" },
   { key: "community", label: "Community", icon: Newspaper, group: "Operativo" },
+  { key: "formats", label: "Formati", icon: Sliders, group: "Gestione" },
   { key: "staff", label: "Staff", icon: Users, group: "Gestione" },
   { key: "permissions", label: "Permessi", icon: Shield, group: "Gestione" },
   { key: "settings", label: "Impostazioni", icon: Settings, group: "Gestione" },
