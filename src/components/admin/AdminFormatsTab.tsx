@@ -5,11 +5,15 @@ import {
   Radio,
   Lock,
   Info,
+  Shield,
+  Bell,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FormatToggleCard } from '@/components/admin/FormatToggleCard';
 import { ActiveFormatsCard } from '@/components/admin/ActiveFormatsCard';
-import { UnifiedLiveSessionCard } from '@/components/admin/UnifiedLiveSessionCard';
+import { LiveStatusCard } from '@/components/admin/LiveStatusCard';
+import { PinProtectionCard } from '@/components/admin/PinProtectionCard';
+import { AdminNotificationsCard } from '@/components/admin/AdminNotificationsCard';
 import { useFormatPreferences } from '@/hooks/useFormatPreferences';
 import { useCentroPermissions } from '@/hooks/useCentroPermissions';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -52,7 +56,7 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
           Impostazioni Formati
         </h2>
         <p className="text-muted-foreground text-sm">
-          Gestisci l'attivazione dei format, il PIN serata e le opzioni di monitoraggio
+          Gestisci l'attivazione dei format, la serata live e le notifiche
         </p>
       </div>
 
@@ -75,27 +79,47 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
         </Card>
       )}
 
-      {/* Section 2: Serata Live con PIN */}
+      {/* Section 2: Serata Live - TWO SEPARATE CARDS */}
       {canManageSerata && (access.openmic || access.dediche) && (
         <Card className="border-secondary/20">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Radio className="w-5 h-5 text-emerald-400" />
-              Serata Live con PIN
+              Gestione Evento
               {isOwner && <Lock className="w-4 h-4 text-warning ml-auto" />}
             </CardTitle>
             <CardDescription>
-              Attiva la modalità serata live e proteggi l'accesso con un PIN. 
-              Il badge "Live" apparirà nell'app quando attivo.
+              Controlla lo stato dell'evento e la protezione PIN separatamente.
+              Puoi avere un evento LIVE senza richiedere PIN, o viceversa.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <UnifiedLiveSessionCard title="Serata Live" />
+          <CardContent className="space-y-4">
+            {/* Card 1: Stato Evento (LIVE badge) */}
+            <LiveStatusCard title="Stato Evento" />
+            
+            {/* Card 2: Protezione PIN */}
+            <PinProtectionCard title="Protezione PIN" />
           </CardContent>
         </Card>
       )}
 
-      {/* Section 3: Configurazione Monitoraggio */}
+      {/* Section 3: Notifiche Android */}
+      <Card className="border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Bell className="w-5 h-5 text-blue-400" />
+            Notifiche Android
+          </CardTitle>
+          <CardDescription>
+            Configura le notifiche per ricevere avvisi anche in background.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AdminNotificationsCard />
+        </CardContent>
+      </Card>
+
+      {/* Section 4: Configurazione Monitoraggio */}
       {canMonitor && (
         <Card className="border-border">
           <CardHeader className="pb-3">
@@ -122,11 +146,11 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
       <Alert className="bg-muted/30 border-muted-foreground/20">
         <Info className="h-4 w-4" />
         <AlertDescription className="text-sm text-muted-foreground">
-          <strong>Differenza tra le sezioni:</strong>
+          <strong>Come funziona:</strong>
           <ul className="mt-2 space-y-1 list-disc list-inside">
-            <li><strong>Format Attivi:</strong> Controlla se gli utenti possono accedere al format</li>
-            <li><strong>Serata Live:</strong> Attiva il badge "Live" e opzionalmente richiede il PIN</li>
-            <li><strong>Monitoraggio:</strong> Scegli cosa vedere nel tuo Centro admin</li>
+            <li><strong>Stato Evento:</strong> Attiva/disattiva il badge "LIVE" nell'app</li>
+            <li><strong>Protezione PIN:</strong> Richiedi un codice per accedere (indipendente dal LIVE)</li>
+            <li><strong>Notifiche:</strong> Ricevi avvisi anche quando l'app è in background</li>
           </ul>
         </AlertDescription>
       </Alert>

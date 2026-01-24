@@ -577,6 +577,11 @@ export const AdminDashboard: React.FC = () => {
                       </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setMainTab('formats')} className="rounded-lg">
+                      <Settings className="w-4 h-4 mr-2" />
+                      Formati
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     {staffRole === 'owner' && (
                       <>
                         <DropdownMenuItem onClick={() => setMainTab('staff')} className="rounded-lg">

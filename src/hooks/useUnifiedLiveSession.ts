@@ -116,6 +116,7 @@ export const useUnifiedLiveSession = () => {
   }, [fetchSession]);
 
   // Start a new unified live session
+  // Note: protectedFormats can be empty array for "LIVE without PIN" mode
   const startSession = async (
     protectedFormats: FormatType[],
     expiresInHours?: number,
@@ -126,10 +127,7 @@ export const useUnifiedLiveSession = () => {
       return false;
     }
 
-    if (protectedFormats.length === 0) {
-      toast.error('Seleziona almeno un format da proteggere');
-      return false;
-    }
+    // Allow empty protected_formats for "LIVE without PIN" mode
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -189,7 +187,10 @@ export const useUnifiedLiveSession = () => {
         }
       });
 
-      toast.success(`Serata Live attivata! PIN: ${pinCode}`);
+      const message = protectedFormats.length > 0 
+        ? `Evento LIVE attivato! PIN: ${pinCode}` 
+        : 'Evento LIVE attivato (accesso libero)';
+      toast.success(message);
       return true;
     } catch (error) {
       console.error('Error starting live session:', error);
