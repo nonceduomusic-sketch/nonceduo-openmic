@@ -76,6 +76,13 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
   const [loading, setLoading] = useState(true);
   const [isBlocked, setIsBlocked] = useState(false);
 
+  // NOTE:
+  // Dediche chats are session-based (x-session-id) even if the user is authenticated.
+  // RLS policies for chat tables rely on the session id header, which is not available
+  // over Realtime and can be inconsistent for logged-in users.
+  // Therefore, for section === 'dediche' we always list conversations via the backend function.
+  const isDedicheSection = section === 'dediche';
+
   // User chat API calls (server-side logic, works for both anonymous + authenticated users)
   const callUserChatApi = useCallback(
     async <T,>(action: string, data: Record<string, unknown>): Promise<T> => {
@@ -124,9 +131,20 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
     // Don't fetch if we're anonymous and don't have a sessionId yet
     const { data: authSession } = await supabase.auth.getSession();
     const isAnon = !authSession?.session;
+
+    // For Dediche we always use the session-based backend listing (even if authenticated)
+    // to avoid RLS/header issues.
+    const shouldUseUserChatListing = Boolean(sessionId) && (isAnon || isDedicheSection);
     
     if (isAnon && !sessionId) {
       console.log('[useConversations] Waiting for sessionId before fetching...');
+      return;
+    }
+
+    if (isDedicheSection && !sessionId) {
+      // Dediche requires a session id to see any private conversation.
+      // Keep loading state until we have it.
+      if (import.meta.env.DEV) console.log('[useConversations] Dediche: waiting for sessionId before fetching...');
       return;
     }
     
@@ -135,7 +153,7 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
       // because it depends on request headers (x-session-id). Use the backend function.
       let data: any[] | null = null;
 
-      if (isAnon && sessionId) {
+      if (shouldUseUserChatListing && sessionId) {
         console.log('[useConversations] Fetching via user-chat API for session:', sessionId.slice(0, 8) + '...');
         const fromApi = await callUserChatApi<{ conversations: any[] }>('listConversations', {
           session_id: sessionId,
@@ -216,7 +234,7 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
     } finally {
       setLoading(false);
     }
-  }, [sessionId, section, callUserChatApi]);
+  }, [sessionId, section, callUserChatApi, isDedicheSection]);
 
   useEffect(() => {
     fetchConversations();
@@ -226,93 +244,103 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
       checkIfBlocked(sessionId);
     }
 
-    // Polling backup: refresh every 10 seconds to catch missed realtime updates
-    // This ensures users always see new messages even if websocket has issues
+    // Polling backup:
+    // - Dediche: Realtime is unreliable for session-based access (no x-session-id over Realtime)
+    //           so we poll more frequently to make admin replies appear quickly.
+    // - Other sections: slower polling.
+    const pollMs = isDedicheSection ? 2000 : 10000;
     const pollInterval = setInterval(() => {
       fetchConversations();
-    }, 10000);
+    }, pollMs);
 
-    // Subscribe to realtime changes - use unique channel name to avoid conflicts
-    const channelName = `conversations-changes-${sessionId || 'admin'}-${Date.now()}`;
-    const conversationsChannel = supabase
-      .channel(channelName, {
-        config: {
-          broadcast: { self: true },
-        },
-      })
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'conversations' },
-        () => fetchConversations()
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'chat_messages' },
-        (payload) => {
-          const newMessage = payload.new as ChatMessage;
-          if (import.meta.env.DEV) console.log('[useConversations] New message received via realtime:', newMessage.id?.slice(0, 8));
-          window.dispatchEvent(
-            new CustomEvent('new-chat-message', { detail: newMessage })
-          );
-          fetchConversations();
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'chat_messages' },
-        (payload) => {
-          // Real-time status update without full refetch
-          const updatedMessage = payload.new as ChatMessage;
-          setConversations(prev => prev.map(conv => {
-            if (conv.messages?.some(m => m.id === updatedMessage.id)) {
-              return {
-                ...conv,
-                messages: conv.messages?.map(m => 
-                  m.id === updatedMessage.id 
-                    ? { ...m, status: updatedMessage.status, read_at: updatedMessage.read_at, edited_at: updatedMessage.edited_at, message_text: updatedMessage.message_text }
-                    : m
-                ),
-              };
-            }
-            return conv;
-          }));
-          // Dispatch event for UI updates
-          window.dispatchEvent(
-            new CustomEvent('chat-message-updated', { detail: updatedMessage })
-          );
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'chat_messages' },
-        () => fetchConversations()
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'conversation_participants' },
-        () => fetchConversations()
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'blocked_users' },
-        () => {
-          if (sessionId) {
-            checkIfBlocked(sessionId);
+    // Realtime subscription:
+    // For Dediche user-side (sessionId present) polling is the reliable source of truth.
+    // Keep realtime for admin/auth flows where RLS doesn't depend on x-session-id.
+    let conversationsChannel: ReturnType<typeof supabase.channel> | null = null;
+    if (!(isDedicheSection && sessionId)) {
+      const channelName = `conversations-changes-${sessionId || 'admin'}-${Date.now()}`;
+      conversationsChannel = supabase
+        .channel(channelName, {
+          config: {
+            broadcast: { self: true },
+          },
+        })
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'conversations' },
+          () => fetchConversations()
+        )
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'chat_messages' },
+          (payload) => {
+            const newMessage = payload.new as ChatMessage;
+            if (import.meta.env.DEV) console.log('[useConversations] New message received via realtime:', newMessage.id?.slice(0, 8));
+            window.dispatchEvent(
+              new CustomEvent('new-chat-message', { detail: newMessage })
+            );
+            fetchConversations();
           }
-        }
-      )
-      .subscribe((status, err) => {
-        if (import.meta.env.DEV) {
-          console.log('[useConversations] Realtime subscription status:', status);
-          if (err) console.error('[useConversations] Subscription error:', err);
-        }
-      });
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'chat_messages' },
+          (payload) => {
+            // Real-time status update without full refetch
+            const updatedMessage = payload.new as ChatMessage;
+            setConversations(prev => prev.map(conv => {
+              if (conv.messages?.some(m => m.id === updatedMessage.id)) {
+                return {
+                  ...conv,
+                  messages: conv.messages?.map(m => 
+                    m.id === updatedMessage.id 
+                      ? { ...m, status: updatedMessage.status, read_at: updatedMessage.read_at, edited_at: updatedMessage.edited_at, message_text: updatedMessage.message_text }
+                      : m
+                  ),
+                };
+              }
+              return conv;
+            }));
+            // Dispatch event for UI updates
+            window.dispatchEvent(
+              new CustomEvent('chat-message-updated', { detail: updatedMessage })
+            );
+          }
+        )
+        .on(
+          'postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'chat_messages' },
+          () => fetchConversations()
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'conversation_participants' },
+          () => fetchConversations()
+        )
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'blocked_users' },
+          () => {
+            if (sessionId) {
+              checkIfBlocked(sessionId);
+            }
+          }
+        )
+        .subscribe((status, err) => {
+          if (import.meta.env.DEV) {
+            console.log('[useConversations] Realtime subscription status:', status);
+            if (err) console.error('[useConversations] Subscription error:', err);
+          }
+        });
+    }
 
     return () => {
       clearInterval(pollInterval);
-      supabase.removeChannel(conversationsChannel);
+      if (conversationsChannel) {
+        supabase.removeChannel(conversationsChannel);
+      }
     };
-  }, [fetchConversations, sessionId, checkIfBlocked]);
+  }, [fetchConversations, sessionId, checkIfBlocked, isDedicheSection]);
 
   // Mark messages in a conversation as read (for user)
   const markMessagesAsRead = useCallback(async (conversationId: string, userSessionId: string) => {
