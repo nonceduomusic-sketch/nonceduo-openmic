@@ -28,11 +28,14 @@ const generatePinCode = (): string => {
   return pin;
 };
 
-// Generate a unique event link code
+// Default branded event link code - fixed but can be regenerated
+const DEFAULT_LINK_CODE = 'nonceduo';
+
+// Generate a unique event link code (only when regenerating)
 const generateLinkCode = (): string => {
   const chars = 'abcdefghjkmnpqrstuvwxyz23456789';
-  let code = '';
-  for (let i = 0; i < 8; i++) {
+  let code = 'ev-';
+  for (let i = 0; i < 6; i++) {
     code += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return code;
@@ -143,9 +146,9 @@ export const useUnifiedLiveSession = () => {
         })
         .eq('is_active', true);
 
-      // Generate PIN and link code
+      // Generate PIN and use fixed link code by default
       const pinCode = customPin?.toUpperCase().trim() || generatePinCode();
-      const linkCode = generateLinkCode();
+      const linkCode = DEFAULT_LINK_CODE;
       const expiresAt = expiresInHours 
         ? new Date(Date.now() + expiresInHours * 60 * 60 * 1000).toISOString()
         : null;
@@ -362,10 +365,45 @@ export const useUnifiedLiveSession = () => {
     return session.protected_formats.includes(format);
   };
 
-  // Get event URL
+  // Get event URL - always use nonceduo.com for production
   const getEventUrl = (): string | null => {
     if (!session?.event_link_code) return null;
-    return `${window.location.origin}/evento-live/${session.event_link_code}`;
+    // Always use the branded domain for links/QR
+    return `https://nonceduo.com/evento-live/${session.event_link_code}`;
+  };
+
+  // Regenerate the event link code (manual action)
+  const regenerateLinkCode = async (): Promise<string | null> => {
+    if (!isOwner || !session) return null;
+
+    try {
+      const newCode = generateLinkCode();
+
+      const { error } = await supabase
+        .from('live_sessions')
+        .update({ event_link_code: newCode })
+        .eq('id', session.id);
+
+      if (error) throw error;
+
+      setSession({ ...session, event_link_code: newCode });
+
+      // Audit log
+      await adminAuditLog({
+        action: 'live_session_regenerate_link',
+        section: 'global',
+        entity: 'live_sessions',
+        entity_id: session.id,
+        metadata: { old_code: session.event_link_code, new_code: newCode }
+      });
+
+      toast.success(`Nuovo link generato`);
+      return newCode;
+    } catch (error) {
+      console.error('Error regenerating link code:', error);
+      toast.error('Errore nella generazione del nuovo link');
+      return null;
+    }
   };
 
   // Remove PIN protection (set protected_formats to empty = no PIN required)
@@ -455,6 +493,7 @@ export const useUnifiedLiveSession = () => {
     restorePin,
     isFormatProtected,
     getEventUrl,
+    regenerateLinkCode,
     refetch: fetchSession,
   };
 };
