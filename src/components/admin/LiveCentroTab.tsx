@@ -95,6 +95,21 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
     });
   }, []);
 
+  // Clean up seen items cache when reservations list becomes empty (after reset)
+  useEffect(() => {
+    if (activeReservations.length === 0 && completedReservations.length === 0 && seenIds.size > 0) {
+      // All reservations cleared (likely after reset), clear the seen cache
+      const songSeenIds = [...seenIds].filter(id => id.startsWith('song-'));
+      if (songSeenIds.length > 0) {
+        setSeenIds(prev => {
+          const next = new Set([...prev].filter(id => !id.startsWith('song-')));
+          localStorage.setItem('admin-seen-items', JSON.stringify([...next]));
+          return next;
+        });
+      }
+    }
+  }, [activeReservations.length, completedReservations.length, seenIds]);
+
   // Build unified items list
   const unifiedItems = useMemo<UnifiedItem[]>(() => {
     const items: UnifiedItem[] = [];
