@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SocialAuthProvider } from "@/contexts/SocialAuthContext";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import { InstallBanner } from "@/components/InstallBanner";
 import Home from "./pages/Home";
 import OpenMic from "./pages/OpenMic";
@@ -30,10 +31,11 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <SocialAuthProvider>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <SocialAuthProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
         <BrowserRouter>
           <InstallBanner />
           <Routes>
@@ -71,8 +73,9 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
-      </TooltipProvider>
-    </SocialAuthProvider>
+        </TooltipProvider>
+      </SocialAuthProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

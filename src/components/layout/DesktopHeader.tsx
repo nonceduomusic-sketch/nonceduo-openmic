@@ -4,6 +4,7 @@ import { Mic2, Music, Users, Settings, Home, PartyPopper, MessageCircle, Shield 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { UserLoginIndicator } from '@/components/UserLoginIndicator';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface DesktopHeaderProps {
   variant?: 'main' | 'openmic' | 'community' | 'admin';
@@ -201,6 +202,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
 
         {/* Right side */}
         <div className="flex items-center gap-2">
+          <ThemeToggle />
           {(variant === 'community' || variant === 'admin') && <UserLoginIndicator />}
           {showAdmin && (
             <Link to="/admin">
