@@ -67,9 +67,14 @@ export const useReservations = () => {
   useEffect(() => {
     fetchReservations();
 
-    // Subscribe to realtime updates
+    // Subscribe to realtime updates - use unique channel name to avoid conflicts
+    const channelName = `reservations-changes-${Date.now()}`;
     const channel = supabase
-      .channel('reservations-changes')
+      .channel(channelName, {
+        config: {
+          broadcast: { self: true },
+        },
+      })
       .on(
         'postgres_changes',
         {
@@ -96,7 +101,12 @@ export const useReservations = () => {
           }
         }
       )
-      .subscribe();
+      .subscribe((status, err) => {
+        if (import.meta.env.DEV) {
+          console.log('[useReservations] Realtime subscription status:', status);
+          if (err) console.error('[useReservations] Subscription error:', err);
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
