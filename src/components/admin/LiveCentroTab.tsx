@@ -142,10 +142,14 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
       dedicheConvs.forEach(c => {
         // Get most recent message
         const lastMsg = c.messages?.[c.messages.length - 1];
+        // For private dediche, get sender name from participants or last message
+        const senderName = c.participants?.[0]?.participant_name 
+          || lastMsg?.sender_name 
+          || 'Utente';
         items.push({
           id: `dedica-${c.id}`,
           type: 'dedica',
-          name: c.name || 'Anonimo',
+          name: senderName,
           title: lastMsg?.message_text?.slice(0, 50) || 'Nuova dedica',
           subtitle: `Messaggio privato`,
           timestamp: new Date(c.updated_at || c.created_at),

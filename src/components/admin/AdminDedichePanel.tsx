@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { MessageCircle, Ban } from "lucide-react";
+import { MessageCircle, Ban, Eye, Users } from "lucide-react";
 import { AdminMessagesTab } from "@/components/AdminMessagesTab";
 import { AdminBlockedUsersTab } from "@/components/AdminBlockedUsersTab";
 
@@ -8,42 +8,43 @@ interface AdminDedichePanelProps {
 }
 
 export const AdminDedichePanel: React.FC<AdminDedichePanelProps> = ({ onUnreadCountChange }) => {
-  const [subTab, setSubTab] = useState<"messages" | "blocked">("messages");
+  const [mainView, setMainView] = useState<"messages" | "blocked">("messages");
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 flex-wrap">
+      {/* Primary toggle: Messages vs Blocked */}
+      <div className="flex gap-2">
         <button
-          onClick={() => setSubTab("messages")}
-          className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
-            subTab === "messages"
-              ? "bg-secondary text-secondary-foreground neon-glow-cyan"
+          onClick={() => setMainView("messages")}
+          className={`flex-1 py-3 px-4 rounded-xl font-medium text-sm transition-all ${
+            mainView === "messages"
+              ? "bg-primary text-primary-foreground shadow-lg"
               : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
           <MessageCircle className="w-4 h-4 inline-block mr-2" />
-          <span className="sm:hidden">Messaggi</span>
-          <span className="hidden sm:inline">Messaggi + Gruppi</span>
+          Conversazioni
         </button>
         <button
-          onClick={() => setSubTab("blocked")}
-          className={`flex-1 py-2 px-4 rounded-lg font-medium text-sm transition-all ${
-            subTab === "blocked"
+          onClick={() => setMainView("blocked")}
+          className={`py-3 px-4 rounded-xl font-medium text-sm transition-all ${
+            mainView === "blocked"
               ? "bg-destructive text-destructive-foreground"
               : "bg-muted text-muted-foreground hover:bg-muted/80"
           }`}
         >
           <Ban className="w-4 h-4 inline-block mr-2" />
-          <span className="sm:hidden">Bloccati</span>
-          <span className="hidden sm:inline">Bloccati (Dediche)</span>
+          Bloccati
         </button>
       </div>
 
-      {subTab === "messages" ? (
+      {/* Content */}
+      {mainView === "messages" ? (
         <AdminMessagesTab
           section="dediche"
           onUnreadCountChange={onUnreadCountChange}
           visibleSubTabs={["unread", "read", "groups"]}
+          initialSubTab="unread"
         />
       ) : (
         <AdminBlockedUsersTab />

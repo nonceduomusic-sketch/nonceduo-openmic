@@ -131,9 +131,11 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
     // Don't fetch if we're anonymous and don't have a sessionId yet
     const { data: authSession } = await supabase.auth.getSession();
     const isAnon = !authSession?.session;
+    const isAuthenticated = !!authSession?.session;
 
-    // For Dediche we always use the session-based backend listing (even if authenticated)
+    // For Dediche user-side (anonymous users) we always use the session-based backend listing
     // to avoid RLS/header issues.
+    // For admin (authenticated users without sessionId), use direct queries.
     const shouldUseUserChatListing = Boolean(sessionId) && (isAnon || isDedicheSection);
     
     if (isAnon && !sessionId) {
@@ -141,9 +143,10 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
       return;
     }
 
-    if (isDedicheSection && !sessionId) {
-      // Dediche requires a session id to see any private conversation.
-      // Keep loading state until we have it.
+    // For user-side Dediche we need a sessionId
+    // But for admin-side Dediche (authenticated, no sessionId), we use direct queries
+    if (isDedicheSection && !sessionId && isAnon) {
+      // Dediche user-side requires a session id to see any private conversation.
       if (import.meta.env.DEV) console.log('[useConversations] Dediche: waiting for sessionId before fetching...');
       return;
     }
@@ -981,29 +984,39 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
     }
   };
 
-  // Get unread conversations
+  // Get unread conversations (non-group private chats with unread messages)
   const getUnreadConversations = () => {
     return conversations.filter(conv => {
-      if (!conv.messages || conv.messages.length === 0) return false;
-      // Use is_read column if available, fallback to sender_type check
-      if ('is_read' in conv) {
-        return conv.is_read === false;
+      // For groups, we handle them separately
+      if (conv.is_group) return false;
+      // Check is_read column: false, null, or undefined means unread
+      if ('is_read' in conv && conv.is_read !== true) {
+        return true;
       }
-      const lastMessage = conv.messages[0]; // Already sorted by date desc
-      return lastMessage.sender_type === 'user';
+      // Fallback for old conversations without is_read: check last message sender
+      if (conv.messages && conv.messages.length > 0) {
+        const lastMessage = conv.messages[0]; // Already sorted by date desc
+        return lastMessage.sender_type === 'user';
+      }
+      return false;
     });
   };
 
-  // Get conversations marked as read (is_read = true)
+  // Get conversations marked as read (is_read = true), non-group only
   const getReadConversations = () => {
     return conversations.filter(conv => {
-      if (!conv.messages || conv.messages.length === 0) return false;
-      // Use is_read column if available, fallback to sender_type check
+      // For groups, we handle them separately
+      if (conv.is_group) return false;
+      // Check is_read column
       if ('is_read' in conv) {
         return conv.is_read === true;
       }
-      const lastMessage = conv.messages[0];
-      return lastMessage.sender_type === 'admin';
+      // Fallback: last message is from admin
+      if (conv.messages && conv.messages.length > 0) {
+        const lastMessage = conv.messages[0];
+        return lastMessage.sender_type === 'admin';
+      }
+      return false;
     });
   };
 
