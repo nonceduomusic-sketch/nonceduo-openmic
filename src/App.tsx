@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SocialAuthProvider } from "@/contexts/SocialAuthContext";
+import { InstallBanner } from "@/components/InstallBanner";
 import Home from "./pages/Home";
 import OpenMic from "./pages/OpenMic";
 import Messages from "./pages/Messages";
@@ -34,6 +35,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <InstallBanner />
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/partyband" element={<PartyBand />} />
