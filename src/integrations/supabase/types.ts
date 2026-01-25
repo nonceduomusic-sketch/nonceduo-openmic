@@ -532,6 +532,78 @@ export type Database = {
           },
         ]
       }
+      leaderboard_stats: {
+        Row: {
+          badges_count: number
+          created_at: string
+          current_streak: number
+          id: string
+          last_participation_date: string | null
+          max_streak: number
+          participant_name: string
+          session_fingerprint: string | null
+          total_dedications: number
+          total_points: number
+          total_songs: number
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          badges_count?: number
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_participation_date?: string | null
+          max_streak?: number
+          participant_name: string
+          session_fingerprint?: string | null
+          total_dedications?: number
+          total_points?: number
+          total_songs?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          badges_count?: number
+          created_at?: string
+          current_streak?: number
+          id?: string
+          last_participation_date?: string | null
+          max_streak?: number
+          participant_name?: string
+          session_fingerprint?: string | null
+          total_dedications?: number
+          total_points?: number
+          total_songs?: number
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      live_reactions: {
+        Row: {
+          created_at: string
+          emoji: string
+          id: string
+          session_fingerprint: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          emoji: string
+          id?: string
+          session_fingerprint?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          emoji?: string
+          id?: string
+          session_fingerprint?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       live_sessions: {
         Row: {
           created_at: string
@@ -695,6 +767,73 @@ export type Database = {
             columns: ["admin_user_id"]
             isOneToOne: false
             referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      performance_vote_counts: {
+        Row: {
+          fire_votes: number
+          heart_votes: number
+          reservation_id: string
+          total_votes: number
+          updated_at: string
+        }
+        Insert: {
+          fire_votes?: number
+          heart_votes?: number
+          reservation_id: string
+          total_votes?: number
+          updated_at?: string
+        }
+        Update: {
+          fire_votes?: number
+          heart_votes?: number
+          reservation_id?: string
+          total_votes?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_vote_counts_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: true
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      performance_votes: {
+        Row: {
+          created_at: string
+          id: string
+          reservation_id: string
+          vote_type: string
+          voter_fingerprint: string
+          voter_user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reservation_id: string
+          vote_type?: string
+          voter_fingerprint: string
+          voter_user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reservation_id?: string
+          vote_type?: string
+          voter_fingerprint?: string
+          voter_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_votes_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
             referencedColumns: ["id"]
           },
         ]
@@ -1201,6 +1340,86 @@ export type Database = {
           },
         ]
       }
+      user_badges: {
+        Row: {
+          badge_description: string | null
+          badge_icon: string
+          badge_key: string
+          badge_name: string
+          earned_at: string
+          id: string
+          participant_name: string
+          session_fingerprint: string | null
+          user_id: string | null
+        }
+        Insert: {
+          badge_description?: string | null
+          badge_icon?: string
+          badge_key: string
+          badge_name: string
+          earned_at?: string
+          id?: string
+          participant_name: string
+          session_fingerprint?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          badge_description?: string | null
+          badge_icon?: string
+          badge_key?: string
+          badge_name?: string
+          earned_at?: string
+          id?: string
+          participant_name?: string
+          session_fingerprint?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_participations: {
+        Row: {
+          created_at: string
+          event_date: string
+          format_type: string
+          id: string
+          participant_name: string
+          points_earned: number
+          reservation_id: string | null
+          session_fingerprint: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          event_date?: string
+          format_type?: string
+          id?: string
+          participant_name: string
+          points_earned?: number
+          reservation_id?: string | null
+          session_fingerprint?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          event_date?: string
+          format_type?: string
+          id?: string
+          participant_name?: string
+          points_earned?: number
+          reservation_id?: string | null
+          session_fingerprint?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_participations_reservation_id_fkey"
+            columns: ["reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_permissions: {
         Row: {
           created_at: string
@@ -1297,6 +1516,7 @@ export type Database = {
       }
       cleanup_expired_typing_indicators: { Args: never; Returns: undefined }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
+      cleanup_old_reactions: { Args: never; Returns: undefined }
       create_pin_session: {
         Args: {
           p_device_fingerprint?: string
