@@ -54,10 +54,10 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
       <div className="space-y-1">
         <h2 className="text-2xl font-bold flex items-center gap-2">
           <Settings className="w-6 h-6 text-primary" />
-          Impostazioni Formati
+          Formati e Notifiche
         </h2>
         <p className="text-muted-foreground text-sm">
-          Gestisci l'attivazione dei format, la serata live e le notifiche
+          Gestisci l'attivazione dei format, la serata live e tutte le notifiche
         </p>
       </div>
 
@@ -103,15 +103,16 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
         </Card>
       )}
 
-      {/* Section 3: Notifiche Android - MOVED BEFORE GESTIONE EVENTO */}
-      <Card className="border-border">
+      {/* Section 3: Notifiche (CONSOLIDATA) */}
+      <Card className="border-blue-500/20 bg-blue-500/5">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Bell className="w-5 h-5 text-blue-400" />
-            Notifiche Android
+            Notifiche Admin
           </CardTitle>
           <CardDescription>
-            Configura le notifiche per ricevere avvisi anche in background.
+            Gestisci tutte le notifiche: permessi browser, suoni, vibrazione e push in background.
+            Qui trovi tutto centralizzato per una configurazione semplice.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -157,7 +158,7 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
           <ul className="mt-2 space-y-1 list-disc list-inside">
             <li><strong>Stato Evento:</strong> Attiva/disattiva il badge "LIVE" nell'app</li>
             <li><strong>Protezione PIN:</strong> Richiedi un codice per accedere (indipendente dal LIVE)</li>
-            <li><strong>Notifiche:</strong> Ricevi avvisi anche quando l'app è in background</li>
+            <li><strong>Notifiche:</strong> Configura suoni, vibrazione e push background in un unico posto</li>
           </ul>
         </AlertDescription>
       </Alert>
