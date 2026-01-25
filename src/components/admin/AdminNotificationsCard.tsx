@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   Bell, 
   BellOff, 
@@ -12,15 +14,28 @@ import {
   Volume2,
   Vibrate,
   Loader2,
+  Moon,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
+interface SilentHoursSettings {
+  enabled: boolean;
+  start: string;
+  end: string;
+}
+
 export const AdminNotificationsCard: React.FC = () => {
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [vibrationEnabled, setVibrationEnabled] = useState(true);
+  const [silentHours, setSilentHours] = useState<SilentHoursSettings>({
+    enabled: false,
+    start: '23:00',
+    end: '08:00',
+  });
   
   // Use the push notifications hook for real background notifications
   const { 
@@ -32,7 +47,7 @@ export const AdminNotificationsCard: React.FC = () => {
     sendTest: sendTestPush,
   } = usePushNotifications('admin');
 
-  // Check notification permission on mount
+  // Check notification permission and load settings on mount
   useEffect(() => {
     if (typeof Notification !== 'undefined') {
       setPermission(Notification.permission);
@@ -41,9 +56,17 @@ export const AdminNotificationsCard: React.FC = () => {
     // Load saved preferences
     const savedSound = localStorage.getItem('admin_notification_sound');
     const savedVibration = localStorage.getItem('admin_notification_vibration');
+    const savedSilentHours = localStorage.getItem('admin_silent_hours');
     
     if (savedSound !== null) setSoundEnabled(savedSound === 'true');
     if (savedVibration !== null) setVibrationEnabled(savedVibration === 'true');
+    if (savedSilentHours) {
+      try {
+        setSilentHours(JSON.parse(savedSilentHours));
+      } catch (e) {
+        console.error('Failed to parse silent hours:', e);
+      }
+    }
   }, []);
 
   // Request notification permission and subscribe to push
@@ -120,7 +143,7 @@ export const AdminNotificationsCard: React.FC = () => {
       const success = await subscribePush();
       console.log('[AdminNotificationsCard] Subscribe result:', success);
       if (success) {
-        toast.success('Notifiche background attivate! Controlla i log per dettagli.');
+        toast.success('Notifiche background attivate!');
       } else {
         toast.error('Errore attivazione notifiche background. Apri la console per dettagli.');
       }
@@ -131,6 +154,21 @@ export const AdminNotificationsCard: React.FC = () => {
         toast.success('Notifiche background disattivate');
       }
     }
+  };
+
+  // Toggle silent hours
+  const toggleSilentHours = (enabled: boolean) => {
+    const updated = { ...silentHours, enabled };
+    setSilentHours(updated);
+    localStorage.setItem('admin_silent_hours', JSON.stringify(updated));
+    toast.success(enabled ? 'Orari silenziosi attivati' : 'Orari silenziosi disattivati');
+  };
+
+  // Update silent hours times
+  const updateSilentHoursTime = (field: 'start' | 'end', value: string) => {
+    const updated = { ...silentHours, [field]: value };
+    setSilentHours(updated);
+    localStorage.setItem('admin_silent_hours', JSON.stringify(updated));
   };
 
   // Test notification
@@ -339,6 +377,55 @@ export const AdminNotificationsCard: React.FC = () => {
               )}
             </div>
           )}
+
+          {/* Silent Hours */}
+          <div className={cn(
+            "p-3 rounded-lg border",
+            silentHours.enabled ? "bg-amber-500/10 border-amber-500/20" : "bg-muted/20 border-border"
+          )}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Moon className={cn("w-4 h-4", silentHours.enabled ? "text-amber-500" : "text-muted-foreground")} />
+                <div>
+                  <p className="text-sm font-medium">Orari Silenziosi</p>
+                  <p className="text-xs text-muted-foreground">
+                    Nessuna notifica durante questi orari
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={silentHours.enabled}
+                onCheckedChange={toggleSilentHours}
+                className={silentHours.enabled ? "data-[state=checked]:bg-amber-500" : ""}
+              />
+            </div>
+            
+            {silentHours.enabled && (
+              <div className="flex items-center gap-4 mt-3 pt-3 border-t border-amber-500/20">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-muted-foreground" />
+                  <Label htmlFor="silentStart" className="text-xs">Da:</Label>
+                  <Input
+                    id="silentStart"
+                    type="time"
+                    value={silentHours.start}
+                    onChange={(e) => updateSilentHoursTime('start', e.target.value)}
+                    className="w-24 h-8 text-xs"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="silentEnd" className="text-xs">A:</Label>
+                  <Input
+                    id="silentEnd"
+                    type="time"
+                    value={silentHours.end}
+                    onChange={(e) => updateSilentHoursTime('end', e.target.value)}
+                    className="w-24 h-8 text-xs"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Test Button */}
           <Button 
