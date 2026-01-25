@@ -71,6 +71,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { DedicationExpandDialog } from '@/components/admin/DedicationExpandDialog';
+import { useAdminFontSize } from '@/hooks/useAdminFontSize';
 
 interface GroupPermissions {
   canManageGroups?: boolean;
@@ -99,6 +101,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
   permissions = { canManageGroups: true, canDeleteGroups: true, canEditGroups: true, canApproveJoin: true },
 }) => {
   const { toast } = useToast();
+  const { fontSizeClass } = useAdminFontSize();
   const {
     conversations,
     loading,
@@ -141,6 +144,13 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
+
+  // Expand long dediche text (same behavior as Centro)
+  const [dedicheExpandOpen, setDedicheExpandOpen] = useState(false);
+  const [dedicheExpandData, setDedicheExpandData] = useState<{
+    text: string;
+    senderName: string;
+  } | null>(null);
   
   // Selection mode (for group creation, adding to group, or delete)
   const [selectionMode, setSelectionMode] = useState<'none' | 'createGroup' | 'addToGroup' | 'delete'>('none');
@@ -976,6 +986,14 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
                       onClick={() => {
                         if (messageSelectionMode) {
                           handleToggleMessageSelect(msg.id);
+                          return;
+                        }
+
+                        // For Dediche chats, allow tapping a message to read it comfortably
+                        // in a modal (useful for very long, multi-line dedications).
+                        if (section === 'dediche' && msg.sender_type === 'user') {
+                          setDedicheExpandData({ text: msg.message_text, senderName: msg.sender_name });
+                          setDedicheExpandOpen(true);
                         }
                       }}
                     >
@@ -1131,6 +1149,15 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
             </Button>
           </div>
         </div>
+
+        {/* Full-text modal for long dediche */}
+        <DedicationExpandDialog
+          open={dedicheExpandOpen}
+          onOpenChange={setDedicheExpandOpen}
+          dedicationText={dedicheExpandData?.text ?? ''}
+          senderName={dedicheExpandData?.senderName ?? 'Utente'}
+          fontSizeClass={fontSizeClass}
+        />
       </div>
     );
   }
