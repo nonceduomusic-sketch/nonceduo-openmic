@@ -14,16 +14,20 @@ import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 
+interface FreeModeOpenMicProps {
+  eventName?: string | null;
+}
+
 /**
  * FreeModeOpenMic - Open Mic senza limiti (Evento Live)
  * 
  * Features:
  * - Nessun limite numerico
  * - Nessun countdown
- * - Banner "Evento Live" distintivo
+ * - Banner con nome evento dinamico
  * - Tutte le funzionalità base di prenotazione
  */
-export const FreeModeOpenMic: React.FC = () => {
+export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ eventName }) => {
   const [search, setSearch] = useState("");
   const [artistFilter, setArtistFilter] = useState("");
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
@@ -127,7 +131,7 @@ export const FreeModeOpenMic: React.FC = () => {
               </div>
               <div>
                 <h2 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
-                  Evento Live
+                  {eventName || 'Evento Live'}
                   <span className="relative flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent"></span>

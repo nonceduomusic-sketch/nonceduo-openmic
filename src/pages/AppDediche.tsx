@@ -83,7 +83,7 @@ const AppDediche: React.FC = () => {
 
   // CASE 2: Serata Aperta (Free Mode) attiva per Dediche
   if (eventState.type === 'freemode' && freeMode.dediche) {
-    return <FreeModeDediche />;
+    return <FreeModeDediche eventName={freeMode.eventName} />;
   }
 
   // CASE 3: Eventi READY esistono → Pre-Event Page
