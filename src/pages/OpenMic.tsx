@@ -188,39 +188,54 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
       {/* Live Queue Display - Collapsible */}
       {queueSongs.length > 0 && (
         <div className="container pt-4">
-          <Collapsible open={showQueue} onOpenChange={setShowQueue}>
-            <CollapsibleTrigger asChild>
-              <Button 
-                variant="ghost" 
-                className="w-full flex items-center justify-between p-3 h-auto bg-muted/30 hover:bg-muted/50 rounded-lg border border-border/50"
-              >
-                <div className="flex items-center gap-2">
-                  <ListMusic className="w-4 h-4 text-secondary" />
-                  <span className="font-medium text-sm">Scaletta Live</span>
-                  <span className="text-xs text-muted-foreground">
-                    ({queueSongs.length} {queueSongs.length === 1 ? 'canzone' : 'canzoni'})
+          <div className="rounded-xl border-2 border-secondary/30 bg-secondary/5 p-3">
+            <Collapsible open={showQueue} onOpenChange={setShowQueue}>
+              <CollapsibleTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  className="w-full flex items-center justify-between p-3 h-auto bg-secondary/10 hover:bg-secondary/20 rounded-lg border border-secondary/30"
+                >
+                  <div className="flex items-center gap-2">
+                    <ListMusic className="w-5 h-5 text-secondary" />
+                    <span className="font-display font-bold text-secondary">Scaletta Live</span>
+                    <span className="text-xs bg-secondary/20 text-secondary px-2 py-0.5 rounded-full">
+                      {queueSongs.length} in coda
+                    </span>
+                  </div>
+                  <span className="text-xs text-secondary/70">
+                    {showQueue ? '▲ Chiudi' : '▼ Vedi chi canta'}
                   </span>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {showQueue ? 'Nascondi' : 'Mostra'}
-                </span>
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2">
-              <LiveQueueDisplay songs={queueSongs} />
-            </CollapsibleContent>
-          </Collapsible>
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-2">
+                <LiveQueueDisplay songs={queueSongs} />
+              </CollapsibleContent>
+            </Collapsible>
+            <p className="text-xs text-center text-secondary/60 mt-2">
+              👆 Queste sono le canzoni già prenotate stasera
+            </p>
+          </div>
         </div>
       )}
 
-      {/* Song List */}
+      {/* Song Catalog - Clear separation */}
       <main className="container py-4 pb-8">
+        {/* Section Header */}
+        <div className="mb-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Music className="w-5 h-5 text-primary" />
+            <h2 className="font-display font-bold text-lg text-primary">Prenota la tua canzone</h2>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Scegli tra {filteredSongs.length} canzoni disponibili 👇
+          </p>
+        </div>
+
         {/* Description */}
-        <div className="mb-4 p-3 rounded-lg bg-muted/30 border border-border">
+        <div className="mb-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
           <p className="text-sm text-muted-foreground text-center leading-relaxed">
-            🎤 Cerca la tua canzone preferita.<br />
-            👉 Clicca su <strong className="text-primary">Prenota</strong> per metterti in coda.<br />
-            📄 Clicca su <strong className="text-secondary">Testo</strong> per cercare il testo online.
+            🎤 Cerca la tua canzone preferita<br />
+            👉 <strong className="text-primary">Prenota</strong> = mettiti in coda • 📄 <strong className="text-secondary">Testo</strong> = cerca le parole
           </p>
         </div>
 
