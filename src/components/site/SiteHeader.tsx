@@ -117,7 +117,7 @@ export const SiteHeader: React.FC<{ className?: string }> = ({ className }) => {
               </div>
 
               <div className="mt-4 pt-4 border-t border-border/60 space-y-2">
-                <Link to="/installa" className="block md:hidden">
+                <Link to="/installa">
                   <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground">
                     <Download className="w-4 h-4 mr-2" />
                     Installa App
