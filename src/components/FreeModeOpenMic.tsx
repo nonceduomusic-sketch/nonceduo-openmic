@@ -27,7 +27,7 @@ export const FreeModeOpenMic: React.FC = () => {
   const [search, setSearch] = useState("");
   const [artistFilter, setArtistFilter] = useState("");
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
-  const [showQueue, setShowQueue] = useState(true);
+  const [showQueue, setShowQueue] = useState(false);
   
   const { statuses, isSongBooked, isSongCompleted } = useReservationStatuses();
 
