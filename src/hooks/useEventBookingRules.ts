@@ -1,12 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+export type EventType = 'openmic' | 'dediche' | 'both';
+export type EventStatus = 'draft' | 'ready' | 'live' | 'closed';
+
 export interface EventBookingRules {
   id: string;
   event_name: string | null;
   event_date: string | null;
   event_start_time: string | null;
   event_end_time: string | null;
+  event_type: EventType;
+  event_status: EventStatus;
+  pin_code: string | null;
+  pin_required: boolean;
   booking_opens_at: string | null;
   booking_closes_at: string | null;
   close_minutes_before_end: number | null;
@@ -36,15 +43,31 @@ export interface EventBookingRules {
   updated_at: string;
 }
 
+// Helper per normalizzare i dati dal database
+const normalizeEventRules = (data: any): EventBookingRules => ({
+  ...data,
+  event_type: data.event_type || 'both',
+  event_status: data.event_status || 'draft',
+  pin_required: data.pin_required ?? false,
+  openmic_enabled: data.openmic_enabled ?? true,
+  dediche_enabled: data.dediche_enabled ?? true,
+  openmic_current_count: data.openmic_current_count ?? 0,
+  dediche_current_count: data.dediche_current_count ?? 0,
+  reopen_songs_used: data.reopen_songs_used ?? 0,
+  reopen_dediche_used: data.reopen_dediche_used ?? 0,
+  reopen_active: data.reopen_active ?? false,
+  is_active: data.is_active ?? false,
+});
+
 export const useEventBookingRules = () => {
   const [rules, setRules] = useState<EventBookingRules | null>(null);
+  const [liveEvent, setLiveEvent] = useState<EventBookingRules | null>(null);
   const [allRules, setAllRules] = useState<EventBookingRules[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchRules = useCallback(async () => {
     try {
-      // Fetch all rules for admin (active rule is the one we'll primarily use)
       const { data, error: fetchError } = await supabase
         .from('event_booking_rules')
         .select('*')
@@ -52,11 +75,15 @@ export const useEventBookingRules = () => {
 
       if (fetchError) throw fetchError;
 
-      const typedData = data as EventBookingRules[];
+      const typedData = (data || []).map(normalizeEventRules);
       setAllRules(typedData);
       
-      // Set the active rule (or the first one if none active)
-      const activeRule = typedData.find(r => r.is_active) || typedData[0] || null;
+      // Trova l'evento live (unico)
+      const live = typedData.find(r => r.event_status === 'live') || null;
+      setLiveEvent(live);
+      
+      // Set the active/selected rule (prefer live, then first)
+      const activeRule = live || typedData.find(r => r.is_active) || typedData[0] || null;
       setRules(activeRule);
       setError(null);
     } catch (err) {
@@ -74,7 +101,7 @@ export const useEventBookingRules = () => {
   // Realtime subscription
   useEffect(() => {
     const channel = supabase
-      .channel('event-booking-rules-realtime')
+      .channel(`event-booking-rules-realtime-${Date.now()}`)
       .on(
         'postgres_changes',
         {
@@ -111,9 +138,88 @@ export const useEventBookingRules = () => {
     }
   };
 
-  // Toggle active state
+  // Seleziona un evento specifico per la gestione
+  const selectEvent = (eventId: string) => {
+    const found = allRules.find(r => r.id === eventId);
+    if (found) setRules(found);
+  };
+
+  // Toggle active state (legacy, mantenuto per compatibilità)
   const toggleActive = async (active: boolean): Promise<boolean> => {
     return updateRules({ is_active: active });
+  };
+
+  // Cambia lo stato workflow di un evento
+  const setEventStatus = async (eventId: string, newStatus: EventStatus): Promise<boolean> => {
+    try {
+      // Se stiamo mettendo un evento in "live", chiudiamo tutti gli altri eventi live
+      if (newStatus === 'live') {
+        const { error: closeError } = await supabase
+          .from('event_booking_rules')
+          .update({ event_status: 'closed' })
+          .eq('event_status', 'live')
+          .neq('id', eventId);
+
+        if (closeError) throw closeError;
+      }
+
+      // Aggiorna lo stato dell'evento target
+      const { error: updateError } = await supabase
+        .from('event_booking_rules')
+        .update({ 
+          event_status: newStatus,
+          is_active: newStatus === 'live', // Sync legacy field
+        })
+        .eq('id', eventId);
+
+      if (updateError) throw updateError;
+      
+      await fetchRules();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Errore nel cambio stato');
+      return false;
+    }
+  };
+
+  // Attiva un evento (ready → live)
+  const goLive = async (eventId?: string): Promise<boolean> => {
+    const targetId = eventId || rules?.id;
+    if (!targetId) return false;
+    return setEventStatus(targetId, 'live');
+  };
+
+  // Chiudi un evento (live → closed)
+  const closeEvent = async (eventId?: string): Promise<boolean> => {
+    const targetId = eventId || rules?.id;
+    if (!targetId) return false;
+    return setEventStatus(targetId, 'closed');
+  };
+
+  // Aggiorna PIN
+  const updatePin = async (pinCode: string | null, pinRequired: boolean): Promise<boolean> => {
+    if (!rules?.id) return false;
+    
+    try {
+      const { error: updateError } = await supabase
+        .from('event_booking_rules')
+        .update({ 
+          pin_code: pinCode,
+          pin_required: pinRequired,
+        })
+        .eq('id', rules.id);
+
+      if (updateError) throw updateError;
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Errore aggiornamento PIN');
+      return false;
+    }
+  };
+
+  // Genera un PIN casuale a 4 cifre
+  const generatePin = (): string => {
+    return Math.floor(1000 + Math.random() * 9000).toString();
   };
 
   // Create new event rules
@@ -121,7 +227,11 @@ export const useEventBookingRules = () => {
     try {
       const { data, error: insertError } = await supabase
         .from('event_booking_rules')
-        .insert(newRules)
+        .insert({
+          ...newRules,
+          event_status: newRules.event_status || 'draft',
+          event_type: newRules.event_type || 'both',
+        })
         .select('id')
         .single();
 
@@ -134,12 +244,47 @@ export const useEventBookingRules = () => {
     }
   };
 
+  // Duplica un evento esistente come bozza
+  const duplicateEvent = async (eventId: string): Promise<string | null> => {
+    const source = allRules.find(r => r.id === eventId);
+    if (!source) return null;
+
+    const { id, created_at, updated_at, event_status, is_active, ...rest } = source;
+    return createRules({
+      ...rest,
+      event_name: `${source.event_name || 'Evento'} (copia)`,
+      event_status: 'draft',
+      is_active: false,
+      openmic_current_count: 0,
+      dediche_current_count: 0,
+      reopen_songs_used: 0,
+      reopen_dediche_used: 0,
+      reopen_active: false,
+    });
+  };
+
+  // Delete an event
+  const deleteEvent = async (eventId: string): Promise<boolean> => {
+    try {
+      const { error: deleteError } = await supabase
+        .from('event_booking_rules')
+        .delete()
+        .eq('id', eventId);
+
+      if (deleteError) throw deleteError;
+      await fetchRules();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Errore eliminazione');
+      return false;
+    }
+  };
+
   // Increment booking counters atomically
   const incrementOpenMicCount = async (): Promise<boolean> => {
     if (!rules?.id) return false;
     
     try {
-      // Use direct update with current count + 1
       const { error: updateError } = await supabase
         .from('event_booking_rules')
         .update({ openmic_current_count: (rules.openmic_current_count || 0) + 1 })
@@ -179,7 +324,7 @@ export const useEventBookingRules = () => {
   };
 
   // Start extraordinary reopening
-  const startReopen = async (mode: 'time' | 'songs' | 'dediche', value: number, message?: string): Promise<boolean> => {
+  const startReopen = async (mode: 'time' | 'songs' | 'dediche' | 'combo', value: number, message?: string, extraDediche?: number): Promise<boolean> => {
     const updates: Partial<EventBookingRules> = {
       reopen_active: true,
       reopen_mode: mode,
@@ -194,6 +339,9 @@ export const useEventBookingRules = () => {
       updates.reopen_extra_songs = value;
     } else if (mode === 'dediche') {
       updates.reopen_extra_dediche = value;
+    } else if (mode === 'combo') {
+      updates.reopen_extra_songs = value;
+      updates.reopen_extra_dediche = extraDediche || 0;
     }
 
     return updateRules(updates);
@@ -213,12 +361,21 @@ export const useEventBookingRules = () => {
 
   return {
     rules,
+    liveEvent,
     allRules,
     loading,
     error,
     updateRules,
+    selectEvent,
     toggleActive,
+    setEventStatus,
+    goLive,
+    closeEvent,
+    updatePin,
+    generatePin,
     createRules,
+    duplicateEvent,
+    deleteEvent,
     incrementOpenMicCount,
     incrementDedicheCount,
     resetCounters,
@@ -226,4 +383,49 @@ export const useEventBookingRules = () => {
     stopReopen,
     refetch: fetchRules,
   };
+};
+
+// Hook pubblico per ottenere solo l'evento live (per il frontend utente)
+export const useLiveEvent = () => {
+  const [liveEvent, setLiveEvent] = useState<EventBookingRules | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchLive = async () => {
+      const { data, error } = await supabase
+        .from('event_booking_rules')
+        .select('*')
+        .eq('event_status', 'live')
+        .maybeSingle();
+
+      if (!error && data) {
+        setLiveEvent(normalizeEventRules(data));
+      } else {
+        setLiveEvent(null);
+      }
+      setLoading(false);
+    };
+
+    fetchLive();
+
+    // Realtime
+    const channel = supabase
+      .channel(`live-event-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'event_booking_rules',
+        },
+        () => fetchLive()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  return { liveEvent, loading };
 };
