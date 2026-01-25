@@ -115,15 +115,18 @@ export const AdminNotificationsCard: React.FC = () => {
 
   // Toggle push subscription
   const togglePushSubscription = async (enabled: boolean) => {
+    console.log('[AdminNotificationsCard] Toggle push subscription:', enabled);
     if (enabled) {
       const success = await subscribePush();
+      console.log('[AdminNotificationsCard] Subscribe result:', success);
       if (success) {
-        toast.success('Notifiche background attivate!');
+        toast.success('Notifiche background attivate! Controlla i log per dettagli.');
       } else {
-        toast.error('Errore attivazione notifiche background');
+        toast.error('Errore attivazione notifiche background. Apri la console per dettagli.');
       }
     } else {
       const success = await unsubscribePush();
+      console.log('[AdminNotificationsCard] Unsubscribe result:', success);
       if (success) {
         toast.success('Notifiche background disattivate');
       }
