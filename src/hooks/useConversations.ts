@@ -132,15 +132,16 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
     // Don't fetch if we're anonymous and don't have a sessionId yet
     const { data: authSession } = await supabase.auth.getSession();
     const isAnon = !authSession?.session;
+    const isAuthenticated = !!authSession?.session;
 
     // For Dediche user-side (anonymous users) we always use the session-based backend listing
     // to avoid RLS/header issues.
     // For admin (authenticated users without sessionId), use direct queries.
     const shouldUseUserChatListing = Boolean(sessionId) && (isAnon || isDedicheSection);
     
-    // CRITICAL: For Dediche section, we MUST have a sessionId to fetch user's conversations
-    // Without it, the API cannot identify which conversations belong to this user
-    if (isDedicheSection && !sessionId) {
+    // CRITICAL: For Dediche section with ANONYMOUS users, we MUST have a sessionId
+    // But for AUTHENTICATED admins (no sessionId passed), they use direct queries
+    if (isDedicheSection && !sessionId && isAnon) {
       if (import.meta.env.DEV) console.log('[useConversations] Dediche: waiting for sessionId before fetching...');
       setLoading(false); // Don't leave in loading state
       return;
