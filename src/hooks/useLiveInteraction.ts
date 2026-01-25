@@ -155,9 +155,11 @@ export const useTopPerformances = (limit = 5) => {
     song_artist: string; 
     customer_name: string 
   })[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchTop = async () => {
+      setLoading(true);
       const { data: votes } = await supabase
         .from('performance_vote_counts')
         .select(`
@@ -175,6 +177,7 @@ export const useTopPerformances = (limit = 5) => {
           customer_name: v.reservations.customer_name,
         })));
       }
+      setLoading(false);
     };
 
     fetchTop();
@@ -200,5 +203,5 @@ export const useTopPerformances = (limit = 5) => {
     };
   }, [limit]);
 
-  return performances;
+  return { topPerformances: performances, loading };
 };

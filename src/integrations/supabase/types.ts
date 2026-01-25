@@ -1561,6 +1561,14 @@ export type Database = {
         Args: { p_live_session_id: string; p_reason?: string }
         Returns: number
       }
+      is_conversation_participant: {
+        Args: {
+          p_conversation_id: string
+          p_session_id: string
+          p_user_id: string
+        }
+        Returns: boolean
+      }
       is_format_protected: { Args: { p_format: string }; Returns: boolean }
       is_live_session_active: { Args: { p_section: string }; Returns: boolean }
       is_owner: { Args: { _user_id: string }; Returns: boolean }

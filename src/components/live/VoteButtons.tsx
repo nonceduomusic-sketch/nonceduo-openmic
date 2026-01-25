@@ -128,9 +128,17 @@ export const TopPerformancesCard: React.FC<TopPerformancesCardProps> = ({
   className,
   limit = 5,
 }) => {
-  const performances = useTopPerformances(limit);
+  const { topPerformances, loading } = useTopPerformances(limit);
 
-  if (performances.length === 0) {
+  if (loading) {
+    return (
+      <div className={cn("rounded-xl border bg-card/50 p-6 text-center", className)}>
+        <div className="animate-spin w-6 h-6 border-2 border-primary border-t-transparent rounded-full mx-auto" />
+      </div>
+    );
+  }
+
+  if (topPerformances.length === 0) {
     return (
       <div className={cn("rounded-xl border bg-card/50 p-6 text-center", className)}>
         <Trophy className="w-10 h-10 mx-auto text-muted-foreground/50 mb-2" />
@@ -150,7 +158,7 @@ export const TopPerformancesCard: React.FC<TopPerformancesCardProps> = ({
       </div>
 
       <div className="divide-y divide-border/30">
-        {performances.map((perf, index) => (
+        {topPerformances.map((perf, index) => (
           <motion.div
             key={perf.reservation_id}
             initial={{ opacity: 0, x: -10 }}

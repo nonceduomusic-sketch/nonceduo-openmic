@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Mic2, Home, MessageCircle, Users, Music, Settings, ListMusic } from 'lucide-react';
+import { Mic2, Home, MessageCircle, Users, Music, Settings, ListMusic, Trophy } from 'lucide-react';
 import { songs, Song } from '@/data/songs';
 import { SongCardWithStatus } from '@/components/SongCardWithStatus';
 import { SearchBar } from '@/components/SearchBar';
@@ -17,6 +17,7 @@ import { useStaffRole } from '@/hooks/useStaffRole';
 import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
 import { LiveEvent } from '@/hooks/useLiveEvent';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { LeaderboardCard } from '@/components/gamification/LeaderboardCard';
 
 interface OpenMicProps {
   /**
@@ -242,6 +243,17 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
                 />
               ))}
             </div>
+
+            {/* Leaderboard Section */}
+            {filteredSongs.length > 0 && (
+              <div className="mt-8 pt-6 border-t border-border">
+                <div className="flex items-center gap-2 mb-4">
+                  <Trophy className="w-5 h-5 text-warning" />
+                  <h2 className="text-lg font-bold">Top Cantanti</h2>
+                </div>
+                <LeaderboardCard limit={5} showTitle={false} />
+              </div>
+            )}
 
             {filteredSongs.length === 0 && (
               <div className="text-center py-12">
