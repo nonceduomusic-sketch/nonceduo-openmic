@@ -69,6 +69,7 @@ import { Badge } from '@/components/ui/badge';
 import { adminAuditLog } from '@/lib/adminAudit';
 import { useAdminSectionAccess } from '@/hooks/useAdminSectionAccess';
 import { AdminMobileTabBar } from '@/components/admin/AdminMobileTabBar';
+import { AdminMobileDrawer } from '@/components/admin/AdminMobileDrawer';
 import { AdminOpenMicMobileActions } from '@/components/admin/AdminOpenMicMobileActions';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -536,9 +537,30 @@ export const AdminDashboard: React.FC = () => {
       <header className="admin-header safe-area-top">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-between gap-2">
-            {/* Left: Title & role badge */}
-            <div className="min-w-0 flex-1 flex items-center gap-2.5">
-              <SidebarTrigger className="-ml-1 hidden lg:inline-flex" />
+            {/* Left: hamburger + title */}
+            <div className="min-w-0 flex-1 flex items-center gap-2">
+              {/* Mobile Hamburger Drawer */}
+              <AdminMobileDrawer
+                activeTab={mainTab}
+                onSelectTab={setMainTab}
+                onBlockedSelect={handleBlockedSelect}
+                access={access}
+                isOwner={staffRole === 'owner'}
+                badges={{
+                  totalNotifications,
+                  openmicActiveCount: activeReservations.length,
+                  dedicheUnread: notificationCounts.unreadDedicheMessages,
+                  communityUnread: notificationCounts.unreadCommunityMessages,
+                }}
+                onResetOpenMic={() => { setResetOption('openmic'); setShowResetDialog(true); }}
+                onResetDediche={() => { setResetOption('messages'); setShowResetDialog(true); }}
+                onResetAll={() => { setResetOption('all'); setShowResetDialog(true); }}
+                onLogout={logout}
+              />
+              
+              {/* Desktop sidebar trigger */}
+              <SidebarTrigger className="-ml-1 hidden md:inline-flex" />
+              
               <div className="flex items-center gap-2">
                 <h1 className="font-display text-base sm:text-lg font-bold tracking-tight">
                   Admin
@@ -559,86 +581,8 @@ export const AdminDashboard: React.FC = () => {
                 <Home className="w-4.5 h-4.5" />
               </Button>
 
-              {/* Mobile: More menu */}
-              <div className="lg:hidden">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
-                      <MoreVertical className="w-4.5 h-4.5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 rounded-xl">
-                    {typeof Notification !== 'undefined' && notificationPermission !== 'granted' && (
-                      <DropdownMenuItem onClick={requestNotificationPermission} className="rounded-lg">
-                        <Bell className="w-4 h-4 mr-2" />
-                        Attiva notifiche
-                      </DropdownMenuItem>
-                    )}
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setMainTab('formats')} className="rounded-lg">
-                      <Settings className="w-4 h-4 mr-2" />
-                      Formati
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    {staffRole === 'owner' && (
-                      <>
-                        <DropdownMenuItem onClick={() => setMainTab('staff')} className="rounded-lg">
-                          <Crown className="w-4 h-4 mr-2" />
-                          Gestione Staff
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setMainTab('permissions')} className="rounded-lg">
-                          <Shield className="w-4 h-4 mr-2" />
-                          Permessi
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setMainTab('audit')} className="rounded-lg">
-                          <Database className="w-4 h-4 mr-2" />
-                          Audit
-                        </DropdownMenuItem>
-                      </>
-                    )}
-                    <DropdownMenuItem onClick={() => setMainTab('settings')} className="rounded-lg">
-                      <Settings className="w-4 h-4 mr-2" />
-                      Impostazioni
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild className="rounded-lg">
-                      <Link to="/admin/manual">
-                        <Book className="w-4 h-4 mr-2" />
-                        Manuale
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => { setResetOption('openmic'); setShowResetDialog(true); }}
-                      className="rounded-lg"
-                    >
-                      <RotateCcw className="w-4 h-4 mr-2" />
-                      Reset Open Mic
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => { setResetOption('messages'); setShowResetDialog(true); }}
-                      className="rounded-lg"
-                    >
-                      <RotateCcw className="w-4 h-4 mr-2" />
-                      Reset Dediche
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => { setResetOption('all'); setShowResetDialog(true); }}
-                      className="text-destructive focus:text-destructive rounded-lg"
-                    >
-                      <Database className="w-4 h-4 mr-2" />
-                      Reset Totale
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={logout} className="rounded-lg">
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Esci
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-
-              {/* Desktop (large screens only) - reset dropdown + logout */}
-              <div className="hidden lg:flex items-center gap-2">
+              {/* Desktop (md+) - reset dropdown + logout */}
+              <div className="hidden md:flex items-center gap-2">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button
