@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 import { usePerformanceVotes, useTopPerformances } from '@/hooks/useLiveInteraction';
 import { triggerHaptic } from '@/lib/haptics';
 import { fireEmojiRain } from '@/lib/confetti';
+import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
 
 interface VoteButtonsProps {
   reservationId: string;
@@ -21,6 +22,11 @@ export const VoteButtons: React.FC<VoteButtonsProps> = ({
   compact = false,
 }) => {
   const { voteCounts, hasVoted, vote } = usePerformanceVotes(reservationId);
+  const { isActive: votingEnabled, loading: votingLoading } = useFormatActiveCheck('voting');
+
+  // Don't render if voting is disabled
+  if (votingLoading) return null;
+  if (!votingEnabled) return null;
 
   const handleVote = useCallback(async (type: 'up' | 'fire' | 'heart') => {
     triggerHaptic('medium');

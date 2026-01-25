@@ -6,14 +6,18 @@ import {
   Bell,
   Power,
   Sliders,
+  Trophy,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { QuickFreeModeCard } from '@/components/admin/QuickFreeModeCard';
 import { ActiveFormatsCard } from '@/components/admin/ActiveFormatsCard';
 import { AdminNotificationsCard } from '@/components/admin/AdminNotificationsCard';
 import { useFormatPreferences } from '@/hooks/useFormatPreferences';
 import { useCentroPermissions } from '@/hooks/useCentroPermissions';
 import { useLiveEvent } from '@/hooks/useLiveEvent';
+import { useGlobalFormatSettings } from '@/hooks/useGlobalFormatSettings';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -43,10 +47,11 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
   const { preferences, loading: prefsLoading } = useFormatPreferences();
   const { permissions, isOwner: hookIsOwner, loading: permsLoading } = useCentroPermissions();
   const { liveEvent, isFreeMode, freeMode } = useLiveEvent();
+  const { settings: globalSettings, toggleFormat: toggleGlobalFormat, loading: globalLoading } = useGlobalFormatSettings();
   
   const canManageActive = hookIsOwner || permissions.activeFormats;
 
-  if (prefsLoading || permsLoading) {
+  if (prefsLoading || permsLoading || globalLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
@@ -130,6 +135,38 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
           </CardContent>
         </Card>
       )}
+
+      {/* Voting Toggle */}
+      <Card className="border-amber-500/20 bg-amber-500/5">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Trophy className="w-4 h-4 text-amber-500" />
+            Votazioni Pubblico
+          </CardTitle>
+          <CardDescription className="text-xs">
+            Permetti al pubblico di votare le performance
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-0">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="voting-toggle" className="text-sm">
+                {globalSettings.voting ? 'Attive' : 'Disattivate'}
+              </Label>
+              {globalSettings.voting && (
+                <Badge variant="outline" className="text-amber-500 border-amber-500/30 text-xs">
+                  👍 🔥 ❤️
+                </Badge>
+              )}
+            </div>
+            <Switch
+              id="voting-toggle"
+              checked={globalSettings.voting}
+              onCheckedChange={() => toggleGlobalFormat('voting')}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Notifiche Admin */}
       <Card className="border-blue-500/20 bg-blue-500/5">
