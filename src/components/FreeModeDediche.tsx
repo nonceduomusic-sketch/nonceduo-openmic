@@ -128,10 +128,13 @@ export const FreeModeDediche: React.FC<FreeModeDedicheProps> = ({ freeModeState 
 
         {/* Free Mode Banner */}
         <div className="container mx-auto px-4 py-4">
-          {isClosed && closureMode === 'overlay' ? (
+          {/* Closure Overlay - blocks all content when closed */}
+          {isClosed ? (
             <FreeModeClosureOverlay
-              closureTitle={closureTitle}
-              closureMessage={closureMessage}
+              closureTitle={closureTitle || 'Dediche chiuse'}
+              closureMessage={closureMessage || (isLimitReached 
+                ? 'Abbiamo raggiunto il numero massimo di dediche per questa serata. Grazie per la comprensione!' 
+                : 'Il tempo per inviare dediche è scaduto. Grazie per aver partecipato!')}
             />
           ) : (
             <div className={cn(
@@ -189,7 +192,7 @@ export const FreeModeDediche: React.FC<FreeModeDedicheProps> = ({ freeModeState 
         </div>
 
         {/* Messages Component - only show if not closed */}
-        {(!isClosed || closureMode !== 'overlay') && (
+        {!isClosed && (
           <div className="flex-1">
             <Messages appMode />
           </div>
