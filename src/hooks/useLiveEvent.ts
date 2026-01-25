@@ -67,6 +67,7 @@ export interface FreeModeState {
   closureTitle: string;
   closureMessage: string;
   closureRedirectUrl: string | null;
+  closurePreviewEnabled: boolean;
 }
 
 export type EventState = 
@@ -109,6 +110,7 @@ export const useLiveEvent = () => {
     closureTitle: 'Prenotazioni chiuse',
     closureMessage: 'Grazie per aver partecipato!',
     closureRedirectUrl: null,
+    closurePreviewEnabled: false,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -176,6 +178,7 @@ export const useLiveEvent = () => {
           closureTitle: 'Prenotazioni chiuse',
           closureMessage: 'Grazie per aver partecipato!',
           closureRedirectUrl: null,
+          closurePreviewEnabled: false,
         });
       } else {
         setLiveEvent(null);
@@ -214,6 +217,7 @@ export const useLiveEvent = () => {
           closureTitle: freeModeData?.closure_title ?? 'Prenotazioni chiuse',
           closureMessage: freeModeData?.closure_message ?? 'Grazie per aver partecipato!',
           closureRedirectUrl: freeModeData?.closure_redirect_url ?? null,
+          closurePreviewEnabled: freeModeData?.closure_preview_enabled ?? false,
         });
 
         // Only fetch upcoming events if not in free mode

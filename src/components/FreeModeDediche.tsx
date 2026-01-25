@@ -38,6 +38,7 @@ export const FreeModeDediche: React.FC<FreeModeDedicheProps> = ({ freeModeState 
     closureTitle,
     closureMessage,
     closureRedirectUrl,
+    closurePreviewEnabled,
   } = freeModeState;
 
   // Update time every second
@@ -63,8 +64,8 @@ export const FreeModeDediche: React.FC<FreeModeDedicheProps> = ({ freeModeState 
     return new Date(reopenUntil) > now;
   }, [reopenActive, reopenUntil, now]);
 
-  // Is booking closed?
-  const isClosed = (isExpired || isLimitReached) && !isReopenValid;
+  // Is booking closed? (also respects admin preview mode)
+  const isClosed = closurePreviewEnabled || ((isExpired || isLimitReached) && !isReopenValid);
 
   // Handle redirect mode
   useEffect(() => {

@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
-import { Settings2, Save, ExternalLink, Layers } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Settings2, Save, ExternalLink, Layers, Eye, EyeOff, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { adminAuditLog } from '@/lib/adminAudit';
+import { FreeModeClosureOverlay } from '@/components/FreeModeClosureOverlay';
 import type { EventBookingRules } from '@/hooks/useEventBookingRules';
 
 interface Props {
@@ -28,11 +31,19 @@ export const EventClosureConfig: React.FC<Props> = ({ rules, onUpdate }) => {
     rules.closure_message || 'Grazie per aver partecipato alla serata! Seguici sui social per non perdere i prossimi eventi.'
   );
   const [closureRedirectUrl, setClosureRedirectUrl] = useState(rules.closure_redirect_url || '');
+  const [closurePreviewEnabled, setClosurePreviewEnabled] = useState(
+    (rules as any).closure_preview_enabled || false
+  );
+
+  // Sync from props when they change
+  useEffect(() => {
+    setClosurePreviewEnabled((rules as any).closure_preview_enabled || false);
+  }, [(rules as any).closure_preview_enabled]);
 
   const handleSave = async () => {
     setIsSaving(true);
 
-    const updates: Partial<EventBookingRules> = {
+    const updates: Partial<EventBookingRules> & { closure_preview_enabled?: boolean } = {
       closure_mode: closureMode,
       closure_title: closureTitle || null,
       closure_message: closureMessage || null,
@@ -63,6 +74,37 @@ export const EventClosureConfig: React.FC<Props> = ({ rules, onUpdate }) => {
     setIsSaving(false);
   };
 
+  const handleTogglePreview = async () => {
+    const newValue = !closurePreviewEnabled;
+    setClosurePreviewEnabled(newValue);
+    
+    // Update immediately
+    const success = await onUpdate({ closure_preview_enabled: newValue } as any);
+    
+    if (success) {
+      toast({
+        title: newValue ? 'Anteprima attivata' : 'Anteprima disattivata',
+        description: newValue 
+          ? 'Gli utenti vedranno ora la schermata di chiusura' 
+          : 'Gli utenti vedranno nuovamente la pagina normale',
+      });
+      await adminAuditLog({
+        action: newValue ? 'event.closure_preview_enabled' : 'event.closure_preview_disabled',
+        entity: 'event_booking_rules',
+        entity_id: rules.id,
+        metadata: { preview_enabled: newValue },
+      });
+    } else {
+      // Revert on failure
+      setClosurePreviewEnabled(!newValue);
+      toast({
+        title: 'Errore',
+        description: 'Impossibile attivare l\'anteprima',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -77,6 +119,52 @@ export const EventClosureConfig: React.FC<Props> = ({ rules, onUpdate }) => {
       </CardHeader>
 
       <CardContent className="space-y-6">
+        {/* Preview Toggle - PROMINENT */}
+        <div className="p-4 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              {closurePreviewEnabled ? (
+                <div className="p-2 rounded-full bg-primary/20 animate-pulse">
+                  <Eye className="w-5 h-5 text-primary" />
+                </div>
+              ) : (
+                <div className="p-2 rounded-full bg-muted">
+                  <EyeOff className="w-5 h-5 text-muted-foreground" />
+                </div>
+              )}
+              <div>
+                <Label className="text-base font-semibold flex items-center gap-2">
+                  Anteprima Chiusura
+                  {closurePreviewEnabled && (
+                    <Badge variant="default" className="animate-pulse">
+                      ATTIVA
+                    </Badge>
+                  )}
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  {closurePreviewEnabled 
+                    ? 'Gli utenti stanno vedendo la schermata di chiusura' 
+                    : 'Attiva per mostrare agli utenti come appare la chiusura'}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={closurePreviewEnabled}
+              onCheckedChange={handleTogglePreview}
+              className="data-[state=checked]:bg-primary"
+            />
+          </div>
+          
+          {closurePreviewEnabled && (
+            <div className="mt-3 p-3 rounded-lg bg-destructive/10 border border-destructive/30 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4 text-destructive flex-shrink-0" />
+              <p className="text-xs text-destructive">
+                <strong>Attenzione:</strong> Gli utenti NON potranno prenotare mentre questa opzione è attiva!
+              </p>
+            </div>
+          )}
+        </div>
+
         {/* Mode Selection */}
         <div className="space-y-4">
           <Label>Modalità di chiusura</Label>
@@ -155,23 +243,14 @@ export const EventClosureConfig: React.FC<Props> = ({ rules, onUpdate }) => {
           )}
         </div>
 
-        {/* Preview */}
+        {/* Preview - Using actual component */}
         <div className="space-y-2">
-          <Label>Anteprima</Label>
-          <div className="p-6 rounded-lg bg-muted/50 border border-border text-center">
-            <div className="text-4xl mb-3">🎤</div>
-            <h3 className="text-lg font-semibold mb-2">{closureTitle || 'Prenotazioni chiuse'}</h3>
-            <p className="text-sm text-muted-foreground max-w-md mx-auto">
-              {closureMessage || 'Messaggio di chiusura...'}
-            </p>
-            <div className="mt-4 flex justify-center gap-2">
-              <Button variant="outline" size="sm" disabled>
-                Instagram
-              </Button>
-              <Button variant="outline" size="sm" disabled>
-                Facebook
-              </Button>
-            </div>
+          <Label>Anteprima (come la vedono gli utenti)</Label>
+          <div className="p-4 rounded-lg bg-muted/30 border border-border">
+            <FreeModeClosureOverlay 
+              closureTitle={closureTitle || 'Prenotazioni chiuse'}
+              closureMessage={closureMessage || 'Messaggio di chiusura...'}
+            />
           </div>
         </div>
 
