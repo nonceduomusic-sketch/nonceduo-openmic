@@ -3,6 +3,7 @@ import OpenMic from "@/pages/OpenMic";
 import OpenMicInfo from "@/pages/OpenMicInfo";
 import { PreEventPage } from "@/components/PreEventPage";
 import { FormatPinGate } from "@/components/FormatPinGate";
+import { FreeModeOpenMic } from "@/components/FreeModeOpenMic";
 import { useLiveEvent } from "@/hooks/useLiveEvent";
 import { usePinSession } from "@/hooks/usePinSession";
 
@@ -15,11 +16,12 @@ import { usePinSession } from "@/hooks/usePinSession";
  *    - Se event_type = 'openmic' o 'both':
  *      - Se pin_required && !pinValidated → mostra PIN gate
  *      - Altrimenti → mostra LIVE
- * 2. Se esistono eventi READY → mostra PreEventPage
- * 3. Altrimenti → mostra Info
+ * 2. Se Serata Aperta (Free Mode) attiva per openmic → mostra Open Mic senza limiti
+ * 3. Se esistono eventi READY → mostra PreEventPage
+ * 4. Altrimenti → mostra Info
  */
 const AppOpenMic: React.FC = () => {
-  const { eventState, liveEvent, upcomingEvents, isOpenmicVisible } = useLiveEvent();
+  const { eventState, liveEvent, upcomingEvents, isOpenmicVisible, isFreeMode, freeMode } = useLiveEvent();
   const { 
     hasValidSession, 
     loading: sessionLoading, 
@@ -79,12 +81,17 @@ const AppOpenMic: React.FC = () => {
     return <OpenMic appMode liveEvent={liveEvent} />;
   }
 
-  // CASE 2: Eventi READY esistono → Pre-Event Page
+  // CASE 2: Serata Aperta (Free Mode) attiva per Open Mic
+  if (eventState.type === 'freemode' && freeMode.openmic) {
+    return <FreeModeOpenMic />;
+  }
+
+  // CASE 3: Eventi READY esistono → Pre-Event Page
   if (eventState.type === 'upcoming') {
     return <PreEventPage events={upcomingEvents} />;
   }
 
-  // CASE 3: Nessun evento → Info page
+  // CASE 4: Nessun evento → Info page
   return <OpenMicInfo />;
 };
 

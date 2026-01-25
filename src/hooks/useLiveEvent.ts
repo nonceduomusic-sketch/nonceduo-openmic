@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export type EventStatus = 'draft' | 'ready' | 'live' | 'closed';
@@ -14,7 +14,6 @@ export interface LiveEvent {
   event_end_time: string | null;
   pin_required: boolean;
   pin_code: string | null;
-  // Booking rules
   booking_opens_at: string | null;
   booking_closes_at: string | null;
   close_minutes_before_end: number | null;
@@ -22,16 +21,13 @@ export interface LiveEvent {
   openmic_max_songs: number | null;
   dediche_enabled: boolean;
   dediche_max_total: number | null;
-  // Current counts
   openmic_current_count: number;
   dediche_current_count: number;
-  // Reopen
   reopen_active: boolean;
   reopen_until: string | null;
   reopen_message: string | null;
   reopen_extra_songs: number | null;
   reopen_extra_dediche: number | null;
-  // Closure
   closure_mode: string;
   closure_title: string;
   closure_message: string;
@@ -47,9 +43,16 @@ export interface UpcomingEvent {
   event_start_time: string | null;
 }
 
+export interface FreeModeState {
+  openmic: boolean;
+  dediche: boolean;
+  active: boolean;
+}
+
 export type EventState = 
   | { type: 'loading' }
   | { type: 'live'; event: LiveEvent }
+  | { type: 'freemode'; formats: FreeModeState }
   | { type: 'upcoming'; events: UpcomingEvent[] }
   | { type: 'none' };
 
@@ -57,17 +60,19 @@ export type EventState =
  * Hook per gestire lo stato evento lato utente.
  * 
  * Priorità:
- * 1. Se esiste un evento con event_status = 'live' → mostra evento live
- * 2. Se esistono eventi con event_status = 'ready' → mostra pre-pagina eventi
- * 3. Altrimenti → mostra stato "in preparazione"
+ * 1. Evento LIVE → Applica regole evento
+ * 2. Serata Aperta (Free Mode) → Format attivi senza limiti
+ * 3. Eventi READY → Pre-pagina eventi
+ * 4. Nessuno → Pagina informativa
  */
 export const useLiveEvent = () => {
   const [liveEvent, setLiveEvent] = useState<LiveEvent | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
+  const [freeMode, setFreeMode] = useState<FreeModeState>({ openmic: false, dediche: false, active: false });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     try {
       // Fetch live event first
       const { data: liveData, error: liveError } = await supabase
@@ -109,28 +114,51 @@ export const useLiveEvent = () => {
           closure_redirect_url: liveData.closure_redirect_url,
         });
         setUpcomingEvents([]);
+        setFreeMode({ openmic: false, dediche: false, active: false });
       } else {
         setLiveEvent(null);
         
-        // Fetch upcoming events (ready status)
-        const { data: upcomingData, error: upcomingError } = await supabase
-          .from('event_booking_rules')
-          .select('id, event_name, event_type, event_status, event_date, event_start_time')
-          .eq('event_status', 'ready')
-          .order('event_date', { ascending: true, nullsFirst: false });
+        // Check free mode (global format settings)
+        const { data: formatSettings, error: formatError } = await supabase
+          .from('global_format_settings')
+          .select('format_key, is_active')
+          .in('format_key', ['openmic', 'dediche']);
 
-        if (upcomingError) throw upcomingError;
+        if (formatError) throw formatError;
 
-        setUpcomingEvents(
-          (upcomingData || []).map(e => ({
-            id: e.id,
-            event_name: e.event_name || 'Serata Live',
-            event_type: (e.event_type as EventType) || 'both',
-            event_status: 'ready' as EventStatus,
-            event_date: e.event_date,
-            event_start_time: e.event_start_time,
-          }))
-        );
+        const openmicActive = formatSettings?.find(f => f.format_key === 'openmic')?.is_active ?? false;
+        const dedicheActive = formatSettings?.find(f => f.format_key === 'dediche')?.is_active ?? false;
+        const freeModeActive = openmicActive || dedicheActive;
+
+        setFreeMode({
+          openmic: openmicActive,
+          dediche: dedicheActive,
+          active: freeModeActive,
+        });
+
+        // Only fetch upcoming events if not in free mode
+        if (!freeModeActive) {
+          const { data: upcomingData, error: upcomingError } = await supabase
+            .from('event_booking_rules')
+            .select('id, event_name, event_type, event_status, event_date, event_start_time')
+            .eq('event_status', 'ready')
+            .order('event_date', { ascending: true, nullsFirst: false });
+
+          if (upcomingError) throw upcomingError;
+
+          setUpcomingEvents(
+            (upcomingData || []).map(e => ({
+              id: e.id,
+              event_name: e.event_name || 'Serata Live',
+              event_type: (e.event_type as EventType) || 'both',
+              event_status: 'ready' as EventStatus,
+              event_date: e.event_date,
+              event_start_time: e.event_start_time,
+            }))
+          );
+        } else {
+          setUpcomingEvents([]);
+        }
       }
     } catch (err) {
       console.error('Error fetching events:', err);
@@ -138,13 +166,13 @@ export const useLiveEvent = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchEvents();
 
-    // Subscribe to realtime changes
-    const channel = supabase
+    // Subscribe to realtime changes on both tables
+    const eventsChannel = supabase
       .channel(`live-event-${Date.now()}`)
       .on(
         'postgres_changes',
@@ -159,33 +187,61 @@ export const useLiveEvent = () => {
       )
       .subscribe();
 
+    const formatsChannel = supabase
+      .channel(`global-formats-live-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'global_format_settings',
+        },
+        () => {
+          fetchEvents();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(eventsChannel);
+      supabase.removeChannel(formatsChannel);
     };
-  }, []);
+  }, [fetchEvents]);
 
   const eventState = useMemo((): EventState => {
     if (loading) return { type: 'loading' };
     if (liveEvent) return { type: 'live', event: liveEvent };
+    if (freeMode.active) return { type: 'freemode', formats: freeMode };
     if (upcomingEvents.length > 0) return { type: 'upcoming', events: upcomingEvents };
     return { type: 'none' };
-  }, [loading, liveEvent, upcomingEvents]);
+  }, [loading, liveEvent, freeMode, upcomingEvents]);
 
-  // Helpers for format visibility
+  // Helpers for format visibility - checks both event and free mode
   const isOpenmicVisible = useMemo(() => {
-    if (!liveEvent) return false;
-    return liveEvent.event_type === 'openmic' || liveEvent.event_type === 'both';
-  }, [liveEvent]);
+    if (liveEvent) {
+      return liveEvent.event_type === 'openmic' || liveEvent.event_type === 'both';
+    }
+    return freeMode.openmic;
+  }, [liveEvent, freeMode.openmic]);
 
   const isDedicheVisible = useMemo(() => {
-    if (!liveEvent) return false;
-    return liveEvent.event_type === 'dediche' || liveEvent.event_type === 'both';
-  }, [liveEvent]);
+    if (liveEvent) {
+      return liveEvent.event_type === 'dediche' || liveEvent.event_type === 'both';
+    }
+    return freeMode.dediche;
+  }, [liveEvent, freeMode.dediche]);
+
+  // Check if currently in free mode (no live event, but formats active)
+  const isFreeMode = useMemo(() => {
+    return !liveEvent && freeMode.active;
+  }, [liveEvent, freeMode.active]);
 
   return {
     eventState,
     liveEvent,
     upcomingEvents,
+    freeMode,
+    isFreeMode,
     loading,
     error,
     isOpenmicVisible,

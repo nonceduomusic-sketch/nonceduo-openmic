@@ -10,6 +10,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { FormatToggleCard } from '@/components/admin/FormatToggleCard';
 import { ActiveFormatsCard } from '@/components/admin/ActiveFormatsCard';
+import { QuickFreeModeCard } from '@/components/admin/QuickFreeModeCard';
 import { LiveStatusCard } from '@/components/admin/LiveStatusCard';
 import { PinProtectionCard } from '@/components/admin/PinProtectionCard';
 import { AdminNotificationsCard } from '@/components/admin/AdminNotificationsCard';
@@ -61,7 +62,12 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
         </p>
       </div>
 
-      {/* Section 1: Configurazione Monitoraggio - MOVED TO TOP */}
+      {/* Section 0: Quick Free Mode - FIRST POSITION FOR EASY ACCESS */}
+      {canManageActive && (access.openmic || access.dediche) && (
+        <QuickFreeModeCard />
+      )}
+
+      {/* Section 1: Configurazione Monitoraggio */}
       {canMonitor && (
         <Card className="border-border">
           <CardHeader className="pb-3">
@@ -84,17 +90,16 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
         </Card>
       )}
 
-      {/* Section 2: Format Attivi (Pubblico) */}
+      {/* Section 2: Format Attivi (Pubblico) - Full Control */}
       {canManageActive && (
         <Card className="border-primary/20">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Zap className="w-5 h-5 text-amber-400" />
-              Format Attivi (Pubblico)
+              Controllo Dettagliato Format
             </CardTitle>
             <CardDescription>
-              Attiva/disattiva i format visibili agli utenti. Quando disattivato, 
-              gli utenti vedranno una pagina informativa invece del contenuto live.
+              Gestione avanzata dei singoli formati. Include anche la Community.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -112,7 +117,6 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
           </CardTitle>
           <CardDescription>
             Gestisci tutte le notifiche: permessi browser, suoni, vibrazione e push in background.
-            Qui trovi tutto centralizzato per una configurazione semplice.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -126,12 +130,12 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
               <Radio className="w-5 h-5 text-emerald-400" />
-              Gestione Evento
+              Gestione Evento Programmato
               {isOwner && <Lock className="w-4 h-4 text-warning ml-auto" />}
             </CardTitle>
             <CardDescription>
-              Controlla lo stato dell'evento e la protezione PIN separatamente.
-              Puoi avere un evento LIVE senza richiedere PIN, o viceversa.
+              Controlla lo stato dell'evento programmato e la protezione PIN.
+              Usa questo per eventi con limiti e timer.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -154,11 +158,11 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
       <Alert className="bg-muted/30 border-muted-foreground/20">
         <Info className="h-4 w-4" />
         <AlertDescription className="text-sm text-muted-foreground">
-          <strong>Come funziona:</strong>
+          <strong>Modalità di utilizzo:</strong>
           <ul className="mt-2 space-y-1 list-disc list-inside">
-            <li><strong>Stato Evento:</strong> Attiva/disattiva il badge "LIVE" nell'app</li>
-            <li><strong>Protezione PIN:</strong> Richiedi un codice per accedere (indipendente dal LIVE)</li>
-            <li><strong>Notifiche:</strong> Configura suoni, vibrazione e push background in un unico posto</li>
+            <li><strong>Serata Aperta:</strong> Attiva i format al volo senza creare un evento. Nessun limite!</li>
+            <li><strong>Evento Programmato:</strong> Crea un evento con limiti numerici, timer e PIN</li>
+            <li><strong>Notifiche:</strong> Configura suoni, vibrazione e push background</li>
           </ul>
         </AlertDescription>
       </Alert>
