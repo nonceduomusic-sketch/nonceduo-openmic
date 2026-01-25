@@ -196,11 +196,13 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
         </header>
 
         <main className="container mx-auto px-4 py-4 pb-24 space-y-4">
-          {/* Status Banner */}
-          {isClosed && closureMode === 'overlay' ? (
+          {/* Closure Overlay - blocks all content when closed */}
+          {isClosed ? (
             <FreeModeClosureOverlay
-              closureTitle={closureTitle}
-              closureMessage={closureMessage}
+              closureTitle={closureTitle || 'Prenotazioni chiuse'}
+              closureMessage={closureMessage || (isLimitReached 
+                ? 'Abbiamo raggiunto il numero massimo di prenotazioni per questa serata. Grazie per la comprensione!' 
+                : 'Il tempo per prenotare è scaduto. Grazie per aver partecipato!')}
             />
           ) : (
             <div className={cn(
@@ -257,7 +259,7 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
           )}
 
           {/* Don't show content if closed */}
-          {isClosed && closureMode === 'overlay' ? null : (
+          {isClosed ? null : (
             <>
               {/* Search and Filter */}
               <div className="space-y-3">

@@ -35,8 +35,8 @@ export const PinInputField: React.FC<PinInputFieldProps> = ({
           type="text"
           value={value}
           onChange={(e) => onChange(e.target.value.toUpperCase())}
-          placeholder="Inserisci il PIN (es. ABC123)"
-          maxLength={6}
+          placeholder="Inserisci il PIN (es. ABCD1234)"
+          maxLength={8}
           disabled={disabled}
           className={cn(
             "font-mono text-lg tracking-wider uppercase text-center pr-10",
