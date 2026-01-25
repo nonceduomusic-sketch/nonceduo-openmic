@@ -10,7 +10,20 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { Bell, Calendar, Database, ListMusic, MessageSquare, Music, Newspaper, Settings, Shield, Sliders, Users } from "lucide-react";
+import { 
+  Bell, 
+  Calendar, 
+  ListMusic, 
+  MessageSquare, 
+  Music, 
+  Newspaper, 
+  Settings, 
+  Shield, 
+  Sliders, 
+  Users, 
+  Database,
+  Zap,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AdminSectionKey } from "@/hooks/useAdminSectionAccess";
 
@@ -31,21 +44,33 @@ type Item = {
   key: AdminMainTab;
   label: string;
   icon: React.ComponentType<{ className?: string }>;
-  group: "Operativo" | "Gestione";
+  group: "Live" | "Operativo" | "Gestione";
+  description?: string;
 };
 
+/**
+ * Sidebar riorganizzata con 3 gruppi logici:
+ * 1. LIVE: Centro notifiche + Evento + Formati (toggle rapidi)
+ * 2. OPERATIVO: Gestione attiva Open Mic, Dediche, Community, Canzoni
+ * 3. GESTIONE: Staff, Permessi, Impostazioni, Audit (owner-only dove necessario)
+ */
 const ITEMS: Item[] = [
-  { key: "notifications", label: "Centro", icon: Bell, group: "Operativo" },
-  { key: "event", label: "Evento", icon: Calendar, group: "Operativo" },
-  { key: "formats", label: "Formati", icon: Sliders, group: "Operativo" },
-  { key: "openmic", label: "Open Mic", icon: Music, group: "Operativo" },
-  { key: "songs", label: "Canzoni", icon: ListMusic, group: "Operativo" },
-  { key: "dediche", label: "Dediche", icon: MessageSquare, group: "Operativo" },
-  { key: "community", label: "Community", icon: Newspaper, group: "Operativo" },
-  { key: "staff", label: "Staff", icon: Users, group: "Gestione" },
-  { key: "permissions", label: "Permessi", icon: Shield, group: "Gestione" },
-  { key: "settings", label: "Impostazioni", icon: Settings, group: "Gestione" },
-  { key: "audit", label: "Audit", icon: Database, group: "Gestione" },
+  // === GRUPPO LIVE ===
+  { key: "notifications", label: "Centro", icon: Bell, group: "Live", description: "Dashboard in tempo reale" },
+  { key: "event", label: "Evento", icon: Calendar, group: "Live", description: "Gestione eventi programmati" },
+  { key: "formats", label: "Formati", icon: Zap, group: "Live", description: "Toggle rapidi e notifiche" },
+  
+  // === GRUPPO OPERATIVO ===
+  { key: "openmic", label: "Open Mic", icon: Music, group: "Operativo", description: "Prenotazioni canzoni" },
+  { key: "songs", label: "Canzoni", icon: ListMusic, group: "Operativo", description: "Catalogo brani" },
+  { key: "dediche", label: "Dediche", icon: MessageSquare, group: "Operativo", description: "Messaggi e chat" },
+  { key: "community", label: "Community", icon: Newspaper, group: "Operativo", description: "Gruppi e bacheca" },
+  
+  // === GRUPPO GESTIONE ===
+  { key: "settings", label: "Impostazioni", icon: Settings, group: "Gestione", description: "Configurazione generale" },
+  { key: "staff", label: "Staff", icon: Users, group: "Gestione", description: "Gestione team" },
+  { key: "permissions", label: "Permessi", icon: Shield, group: "Gestione", description: "Controllo accessi" },
+  { key: "audit", label: "Audit", icon: Database, group: "Gestione", description: "Log attività" },
 ];
 
 export function AdminSidebar({
@@ -81,72 +106,64 @@ export function AdminSidebar({
     return true;
   });
 
+  const renderGroup = (groupName: "Live" | "Operativo" | "Gestione", groupLabel: string) => {
+    const groupItems = visibleItems.filter((i) => i.group === groupName);
+    if (groupItems.length === 0) return null;
+
+    return (
+      <SidebarGroup key={groupName}>
+        <SidebarGroupLabel className="text-xs uppercase tracking-wider text-muted-foreground/70">
+          {groupLabel}
+        </SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu>
+            {groupItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = active === item.key;
+              const blocked = isBlocked(item.key);
+              return (
+                <SidebarMenuItem key={item.key}>
+                  <SidebarMenuButton
+                    isActive={isActive}
+                    tooltip={blocked ? `${item.label} (non autorizzato)` : item.description || item.label}
+                    onClick={() => {
+                      if (blocked) {
+                        onBlockedSelect?.(item.key);
+                        return;
+                      }
+                      onSelect(item.key);
+                    }}
+                    className={cn(
+                      "justify-start gap-3 h-10",
+                      isActive && "font-medium bg-primary/10 text-primary",
+                      blocked && "opacity-40 cursor-not-allowed",
+                    )}
+                    aria-disabled={blocked}
+                  >
+                    <Icon className={cn(
+                      "h-4 w-4 shrink-0",
+                      isActive && "text-primary",
+                      blocked && "text-muted-foreground"
+                    )} />
+                    <span className="truncate">{item.label}</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              );
+            })}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+    );
+  };
+
   return (
-    <Sidebar variant="inset" collapsible="icon" className="border-r border-border">
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>Operativo</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {visibleItems.filter((i) => i.group === "Operativo").map((item) => {
-                const Icon = item.icon;
-                const isActive = active === item.key;
-                const blocked = isBlocked(item.key);
-                return (
-                  <SidebarMenuItem key={item.key}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      tooltip={blocked ? `${item.label} (non autorizzato)` : item.label}
-                      onClick={() => {
-                        if (blocked) {
-                          onBlockedSelect?.(item.key);
-                          return;
-                        }
-                        onSelect(item.key);
-                      }}
-                      className={cn(
-                        "justify-start",
-                        isActive && "font-medium",
-                        blocked && "opacity-50 cursor-not-allowed",
-                      )}
-                      aria-disabled={blocked}
-                    >
-                      <Icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarSeparator />
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Gestione</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {visibleItems.filter((i) => i.group === "Gestione").map((item) => {
-                const Icon = item.icon;
-                const isActive = active === item.key;
-                return (
-                  <SidebarMenuItem key={item.key}>
-                    <SidebarMenuButton
-                      isActive={isActive}
-                      tooltip={item.label}
-                      onClick={() => onSelect(item.key)}
-                      className={cn("justify-start", isActive && "font-medium")}
-                    >
-                      <Icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+    <Sidebar variant="inset" collapsible="icon" className="border-r border-border/50">
+      <SidebarContent className="py-2">
+        {renderGroup("Live", "🔴 Live")}
+        <SidebarSeparator className="my-2" />
+        {renderGroup("Operativo", "📋 Operativo")}
+        <SidebarSeparator className="my-2" />
+        {renderGroup("Gestione", "⚙️ Gestione")}
       </SidebarContent>
     </Sidebar>
   );

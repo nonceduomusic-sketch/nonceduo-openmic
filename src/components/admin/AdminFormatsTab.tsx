@@ -1,24 +1,25 @@
 import React from 'react';
 import {
-  Settings,
   Zap,
   Radio,
   Lock,
   Info,
   Bell,
+  Power,
+  Sliders,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { FormatToggleCard } from '@/components/admin/FormatToggleCard';
-import { ActiveFormatsCard } from '@/components/admin/ActiveFormatsCard';
 import { QuickFreeModeCard } from '@/components/admin/QuickFreeModeCard';
+import { ActiveFormatsCard } from '@/components/admin/ActiveFormatsCard';
 import { LiveStatusCard } from '@/components/admin/LiveStatusCard';
 import { PinProtectionCard } from '@/components/admin/PinProtectionCard';
 import { AdminNotificationsCard } from '@/components/admin/AdminNotificationsCard';
-import { EventStoryGeneratorCard } from '@/components/admin/EventStoryGeneratorCard';
-import { EventPosterGeneratorCard } from '@/components/admin/EventPosterGeneratorCard';
 import { useFormatPreferences } from '@/hooks/useFormatPreferences';
 import { useCentroPermissions } from '@/hooks/useCentroPermissions';
+import { useLiveEvent } from '@/hooks/useLiveEvent';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface AdminFormatsTabProps {
   access?: {
@@ -29,15 +30,27 @@ interface AdminFormatsTabProps {
   isOwner?: boolean;
 }
 
+/**
+ * Tab Formati riorganizzato:
+ * 
+ * SEZIONE 1: Stato Attuale (banner informativo)
+ * SEZIONE 2: Serata Aperta (QuickFreeModeCard) - PRIORITÀ MASSIMA
+ * SEZIONE 3: Controllo Dettagliato Formati (ActiveFormatsCard)
+ * SEZIONE 4: Notifiche Admin (consolidate)
+ * SEZIONE 5: Stato Evento Live (se presente)
+ * 
+ * Obiettivo: rendere immediatamente chiaro lo stato corrente
+ * e fornire toggle rapidi per la gestione operativa.
+ */
 export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
   access = { openmic: true, dediche: true, community: true },
   isOwner = false,
 }) => {
-  const { preferences, toggleFormat, loading: prefsLoading } = useFormatPreferences();
+  const { preferences, loading: prefsLoading } = useFormatPreferences();
   const { permissions, isOwner: hookIsOwner, loading: permsLoading } = useCentroPermissions();
+  const { liveEvent, isFreeMode, freeMode } = useLiveEvent();
   
   // Permissions derived from hook
-  const canMonitor = hookIsOwner || permissions.monitorFormats;
   const canManageActive = hookIsOwner || permissions.activeFormats;
   const canManageSerata = hookIsOwner || permissions.serataLive;
 
@@ -49,120 +62,135 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
     );
   }
 
+  const hasLiveEvent = Boolean(liveEvent);
+  const hasAnyActive = freeMode.openmic || freeMode.dediche || hasLiveEvent;
+
   return (
     <div className="space-y-6 pb-6">
-      {/* Header */}
-      <div className="space-y-1">
-        <h2 className="text-2xl font-bold flex items-center gap-2">
-          <Settings className="w-6 h-6 text-primary" />
-          Formati e Notifiche
-        </h2>
-        <p className="text-muted-foreground text-sm">
-          Gestisci l'attivazione dei format, la serata live e tutte le notifiche
-        </p>
+      {/* Header con stato corrente */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={cn(
+              "w-10 h-10 rounded-xl flex items-center justify-center",
+              hasLiveEvent 
+                ? "bg-primary/20 text-primary" 
+                : isFreeMode 
+                  ? "bg-accent/20 text-accent"
+                  : "bg-muted text-muted-foreground"
+            )}>
+              {hasLiveEvent ? (
+                <Radio className="w-5 h-5 animate-pulse" />
+              ) : isFreeMode ? (
+                <Zap className="w-5 h-5" />
+              ) : (
+                <Power className="w-5 h-5" />
+              )}
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">Formati e Controlli</h2>
+              <p className="text-sm text-muted-foreground">
+                {hasLiveEvent 
+                  ? `Evento "${liveEvent?.event_name}" in corso`
+                  : isFreeMode 
+                    ? 'Serata Aperta attiva'
+                    : 'Nessuna serata attiva'}
+              </p>
+            </div>
+          </div>
+          
+          {/* Badge stato */}
+          <div className="flex gap-2">
+            {hasLiveEvent && (
+              <Badge className="bg-primary text-primary-foreground animate-pulse">
+                <Radio className="w-3 h-3 mr-1" />
+                LIVE
+              </Badge>
+            )}
+            {isFreeMode && !hasLiveEvent && (
+              <Badge className="bg-accent text-accent-foreground">
+                <Zap className="w-3 h-3 mr-1" />
+                Serata Aperta
+              </Badge>
+            )}
+            {!hasAnyActive && !hasLiveEvent && (
+              <Badge variant="secondary">
+                <Power className="w-3 h-3 mr-1" />
+                Offline
+              </Badge>
+            )}
+          </div>
+        </div>
       </div>
 
-      {/* Section 0: Quick Free Mode - FIRST POSITION FOR EASY ACCESS */}
+      {/* SEZIONE 1: Serata Aperta - SEMPRE VISIBILE E IN PRIMO PIANO */}
       {canManageActive && (access.openmic || access.dediche) && (
         <QuickFreeModeCard />
       )}
 
-      {/* Section 1: Configurazione Monitoraggio */}
-      {canMonitor && (
-        <Card className="border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Settings className="w-5 h-5 text-muted-foreground" />
-              Configurazione Monitoraggio
-            </CardTitle>
-            <CardDescription>
-              Scegli quali format vuoi monitorare nel Centro. 
-              Non influisce sulla visibilità pubblica.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <FormatToggleCard 
-              preferences={preferences} 
-              onToggle={toggleFormat}
-              access={access}
-            />
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Section 2: Format Attivi (Pubblico) - Full Control */}
+      {/* SEZIONE 2: Controllo Dettagliato Formati */}
       {canManageActive && (
-        <Card className="border-primary/20">
+        <Card className="border-border/50">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Zap className="w-5 h-5 text-amber-400" />
-              Controllo Dettagliato Format
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Sliders className="w-4 h-4 text-muted-foreground" />
+              Controllo Dettagliato
             </CardTitle>
-            <CardDescription>
-              Gestione avanzata dei singoli formati. Include anche la Community.
+            <CardDescription className="text-xs">
+              Attiva/disattiva singoli formati. Include anche la Community.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             <ActiveFormatsCard />
           </CardContent>
         </Card>
       )}
 
-      {/* Section 3: Notifiche (CONSOLIDATA) */}
+      {/* SEZIONE 3: Notifiche Admin */}
       <Card className="border-blue-500/20 bg-blue-500/5">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Bell className="w-5 h-5 text-blue-400" />
-            Notifiche Admin
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Bell className="w-4 h-4 text-blue-500" />
+            Notifiche
           </CardTitle>
-          <CardDescription>
-            Gestisci tutte le notifiche: permessi browser, suoni, vibrazione e push in background.
+          <CardDescription className="text-xs">
+            Browser, suoni, vibrazione e push background
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           <AdminNotificationsCard />
         </CardContent>
       </Card>
 
-      {/* Section 4: Gestione Evento */}
-      {canManageSerata && (access.openmic || access.dediche) && (
-        <Card className="border-secondary/20">
+      {/* SEZIONE 4: Stato Evento Live (se presente) */}
+      {canManageSerata && hasLiveEvent && (
+        <Card className="border-primary/30 bg-primary/5">
           <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Radio className="w-5 h-5 text-emerald-400" />
-              Gestione Evento Programmato
-              {isOwner && <Lock className="w-4 h-4 text-warning ml-auto" />}
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Radio className="w-4 h-4 text-primary animate-pulse" />
+              Evento in Corso
+              {isOwner && <Lock className="w-3 h-3 text-warning ml-auto" />}
             </CardTitle>
-            <CardDescription>
-              Controlla lo stato dell'evento programmato e la protezione PIN.
-              Usa questo per eventi con limiti e timer.
+            <CardDescription className="text-xs">
+              I formati sono controllati dalle regole dell'evento attivo
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Card 1: Stato Evento (LIVE badge) */}
-            <LiveStatusCard title="Stato Evento" />
-            
-            {/* Card 2: Protezione PIN */}
-            <PinProtectionCard title="Protezione PIN" />
+          <CardContent className="space-y-3 pt-0">
+            <LiveStatusCard title="" />
+            <PinProtectionCard title="" />
           </CardContent>
         </Card>
       )}
 
-      {/* Section 5: Grafica Storia Evento */}
-      <EventStoryGeneratorCard />
-
-      {/* Section 6: Locandina Evento */}
-      <EventPosterGeneratorCard />
-
       {/* Info Box */}
       <Alert className="bg-muted/30 border-muted-foreground/20">
         <Info className="h-4 w-4" />
-        <AlertDescription className="text-sm text-muted-foreground">
-          <strong>Modalità di utilizzo:</strong>
-          <ul className="mt-2 space-y-1 list-disc list-inside">
-            <li><strong>Serata Aperta:</strong> Attiva i format al volo senza creare un evento. Nessun limite!</li>
-            <li><strong>Evento Programmato:</strong> Crea un evento con limiti numerici, timer e PIN</li>
-            <li><strong>Notifiche:</strong> Configura suoni, vibrazione e push background</li>
+        <AlertDescription className="text-xs text-muted-foreground">
+          <strong>Come funziona:</strong>
+          <ul className="mt-1.5 space-y-0.5 list-disc list-inside">
+            <li><strong>Serata Aperta:</strong> Attiva i formati senza limiti</li>
+            <li><strong>Evento LIVE:</strong> Usa limiti, timer e PIN configurati</li>
+            <li><strong>Notifiche:</strong> Ricevi avvisi in tempo reale</li>
           </ul>
         </AlertDescription>
       </Alert>

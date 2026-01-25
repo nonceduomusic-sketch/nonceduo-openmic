@@ -1,67 +1,137 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Book, 
-  Mic2, 
-  MessageCircle, 
   Users, 
-  Shield, 
-  Settings, 
   Music, 
-  Ban, 
-  Crown,
-  RefreshCw,
-  Undo2,
+  MessageSquare, 
+  Calendar,
+  Zap,
   Bell,
+  Shield,
+  Settings,
+  Radio,
+  Power,
   Lock,
-  UserPlus,
-  Newspaper,
-  CheckCircle,
-  Trash2,
-  Edit,
+  Clock,
+  ChevronDown,
+  ChevronRight,
+  Smartphone,
+  RefreshCw,
   Eye,
-  Search,
-  Key,
-  Globe,
-  HelpCircle
+  EyeOff,
+  CheckCircle,
+  HelpCircle,
+  Ban,
+  Crown,
+  Undo2,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { cn } from '@/lib/utils';
 import { SEO } from '@/components/SEO';
 import { AdminProvider, useAdmin } from '@/contexts/AdminContext';
 import { AdminLogin } from '@/components/AdminLogin';
 
-interface ManualSection {
+/**
+ * Manuale completo riorganizzato per utenti e amministratori
+ * 
+ * Struttura:
+ * - Guida Utente: come usare l'app durante gli eventi
+ * - Guida Admin: come gestire eventi, formati e staff
+ */
+
+// Helper Components
+const ManualCollapsible: React.FC<{
   id: string;
   title: string;
   icon: React.ReactNode;
-  color: string;
-  description: string;
-  subsections: {
-    title: string;
-    content: string[];
-  }[];
-}
+  isOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}> = ({ title, icon, isOpen, onToggle, children }) => (
+  <Collapsible open={isOpen} onOpenChange={onToggle}>
+    <Card className={cn(
+      "transition-all",
+      isOpen && "ring-1 ring-primary/20"
+    )}>
+      <CollapsibleTrigger asChild>
+        <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {icon}
+              <CardTitle className="text-base">{title}</CardTitle>
+            </div>
+            {isOpen ? (
+              <ChevronDown className="w-5 h-5 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+            )}
+          </div>
+        </CardHeader>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <CardContent className="pt-0 pb-4">
+          {children}
+        </CardContent>
+      </CollapsibleContent>
+    </Card>
+  </Collapsible>
+);
 
-const renderBold = (text: string) => {
-  // Supports simple **bold** segments without injecting HTML.
-  const parts = text.split(/\*\*(.*?)\*\*/g);
-  return parts.map((part, i) =>
-    i % 2 === 1 ? (
-      <strong key={i} className="text-foreground">
-        {part}
-      </strong>
-    ) : (
-      <React.Fragment key={i}>{part}</React.Fragment>
-    )
+const FeatureCard: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}> = ({ icon, title, description }) => (
+  <div className="flex items-start gap-3 p-3 rounded-lg bg-muted/50 border">
+    <div className="shrink-0 mt-0.5">{icon}</div>
+    <div>
+      <p className="font-medium">{title}</p>
+      <p className="text-xs text-muted-foreground">{description}</p>
+    </div>
+  </div>
+);
+
+const StatusBadge: React.FC<{
+  status: 'draft' | 'ready' | 'live' | 'closed';
+  label: string;
+  description: string;
+}> = ({ status, label, description }) => {
+  const colors = {
+    draft: 'bg-muted text-muted-foreground',
+    ready: 'bg-blue-500/20 text-blue-600 dark:text-blue-400',
+    live: 'bg-primary/20 text-primary',
+    closed: 'bg-secondary/20 text-secondary',
+  };
+
+  return (
+    <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/30">
+      <Badge className={colors[status]}>{label}</Badge>
+      <span className="text-muted-foreground">{description}</span>
+    </div>
   );
 };
 
 const AdminManualContent: React.FC = () => {
   const { isLoggedIn, isLoading } = useAdmin();
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(['user-intro']));
+
+  const toggleSection = (id: string) => {
+    setOpenSections(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   if (isLoading) {
     return (
@@ -78,354 +148,549 @@ const AdminManualContent: React.FC = () => {
     return <AdminLogin />;
   }
 
-  const sections: ManualSection[] = [
-    {
-      id: 'openmic',
-      title: 'Open Mic',
-      icon: <Mic2 className="w-5 h-5" />,
-      color: 'text-secondary',
-      description: 'Gestione prenotazioni karaoke e canzoni',
-      subsections: [
-        {
-          title: 'Prenotazioni in Corso',
-          content: [
-            '✅ **Completa**: segna una canzone come cantata. Clicca "Annulla" nel toast per ripristinare.',
-            '🗑️ **Elimina**: rimuove la prenotazione. Usa "Annulla" per recuperarla.',
-            '📋 **Selezione multipla**: attiva dal menu ⋮ per eliminare più prenotazioni insieme.',
-          ]
-        },
-        {
-          title: 'Prenotazioni Completate',
-          content: [
-            '🔄 **Riattiva**: riporta una canzone in coda. Annullabile.',
-            '🗑️ **Elimina**: rimuove definitivamente (con undo).',
-          ]
-        },
-        {
-          title: 'Gestione Canzoni (tab Canzoni)',
-          content: [
-            '🔍 **Cerca**: filtra per titolo o artista.',
-            '📊 **Filtri**: Tutte / Prenotate / Completate / Disponibili.',
-            '🔄 **Reset Globale**: sblocca tutte le canzoni (conferma richiesta).',
-          ]
-        },
-        {
-          title: 'Reset Serata',
-          content: [
-            '🎤 **Reset Open Mic**: elimina solo prenotazioni.',
-            '📄 **Ripristina Canzoni**: sblocca tutte le canzoni senza toccare altro.',
-            '⚠️ **Reset Totale**: elimina TUTTO (prenotazioni + messaggi + stati). Solo Owner.',
-          ]
-        }
-      ]
-    },
-    {
-      id: 'dediche',
-      title: 'Dediche / Messaggi',
-      icon: <MessageCircle className="w-5 h-5" />,
-      color: 'text-primary',
-      description: 'Chat con utenti e gruppi temporanei',
-      subsections: [
-        {
-          title: 'Conversazioni',
-          content: [
-            '💬 **Rispondi**: clicca su una conversazione per rispondere.',
-            '✏️ **Modifica**: modifica i tuoi messaggi (non quelli degli utenti).',
-            '🗑️ **Elimina**: rimuove messaggi singoli o intere conversazioni.',
-            '👁️ **Letto/Non letto**: marca le conversazioni per tenerne traccia.',
-          ]
-        },
-        {
-          title: 'Gruppi Dediche (temporanei)',
-          content: [
-            '➕ **Crea gruppo**: solo admin può creare gruppi Dediche per la serata.',
-            '🔐 **Password**: opzionale, per gruppi riservati a tavoli specifici.',
-            '🔗 **Link invito**: genera link da condividere (QR code).',
-            '🗑️ **Elimina gruppo**: a fine serata elimina i gruppi temporanei.',
-          ]
-        },
-        {
-          title: 'Moderazione',
-          content: [
-            '🚫 **Blocca utente**: impedisce all\'utente di scrivere.',
-            '📛 **Segnala**: evidenzia messaggi problematici.',
-            '♻️ **Annulla**: ogni eliminazione ha la funzione "Annulla".',
-          ]
-        }
-      ]
-    },
-    {
-      id: 'community',
-      title: 'Community',
-      icon: <Users className="w-5 h-5" />,
-      color: 'text-accent',
-      description: 'Gestione utenti registrati, gruppi permanenti e feed',
-      subsections: [
-        {
-          title: 'Utenti (tab Utenti)',
-          content: [
-            '🔍 **Cerca**: trova utenti per nome o username.',
-            '✏️ **Modifica profilo**: cambia nome visualizzato.',
-            '🔑 **Reset password**: invia link di reset (non visualizzi la password).',
-            '🗑️ **Elimina account**: rimuove l\'utente dalla community.',
-          ]
-        },
-        {
-          title: 'Gruppi Community (permanenti)',
-          content: [
-            '🌐 **Pubblici**: chiunque può entrare.',
-            '🔒 **Privati**: richiedono password o approvazione.',
-            '👥 **Richieste**: approva/rifiuta richieste di ingresso.',
-            '✏️ **Modifica**: rinomina, cambia visibilità, imposta password.',
-            '🔗 **Link invito**: genera link illimitati o con scadenza.',
-          ]
-        },
-        {
-          title: 'Bacheca (tab Bacheca)',
-          content: [
-            '📰 **Visualizza**: tutti i post della community.',
-            '❤️ **Interazioni**: vedi like e commenti.',
-            '🗑️ **Elimina post**: rimuove con possibilità di "Annulla" (8 sec).',
-            '🔄 **Reset bacheca**: elimina tutti i post (10 sec per annullare).',
-          ]
-        }
-      ]
-    },
-    {
-      id: 'permissions',
-      title: 'Permessi & Staff',
-      icon: <Crown className="w-5 h-5" />,
-      color: 'text-warning',
-      description: 'Gestione ruoli e permessi granulari',
-      subsections: [
-        {
-          title: 'Ruoli',
-          content: [
-            '👑 **Owner**: accesso completo, gestisce admin e owner.',
-            '🛡️ **Admin**: gestisce tutto tranne gli altri admin/owner.',
-            '🔰 **Staff**: permessi limitati configurabili.',
-            '👤 **User**: utente normale della community.',
-          ]
-        },
-        {
-          title: 'Permessi Granulari (25+)',
-          content: [
-            '🎤 **Open Mic**: openmic.view, openmic.complete, openmic.delete, openmic.reset',
-            '💬 **Dediche**: dediche.view, dediche.reply, dediche.delete, dediche.groups',
-            '👥 **Community**: community.view, community.manage_users, community.manage_groups, community.moderate',
-            '⚙️ **Settings**: settings.rename_sections, settings.notifications',
-          ]
-        },
-        {
-          title: 'Gestione Staff',
-          content: [
-            '➕ **Aggiungi staff**: cerca utente e assegna ruolo.',
-            '✏️ **Cambia ruolo**: promuovi/declassa (Admin → Moderator).',
-            '🎛️ **Permessi per ruolo**: abilita/disabilita permessi per ogni ruolo.',
-            '❌ **Revoca**: rimuovi ruolo staff.',
-          ]
-        }
-      ]
-    },
-    {
-      id: 'users-blocked',
-      title: 'Blocco Utenti',
-      icon: <Ban className="w-5 h-5" />,
-      color: 'text-destructive',
-      description: 'Gestione utenti bloccati nelle chat',
-      subsections: [
-        {
-          title: 'Blocco',
-          content: [
-            '🚫 **Blocca**: impedisce all\'utente di inviare messaggi.',
-            '⏰ **Temporaneo**: imposta scadenza (es. 1 ora, 24 ore).',
-            '♾️ **Permanente**: blocco senza scadenza.',
-            '📝 **Motivo**: aggiungi una nota per ricordare il motivo.',
-          ]
-        },
-        {
-          title: 'Sblocco',
-          content: [
-            '✅ **Sblocca**: riabilita l\'utente immediatamente.',
-            '⏰ **Scadenza automatica**: i blocchi temporanei scadono da soli.',
-          ]
-        }
-      ]
-    },
-    {
-      id: 'settings',
-      title: 'Impostazioni',
-      icon: <Settings className="w-5 h-5" />,
-      color: 'text-muted-foreground',
-      description: 'Configurazione notifiche e preferenze',
-      subsections: [
-        {
-          title: 'Notifiche',
-          content: [
-            '🔔 **Push**: attiva notifiche browser (richiede permesso).',
-            '🔊 **Suoni**: abilita/disabilita suoni notifica.',
-            '🌙 **Ore silenziose**: imposta fascia oraria senza notifiche.',
-          ]
-        },
-        {
-          title: 'Personalizzazione',
-          content: [
-            '📛 **Rinomina sezioni**: cambia nome a "Open Mic", "Dediche", "Community".',
-            '🎨 **Tema**: futuro supporto per temi personalizzati.',
-          ]
-        }
-      ]
-    },
-    {
-      id: 'undo',
-      title: 'Sistema Annulla (Undo)',
-      icon: <Undo2 className="w-5 h-5" />,
-      color: 'text-warning',
-      description: 'Recupero azioni accidentali',
-      subsections: [
-        {
-          title: 'Come Funziona',
-          content: [
-            '⏱️ **Finestra temporale**: 8 secondi per azioni singole, 10 per reset.',
-            '🔔 **Toast notification**: appare un messaggio con pulsante "Annulla".',
-            '♻️ **Ripristino completo**: i dati vengono recuperati dal database.',
-          ]
-        },
-        {
-          title: 'Azioni Annullabili',
-          content: [
-            '✅ Completamento prenotazioni',
-            '🔄 Riattivazione prenotazioni',
-            '🗑️ Eliminazione singola/multipla',
-            '📝 Eliminazione messaggi/conversazioni',
-            '📰 Eliminazione post bacheca',
-            '🔄 Reset bacheca completo',
-          ]
-        }
-      ]
-    }
-  ];
-
   return (
     <>
       <SEO 
-        title="Manuale Admin | Non C'è Duo"
-        description="Guida completa all'utilizzo del pannello di amministrazione"
+        title="Manuale | Non C'è Duo"
+        description="Guida completa per utenti e amministratori"
       />
       
       <div className="min-h-screen bg-background">
         {/* Header */}
-        <header className="sticky top-0 z-40 bg-card/95 backdrop-blur-xl border-b border-border">
-          <div className="container py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
+        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
+          <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-4">
+            <Button variant="ghost" size="icon" asChild>
               <Link to="/admin">
-                <Button variant="ghost" size="icon" className="rounded-xl">
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
+                <ArrowLeft className="w-5 h-5" />
               </Link>
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent to-primary flex items-center justify-center">
-                  <Book className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <div>
-                  <h1 className="font-display text-lg font-bold">Manuale Admin</h1>
-                  <p className="text-xs text-muted-foreground">Guida Completa</p>
-                </div>
-              </div>
+            </Button>
+            <div className="flex items-center gap-2">
+              <Book className="w-5 h-5 text-primary" />
+              <h1 className="font-display text-lg font-bold">Manuale</h1>
             </div>
           </div>
         </header>
 
         {/* Content */}
-        <main className="container py-6 pb-24">
-          <div className="max-w-3xl mx-auto">
-            {/* Intro */}
-            <Card className="mb-6 bg-gradient-to-r from-primary/10 via-accent/10 to-secondary/10 border-0">
-              <CardContent className="p-5">
-                <div className="flex items-start gap-3">
-                  <HelpCircle className="w-6 h-6 text-primary flex-shrink-0 mt-0.5" />
-                  <div>
-                    <h2 className="font-semibold mb-1">Benvenuto nel Manuale</h2>
-                    <p className="text-sm text-muted-foreground">
-                      Questa guida spiega tutte le funzionalità del pannello admin. 
-                      Clicca sulle sezioni per espandere i dettagli.
+        <main className="max-w-4xl mx-auto px-4 py-6 pb-24">
+          <Tabs defaultValue="user" className="space-y-6">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="user" className="gap-2">
+                <Users className="w-4 h-4" />
+                Guida Utente
+              </TabsTrigger>
+              <TabsTrigger value="admin" className="gap-2">
+                <Shield className="w-4 h-4" />
+                Guida Admin
+              </TabsTrigger>
+            </TabsList>
+
+            {/* ==================== GUIDA UTENTE ==================== */}
+            <TabsContent value="user" className="space-y-4">
+              <Card className="border-primary/20 bg-primary/5">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <HelpCircle className="w-5 h-5 text-primary" />
+                    Benvenuto!
+                  </CardTitle>
+                  <CardDescription>
+                    Questa guida ti spiega come usare l'app durante gli eventi
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+
+              {/* Sezione: Come funziona */}
+              <ManualCollapsible
+                id="user-intro"
+                title="Come funziona"
+                icon={<Zap className="w-5 h-5 text-accent" />}
+                isOpen={openSections.has('user-intro')}
+                onToggle={() => toggleSection('user-intro')}
+              >
+                <div className="space-y-4 text-sm">
+                  <p>
+                    L'app ti permette di interagire con gli eventi in due modi:
+                  </p>
+                  
+                  <div className="grid gap-3">
+                    <FeatureCard
+                      icon={<Music className="w-5 h-5 text-primary" />}
+                      title="Open Mic 🎤"
+                      description="Prenota una canzone da cantare durante la serata"
+                    />
+                    <FeatureCard
+                      icon={<MessageSquare className="w-5 h-5 text-secondary" />}
+                      title="Dediche 💌"
+                      description="Invia un messaggio o una dedica alla band"
+                    />
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
+                    <p className="font-medium text-accent mb-1">💡 Suggerimento</p>
+                    <p className="text-muted-foreground">
+                      Apri l'app quando sei al locale e vedrai automaticamente 
+                      cosa è disponibile in quel momento!
                     </p>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </ManualCollapsible>
 
-            {/* Quick Stats */}
-            <div className="grid grid-cols-3 gap-3 mb-6">
-              <Card className="text-center p-4">
-                <div className="text-2xl font-bold text-primary">8</div>
-                <div className="text-xs text-muted-foreground">Sezioni</div>
-              </Card>
-              <Card className="text-center p-4">
-                <div className="text-2xl font-bold text-secondary">25+</div>
-                <div className="text-xs text-muted-foreground">Permessi</div>
-              </Card>
-              <Card className="text-center p-4">
-                <div className="text-2xl font-bold text-accent">∞</div>
-                <div className="text-xs text-muted-foreground">Undo</div>
-              </Card>
-            </div>
+              {/* Sezione: Prenotare una canzone */}
+              <ManualCollapsible
+                id="user-openmic"
+                title="Prenotare una canzone"
+                icon={<Music className="w-5 h-5 text-primary" />}
+                isOpen={openSections.has('user-openmic')}
+                onToggle={() => toggleSection('user-openmic')}
+              >
+                <div className="space-y-4 text-sm">
+                  <ol className="list-decimal list-inside space-y-2">
+                    <li>Apri la sezione <strong>Open Mic</strong></li>
+                    <li>Cerca la canzone che vuoi cantare</li>
+                    <li>Inserisci il tuo nome</li>
+                    <li>Se richiesto, inserisci il <strong>PIN</strong> dell'evento</li>
+                    <li>Conferma la prenotazione</li>
+                  </ol>
 
-            {/* Sections */}
-            <Accordion type="multiple" className="space-y-3">
-              {sections.map((section) => (
-                <AccordionItem 
-                  key={section.id} 
-                  value={section.id}
-                  className="border rounded-xl overflow-hidden bg-card"
-                >
-                  <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-10 h-10 rounded-lg bg-muted flex items-center justify-center ${section.color}`}>
-                        {section.icon}
-                      </div>
-                      <div className="text-left">
-                        <div className="font-semibold">{section.title}</div>
-                        <div className="text-xs text-muted-foreground">{section.description}</div>
+                  <div className="p-3 rounded-lg bg-muted/50 border">
+                    <p className="font-medium mb-2">Cosa vedrai:</p>
+                    <ul className="space-y-1 text-muted-foreground">
+                      <li>• <strong>Scaletta Live:</strong> le canzoni in coda</li>
+                      <li>• <strong>Posti rimanenti:</strong> quante prenotazioni sono ancora disponibili</li>
+                      <li>• <strong>Timer:</strong> quanto tempo hai per prenotare</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                    <p className="text-primary font-medium">
+                      <Lock className="w-4 h-4 inline mr-1" />
+                      PIN richiesto?
+                    </p>
+                    <p className="text-muted-foreground mt-1">
+                      Alcuni eventi richiedono un PIN per prenotare. 
+                      Chiedi allo staff il codice di accesso!
+                    </p>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* Sezione: Inviare una dedica */}
+              <ManualCollapsible
+                id="user-dediche"
+                title="Inviare una dedica"
+                icon={<MessageSquare className="w-5 h-5 text-secondary" />}
+                isOpen={openSections.has('user-dediche')}
+                onToggle={() => toggleSection('user-dediche')}
+              >
+                <div className="space-y-4 text-sm">
+                  <ol className="list-decimal list-inside space-y-2">
+                    <li>Apri la sezione <strong>Dediche</strong></li>
+                    <li>Scrivi il tuo messaggio</li>
+                    <li>Inserisci il tuo nome</li>
+                    <li>Invia la dedica</li>
+                  </ol>
+
+                  <div className="p-3 rounded-lg bg-secondary/10 border border-secondary/20">
+                    <p className="font-medium text-secondary mb-1">💌 Tipi di dediche</p>
+                    <ul className="space-y-1 text-muted-foreground">
+                      <li>• <strong>Messaggi privati:</strong> solo lo staff li vede</li>
+                      <li>• <strong>Dediche pubbliche:</strong> possono essere lette durante l'evento</li>
+                    </ul>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* Sezione: Stati dell'app */}
+              <ManualCollapsible
+                id="user-states"
+                title="Cosa significano i badge"
+                icon={<Radio className="w-5 h-5 text-primary" />}
+                isOpen={openSections.has('user-states')}
+                onToggle={() => toggleSection('user-states')}
+              >
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/10 border border-primary/30">
+                    <Badge className="bg-primary text-primary-foreground">
+                      <Radio className="w-3 h-3 mr-1 animate-pulse" />
+                      LIVE
+                    </Badge>
+                    <span>Evento in corso con regole attive</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-accent/10 border border-accent/30">
+                    <Badge className="bg-accent text-accent-foreground">
+                      <Zap className="w-3 h-3 mr-1" />
+                      Serata Aperta
+                    </Badge>
+                    <span>Puoi prenotare senza limiti!</span>
+                  </div>
+                  
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-muted border">
+                    <Badge variant="secondary">
+                      <Clock className="w-3 h-3 mr-1" />
+                      Prossimamente
+                    </Badge>
+                    <span>Nessun evento attivo, ma ce ne sono in programma</span>
+                  </div>
+                </div>
+              </ManualCollapsible>
+            </TabsContent>
+
+            {/* ==================== GUIDA ADMIN ==================== */}
+            <TabsContent value="admin" className="space-y-4">
+              <Card className="border-primary/20 bg-primary/5">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-primary" />
+                    Pannello Admin
+                  </CardTitle>
+                  <CardDescription>
+                    Gestisci eventi, formati e il tuo team
+                  </CardDescription>
+                </CardHeader>
+              </Card>
+
+              {/* Sezione: Panoramica */}
+              <ManualCollapsible
+                id="admin-overview"
+                title="Panoramica del pannello"
+                icon={<Settings className="w-5 h-5 text-muted-foreground" />}
+                isOpen={openSections.has('admin-overview')}
+                onToggle={() => toggleSection('admin-overview')}
+              >
+                <div className="space-y-4 text-sm">
+                  <p>Il pannello è organizzato in tre aree principali:</p>
+                  
+                  <div className="space-y-3">
+                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                      <p className="font-bold text-primary mb-2">🔴 LIVE</p>
+                      <ul className="space-y-1 text-muted-foreground">
+                        <li><strong>Centro:</strong> Dashboard in tempo reale con notifiche</li>
+                        <li><strong>Evento:</strong> Gestione eventi programmati</li>
+                        <li><strong>Formati:</strong> Toggle rapidi e notifiche</li>
+                      </ul>
+                    </div>
+                    
+                    <div className="p-3 rounded-lg bg-secondary/10 border border-secondary/20">
+                      <p className="font-bold text-secondary mb-2">📋 OPERATIVO</p>
+                      <ul className="space-y-1 text-muted-foreground">
+                        <li><strong>Open Mic:</strong> Lista prenotazioni canzoni</li>
+                        <li><strong>Canzoni:</strong> Catalogo brani disponibili</li>
+                        <li><strong>Dediche:</strong> Messaggi e chat con utenti</li>
+                        <li><strong>Community:</strong> Gruppi e bacheca sociale</li>
+                      </ul>
+                    </div>
+                    
+                    <div className="p-3 rounded-lg bg-muted border">
+                      <p className="font-bold mb-2">⚙️ GESTIONE</p>
+                      <ul className="space-y-1 text-muted-foreground">
+                        <li><strong>Impostazioni:</strong> Configurazione generale</li>
+                        <li><strong>Staff:</strong> Gestione team (solo Owner)</li>
+                        <li><strong>Permessi:</strong> Controllo accessi (solo Owner)</li>
+                        <li><strong>Audit:</strong> Log attività (solo Owner)</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* Sezione: Serata Aperta */}
+              <ManualCollapsible
+                id="admin-freemode"
+                title="Serata Aperta (Free Mode)"
+                icon={<Zap className="w-5 h-5 text-accent" />}
+                isOpen={openSections.has('admin-freemode')}
+                onToggle={() => toggleSection('admin-freemode')}
+              >
+                <div className="space-y-4 text-sm">
+                  <p>
+                    La <strong>Serata Aperta</strong> permette di attivare i formati 
+                    senza creare un evento programmato. È perfetta per:
+                  </p>
+                  
+                  <ul className="list-disc list-inside space-y-1 text-muted-foreground">
+                    <li>Serate improvvisate</li>
+                    <li>Test rapidi del sistema</li>
+                    <li>Eventi senza limiti numerici</li>
+                  </ul>
+
+                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
+                    <p className="font-medium text-accent mb-2">Come attivare:</p>
+                    <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
+                      <li>Vai su <strong>Formati</strong></li>
+                      <li>Usa la card <strong>"Serata Aperta"</strong></li>
+                      <li>Attiva Open Mic, Dediche o entrambi</li>
+                    </ol>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-medium mb-1">⚠️ Nota importante</p>
+                    <p className="text-muted-foreground">
+                      Se c'è un evento LIVE, la Serata Aperta viene ignorata. 
+                      L'evento LIVE ha sempre priorità!
+                    </p>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* Sezione: Eventi Programmati */}
+              <ManualCollapsible
+                id="admin-events"
+                title="Eventi Programmati"
+                icon={<Calendar className="w-5 h-5 text-primary" />}
+                isOpen={openSections.has('admin-events')}
+                onToggle={() => toggleSection('admin-events')}
+              >
+                <div className="space-y-4 text-sm">
+                  <p>Gli eventi hanno 4 stati:</p>
+                  
+                  <div className="grid gap-2">
+                    <StatusBadge status="draft" label="Bozza" description="In lavorazione, non visibile" />
+                    <StatusBadge status="ready" label="Pronto" description="Configurato, visibile come 'prossimamente'" />
+                    <StatusBadge status="live" label="LIVE" description="Attivo, le regole sono applicate" />
+                    <StatusBadge status="closed" label="Chiuso" description="Terminato, archivio" />
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                    <p className="font-medium text-primary mb-2">Configurazioni disponibili:</p>
+                    <ul className="space-y-1 text-muted-foreground">
+                      <li>• <strong>Finestra temporale:</strong> Quando aprono/chiudono le prenotazioni</li>
+                      <li>• <strong>Limiti:</strong> Max canzoni e dediche</li>
+                      <li>• <strong>PIN:</strong> Codice d'accesso opzionale</li>
+                      <li>• <strong>Riapertura:</strong> Slot extra temporanei</li>
+                      <li>• <strong>Chiusura:</strong> Messaggio per gli utenti</li>
+                    </ul>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* Sezione: Centro Notifiche */}
+              <ManualCollapsible
+                id="admin-centro"
+                title="Centro Notifiche"
+                icon={<Bell className="w-5 h-5 text-primary" />}
+                isOpen={openSections.has('admin-centro')}
+                onToggle={() => toggleSection('admin-centro')}
+              >
+                <div className="space-y-4 text-sm">
+                  <p>
+                    Il <strong>Centro</strong> è la dashboard operativa per gestire 
+                    le richieste in tempo reale durante gli eventi.
+                  </p>
+
+                  <div className="space-y-2">
+                    <p className="font-medium">Funzionalità:</p>
+                    <ul className="space-y-1 text-muted-foreground">
+                      <li>• <strong>Feed unificato:</strong> Canzoni e dediche in un'unica lista</li>
+                      <li>• <strong>Filtri:</strong> In coda, Canzoni, Dediche, Tutte</li>
+                      <li>• <strong>Swipe:</strong> Scorri per completare o eliminare</li>
+                      <li>• <strong>Tap:</strong> Tocca per vedere i testi delle canzoni</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                    <p className="font-medium text-emerald-600 dark:text-emerald-400 mb-1">
+                      <CheckCircle className="w-4 h-4 inline mr-1" />
+                      Completate oggi
+                    </p>
+                    <p className="text-muted-foreground">
+                      Il contatore in alto a destra mostra quante canzoni hai fatto!
+                    </p>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* Sezione: Notifiche Push */}
+              <ManualCollapsible
+                id="admin-notifications"
+                title="Notifiche Push"
+                icon={<Smartphone className="w-5 h-5 text-blue-500" />}
+                isOpen={openSections.has('admin-notifications')}
+                onToggle={() => toggleSection('admin-notifications')}
+              >
+                <div className="space-y-4 text-sm">
+                  <p>
+                    Ricevi notifiche anche quando l'app è chiusa:
+                  </p>
+
+                  <ol className="list-decimal list-inside space-y-2">
+                    <li>Vai su <strong>Formati → Notifiche</strong></li>
+                    <li>Clicca <strong>"Attiva"</strong> per abilitare le notifiche</li>
+                    <li>Attiva <strong>"Notifiche Background"</strong> per riceverle a app chiusa</li>
+                    <li>Usa <strong>"Test ritardato"</strong> per verificare</li>
+                  </ol>
+
+                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                    <p className="font-medium text-blue-500 mb-1">📱 Android + iOS</p>
+                    <p className="text-muted-foreground">
+                      Le notifiche background funzionano meglio su Android. 
+                      Su iOS, assicurati di aggiungere l'app alla schermata home.
+                    </p>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* Sezione: Visibilità Dediche */}
+              <ManualCollapsible
+                id="admin-dediche"
+                title="Visibilità Dediche"
+                icon={<Eye className="w-5 h-5 text-secondary" />}
+                isOpen={openSections.has('admin-dediche')}
+                onToggle={() => toggleSection('admin-dediche')}
+              >
+                <div className="space-y-4 text-sm">
+                  <p>Ogni dedica può avere una visibilità diversa:</p>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-muted">
+                      <Eye className="w-4 h-4 text-emerald-500" />
+                      <div>
+                        <p className="font-medium">Pubblica</p>
+                        <p className="text-xs text-muted-foreground">Visibile a tutti</p>
                       </div>
                     </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="px-4 pb-4">
-                    <div className="space-y-4 pt-2">
-                      {section.subsections.map((sub, idx) => (
-                        <div key={idx} className="pl-4 border-l-2 border-border">
-                          <h4 className="font-medium mb-2 text-sm">{sub.title}</h4>
-                          <ul className="space-y-1.5">
-                            {sub.content.map((item, i) => (
-                              <li key={i} className="text-sm text-muted-foreground">
-                                {renderBold(item)}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      ))}
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-muted">
+                      <Shield className="w-4 h-4 text-blue-500" />
+                      <div>
+                        <p className="font-medium">Solo Staff</p>
+                        <p className="text-xs text-muted-foreground">Visibile solo agli admin</p>
+                      </div>
                     </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+                    <div className="flex items-center gap-3 p-2 rounded-lg bg-muted">
+                      <EyeOff className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <p className="font-medium">Solo Autore</p>
+                        <p className="text-xs text-muted-foreground">Visibile solo a chi l'ha inviata</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </ManualCollapsible>
 
-            {/* Tips */}
-            <Card className="mt-6 border-warning/50">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2 text-warning">
-                  <Bell className="w-4 h-4" />
-                  Suggerimenti Rapidi
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground space-y-2">
-                <p>🔄 <strong>Ogni azione ha Undo</strong> - non aver paura di sbagliare!</p>
-                <p>📱 <strong>Mobile-first</strong> - tutto è ottimizzato per telefono.</p>
-                <p>🔔 <strong>Attiva notifiche</strong> - non perderti prenotazioni o messaggi.</p>
-                <p>👥 <strong>Delega con permessi</strong> - usa i ruoli per dividere il lavoro.</p>
-              </CardContent>
-            </Card>
-          </div>
+              {/* Sezione: Gestione Staff */}
+              <ManualCollapsible
+                id="admin-staff"
+                title="Gestione Staff (Owner)"
+                icon={<Crown className="w-5 h-5 text-amber-500" />}
+                isOpen={openSections.has('admin-staff')}
+                onToggle={() => toggleSection('admin-staff')}
+              >
+                <div className="space-y-4 text-sm">
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <p className="font-medium text-amber-600 dark:text-amber-400">
+                      <Lock className="w-4 h-4 inline mr-1" />
+                      Solo Owner
+                    </p>
+                    <p className="text-muted-foreground mt-1">
+                      Questa sezione è accessibile solo al proprietario dell'account.
+                    </p>
+                  </div>
+
+                  <p>Dalla sezione <strong>Staff</strong> puoi:</p>
+                  <ul className="space-y-1 text-muted-foreground">
+                    <li>• Creare nuovi account Admin o Staff</li>
+                    <li>• Modificare le password</li>
+                    <li>• Eliminare account (tranne il tuo)</li>
+                  </ul>
+
+                  <p>Dalla sezione <strong>Permessi</strong> puoi:</p>
+                  <ul className="space-y-1 text-muted-foreground">
+                    <li>• Decidere quali sezioni può vedere ogni ruolo</li>
+                    <li>• Abilitare/disabilitare singole funzionalità</li>
+                    <li>• Usare preset "Consigliato" o "Completo"</li>
+                  </ul>
+                </div>
+              </ManualCollapsible>
+
+              {/* Sezione: Blocco Utenti */}
+              <ManualCollapsible
+                id="admin-block"
+                title="Blocco Utenti"
+                icon={<Ban className="w-5 h-5 text-destructive" />}
+                isOpen={openSections.has('admin-block')}
+                onToggle={() => toggleSection('admin-block')}
+              >
+                <div className="space-y-4 text-sm">
+                  <p>Gestisci utenti problematici:</p>
+
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-2">
+                      <Ban className="w-4 h-4 text-destructive" />
+                      <span><strong>Blocco temporaneo:</strong> 1 ora, 24 ore, ecc.</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <Ban className="w-4 h-4 text-destructive" />
+                      <span><strong>Blocco permanente:</strong> Senza scadenza</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-4 h-4 text-emerald-500" />
+                      <span><strong>Sblocco:</strong> Riabilita immediatamente</span>
+                    </li>
+                  </ul>
+                </div>
+              </ManualCollapsible>
+
+              {/* Sezione: Reset e Sicurezza */}
+              <ManualCollapsible
+                id="admin-reset"
+                title="Reset e Undo"
+                icon={<Undo2 className="w-5 h-5 text-warning" />}
+                isOpen={openSections.has('admin-reset')}
+                onToggle={() => toggleSection('admin-reset')}
+              >
+                <div className="space-y-4 text-sm">
+                  <p>Dal menu in alto a destra puoi eseguire reset:</p>
+
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-2">
+                      <Music className="w-4 h-4 text-primary" />
+                      <span><strong>Reset Open Mic:</strong> Elimina tutte le prenotazioni</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4 text-secondary" />
+                      <span><strong>Reset Dediche:</strong> Elimina tutti i messaggi</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <RefreshCw className="w-4 h-4 text-destructive" />
+                      <span><strong>Reset Totale:</strong> Pulisce tutto</span>
+                    </li>
+                  </ul>
+
+                  <div className="p-3 rounded-lg bg-warning/10 border border-warning/20">
+                    <p className="font-medium text-warning">⏱️ Sistema Undo</p>
+                    <p className="text-muted-foreground mt-1">
+                      Ogni azione ha un pulsante "Annulla" (8-10 secondi). 
+                      Non aver paura di sbagliare!
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <p className="font-medium text-destructive">⚠️ Attenzione</p>
+                    <p className="text-muted-foreground mt-1">
+                      I reset sono irreversibili dopo la finestra di undo! 
+                      Tutte le azioni vengono registrate nel log Audit.
+                    </p>
+                  </div>
+                </div>
+              </ManualCollapsible>
+            </TabsContent>
+          </Tabs>
+
+          {/* Tips Footer */}
+          <Card className="mt-6 border-warning/50">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2 text-warning">
+                <Bell className="w-4 h-4" />
+                Suggerimenti Rapidi
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-muted-foreground space-y-2">
+              <p>🔄 <strong>Ogni azione ha Undo</strong> - non aver paura di sbagliare!</p>
+              <p>📱 <strong>Mobile-first</strong> - tutto è ottimizzato per telefono.</p>
+              <p>🔔 <strong>Attiva notifiche</strong> - non perderti prenotazioni o messaggi.</p>
+              <p>👥 <strong>Delega con permessi</strong> - usa i ruoli per dividere il lavoro.</p>
+            </CardContent>
+          </Card>
         </main>
       </div>
     </>

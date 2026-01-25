@@ -28,6 +28,14 @@ type Item = {
   gatedBy?: "openmic" | "dediche" | "community";
 };
 
+/**
+ * Mobile Tab Bar riorganizzata:
+ * - Centro: Dashboard notifiche (sempre prima)
+ * - Evento: Gestione eventi programmati
+ * - Formati: Toggle rapidi Serata Aperta
+ * - Open Mic / Dediche / Community: Sezioni operative
+ * - Altro: Menu per accesso a Impostazioni, Staff, ecc.
+ */
 const ITEMS: Item[] = [
   { key: "notifications", label: "Centro", icon: Bell, badge: (b) => b.totalNotifications },
   { key: "event", label: "Evento", icon: Calendar },
