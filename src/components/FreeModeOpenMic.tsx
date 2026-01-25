@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { ChevronLeft, Music2, Zap, Search as SearchIcon, Users } from "lucide-react";
+import { ChevronLeft, Music2, Zap, Search as SearchIcon, Users, ListMusic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { songs, Song } from "@/data/songs";
 import { SEO } from "@/components/SEO";
@@ -11,6 +11,7 @@ import { BookingConfirmationModal } from "@/components/BookingConfirmationModal"
 import { LiveQueueDisplay } from "@/components/LiveQueueDisplay";
 import { useReservationStatuses } from "@/hooks/useReservationStatuses";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 
 /**
@@ -26,7 +27,7 @@ export const FreeModeOpenMic: React.FC = () => {
   const [search, setSearch] = useState("");
   const [artistFilter, setArtistFilter] = useState("");
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
-  const [showQueue, setShowQueue] = useState(false);
+  const [showQueue, setShowQueue] = useState(true);
   
   const { statuses, isSongBooked, isSongCompleted } = useReservationStatuses();
 
@@ -152,9 +153,35 @@ export const FreeModeOpenMic: React.FC = () => {
             />
           </div>
 
-          {/* Queue Display */}
-          {showQueue && queueSongs.length > 0 && (
-            <LiveQueueDisplay songs={queueSongs} />
+          {/* Queue Display - Collapsible */}
+          {queueSongs.length > 0 && (
+            <div className="rounded-xl border-2 border-secondary/30 bg-secondary/5 p-3">
+              <Collapsible open={showQueue} onOpenChange={setShowQueue}>
+                <CollapsibleTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    className="w-full flex items-center justify-between p-3 h-auto bg-secondary/10 hover:bg-secondary/20 rounded-lg border border-secondary/30"
+                  >
+                    <div className="flex items-center gap-2">
+                      <ListMusic className="w-5 h-5 text-secondary" />
+                      <span className="font-display font-bold text-secondary">Scaletta Live</span>
+                      <span className="text-xs bg-secondary/20 text-secondary px-2 py-0.5 rounded-full">
+                        {queueSongs.length} in coda
+                      </span>
+                    </div>
+                    <span className="text-xs text-secondary/70">
+                      {showQueue ? '▲ Chiudi' : '▼ Vedi chi canta'}
+                    </span>
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-2">
+                  <LiveQueueDisplay songs={queueSongs} />
+                </CollapsibleContent>
+              </Collapsible>
+              <p className="text-xs text-center text-secondary/60 mt-2">
+                👆 Queste sono le canzoni già prenotate stasera
+              </p>
+            </div>
           )}
 
           {/* Stats */}
