@@ -19,10 +19,10 @@ import {
   Newspaper, 
   Settings, 
   Shield, 
-  Sliders, 
   Users, 
   Database,
-  Zap,
+  SlidersHorizontal,
+  Image,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AdminSectionKey } from "@/hooks/useAdminSectionAccess";
@@ -35,6 +35,7 @@ export type AdminMainTab =
   | "community"
   | "songs"
   | "formats"
+  | "grafiche"
   | "staff"
   | "permissions"
   | "settings"
@@ -50,15 +51,16 @@ type Item = {
 
 /**
  * Sidebar riorganizzata con 3 gruppi logici:
- * 1. LIVE: Centro notifiche + Evento + Formati (toggle rapidi)
+ * 1. LIVE: Centro notifiche + Eventi (liberi/programmati) + Formati + Grafiche
  * 2. OPERATIVO: Gestione attiva Open Mic, Dediche, Community, Canzoni
  * 3. GESTIONE: Staff, Permessi, Impostazioni, Audit (owner-only dove necessario)
  */
 const ITEMS: Item[] = [
   // === GRUPPO LIVE ===
   { key: "notifications", label: "Centro", icon: Bell, group: "Live", description: "Dashboard in tempo reale" },
-  { key: "event", label: "Evento", icon: Calendar, group: "Live", description: "Gestione eventi programmati" },
-  { key: "formats", label: "Formati", icon: Zap, group: "Live", description: "Toggle rapidi e notifiche" },
+  { key: "event", label: "Eventi", icon: Calendar, group: "Live", description: "Eventi liberi e programmati" },
+  { key: "formats", label: "Formati", icon: SlidersHorizontal, group: "Live", description: "Toggle e votazioni" },
+  { key: "grafiche", label: "Grafiche", icon: Image, group: "Live", description: "Genera locandine AI" },
   
   // === GRUPPO OPERATIVO ===
   { key: "openmic", label: "Open Mic", icon: Music, group: "Operativo", description: "Prenotazioni canzoni" },

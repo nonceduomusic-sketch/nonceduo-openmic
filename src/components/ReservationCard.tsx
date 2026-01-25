@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, RotateCcw, Music, Clock, Heart, Trash2, FileText, AlertTriangle, Maximize2 } from 'lucide-react';
+import { Check, RotateCcw, Music, Clock, Heart, Trash2, FileText, AlertTriangle, Maximize2, Flame, ThumbsUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Reservation } from '@/hooks/useReservations';
@@ -7,6 +7,7 @@ import { LyricsDialog } from './LyricsDialog';
 import { cn } from '@/lib/utils';
 import { useAdminFontSize } from '@/hooks/useAdminFontSize';
 import { DedicationExpandDialog } from '@/components/admin/DedicationExpandDialog';
+import { useAllVoteCounts } from '@/hooks/useAllVoteCounts';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,6 +47,8 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
   const [lyricsDialogOpen, setLyricsDialogOpen] = useState(false);
   const [dedicationDialogOpen, setDedicationDialogOpen] = useState(false);
   const { fontSizeClass } = useAdminFontSize();
+  const { getVotesForReservation } = useAllVoteCounts();
+  const votes = getVotesForReservation(reservation.id);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -110,9 +113,33 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
               {reservation.song_artist}
             </p>
 
-            <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
-              <Clock className="w-3 h-3" />
-              {formatDate(reservation.created_at)}
+            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatDate(reservation.created_at)}
+              </div>
+              
+              {/* Votes display */}
+              {votes && votes.total_votes > 0 && (
+                <div className="flex items-center gap-2 ml-auto">
+                  {votes.fire_votes > 0 && (
+                    <span className="flex items-center gap-0.5 text-orange-500">
+                      <Flame className="w-3.5 h-3.5" />
+                      {votes.fire_votes}
+                    </span>
+                  )}
+                  {votes.heart_votes > 0 && (
+                    <span className="flex items-center gap-0.5 text-pink-500">
+                      <Heart className="w-3.5 h-3.5 fill-current" />
+                      {votes.heart_votes}
+                    </span>
+                  )}
+                  <span className="flex items-center gap-0.5 bg-secondary/20 px-1.5 py-0.5 rounded-full text-foreground">
+                    <ThumbsUp className="w-3 h-3" />
+                    {votes.total_votes}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>
