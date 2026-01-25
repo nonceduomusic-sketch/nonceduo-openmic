@@ -5,6 +5,7 @@ import { SongCardWithStatus } from '@/components/SongCardWithStatus';
 import { SearchBar } from '@/components/SearchBar';
 import { ArtistFilter } from '@/components/ArtistFilter';
 import { BookingConfirmationModal } from '@/components/BookingConfirmationModal';
+import { EventContextBanner } from '@/components/EventContextBanner';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useReservationStatuses } from '@/hooks/useReservationStatuses';
@@ -12,6 +13,7 @@ import { SEO } from '@/components/SEO';
 import { UserLoginIndicator } from '@/components/UserLoginIndicator';
 import { useStaffRole } from '@/hooks/useStaffRole';
 import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
+import { LiveEvent } from '@/hooks/useLiveEvent';
 
 interface OpenMicProps {
   /**
@@ -19,9 +21,13 @@ interface OpenMicProps {
    * We keep UX focused and avoid entry-points into Community.
    */
   appMode?: boolean;
+  /**
+   * When provided, shows the event context banner.
+   */
+  liveEvent?: LiveEvent | null;
 }
 
-const OpenMic: React.FC<OpenMicProps> = ({ appMode = false }) => {
+const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
   const { isStaff } = useStaffRole();
   const [search, setSearch] = useState('');
   const [artistFilter, setArtistFilter] = useState('all');
@@ -142,6 +148,13 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false }) => {
           )}
         </div>
       </header>
+
+      {/* Event Context Banner */}
+      {liveEvent && (
+        <div className="container pt-4">
+          <EventContextBanner event={liveEvent} />
+        </div>
+      )}
 
       {/* Song List */}
       <main className="container py-4 pb-8">

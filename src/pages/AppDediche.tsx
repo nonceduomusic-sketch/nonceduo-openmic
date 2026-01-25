@@ -1,28 +1,25 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Messages from "@/pages/Messages";
 import DedicheInfo from "@/pages/DedicheInfo";
+import { PreEventPage } from "@/components/PreEventPage";
 import { FormatPinGate } from "@/components/FormatPinGate";
-import { useFormatGating } from "@/hooks/useFormatGating";
+import { useLiveEvent } from "@/hooks/useLiveEvent";
 import { usePinSession } from "@/hooks/usePinSession";
 
 /**
  * AppDediche - Entry point per Dediche
  * 
- * LOGICA FERREA:
- * 1. Se format NON ATTIVO → mostra TEASER (DedicheInfo) - sempre visibile, niente PIN
- * 2. Se format ATTIVO:
- *    - Senza PIN → accesso diretto al LIVE
- *    - Con PIN:
- *      - Se sessione valida → accesso diretto (persistenza)
- *      - Altrimenti → mostra schermata PIN, poi LIVE
- * 
- * SESSIONI PERSISTENTI:
- * - Dopo PIN corretto → sessione salvata in localStorage + DB
- * - Utente chiude e rientra → entra senza PIN
- * - Cambio PIN / reset admin → sessione invalidata → richiede nuovo PIN
+ * LOGICA RENDERING:
+ * 1. Se esiste evento LIVE:
+ *    - Se event_type = 'openmic' → mostra Info (Dediche non attivo per questo evento)
+ *    - Se event_type = 'dediche' o 'both':
+ *      - Se pin_required && !pinValidated → mostra PIN gate
+ *      - Altrimenti → mostra LIVE
+ * 2. Se esistono eventi READY → mostra PreEventPage
+ * 3. Altrimenti → mostra Info
  */
 const AppDediche: React.FC = () => {
-  const { loading, getGatingDecision } = useFormatGating('dediche');
+  const { eventState, liveEvent, upcomingEvents, isDedicheVisible } = useLiveEvent();
   const { 
     hasValidSession, 
     loading: sessionLoading, 
@@ -49,8 +46,8 @@ const AppDediche: React.FC = () => {
     setPinValidated(true);
   }, []);
 
-  // Loading state - wait for both gating and session check
-  if (loading || sessionLoading) {
+  // Loading state
+  if (eventState.type === 'loading' || sessionLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -58,28 +55,37 @@ const AppDediche: React.FC = () => {
     );
   }
 
-  const decision = getGatingDecision();
+  // CASE 1: Evento LIVE esiste
+  if (eventState.type === 'live') {
+    // Se l'evento è solo "openmic", Dediche non è visibile
+    if (!isDedicheVisible) {
+      return <DedicheInfo />;
+    }
 
-  // TEASER: format non attivo → mostra pagina promozionale
-  if (decision === 'teaser') {
-    return <DedicheInfo />;
+    // Se PIN richiesto e non ancora validato
+    if (liveEvent?.pin_required && !pinValidated) {
+      return (
+        <FormatPinGate
+          format="dediche"
+          formatDisplayName="Dediche"
+          onPinValidated={handlePinValidated}
+          backTo="/app"
+          backLabel="Torna all'app"
+        />
+      );
+    }
+
+    // LIVE: mostra Dediche con contesto evento
+    return <Messages appMode liveEvent={liveEvent} />;
   }
 
-  // PIN REQUIRED: format attivo ma protetto da PIN
-  if (decision === 'pin-required' && !pinValidated) {
-    return (
-      <FormatPinGate
-        format="dediche"
-        formatDisplayName="Dediche"
-        onPinValidated={handlePinValidated}
-        backTo="/app"
-        backLabel="Torna all'app"
-      />
-    );
+  // CASE 2: Eventi READY esistono → Pre-Event Page
+  if (eventState.type === 'upcoming') {
+    return <PreEventPage events={upcomingEvents} />;
   }
 
-  // LIVE: format attivo senza PIN (o PIN già validato/sessione persistente)
-  return <Messages appMode />;
+  // CASE 3: Nessun evento → Info page
+  return <DedicheInfo />;
 };
 
 export default AppDediche;
