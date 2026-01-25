@@ -234,44 +234,29 @@ export const EventPosterGeneratorCard: React.FC = () => {
 
     try {
       const formatConfig = IMAGE_FORMATS[config.imageFormat];
-      const aspectRatio = formatConfig.width / formatConfig.height;
       
-      const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-event-image`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${import.meta.env.VITE_LOVABLE_API_KEY || ''}`,
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash-image-preview',
-          messages: [
-            {
-              role: 'user',
-              content: `Generate a professional, elegant event poster background for a "${config.aiTheme}" themed music event. 
-              Style: Artistic, sophisticated with rich textures.
-              Requirements:
-              - Format ${formatConfig.width}x${formatConfig.height}px (${aspectRatio < 1 ? 'portrait' : aspectRatio > 1 ? 'landscape' : 'square'})
-              - Color palette suitable for text overlay
-              - Abstract, artistic background without text
-              - Professional quality for Instagram/Facebook poster
-              - Theme: ${config.aiTheme}
-              - Should work well with event text overlay
-              Ultra high resolution.`
-            }
-          ],
-          modalities: ['image', 'text'],
+          theme: config.aiTheme,
+          width: formatConfig.width,
+          height: formatConfig.height,
+          type: 'poster',
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('AI generation failed');
-      }
-
       const data = await response.json();
-      const imageUrl = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
       
-      if (imageUrl) {
-        setAiGeneratedBg(imageUrl);
+      if (!response.ok) {
+        throw new Error(data.error || 'AI generation failed');
+      }
+      
+      if (data.imageUrl) {
+        setAiGeneratedBg(data.imageUrl);
         updateConfig('uploadedImage', null); // Clear uploaded image
         toast({
           title: 'Sfondo AI generato!',
@@ -284,7 +269,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
       console.error('AI generation error:', error);
       toast({
         title: 'Errore generazione AI',
-        description: 'Riprova o carica una foto manualmente.',
+        description: error instanceof Error ? error.message : 'Riprova o carica una foto manualmente.',
         variant: 'destructive',
       });
     } finally {
