@@ -360,6 +360,41 @@ serve(async (req) => {
     const { action, ...data } = await req.json();
     console.log(`[push-notifications] Action: ${action}`);
 
+    const json = (obj: unknown, status = 200) =>
+      new Response(JSON.stringify(obj), {
+        status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+
+    const isString = (v: unknown): v is string => typeof v === 'string';
+    const asTrimmedString = (v: unknown) => (isString(v) ? v.trim() : '');
+    const isWithin = (s: string, min: number, max: number) => s.length >= min && s.length <= max;
+
+    const sendToAdminSubscriptions = async (payload: { title: string; body: string; icon?: string; tag?: string; data?: any }) => {
+      const { data: subscriptions, error } = await supabase
+        .from('push_subscriptions')
+        .select('*')
+        .eq('user_type', 'admin');
+
+      if (error) {
+        console.error('Error fetching subscriptions:', error);
+        return { sent: 0, total: 0 };
+      }
+
+      let successCount = 0;
+      for (const sub of subscriptions || []) {
+        const success = await sendWebPush(
+          { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+          payload,
+          vapidPublicKey,
+          vapidPrivateKey
+        );
+        if (success) successCount++;
+      }
+
+      return { sent: successCount, total: subscriptions?.length || 0 };
+    };
+
     switch (action) {
       case 'get-vapid-key': {
         if (!vapidPublicKey) {
@@ -430,6 +465,82 @@ serve(async (req) => {
           JSON.stringify({ success: true }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+
+      case 'create-reservation': {
+        const customerName = asTrimmedString((data as any).customer_name);
+        const songTitle = asTrimmedString((data as any).song_title);
+        const songArtist = asTrimmedString((data as any).song_artist);
+        const dedicationMessageRaw = (data as any).dedication_message;
+        const dedicationMessage = isString(dedicationMessageRaw) ? dedicationMessageRaw.trim() : null;
+
+        // Mirror the same constraints used client-side / RLS
+        if (!isWithin(customerName, 1, 80)) return json({ error: 'Nome non valido' }, 400);
+        if (!isWithin(songTitle, 1, 120)) return json({ error: 'Titolo non valido' }, 400);
+        if (!isWithin(songArtist, 1, 120)) return json({ error: 'Artista non valido' }, 400);
+        if (dedicationMessage && dedicationMessage.length > 500) return json({ error: 'Messaggio troppo lungo' }, 400);
+
+        const { data: reservation, error } = await supabase
+          .from('reservations')
+          .insert([
+            {
+              customer_name: customerName,
+              song_title: songTitle,
+              song_artist: songArtist,
+              dedication_message: dedicationMessage || null,
+            },
+          ])
+          .select('*')
+          .single();
+
+        if (error) {
+          console.error('Error creating reservation:', error);
+          return json({ error: 'Errore creazione prenotazione' }, 500);
+        }
+
+        const pushPayload = {
+          title: '🎤 Nuova prenotazione!',
+          body: `${reservation.customer_name} - ${reservation.song_title}`,
+          icon: '/pwa-192x192.png',
+          tag: `reservation-${reservation.id}`,
+        };
+
+        const stats = await sendToAdminSubscriptions(pushPayload);
+        return json({ success: true, reservation, ...stats });
+      }
+
+      case 'create-message': {
+        const senderName = asTrimmedString((data as any).sender_name);
+        const messageText = asTrimmedString((data as any).message_text);
+
+        // Mirror the same constraints used in RLS
+        if (!isWithin(senderName, 1, 50)) return json({ error: 'Nome non valido' }, 400);
+        if (!isWithin(messageText, 1, 500)) return json({ error: 'Messaggio non valido' }, 400);
+
+        const { data: message, error } = await supabase
+          .from('messages')
+          .insert([{ sender_name: senderName, message_text: messageText }])
+          .select('*')
+          .single();
+
+        if (error) {
+          console.error('Error creating message:', error);
+          return json({ error: 'Errore invio messaggio' }, 500);
+        }
+
+        const preview = message.message_text.length > 50
+          ? `${message.message_text.substring(0, 50)}...`
+          : message.message_text;
+
+        const pushPayload = {
+          title: '✉️ Nuovo messaggio!',
+          body: `${message.sender_name}: ${preview}`,
+          icon: '/pwa-192x192.png',
+          tag: `message-${message.id}`,
+        };
+
+        const stats = await sendToAdminSubscriptions(pushPayload);
+        return json({ success: true, message, ...stats });
       }
 
       case 'send': {
