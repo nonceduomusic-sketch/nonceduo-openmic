@@ -445,6 +445,13 @@ export type Database = {
       }
       free_mode_settings: {
         Row: {
+          booking_closes_at: string | null
+          booking_opens_at: string | null
+          close_minutes_before_end: number | null
+          closure_message: string | null
+          closure_mode: string | null
+          closure_redirect_url: string | null
+          closure_title: string | null
           created_at: string | null
           dediche_current_count: number | null
           dediche_enabled: boolean | null
@@ -457,15 +464,33 @@ export type Database = {
           is_active: boolean | null
           openmic_current_count: number | null
           openmic_enabled: boolean | null
+          openmic_final_limit_enabled: boolean | null
+          openmic_final_limit_minutes: number | null
+          openmic_final_limit_songs: number | null
           openmic_max_songs: number | null
           pin_code: string | null
           pin_enabled: boolean | null
+          reopen_active: boolean | null
+          reopen_dediche_used: number | null
+          reopen_extra_dediche: number | null
+          reopen_extra_songs: number | null
+          reopen_message: string | null
+          reopen_mode: string | null
+          reopen_songs_used: number | null
+          reopen_until: string | null
           started_at: string | null
           updated_at: string | null
           updated_by: string | null
           voting_enabled: boolean | null
         }
         Insert: {
+          booking_closes_at?: string | null
+          booking_opens_at?: string | null
+          close_minutes_before_end?: number | null
+          closure_message?: string | null
+          closure_mode?: string | null
+          closure_redirect_url?: string | null
+          closure_title?: string | null
           created_at?: string | null
           dediche_current_count?: number | null
           dediche_enabled?: boolean | null
@@ -478,15 +503,33 @@ export type Database = {
           is_active?: boolean | null
           openmic_current_count?: number | null
           openmic_enabled?: boolean | null
+          openmic_final_limit_enabled?: boolean | null
+          openmic_final_limit_minutes?: number | null
+          openmic_final_limit_songs?: number | null
           openmic_max_songs?: number | null
           pin_code?: string | null
           pin_enabled?: boolean | null
+          reopen_active?: boolean | null
+          reopen_dediche_used?: number | null
+          reopen_extra_dediche?: number | null
+          reopen_extra_songs?: number | null
+          reopen_message?: string | null
+          reopen_mode?: string | null
+          reopen_songs_used?: number | null
+          reopen_until?: string | null
           started_at?: string | null
           updated_at?: string | null
           updated_by?: string | null
           voting_enabled?: boolean | null
         }
         Update: {
+          booking_closes_at?: string | null
+          booking_opens_at?: string | null
+          close_minutes_before_end?: number | null
+          closure_message?: string | null
+          closure_mode?: string | null
+          closure_redirect_url?: string | null
+          closure_title?: string | null
           created_at?: string | null
           dediche_current_count?: number | null
           dediche_enabled?: boolean | null
@@ -499,9 +542,20 @@ export type Database = {
           is_active?: boolean | null
           openmic_current_count?: number | null
           openmic_enabled?: boolean | null
+          openmic_final_limit_enabled?: boolean | null
+          openmic_final_limit_minutes?: number | null
+          openmic_final_limit_songs?: number | null
           openmic_max_songs?: number | null
           pin_code?: string | null
           pin_enabled?: boolean | null
+          reopen_active?: boolean | null
+          reopen_dediche_used?: number | null
+          reopen_extra_dediche?: number | null
+          reopen_extra_songs?: number | null
+          reopen_message?: string | null
+          reopen_mode?: string | null
+          reopen_songs_used?: number | null
+          reopen_until?: string | null
           started_at?: string | null
           updated_at?: string | null
           updated_by?: string | null

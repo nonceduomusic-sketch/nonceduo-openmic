@@ -21,25 +21,29 @@ export interface FreeModeSettings {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // Booking window
+  booking_opens_at: string | null;
+  booking_closes_at: string | null;
+  close_minutes_before_end: number | null;
+  // Final limit (urgency mode)
+  openmic_final_limit_enabled: boolean;
+  openmic_final_limit_songs: number | null;
+  openmic_final_limit_minutes: number | null;
+  // Reopening
+  reopen_active: boolean;
+  reopen_until: string | null;
+  reopen_extra_songs: number | null;
+  reopen_extra_dediche: number | null;
+  reopen_songs_used: number;
+  reopen_dediche_used: number;
+  reopen_message: string | null;
+  reopen_mode: string | null;
+  // Closure
+  closure_mode: string;
+  closure_title: string;
+  closure_message: string;
+  closure_redirect_url: string | null;
 }
-
-const defaultSettings: Omit<FreeModeSettings, 'id' | 'created_at' | 'updated_at'> = {
-  event_name: 'Evento Libero',
-  event_status: 'draft',
-  openmic_enabled: true,
-  dediche_enabled: true,
-  voting_enabled: true,
-  openmic_max_songs: null,
-  dediche_max_total: null,
-  duration_minutes: null,
-  started_at: null,
-  expires_at: null,
-  openmic_current_count: 0,
-  dediche_current_count: 0,
-  pin_enabled: false,
-  pin_code: null,
-  is_active: false,
-};
 
 export const useFreeModeSettings = () => {
   const [settings, setSettings] = useState<FreeModeSettings | null>(null);
@@ -115,6 +119,12 @@ export const useFreeModeSettings = () => {
     maxSongs?: number;
     maxDediche?: number;
     pinCode?: string;
+    bookingOpensAt?: string;
+    bookingClosesAt?: string;
+    closureMode?: string;
+    closureTitle?: string;
+    closureMessage?: string;
+    closureRedirectUrl?: string;
   }): Promise<boolean> => {
     const updates: Partial<FreeModeSettings> = {
       is_active: true,
@@ -122,6 +132,9 @@ export const useFreeModeSettings = () => {
       started_at: new Date().toISOString(),
       openmic_current_count: 0,
       dediche_current_count: 0,
+      reopen_active: false,
+      reopen_songs_used: 0,
+      reopen_dediche_used: 0,
     };
 
     if (config?.eventName !== undefined) updates.event_name = config.eventName;
@@ -147,6 +160,13 @@ export const useFreeModeSettings = () => {
       updates.pin_code = null;
     }
 
+    if (config?.bookingOpensAt) updates.booking_opens_at = config.bookingOpensAt;
+    if (config?.bookingClosesAt) updates.booking_closes_at = config.bookingClosesAt;
+    if (config?.closureMode) updates.closure_mode = config.closureMode;
+    if (config?.closureTitle) updates.closure_title = config.closureTitle;
+    if (config?.closureMessage) updates.closure_message = config.closureMessage;
+    if (config?.closureRedirectUrl) updates.closure_redirect_url = config.closureRedirectUrl;
+
     const success = await updateSettings(updates);
     if (success) {
       toast.success('Evento Libero attivato!');
@@ -161,9 +181,60 @@ export const useFreeModeSettings = () => {
       event_status: 'closed',
       started_at: null,
       expires_at: null,
+      reopen_active: false,
     });
     if (success) {
       toast.success('Evento Libero disattivato');
+    }
+    return success;
+  };
+
+  // Attiva riapertura straordinaria
+  const activateReopen = async (config: {
+    mode: 'time' | 'count' | 'combo';
+    minutes?: number;
+    extraSongs?: number;
+    extraDediche?: number;
+    message?: string;
+  }): Promise<boolean> => {
+    const updates: Partial<FreeModeSettings> = {
+      reopen_active: true,
+      reopen_mode: config.mode,
+      reopen_songs_used: 0,
+      reopen_dediche_used: 0,
+      reopen_message: config.message || null,
+    };
+
+    if (config.mode === 'time' || config.mode === 'combo') {
+      if (config.minutes) {
+        updates.reopen_until = new Date(Date.now() + config.minutes * 60 * 1000).toISOString();
+      }
+    }
+
+    if (config.mode === 'count' || config.mode === 'combo') {
+      updates.reopen_extra_songs = config.extraSongs || null;
+      updates.reopen_extra_dediche = config.extraDediche || null;
+    }
+
+    const success = await updateSettings(updates);
+    if (success) {
+      toast.success('Riapertura straordinaria attivata!');
+    }
+    return success;
+  };
+
+  // Disattiva riapertura
+  const deactivateReopen = async (): Promise<boolean> => {
+    const success = await updateSettings({
+      reopen_active: false,
+      reopen_until: null,
+      reopen_extra_songs: null,
+      reopen_extra_dediche: null,
+      reopen_message: null,
+      reopen_mode: null,
+    });
+    if (success) {
+      toast.success('Riapertura disattivata');
     }
     return success;
   };
@@ -178,6 +249,17 @@ export const useFreeModeSettings = () => {
     maxDediche?: number | null;
     durationMinutes?: number | null;
     pinCode?: string | null;
+    pinEnabled?: boolean;
+    closureMode?: string;
+    closureTitle?: string;
+    closureMessage?: string;
+    closureRedirectUrl?: string | null;
+    bookingOpensAt?: string | null;
+    bookingClosesAt?: string | null;
+    closeMinutesBeforeEnd?: number | null;
+    openmicFinalLimitEnabled?: boolean;
+    openmicFinalLimitSongs?: number | null;
+    openmicFinalLimitMinutes?: number | null;
   }): Promise<boolean> => {
     const dbUpdates: Partial<FreeModeSettings> = {};
     
@@ -208,6 +290,18 @@ export const useFreeModeSettings = () => {
       }
     }
 
+    if (updates.pinEnabled !== undefined) dbUpdates.pin_enabled = updates.pinEnabled;
+    if (updates.closureMode !== undefined) dbUpdates.closure_mode = updates.closureMode;
+    if (updates.closureTitle !== undefined) dbUpdates.closure_title = updates.closureTitle;
+    if (updates.closureMessage !== undefined) dbUpdates.closure_message = updates.closureMessage;
+    if (updates.closureRedirectUrl !== undefined) dbUpdates.closure_redirect_url = updates.closureRedirectUrl;
+    if (updates.bookingOpensAt !== undefined) dbUpdates.booking_opens_at = updates.bookingOpensAt;
+    if (updates.bookingClosesAt !== undefined) dbUpdates.booking_closes_at = updates.bookingClosesAt;
+    if (updates.closeMinutesBeforeEnd !== undefined) dbUpdates.close_minutes_before_end = updates.closeMinutesBeforeEnd;
+    if (updates.openmicFinalLimitEnabled !== undefined) dbUpdates.openmic_final_limit_enabled = updates.openmicFinalLimitEnabled;
+    if (updates.openmicFinalLimitSongs !== undefined) dbUpdates.openmic_final_limit_songs = updates.openmicFinalLimitSongs;
+    if (updates.openmicFinalLimitMinutes !== undefined) dbUpdates.openmic_final_limit_minutes = updates.openmicFinalLimitMinutes;
+
     const success = await updateSettings(dbUpdates);
     if (success) {
       toast.success('Impostazioni aggiornate');
@@ -231,6 +325,8 @@ export const useFreeModeSettings = () => {
     return updateSettings({
       openmic_current_count: 0,
       dediche_current_count: 0,
+      reopen_songs_used: 0,
+      reopen_dediche_used: 0,
     });
   };
 
@@ -261,6 +357,13 @@ export const useFreeModeSettings = () => {
     return remaining > 0 ? Math.ceil(remaining / 60000) : 0;
   };
 
+  // Reopen time remaining
+  const getReopenTimeRemaining = (): number | null => {
+    if (!settings?.reopen_until) return null;
+    const remaining = new Date(settings.reopen_until).getTime() - Date.now();
+    return remaining > 0 ? Math.ceil(remaining / 60000) : 0;
+  };
+
   return {
     settings,
     loading,
@@ -268,6 +371,8 @@ export const useFreeModeSettings = () => {
     updateSettings,
     activateFreeMode,
     deactivateFreeMode,
+    activateReopen,
+    deactivateReopen,
     updateLiveSettings,
     incrementOpenMicCount,
     incrementDedicheCount,
@@ -276,6 +381,7 @@ export const useFreeModeSettings = () => {
     canBookOpenMic,
     canBookDediche,
     getTimeRemaining,
+    getReopenTimeRemaining,
     refetch: fetchSettings,
   };
 };
