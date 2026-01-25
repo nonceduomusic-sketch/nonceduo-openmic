@@ -335,6 +335,8 @@ export type Database = {
           event_end_time: string | null
           event_name: string | null
           event_start_time: string | null
+          event_status: string | null
+          event_type: string | null
           id: string
           is_active: boolean | null
           openmic_current_count: number | null
@@ -343,6 +345,8 @@ export type Database = {
           openmic_final_limit_minutes: number | null
           openmic_final_limit_songs: number | null
           openmic_max_songs: number | null
+          pin_code: string | null
+          pin_required: boolean | null
           reopen_active: boolean | null
           reopen_dediche_used: number | null
           reopen_extra_dediche: number | null
@@ -370,6 +374,8 @@ export type Database = {
           event_end_time?: string | null
           event_name?: string | null
           event_start_time?: string | null
+          event_status?: string | null
+          event_type?: string | null
           id?: string
           is_active?: boolean | null
           openmic_current_count?: number | null
@@ -378,6 +384,8 @@ export type Database = {
           openmic_final_limit_minutes?: number | null
           openmic_final_limit_songs?: number | null
           openmic_max_songs?: number | null
+          pin_code?: string | null
+          pin_required?: boolean | null
           reopen_active?: boolean | null
           reopen_dediche_used?: number | null
           reopen_extra_dediche?: number | null
@@ -405,6 +413,8 @@ export type Database = {
           event_end_time?: string | null
           event_name?: string | null
           event_start_time?: string | null
+          event_status?: string | null
+          event_type?: string | null
           id?: string
           is_active?: boolean | null
           openmic_current_count?: number | null
@@ -413,6 +423,8 @@ export type Database = {
           openmic_final_limit_minutes?: number | null
           openmic_final_limit_songs?: number | null
           openmic_max_songs?: number | null
+          pin_code?: string | null
+          pin_required?: boolean | null
           reopen_active?: boolean | null
           reopen_dediche_used?: number | null
           reopen_extra_dediche?: number | null
