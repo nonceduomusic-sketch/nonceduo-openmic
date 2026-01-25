@@ -1,22 +1,21 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ExternalLink, Mic2, Phone, Instagram, Calendar, MapPin, Clock, Music, Users } from "lucide-react";
+import { ExternalLink, Mic2, Phone, Instagram, Calendar, Clock, Music, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
 import { SiteHeader } from "@/components/site/SiteHeader";
-import { useFormatGating } from "@/hooks/useFormatGating";
+import { useLiveEvent } from "@/hooks/useLiveEvent";
 
 const OpenMicInfo: React.FC = () => {
-  const { isLiveSessionActive, isGloballyActive, loading } = useFormatGating('openmic');
+  const { isOpenmicVisible, loading, liveEvent, isFreeMode } = useLiveEvent();
 
-  // "Serata in corso" SOLO se:
-  // 1. Il format è globalmente attivo (abilitato in "Format attivi")
-  // 2. E c'è una live_session attiva con questo format in protected_formats
-  // Se uno dei due è false → mostra teaser "Prossimamente"
-  const isActuallyLive = isGloballyActive && isLiveSessionActive;
+  // "Serata in corso" quando:
+  // 1. C'è un evento LIVE con openmic visibile, OPPURE
+  // 2. Siamo in Free Mode con openmic attivo
+  const isActuallyLive = isOpenmicVisible && (Boolean(liveEvent) || isFreeMode);
 
   return (
     <div className="min-h-screen bg-background">
