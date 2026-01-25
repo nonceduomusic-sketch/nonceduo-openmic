@@ -696,7 +696,7 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false, liveEvent }) => {
                           </div>
                         ) : (
                           <>
-                            <p className="break-words">{msg.message_text}</p>
+                            <p className="whitespace-pre-wrap break-words">{msg.message_text}</p>
                             <div className="flex items-center justify-end gap-1.5 mt-1">
                               <span className={`text-[10px] ${
                                 isAdmin ? 'text-secondary-foreground/50' : 
