@@ -170,10 +170,10 @@ export const EventPosterGeneratorCard: React.FC = () => {
     }
   }, [config]);
 
-  const updateConfig = <K extends keyof EventPosterConfig>(key: K, value: EventPosterConfig[K]) => {
+  const updateConfig = useCallback(<K extends keyof EventPosterConfig>(key: K, value: EventPosterConfig[K]) => {
     setConfig(prev => ({ ...prev, [key]: value }));
     setPreviewUrl(null);
-  };
+  }, []);
 
   const resetConfig = useCallback(() => {
     setConfig(DEFAULT_CONFIG);
@@ -217,7 +217,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
       setAiGeneratedBg(null); // Clear AI bg when uploading custom image
     };
     reader.readAsDataURL(file);
-  }, [toast]);
+  }, [toast, updateConfig]);
 
   const removeImage = useCallback(() => {
     updateConfig('uploadedImage', null);
@@ -243,7 +243,8 @@ export const EventPosterGeneratorCard: React.FC = () => {
       const formatConfig = IMAGE_FORMATS[config.imageFormat];
       
       // If there's an uploaded image, send it for editing
-      const hasSourceImage = !!config.uploadedImage;
+      const sourceImage = config.uploadedImage;
+      const hasSourceImage = !!sourceImage;
       
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-event-image`, {
         method: 'POST',
@@ -257,7 +258,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
           height: formatConfig.height,
           type: 'poster',
           // Pass the uploaded image for editing if available
-          sourceImage: config.uploadedImage || undefined,
+          sourceImage: sourceImage || undefined,
         }),
       });
 
@@ -287,7 +288,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
     } finally {
       setIsGeneratingAI(false);
     }
-  }, [config.aiTheme, config.imageFormat, toast]);
+  }, [config.aiTheme, config.imageFormat, config.uploadedImage, toast, updateConfig]);
 
   const generatePosterImage = useCallback(async () => {
     const backgroundImage = config.uploadedImage || aiGeneratedBg;
