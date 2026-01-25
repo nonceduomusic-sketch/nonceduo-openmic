@@ -123,7 +123,7 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
               className="w-full h-11 gap-2 border-secondary/50 hover:border-secondary hover:bg-secondary/10"
             >
               <FileText className="w-4 h-4" />
-              Cerca il testo online
+              Testo
             </Button>
             
             <Button
