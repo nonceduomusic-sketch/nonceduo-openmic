@@ -482,6 +482,74 @@ serve(async (req) => {
         if (!isWithin(songArtist, 1, 120)) return json({ error: 'Artista non valido' }, 400);
         if (dedicationMessage && dedicationMessage.length > 500) return json({ error: 'Messaggio troppo lungo' }, 400);
 
+        // === SERVER-SIDE EVENT VALIDATION ===
+        // Fetch live event to validate booking rules
+        const { data: liveEvent, error: eventError } = await supabase
+          .from('event_booking_rules')
+          .select('*')
+          .eq('event_status', 'live')
+          .maybeSingle();
+
+        if (eventError) {
+          console.error('Error fetching live event:', eventError);
+          return json({ error: 'Errore verifica evento' }, 500);
+        }
+
+        // If no live event, bookings are not allowed
+        if (!liveEvent) {
+          return json({ error: 'Nessun evento attivo al momento' }, 400);
+        }
+
+        // Check if Open Mic is enabled for this event
+        const isOpenmicEvent = liveEvent.event_type === 'openmic' || liveEvent.event_type === 'both';
+        if (!isOpenmicEvent || !liveEvent.openmic_enabled) {
+          return json({ error: 'Prenotazioni Open Mic non attive per questo evento' }, 400);
+        }
+
+        const now = new Date();
+
+        // Check booking window
+        if (liveEvent.booking_opens_at) {
+          const opensAt = new Date(liveEvent.booking_opens_at);
+          if (now < opensAt) {
+            return json({ error: 'Le prenotazioni non sono ancora aperte' }, 400);
+          }
+        }
+
+        if (liveEvent.booking_closes_at) {
+          const closesAt = new Date(liveEvent.booking_closes_at);
+          if (now > closesAt && !liveEvent.reopen_active) {
+            return json({ error: 'Le prenotazioni sono chiuse' }, 400);
+          }
+        }
+
+        // Check if we're in reopen mode with extra slots
+        let isInReopenMode = false;
+        if (liveEvent.reopen_active && liveEvent.reopen_until) {
+          const reopenUntil = new Date(liveEvent.reopen_until);
+          if (now <= reopenUntil) {
+            isInReopenMode = true;
+          }
+        }
+
+        // Check max songs limit
+        if (liveEvent.openmic_max_songs !== null) {
+          const currentCount = liveEvent.openmic_current_count || 0;
+          let maxAllowed = liveEvent.openmic_max_songs;
+
+          // Add extra slots if in reopen mode
+          if (isInReopenMode && liveEvent.reopen_extra_songs) {
+            const reopenUsed = liveEvent.reopen_songs_used || 0;
+            const extraAvailable = liveEvent.reopen_extra_songs - reopenUsed;
+            if (currentCount >= maxAllowed && extraAvailable <= 0) {
+              return json({ error: 'Limite prenotazioni raggiunto' }, 400);
+            }
+          } else if (currentCount >= maxAllowed) {
+            return json({ error: 'Limite prenotazioni raggiunto' }, 400);
+          }
+        }
+
+        // === INSERT RESERVATION ===
         const { data: reservation, error } = await supabase
           .from('reservations')
           .insert([
@@ -497,8 +565,30 @@ serve(async (req) => {
 
         if (error) {
           console.error('Error creating reservation:', error);
+          // Check for duplicate constraint
+          if (error.code === '23505') {
+            return json({ error: 'Questa canzone è già stata prenotata' }, 400);
+          }
           return json({ error: 'Errore creazione prenotazione' }, 500);
         }
+
+        // === UPDATE EVENT COUNTERS ===
+        const updateData: Record<string, unknown> = {
+          openmic_current_count: (liveEvent.openmic_current_count || 0) + 1,
+        };
+
+        // Track reopen usage if applicable
+        if (isInReopenMode && liveEvent.openmic_max_songs !== null) {
+          const currentCount = liveEvent.openmic_current_count || 0;
+          if (currentCount >= liveEvent.openmic_max_songs) {
+            updateData.reopen_songs_used = (liveEvent.reopen_songs_used || 0) + 1;
+          }
+        }
+
+        await supabase
+          .from('event_booking_rules')
+          .update(updateData)
+          .eq('id', liveEvent.id);
 
         const pushPayload = {
           title: '🎤 Nuova prenotazione!',

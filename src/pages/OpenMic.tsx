@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from 'react';
-import { Mic2, Home, MessageCircle, Users, Music, Settings } from 'lucide-react';
+import { Mic2, Home, MessageCircle, Users, Music, Settings, ListMusic } from 'lucide-react';
 import { songs, Song } from '@/data/songs';
 import { SongCardWithStatus } from '@/components/SongCardWithStatus';
 import { SearchBar } from '@/components/SearchBar';
 import { ArtistFilter } from '@/components/ArtistFilter';
 import { BookingConfirmationModal } from '@/components/BookingConfirmationModal';
 import { EventContextBanner } from '@/components/EventContextBanner';
+import { LiveQueueDisplay } from '@/components/LiveQueueDisplay';
+import { BookingStatusBanner } from '@/components/BookingStatusBanner';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useReservationStatuses } from '@/hooks/useReservationStatuses';
@@ -14,6 +16,7 @@ import { UserLoginIndicator } from '@/components/UserLoginIndicator';
 import { useStaffRole } from '@/hooks/useStaffRole';
 import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
 import { LiveEvent } from '@/hooks/useLiveEvent';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface OpenMicProps {
   /**
@@ -37,8 +40,12 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
   const { isActive: isDedicheActive } = useFormatActiveCheck('dediche');
   
   // Use the public statuses hook for real-time updates (no auth required)
-  const { isSongBooked, isSongCompleted, activeCount, loading, bookedSongKeys } = useReservationStatuses();
+  const { isSongBooked, isSongCompleted, activeCount, loading, bookedSongKeys, statuses } = useReservationStatuses();
+  
+  // State for queue visibility
+  const [showQueue, setShowQueue] = useState(true);
 
+  // Filter songs: exclude completed ones from the main list
   const filteredSongs = useMemo(() => {
     return songs.filter((song) => {
       const searchLower = search.toLowerCase();
@@ -49,9 +56,25 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
       const matchesArtist =
         artistFilter === 'all' || song.artist === artistFilter;
 
-      return matchesSearch && matchesArtist;
+      // Hide completed songs from the list
+      const isCompleted = isSongCompleted(song.title, song.artist);
+
+      return matchesSearch && matchesArtist && !isCompleted;
     });
-  }, [search, artistFilter]);
+  }, [search, artistFilter, isSongCompleted]);
+
+  // Queue songs for display
+  const queueSongs = useMemo(() => {
+    return statuses
+      .filter(s => s.status === 'in_progress')
+      .map(s => ({
+        song_key: s.song_key,
+        song_title: s.song_title,
+        song_artist: s.song_artist,
+        status: s.status,
+        created_at: s.created_at,
+      }));
+  }, [statuses]);
 
   const handleBookSong = (song: Song) => {
     // Check if song is already booked (use latest status from hook)
@@ -149,10 +172,43 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
         </div>
       </header>
 
-      {/* Event Context Banner */}
+      {/* Event Context Banner + Status */}
       {liveEvent && (
-        <div className="container pt-4">
+        <div className="container pt-4 space-y-3">
           <EventContextBanner event={liveEvent} />
+          <BookingStatusBanner 
+            event={liveEvent} 
+            currentOpenMicCount={activeCount}
+            format="openmic"
+          />
+        </div>
+      )}
+
+      {/* Live Queue Display - Collapsible */}
+      {queueSongs.length > 0 && (
+        <div className="container pt-4">
+          <Collapsible open={showQueue} onOpenChange={setShowQueue}>
+            <CollapsibleTrigger asChild>
+              <Button 
+                variant="ghost" 
+                className="w-full flex items-center justify-between p-3 h-auto bg-muted/30 hover:bg-muted/50 rounded-lg border border-border/50"
+              >
+                <div className="flex items-center gap-2">
+                  <ListMusic className="w-4 h-4 text-secondary" />
+                  <span className="font-medium text-sm">Scaletta Live</span>
+                  <span className="text-xs text-muted-foreground">
+                    ({queueSongs.length} {queueSongs.length === 1 ? 'canzone' : 'canzoni'})
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {showQueue ? 'Nascondi' : 'Mostra'}
+                </span>
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2">
+              <LiveQueueDisplay songs={queueSongs} />
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       )}
 
