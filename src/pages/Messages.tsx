@@ -749,9 +749,17 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false, liveEvent }) => {
             </div>
           )}
 
-          {/* Reply form */}
-          <div className="p-4 border-t border-border bg-card/50">
-            <form onSubmit={(e) => { clearTypingIndicator(); handleSendReply(e); }} className="flex gap-2">
+          {/* Reply form with back button */}
+          <div className="border-t border-border bg-card/50">
+            {/* Quick back link - always visible */}
+            <button
+              onClick={handleBack}
+              className="w-full py-2 px-4 text-xs text-muted-foreground hover:text-secondary flex items-center justify-center gap-1.5 border-b border-border/50 transition-colors"
+            >
+              <ArrowLeft className="w-3 h-3" />
+              Torna alla lista conversazioni
+            </button>
+            <form onSubmit={(e) => { clearTypingIndicator(); handleSendReply(e); }} className="flex gap-2 p-4">
               <Input
                 value={message}
                 onChange={(e) => {
