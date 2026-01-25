@@ -495,59 +495,76 @@ serve(async (req) => {
           return json({ error: 'Errore verifica evento' }, 500);
         }
 
-        // If no live event, bookings are not allowed
-        if (!liveEvent) {
+        // Check if Free Mode is active for openmic
+        const { data: formatSettings, error: formatError } = await supabase
+          .from('global_format_settings')
+          .select('format_key, is_active')
+          .eq('format_key', 'openmic')
+          .single();
+
+        if (formatError && formatError.code !== 'PGRST116') {
+          console.error('Error fetching format settings:', formatError);
+        }
+
+        const isFreeMode = !liveEvent && formatSettings?.is_active === true;
+        
+        // If no live event AND not in free mode, bookings are not allowed
+        if (!liveEvent && !isFreeMode) {
           return json({ error: 'Nessun evento attivo al momento' }, 400);
         }
 
-        // Check if Open Mic is enabled for this event
-        const isOpenmicEvent = liveEvent.event_type === 'openmic' || liveEvent.event_type === 'both';
-        if (!isOpenmicEvent || !liveEvent.openmic_enabled) {
-          return json({ error: 'Prenotazioni Open Mic non attive per questo evento' }, 400);
-        }
-
+        let isInReopenMode = false;
         const now = new Date();
 
-        // Check booking window
-        if (liveEvent.booking_opens_at) {
-          const opensAt = new Date(liveEvent.booking_opens_at);
-          if (now < opensAt) {
-            return json({ error: 'Le prenotazioni non sono ancora aperte' }, 400);
+        // Only apply event rules if there IS a live event (not free mode)
+        if (liveEvent) {
+          // Check if Open Mic is enabled for this event
+          const isOpenmicEvent = liveEvent.event_type === 'openmic' || liveEvent.event_type === 'both';
+          if (!isOpenmicEvent || !liveEvent.openmic_enabled) {
+            return json({ error: 'Prenotazioni Open Mic non attive per questo evento' }, 400);
           }
-        }
 
-        if (liveEvent.booking_closes_at) {
-          const closesAt = new Date(liveEvent.booking_closes_at);
-          if (now > closesAt && !liveEvent.reopen_active) {
-            return json({ error: 'Le prenotazioni sono chiuse' }, 400);
+          // Check booking window
+          if (liveEvent.booking_opens_at) {
+            const opensAt = new Date(liveEvent.booking_opens_at);
+            if (now < opensAt) {
+              return json({ error: 'Le prenotazioni non sono ancora aperte' }, 400);
+            }
           }
-        }
 
-        // Check if we're in reopen mode with extra slots
-        let isInReopenMode = false;
-        if (liveEvent.reopen_active && liveEvent.reopen_until) {
-          const reopenUntil = new Date(liveEvent.reopen_until);
-          if (now <= reopenUntil) {
-            isInReopenMode = true;
+          if (liveEvent.booking_closes_at) {
+            const closesAt = new Date(liveEvent.booking_closes_at);
+            if (now > closesAt && !liveEvent.reopen_active) {
+              return json({ error: 'Le prenotazioni sono chiuse' }, 400);
+            }
           }
-        }
 
-        // Check max songs limit
-        if (liveEvent.openmic_max_songs !== null) {
-          const currentCount = liveEvent.openmic_current_count || 0;
-          let maxAllowed = liveEvent.openmic_max_songs;
+          // Check if we're in reopen mode with extra slots
+          if (liveEvent.reopen_active && liveEvent.reopen_until) {
+            const reopenUntil = new Date(liveEvent.reopen_until);
+            if (now <= reopenUntil) {
+              isInReopenMode = true;
+            }
+          }
 
-          // Add extra slots if in reopen mode
-          if (isInReopenMode && liveEvent.reopen_extra_songs) {
-            const reopenUsed = liveEvent.reopen_songs_used || 0;
-            const extraAvailable = liveEvent.reopen_extra_songs - reopenUsed;
-            if (currentCount >= maxAllowed && extraAvailable <= 0) {
+          // Check max songs limit
+          if (liveEvent.openmic_max_songs !== null) {
+            const currentCount = liveEvent.openmic_current_count || 0;
+            const maxAllowed = liveEvent.openmic_max_songs;
+
+            // Add extra slots if in reopen mode
+            if (isInReopenMode && liveEvent.reopen_extra_songs) {
+              const reopenUsed = liveEvent.reopen_songs_used || 0;
+              const extraAvailable = liveEvent.reopen_extra_songs - reopenUsed;
+              if (currentCount >= maxAllowed && extraAvailable <= 0) {
+                return json({ error: 'Limite prenotazioni raggiunto' }, 400);
+              }
+            } else if (currentCount >= maxAllowed) {
               return json({ error: 'Limite prenotazioni raggiunto' }, 400);
             }
-          } else if (currentCount >= maxAllowed) {
-            return json({ error: 'Limite prenotazioni raggiunto' }, 400);
           }
         }
+        // In Free Mode: no limits apply, proceed directly to insert
 
         // === INSERT RESERVATION ===
         const { data: reservation, error } = await supabase
@@ -572,23 +589,26 @@ serve(async (req) => {
           return json({ error: 'Errore creazione prenotazione' }, 500);
         }
 
-        // === UPDATE EVENT COUNTERS ===
-        const updateData: Record<string, unknown> = {
-          openmic_current_count: (liveEvent.openmic_current_count || 0) + 1,
-        };
+        // === UPDATE EVENT COUNTERS (only if there's a live event) ===
+        if (liveEvent) {
+          const updateData: Record<string, unknown> = {
+            openmic_current_count: (liveEvent.openmic_current_count || 0) + 1,
+          };
 
-        // Track reopen usage if applicable
-        if (isInReopenMode && liveEvent.openmic_max_songs !== null) {
-          const currentCount = liveEvent.openmic_current_count || 0;
-          if (currentCount >= liveEvent.openmic_max_songs) {
-            updateData.reopen_songs_used = (liveEvent.reopen_songs_used || 0) + 1;
+          // Track reopen usage if applicable
+          if (isInReopenMode && liveEvent.openmic_max_songs !== null) {
+            const currentCount = liveEvent.openmic_current_count || 0;
+            if (currentCount >= liveEvent.openmic_max_songs) {
+              updateData.reopen_songs_used = (liveEvent.reopen_songs_used || 0) + 1;
+            }
           }
-        }
 
-        await supabase
-          .from('event_booking_rules')
-          .update(updateData)
-          .eq('id', liveEvent.id);
+          await supabase
+            .from('event_booking_rules')
+            .update(updateData)
+            .eq('id', liveEvent.id);
+        }
+        // In Free Mode: no event counters to update
 
         const pushPayload = {
           title: '🎤 Nuova prenotazione!',
