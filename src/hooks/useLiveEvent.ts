@@ -17,6 +17,7 @@ export interface LiveEvent {
   // Booking rules
   booking_opens_at: string | null;
   booking_closes_at: string | null;
+  close_minutes_before_end: number | null;
   openmic_enabled: boolean;
   openmic_max_songs: number | null;
   dediche_enabled: boolean;
@@ -28,6 +29,8 @@ export interface LiveEvent {
   reopen_active: boolean;
   reopen_until: string | null;
   reopen_message: string | null;
+  reopen_extra_songs: number | null;
+  reopen_extra_dediche: number | null;
   // Closure
   closure_mode: string;
   closure_title: string;
@@ -88,6 +91,7 @@ export const useLiveEvent = () => {
           pin_code: liveData.pin_code,
           booking_opens_at: liveData.booking_opens_at,
           booking_closes_at: liveData.booking_closes_at,
+          close_minutes_before_end: liveData.close_minutes_before_end,
           openmic_enabled: liveData.openmic_enabled ?? true,
           openmic_max_songs: liveData.openmic_max_songs,
           dediche_enabled: liveData.dediche_enabled ?? true,
@@ -97,6 +101,8 @@ export const useLiveEvent = () => {
           reopen_active: liveData.reopen_active ?? false,
           reopen_until: liveData.reopen_until,
           reopen_message: liveData.reopen_message,
+          reopen_extra_songs: liveData.reopen_extra_songs,
+          reopen_extra_dediche: liveData.reopen_extra_dediche,
           closure_mode: liveData.closure_mode || 'overlay',
           closure_title: liveData.closure_title || 'Prenotazioni chiuse',
           closure_message: liveData.closure_message || 'Grazie per aver partecipato!',
