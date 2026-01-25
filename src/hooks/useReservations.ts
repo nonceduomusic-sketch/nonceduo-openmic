@@ -90,19 +90,6 @@ export const useReservations = () => {
             window.dispatchEvent(
               new CustomEvent('new-reservation', { detail: newReservation })
             );
-            // Send push notification to all admin devices (background)
-            supabase.functions.invoke('push-notifications', {
-              body: {
-                action: 'send',
-                title: '🎤 Nuova prenotazione!',
-                body: `${newReservation.customer_name} - ${newReservation.song_title}`,
-                tag: 'reservation-' + newReservation.id,
-              },
-            }).catch(err => {
-              if (import.meta.env.DEV) {
-                console.error('[useReservations] Failed to send push:', err);
-              }
-            });
           } else if (payload.eventType === 'UPDATE') {
             setReservations((prev) =>
               normalizeReservations(
@@ -132,16 +119,21 @@ export const useReservations = () => {
     songArtist: string,
     dedicationMessage?: string
   ) => {
-    const insertData = {
-      customer_name: customerName,
-      song_title: songTitle,
-      song_artist: songArtist,
-      dedication_message: dedicationMessage?.trim() || null,
-    };
+    try {
+      const { error } = await supabase.functions.invoke('push-notifications', {
+        body: {
+          action: 'create-reservation',
+          customer_name: customerName,
+          song_title: songTitle,
+          song_artist: songArtist,
+          dedication_message: dedicationMessage?.trim() || null,
+        },
+      });
 
-    const { error } = await supabase.from('reservations').insert([insertData]);
-
-    if (error) {
+      if (error) {
+        throw error;
+      }
+    } catch (error) {
       if (import.meta.env.DEV) {
         console.error('Error creating reservation:', error);
       }

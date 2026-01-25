@@ -67,20 +67,6 @@ export const useMessages = () => {
             window.dispatchEvent(
               new CustomEvent('new-message', { detail: newMessage })
             );
-            
-            // Send push notification to all admin devices (background)
-            supabase.functions.invoke('push-notifications', {
-              body: {
-                action: 'send',
-                title: '✉️ Nuovo messaggio!',
-                body: `${newMessage.sender_name}: ${newMessage.message_text.substring(0, 50)}${newMessage.message_text.length > 50 ? '...' : ''}`,
-                tag: 'message-' + newMessage.id,
-              },
-            }).catch(err => {
-              if (import.meta.env.DEV) {
-                console.error('[useMessages] Failed to send push:', err);
-              }
-            });
           } else if (payload.eventType === 'UPDATE') {
             setMessages((prev) =>
               prev.map((msg) =>
@@ -120,9 +106,13 @@ export const useMessages = () => {
 
   const sendMessage = async (senderName: string, messageText: string): Promise<boolean> => {
     try {
-      const { error } = await supabase
-        .from('messages')
-        .insert([{ sender_name: senderName, message_text: messageText }]);
+      const { error } = await supabase.functions.invoke('push-notifications', {
+        body: {
+          action: 'create-message',
+          sender_name: senderName,
+          message_text: messageText,
+        },
+      });
 
       if (error) throw error;
       toast.success('Messaggio inviato con successo!');
