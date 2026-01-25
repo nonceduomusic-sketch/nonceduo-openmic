@@ -42,7 +42,8 @@ import { AdminCommunityPanel } from '@/components/admin/AdminCommunityPanel';
 import { AdminAuditTab } from '@/components/admin/AdminAuditTab';
 import { AdminStaffTab } from '@/components/admin/AdminStaffTab';
 import { AdminFormatsTab } from '@/components/admin/AdminFormatsTab';
-import { AdminEventTab } from '@/components/admin/AdminEventTab';
+import { AdminEventiTab } from '@/components/admin/AdminEventiTab';
+import { AdminGraficheTab } from '@/components/admin/AdminGraficheTab';
 import { AdminSidebar, type AdminMainTab } from '@/components/admin/AdminSidebar';
 import {
   AlertDialog,
@@ -876,13 +877,11 @@ export const AdminDashboard: React.FC = () => {
         ) : mainTab === 'settings' ? (
           <AdminSettingsTab />
         ) : mainTab === 'event' ? (
-          <AdminEventTab />
+          <AdminEventiTab />
         ) : mainTab === 'formats' ? (
-          <AdminFormatsTab 
-            access={access} 
-            isOwner={staffRole === 'owner'} 
-            onNavigateToEvent={() => setMainTab('event')}
-          />
+          <AdminFormatsTab />
+        ) : mainTab === 'grafiche' ? (
+          <AdminGraficheTab />
         ) : mainTab === 'audit' ? (
           staffRole === 'owner' ? (
             <AdminAuditTab />

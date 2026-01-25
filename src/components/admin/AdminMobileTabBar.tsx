@@ -1,5 +1,5 @@
 import React from "react";
-import { Bell, Calendar, ListMusic, MessageSquare, Music, Newspaper, SlidersHorizontal } from "lucide-react";
+import { Bell, Calendar, MessageSquare, Music, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AdminMainTab } from "@/components/admin/AdminSidebar";
 
@@ -31,18 +31,17 @@ type Item = {
 /**
  * Mobile Tab Bar riorganizzata:
  * - Centro: Dashboard notifiche (sempre prima)
- * - Evento: Gestione eventi programmati
- * - Formati: Toggle rapidi Serata Aperta
- * - Open Mic / Dediche / Community: Sezioni operative
- * - Altro: Menu per accesso a Impostazioni, Staff, ecc.
+ * - Eventi: Gestione eventi liberi e programmati
+ * - Formati: Toggle rapidi e votazioni
+ * - Open Mic / Dediche: Sezioni operative
+ * - Community è nel menu hamburger per semplificare mobile
  */
 const ITEMS: Item[] = [
   { key: "notifications", label: "Centro", icon: Bell, badge: (b) => b.totalNotifications },
-  { key: "event", label: "Evento", icon: Calendar },
+  { key: "event", label: "Eventi", icon: Calendar },
   { key: "formats", label: "Formati", icon: SlidersHorizontal },
   { key: "openmic", label: "Open Mic", icon: Music, badge: (b) => b.openmicActiveCount, gatedBy: "openmic" },
   { key: "dediche", label: "Dediche", icon: MessageSquare, badge: (b) => b.dedicheUnread, gatedBy: "dediche" },
-  { key: "community", label: "Community", icon: Newspaper, badge: (b) => b.communityUnread, gatedBy: "community" },
 ];
 
 export function AdminMobileTabBar({ value, onChange, onBlockedChange, badges, access }: Props) {
