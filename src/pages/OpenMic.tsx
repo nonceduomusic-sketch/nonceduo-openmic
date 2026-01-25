@@ -43,8 +43,8 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
   // Use the public statuses hook for real-time updates (no auth required)
   const { isSongBooked, isSongCompleted, activeCount, loading, bookedSongKeys, statuses } = useReservationStatuses();
   
-  // State for queue visibility
-  const [showQueue, setShowQueue] = useState(true);
+  // State for queue visibility - closed by default
+  const [showQueue, setShowQueue] = useState(false);
 
   // Filter songs: exclude completed ones from the main list
   const filteredSongs = useMemo(() => {

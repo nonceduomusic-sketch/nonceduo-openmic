@@ -521,8 +521,15 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                       {item.type === 'song' && (() => {
                         const votes = getVotesForReservation((item.originalData as Reservation).id);
                         if (!votes || votes.total_votes === 0) return null;
+                        const upVotes = votes.total_votes - votes.fire_votes - votes.heart_votes;
                         return (
                           <div className="flex items-center gap-1.5 ml-auto">
+                            {upVotes > 0 && (
+                              <span className="flex items-center gap-0.5 text-xs text-secondary font-semibold">
+                                <ThumbsUp className="w-3 h-3" />
+                                {upVotes}
+                              </span>
+                            )}
                             {votes.fire_votes > 0 && (
                               <span className="flex items-center gap-0.5 text-xs text-orange-500">
                                 <Flame className="w-3 h-3" />
@@ -533,12 +540,6 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                               <span className="flex items-center gap-0.5 text-xs text-pink-500">
                                 <Heart className="w-3 h-3 fill-current" />
                                 {votes.heart_votes}
-                              </span>
-                            )}
-                            {votes.total_votes > 0 && (
-                              <span className="flex items-center gap-0.5 text-xs text-secondary font-semibold bg-secondary/10 px-1.5 py-0.5 rounded-full">
-                                <ThumbsUp className="w-3 h-3" />
-                                {votes.total_votes}
                               </span>
                             )}
                           </div>

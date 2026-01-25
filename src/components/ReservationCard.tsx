@@ -120,26 +120,31 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
               </div>
               
               {/* Votes display */}
-              {votes && votes.total_votes > 0 && (
-                <div className="flex items-center gap-2 ml-auto">
-                  {votes.fire_votes > 0 && (
-                    <span className="flex items-center gap-0.5 text-orange-500">
-                      <Flame className="w-3.5 h-3.5" />
-                      {votes.fire_votes}
-                    </span>
-                  )}
-                  {votes.heart_votes > 0 && (
-                    <span className="flex items-center gap-0.5 text-pink-500">
-                      <Heart className="w-3.5 h-3.5 fill-current" />
-                      {votes.heart_votes}
-                    </span>
-                  )}
-                  <span className="flex items-center gap-0.5 bg-secondary/20 px-1.5 py-0.5 rounded-full text-foreground">
-                    <ThumbsUp className="w-3 h-3" />
-                    {votes.total_votes}
-                  </span>
-                </div>
-              )}
+              {votes && votes.total_votes > 0 && (() => {
+                const upVotes = votes.total_votes - votes.fire_votes - votes.heart_votes;
+                return (
+                  <div className="flex items-center gap-2 ml-auto">
+                    {upVotes > 0 && (
+                      <span className="flex items-center gap-0.5 text-secondary">
+                        <ThumbsUp className="w-3.5 h-3.5" />
+                        {upVotes}
+                      </span>
+                    )}
+                    {votes.fire_votes > 0 && (
+                      <span className="flex items-center gap-0.5 text-orange-500">
+                        <Flame className="w-3.5 h-3.5" />
+                        {votes.fire_votes}
+                      </span>
+                    )}
+                    {votes.heart_votes > 0 && (
+                      <span className="flex items-center gap-0.5 text-pink-500">
+                        <Heart className="w-3.5 h-3.5 fill-current" />
+                        {votes.heart_votes}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
         </div>
