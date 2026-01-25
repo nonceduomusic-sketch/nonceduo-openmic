@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, CheckCircle, Music, Loader2, FileText, Heart, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,8 @@ import { z } from 'zod';
 import { toast } from 'sonner';
 import { getLyricsSearchUrl } from '@/lib/whatsapp';
 import { cn } from '@/lib/utils';
+import { fireCelebration, fireHearts } from '@/lib/confetti';
+import { SuccessAnimation } from '@/components/effects/SuccessAnimation';
 
 const reservationSchema = z.object({
   customer_name: z.string().trim()
@@ -78,6 +80,12 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
     
     if (success) {
       setIsConfirmed(true);
+      // Fire celebration effects
+      if (wantsDedication && dedicationMessage.trim()) {
+        fireHearts();
+      } else {
+        fireCelebration();
+      }
     }
     
     setIsSubmitting(false);
@@ -89,27 +97,22 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
   if (isConfirmed) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in">
-        <div className="w-full max-w-md glass-card p-6 neon-border-cyan border-2 animate-slide-in text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-secondary to-primary flex items-center justify-center animate-bounce">
-            <CheckCircle className="w-10 h-10 text-secondary-foreground" />
-          </div>
-          
-          <h2 className="font-display text-2xl font-bold neon-text-cyan mb-2">
-            {name}, sei in lista! 🎤
-          </h2>
-          
-          <p className="text-muted-foreground mb-4">
-            La tua prenotazione per <strong className="text-primary">{song.title}</strong> è stata confermata.
-          </p>
+        <div className="w-full max-w-md glass-card p-8 neon-border-cyan border-2 animate-slide-in text-center relative overflow-hidden">
+          {/* Success Animation */}
+          <SuccessAnimation
+            variant={wantsDedication && dedicationMessage.trim() ? 'dedication' : 'booking'}
+            title={`${name}, sei in lista! 🎤`}
+            subtitle={`La tua prenotazione per "${song.title}" è stata confermata.`}
+          />
           
           {wantsDedication && dedicationMessage.trim() && (
-            <p className="text-sm text-primary mb-4 flex items-center justify-center gap-1.5">
+            <p className="text-sm text-primary mt-4 flex items-center justify-center gap-1.5">
               <Heart className="w-4 h-4" />
               Dedica inclusa
             </p>
           )}
           
-          <p className="text-sm text-muted-foreground mb-6">
+          <p className="text-sm text-muted-foreground mt-4 mb-6">
             Ti chiameremo quando sarà il tuo turno!
           </p>
 
