@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getLyricsSearchUrl } from '@/lib/whatsapp';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { VoteButtons } from '@/components/live/VoteButtons';
 
 interface QueueSong {
+  id: string; // reservation id for voting
   song_key: string;
   song_title: string;
   song_artist: string;
@@ -91,55 +93,62 @@ export const LiveQueueDisplay: React.FC<LiveQueueDisplayProps> = ({
           <div
             key={song.song_key}
             className={cn(
-              "flex items-center gap-3 p-3 transition-all",
+              "p-3 transition-all",
               index === 0 && "bg-primary/5"
             )}
           >
-            {/* Position indicator */}
-            <div className={cn(
-              "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold",
-              index === 0 
-                ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" 
-                : "bg-muted text-muted-foreground"
-            )}>
-              {index + 1}
-            </div>
-
-            {/* Song info */}
-            <div className="flex-1 min-w-0">
-              <p className={cn(
-                "font-semibold text-sm truncate",
-                index === 0 ? "text-foreground" : "text-muted-foreground"
+            <div className="flex items-center gap-3">
+              {/* Position indicator */}
+              <div className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold",
+                index === 0 
+                  ? "bg-primary text-primary-foreground shadow-md shadow-primary/30" 
+                  : "bg-muted text-muted-foreground"
               )}>
-                {song.song_title}
-              </p>
-              <p className="text-xs text-muted-foreground/70 truncate">
-                {song.song_artist}
-              </p>
-            </div>
+                {index + 1}
+              </div>
 
-            {/* Lyrics button - always visible */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleLyrics(song.song_title, song.song_artist)}
-              className={cn(
-                "flex-shrink-0 h-9 px-3 gap-1.5",
-                "text-secondary hover:text-secondary hover:bg-secondary/10",
-                "border border-secondary/20"
+              {/* Song info */}
+              <div className="flex-1 min-w-0">
+                <p className={cn(
+                  "font-semibold text-sm truncate",
+                  index === 0 ? "text-foreground" : "text-muted-foreground"
+                )}>
+                  {song.song_title}
+                </p>
+                <p className="text-xs text-muted-foreground/70 truncate">
+                  {song.song_artist}
+                </p>
+              </div>
+
+              {/* Lyrics button - always visible */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleLyrics(song.song_title, song.song_artist)}
+                className={cn(
+                  "flex-shrink-0 h-9 px-3 gap-1.5",
+                  "text-secondary hover:text-secondary hover:bg-secondary/10",
+                  "border border-secondary/20"
+                )}
+              >
+                <FileText className="w-4 h-4" />
+                <span className="text-xs hidden sm:inline">Testo</span>
+              </Button>
+
+              {/* "Next" badge for first song */}
+              {index === 0 && (
+                <span className="flex-shrink-0 px-2.5 py-1 text-xs font-bold rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" />
+                  <span className="hidden sm:inline">Prossima</span>
+                </span>
               )}
-            >
-              <FileText className="w-4 h-4" />
-              <span className="text-xs hidden sm:inline">Testo</span>
-            </Button>
-
-            {/* "Next" badge for first song */}
-            {index === 0 && (
-              <span className="flex-shrink-0 px-2.5 py-1 text-xs font-bold rounded-full bg-primary/20 text-primary border border-primary/30 flex items-center gap-1">
-                <Sparkles className="w-3 h-3" />
-                <span className="hidden sm:inline">Prossima</span>
-              </span>
-            )}
+            </div>
+            
+            {/* Vote buttons - shown for each song */}
+            <div className="mt-2 ml-11">
+              <VoteButtons reservationId={song.id} compact />
+            </div>
           </div>
         ))}
       </div>

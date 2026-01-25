@@ -51,6 +51,7 @@ export const FreeModeOpenMic: React.FC = () => {
     return statuses
       .filter(s => s.status === 'in_progress')
       .map(s => ({
+        id: s.reservation_id,
         song_key: s.song_key,
         song_title: s.song_title,
         song_artist: s.song_artist,
