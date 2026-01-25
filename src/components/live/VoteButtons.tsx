@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Flame, Heart, ThumbsUp, Trophy, Music } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePerformanceVotes, useTopPerformances } from '@/hooks/useLiveInteraction';
@@ -14,18 +14,22 @@ interface VoteButtonsProps {
 }
 
 /**
- * VoteButtons - Bottoni per votare una performance
+ * VoteButtons - Bottoni per votare una performance (stile social)
+ * - Ogni utente può votare una sola volta per canzone
+ * - Può cambiare il voto cliccando su un'altra opzione
+ * - Il voto scelto viene evidenziato con il conteggio
  */
 export const VoteButtons: React.FC<VoteButtonsProps> = ({
   reservationId,
   className,
   compact = false,
 }) => {
-  const { voteCounts, hasVoted, vote } = usePerformanceVotes(reservationId);
+  const { voteCounts, userVoteType, vote, isLoading } = usePerformanceVotes(reservationId);
   const { isActive: votingEnabled, loading: votingLoading } = useFormatActiveCheck('voting');
 
-  // useCallback must be called before any conditional returns (React hooks rules)
   const handleVote = useCallback(async (type: 'up' | 'fire' | 'heart') => {
+    if (userVoteType === type) return; // Already selected this
+    
     triggerHaptic('medium');
     const success = await vote(type);
     if (success) {
@@ -33,43 +37,53 @@ export const VoteButtons: React.FC<VoteButtonsProps> = ({
       else if (type === 'heart') fireEmojiRain('❤️');
       else fireEmojiRain('👍');
     }
-  }, [vote]);
+  }, [vote, userVoteType]);
 
-  // Don't render if voting is disabled (after all hooks are called)
   if (votingLoading) return null;
   if (!votingEnabled) return null;
 
+  const getVoteCount = (type: 'up' | 'fire' | 'heart') => {
+    if (!voteCounts) return 0;
+    if (type === 'fire') return voteCounts.fire_votes;
+    if (type === 'heart') return voteCounts.heart_votes;
+    // 'up' = total - fire - heart
+    return voteCounts.total_votes - voteCounts.fire_votes - voteCounts.heart_votes;
+  };
+
   const buttons = [
-    { type: 'up' as const, icon: ThumbsUp, label: 'Bravo!', color: 'text-secondary' },
-    { type: 'fire' as const, icon: Flame, label: 'Fuoco!', color: 'text-orange-500' },
-    { type: 'heart' as const, icon: Heart, label: 'Amore!', color: 'text-primary' },
+    { type: 'up' as const, icon: ThumbsUp, label: 'Bravo!', activeColor: 'bg-secondary text-secondary-foreground', iconColor: 'text-secondary' },
+    { type: 'fire' as const, icon: Flame, label: 'Fuoco!', activeColor: 'bg-orange-500 text-white', iconColor: 'text-orange-500' },
+    { type: 'heart' as const, icon: Heart, label: 'Amore!', activeColor: 'bg-primary text-primary-foreground', iconColor: 'text-primary' },
   ];
 
   if (compact) {
     return (
-      <div className={cn("flex items-center gap-2", className)}>
-        {buttons.map((btn) => (
-          <motion.button
-            key={btn.type}
-            onClick={() => handleVote(btn.type)}
-            disabled={hasVoted}
-            className={cn(
-              "w-10 h-10 rounded-full flex items-center justify-center transition-all",
-              hasVoted 
-                ? "bg-muted/50 text-muted-foreground cursor-not-allowed" 
-                : "bg-card hover:bg-muted border border-border/50 hover:scale-110",
-              btn.color
-            )}
-            whileTap={{ scale: 0.9 }}
-          >
-            <btn.icon className="w-5 h-5" />
-          </motion.button>
-        ))}
-        {voteCounts && voteCounts.total_votes > 0 && (
-          <span className="text-sm font-semibold text-muted-foreground ml-1">
-            {voteCounts.total_votes}
-          </span>
-        )}
+      <div className={cn("flex items-center gap-1.5", className)}>
+        {buttons.map((btn) => {
+          const isSelected = userVoteType === btn.type;
+          const count = getVoteCount(btn.type);
+          
+          return (
+            <motion.button
+              key={btn.type}
+              onClick={() => handleVote(btn.type)}
+              disabled={isLoading}
+              className={cn(
+                "flex items-center gap-1 px-2 py-1 rounded-full transition-all text-sm font-medium",
+                isSelected 
+                  ? cn(btn.activeColor, "shadow-md") 
+                  : "bg-muted/50 hover:bg-muted text-muted-foreground hover:scale-105",
+                isLoading && "opacity-50 cursor-wait"
+              )}
+              whileTap={{ scale: 0.95 }}
+            >
+              <btn.icon className={cn("w-4 h-4", isSelected ? "" : btn.iconColor)} fill={isSelected ? "currentColor" : "none"} />
+              {(count > 0 || isSelected) && (
+                <span className="text-xs">{count}</span>
+              )}
+            </motion.button>
+          );
+        })}
       </div>
     );
   }
@@ -77,46 +91,50 @@ export const VoteButtons: React.FC<VoteButtonsProps> = ({
   return (
     <div className={cn("rounded-xl border bg-card/50 p-4", className)}>
       <p className="text-sm text-muted-foreground mb-3 text-center">
-        {hasVoted ? 'Hai già votato!' : 'Vota questa performance!'}
+        {userVoteType ? 'Tocca per cambiare voto' : 'Vota questa performance!'}
       </p>
       <div className="flex items-center justify-center gap-3">
-        {buttons.map((btn) => (
-          <motion.button
-            key={btn.type}
-            onClick={() => handleVote(btn.type)}
-            disabled={hasVoted}
-            className={cn(
-              "flex flex-col items-center gap-1 p-3 rounded-xl transition-all",
-              hasVoted 
-                ? "bg-muted/30 text-muted-foreground cursor-not-allowed opacity-50" 
-                : "bg-card hover:bg-muted border border-border/50 hover:scale-105",
-            )}
-            whileTap={{ scale: 0.95 }}
-          >
-            <btn.icon className={cn("w-6 h-6", btn.color)} />
-            <span className="text-xs font-medium">{btn.label}</span>
-          </motion.button>
-        ))}
+        {buttons.map((btn) => {
+          const isSelected = userVoteType === btn.type;
+          const count = getVoteCount(btn.type);
+          
+          return (
+            <motion.button
+              key={btn.type}
+              onClick={() => handleVote(btn.type)}
+              disabled={isLoading}
+              className={cn(
+                "flex flex-col items-center gap-1 p-3 rounded-xl transition-all min-w-[70px]",
+                isSelected 
+                  ? cn(btn.activeColor, "shadow-lg scale-105") 
+                  : "bg-card hover:bg-muted border border-border/50 hover:scale-105",
+                isLoading && "opacity-50 cursor-wait"
+              )}
+              whileTap={{ scale: 0.95 }}
+            >
+              <btn.icon 
+                className={cn("w-6 h-6", isSelected ? "" : btn.iconColor)} 
+                fill={isSelected ? "currentColor" : "none"} 
+              />
+              <span className="text-xs font-medium">{btn.label}</span>
+              {(count > 0 || isSelected) && (
+                <span className={cn(
+                  "text-sm font-bold mt-0.5",
+                  isSelected ? "" : "text-muted-foreground"
+                )}>
+                  {count}
+                </span>
+              )}
+            </motion.button>
+          );
+        })}
       </div>
       
       {voteCounts && voteCounts.total_votes > 0 && (
-        <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-border/30">
-          <div className="text-center">
-            <span className="text-xl font-bold text-foreground">{voteCounts.total_votes}</span>
-            <p className="text-xs text-muted-foreground">voti totali</p>
-          </div>
-          {voteCounts.fire_votes > 0 && (
-            <div className="flex items-center gap-1 text-orange-500">
-              <Flame className="w-4 h-4" />
-              <span className="font-semibold">{voteCounts.fire_votes}</span>
-            </div>
-          )}
-          {voteCounts.heart_votes > 0 && (
-            <div className="flex items-center gap-1 text-primary">
-              <Heart className="w-4 h-4" />
-              <span className="font-semibold">{voteCounts.heart_votes}</span>
-            </div>
-          )}
+        <div className="flex items-center justify-center gap-2 mt-4 pt-3 border-t border-border/30">
+          <span className="text-sm text-muted-foreground">Totale:</span>
+          <span className="text-lg font-bold text-foreground">{voteCounts.total_votes}</span>
+          <span className="text-sm text-muted-foreground">voti</span>
         </div>
       )}
     </div>
