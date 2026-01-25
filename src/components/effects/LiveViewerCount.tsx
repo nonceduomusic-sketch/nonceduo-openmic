@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Eye, Users, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useLiveViewerCount } from '@/hooks/useSocialProof';
 
 interface LiveViewerCountProps {
-  count: number;
+  count?: number;
+  baseCount?: number;
   className?: string;
   variant?: 'minimal' | 'full';
   showTrend?: boolean;
@@ -13,13 +15,17 @@ interface LiveViewerCountProps {
 /**
  * LiveViewerCount - Counter live "X persone stanno guardando"
  * Con animazione quando il numero cambia
+ * Se count non è fornito, usa il hook useLiveViewerCount per generare un valore
  */
 export const LiveViewerCount: React.FC<LiveViewerCountProps> = ({
-  count,
+  count: externalCount,
+  baseCount = 5,
   className,
   variant = 'minimal',
   showTrend = false,
 }) => {
+  const internalCount = useLiveViewerCount(baseCount);
+  const count = externalCount ?? internalCount;
   const [prevCount, setPrevCount] = useState(count);
   const [isIncreasing, setIsIncreasing] = useState(false);
 
