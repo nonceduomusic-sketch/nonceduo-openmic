@@ -175,16 +175,27 @@ export const FreeModeDediche: React.FC<FreeModeDedicheProps> = ({ freeModeState 
                 </div>
               </div>
 
-              {/* Reopen banner */}
+              {/* Reopen banner - VERY VISIBLE */}
               {isReopenValid && (
-                <div className="mt-3 pt-3 border-t border-accent/30 flex items-center gap-2 text-accent">
-                  <AlertTriangle className="w-4 h-4" />
-                  <span className="text-sm font-medium">{reopenMessage || 'Riapertura straordinaria!'}</span>
-                  {reopenRemaining && (
-                    <Badge variant="secondary" className="ml-auto text-xs">
-                      {reopenRemaining.minutes}m {reopenRemaining.seconds}s
-                    </Badge>
-                  )}
+                <div className="mt-3 pt-3 border-t-2 border-secondary/50 animate-pulse">
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-secondary/20 border border-secondary/40">
+                    <div className="p-2 rounded-full bg-secondary/30">
+                      <AlertTriangle className="w-5 h-5 text-secondary" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-secondary">
+                        🎉 {reopenMessage || 'Riapertura straordinaria!'}
+                      </p>
+                      <p className="text-xs text-secondary/80">
+                        Affrettati! Dediche extra disponibili per poco tempo
+                      </p>
+                    </div>
+                    {reopenRemaining && (
+                      <Badge variant="secondary" className="text-sm font-bold animate-bounce">
+                        ⏱️ {reopenRemaining.minutes}:{reopenRemaining.seconds.toString().padStart(2, '0')}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
