@@ -48,6 +48,8 @@ export interface FreeModeState {
   dediche: boolean;
   active: boolean;
   eventName: string | null;
+  pinEnabled: boolean;
+  pinCode: string | null;
 }
 
 export type EventState = 
@@ -69,7 +71,7 @@ export type EventState =
 export const useLiveEvent = () => {
   const [liveEvent, setLiveEvent] = useState<LiveEvent | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
-  const [freeMode, setFreeMode] = useState<FreeModeState>({ openmic: false, dediche: false, active: false, eventName: null });
+  const [freeMode, setFreeMode] = useState<FreeModeState>({ openmic: false, dediche: false, active: false, eventName: null, pinEnabled: false, pinCode: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -115,14 +117,14 @@ export const useLiveEvent = () => {
           closure_redirect_url: liveData.closure_redirect_url,
         });
         setUpcomingEvents([]);
-        setFreeMode({ openmic: false, dediche: false, active: false, eventName: null });
+        setFreeMode({ openmic: false, dediche: false, active: false, eventName: null, pinEnabled: false, pinCode: null });
       } else {
         setLiveEvent(null);
         
         // Check free mode settings (single row table with event name and enabled formats)
         const { data: freeModeData, error: freeModeError } = await supabase
           .from('free_mode_settings')
-          .select('is_active, openmic_enabled, dediche_enabled, event_name')
+          .select('is_active, openmic_enabled, dediche_enabled, event_name, pin_enabled, pin_code')
           .eq('is_active', true)
           .maybeSingle();
 
@@ -137,6 +139,8 @@ export const useLiveEvent = () => {
           dediche: dedicheActive ?? false,
           active: freeModeActive,
           eventName: freeModeData?.event_name ?? null,
+          pinEnabled: freeModeData?.pin_enabled ?? false,
+          pinCode: freeModeData?.pin_code ?? null,
         });
 
         // Only fetch upcoming events if not in free mode
