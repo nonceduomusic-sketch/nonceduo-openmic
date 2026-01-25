@@ -1,11 +1,14 @@
 import React, { useState, useMemo } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { 
-  Zap, Play, Square, Music, MessageSquare, Clock, RotateCcw
+  Zap, Play, Square, Music, MessageSquare, Clock, RotateCcw, Edit3, Trophy
 } from 'lucide-react';
 import { useFreeModeSettings, FreeModeSettings } from '@/hooks/useFreeModeSettings';
 import { cn } from '@/lib/utils';
@@ -117,7 +120,9 @@ export const FreeModeFullPanel: React.FC = () => {
     getTimeRemaining,
   } = useFreeModeSettings();
 
-  const [activeSection, setActiveSection] = useState<'limits' | 'pin' | 'reopen' | 'closure'>('limits');
+  const [activeSection, setActiveSection] = useState<'general' | 'limits' | 'pin' | 'reopen' | 'closure'>('general');
+  const [editingName, setEditingName] = useState(false);
+  const [tempName, setTempName] = useState(settings?.event_name || 'Evento Libero');
 
   // Convert settings to EventBookingRules format for shared components
   const rules = useMemo(() => adaptToEventRules(settings), [settings]);
@@ -197,16 +202,76 @@ export const FreeModeFullPanel: React.FC = () => {
             <Zap className="w-5 h-5 text-muted-foreground" />
             Configura Evento Libero
           </CardTitle>
+          <CardDescription className="text-xs">
+            Evento senza data programmata. Attivalo quando vuoi.
+          </CardDescription>
         </CardHeader>
         
         <CardContent className="space-y-4">
           <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as typeof activeSection)}>
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
+              <TabsTrigger value="general" className="text-xs">Generale</TabsTrigger>
               <TabsTrigger value="limits" className="text-xs">Limiti</TabsTrigger>
               <TabsTrigger value="pin" className="text-xs">PIN</TabsTrigger>
               <TabsTrigger value="reopen" className="text-xs">Riapertura</TabsTrigger>
               <TabsTrigger value="closure" className="text-xs">Chiusura</TabsTrigger>
             </TabsList>
+
+            {/* GENERAL TAB - Name, Voting, Formats */}
+            <TabsContent value="general" className="mt-4 space-y-4">
+              {/* Event Name */}
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Nome Evento</Label>
+                <Input
+                  value={tempName}
+                  onChange={(e) => setTempName(e.target.value)}
+                  onBlur={() => {
+                    if (tempName !== settings?.event_name) {
+                      handleUpdate({ event_name: tempName });
+                    }
+                  }}
+                  placeholder="Es: Serata Karaoke"
+                  className="h-10"
+                />
+              </div>
+
+              {/* Format Toggles */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Formati Attivi</Label>
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border">
+                    <div className="flex items-center gap-2">
+                      <Music className="w-4 h-4 text-primary" />
+                      <span className="text-sm">Open Mic</span>
+                    </div>
+                    <Switch
+                      checked={settings?.openmic_enabled ?? true}
+                      onCheckedChange={(checked) => handleUpdate({ openmic_enabled: checked })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4 text-secondary" />
+                      <span className="text-sm">Dediche</span>
+                    </div>
+                    <Switch
+                      checked={settings?.dediche_enabled ?? true}
+                      onCheckedChange={(checked) => handleUpdate({ dediche_enabled: checked })}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border">
+                    <div className="flex items-center gap-2">
+                      <Trophy className="w-4 h-4 text-warning" />
+                      <span className="text-sm">Votazioni Pubblico</span>
+                    </div>
+                    <Switch
+                      checked={settings?.voting_enabled ?? true}
+                      onCheckedChange={(checked) => handleUpdate({ voting_enabled: checked })}
+                    />
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
 
             <TabsContent value="limits" className="mt-4">
               <EventLimitsConfig rules={rules} onUpdate={handleUpdate} />
@@ -227,7 +292,7 @@ export const FreeModeFullPanel: React.FC = () => {
 
           <Separator />
 
-          <Button className="w-full bg-green-600 hover:bg-green-700" onClick={handleActivate}>
+          <Button variant="default" className="w-full" onClick={handleActivate}>
             <Play className="w-4 h-4 mr-2" />
             Avvia Evento Libero
           </Button>
@@ -240,15 +305,15 @@ export const FreeModeFullPanel: React.FC = () => {
   return (
     <Card className={cn(
       "glass-card overflow-hidden transition-all duration-300",
-      "ring-2 ring-green-500/50 shadow-lg shadow-green-500/10"
+      "ring-2 ring-primary/50 shadow-lg shadow-primary/10"
     )}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Zap className="w-5 h-5 text-green-500" />
+            <Zap className="w-5 h-5 text-primary" />
             {settings?.event_name || 'Evento Libero'}
           </CardTitle>
-          <Badge variant="default" className="bg-green-500 animate-pulse">LIVE</Badge>
+          <Badge variant="default" className="animate-pulse">LIVE</Badge>
         </div>
       </CardHeader>
       
@@ -325,12 +390,69 @@ export const FreeModeFullPanel: React.FC = () => {
 
         {/* Live Controls Tabs - using shared components */}
         <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as typeof activeSection)}>
-          <TabsList className="grid w-full grid-cols-4 h-9">
+          <TabsList className="grid w-full grid-cols-5 h-9">
+            <TabsTrigger value="general" className="text-xs">Generale</TabsTrigger>
             <TabsTrigger value="limits" className="text-xs">Limiti</TabsTrigger>
             <TabsTrigger value="pin" className="text-xs">PIN</TabsTrigger>
             <TabsTrigger value="reopen" className="text-xs">Riapertura</TabsTrigger>
             <TabsTrigger value="closure" className="text-xs">Chiusura</TabsTrigger>
           </TabsList>
+
+          {/* GENERAL TAB - Name, Voting, Formats */}
+          <TabsContent value="general" className="mt-3 space-y-4">
+            {/* Event Name */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Nome Evento</Label>
+              <Input
+                value={tempName}
+                onChange={(e) => setTempName(e.target.value)}
+                onBlur={() => {
+                  if (tempName !== settings?.event_name) {
+                    handleUpdate({ event_name: tempName });
+                  }
+                }}
+                placeholder="Es: Serata Karaoke"
+                className="h-10"
+              />
+            </div>
+
+            {/* Format Toggles */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Formati Attivi</Label>
+              <div className="grid grid-cols-1 gap-2">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border">
+                  <div className="flex items-center gap-2">
+                    <Music className="w-4 h-4 text-primary" />
+                    <span className="text-sm">Open Mic</span>
+                  </div>
+                  <Switch
+                    checked={settings?.openmic_enabled ?? true}
+                    onCheckedChange={(checked) => handleUpdate({ openmic_enabled: checked })}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border">
+                  <div className="flex items-center gap-2">
+                    <MessageSquare className="w-4 h-4 text-secondary" />
+                    <span className="text-sm">Dediche</span>
+                  </div>
+                  <Switch
+                    checked={settings?.dediche_enabled ?? true}
+                    onCheckedChange={(checked) => handleUpdate({ dediche_enabled: checked })}
+                  />
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-warning" />
+                    <span className="text-sm">Votazioni Pubblico</span>
+                  </div>
+                  <Switch
+                    checked={settings?.voting_enabled ?? true}
+                    onCheckedChange={(checked) => handleUpdate({ voting_enabled: checked })}
+                  />
+                </div>
+              </div>
+            </div>
+          </TabsContent>
 
           <TabsContent value="limits" className="mt-3">
             <EventLimitsConfig rules={rules} onUpdate={handleUpdate} />
