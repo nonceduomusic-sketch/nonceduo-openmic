@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { theme, width, height, type } = await req.json();
+    const { theme, width, height, type, sourceImage } = await req.json();
 
     if (!theme) {
       return new Response(
@@ -33,11 +33,62 @@ serve(async (req) => {
     const aspectRatio = width / height;
     const formatDesc = aspectRatio < 1 ? 'portrait/vertical' : aspectRatio > 1 ? 'landscape/horizontal' : 'square';
     
-    const promptType = type === 'story' 
-      ? 'Instagram story background for a live music event'
-      : 'professional event poster background for a music event';
+    const isEditing = !!sourceImage;
+    
+    console.log(`${isEditing ? 'Editing' : 'Generating'} AI image: ${theme} (${width}x${height}, ${formatDesc})`);
 
-    console.log(`Generating AI image: ${theme} (${width}x${height}, ${formatDesc})`);
+    let messages;
+    
+    if (isEditing) {
+      // Image editing mode: pass the source image and edit instructions
+      messages = [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: `Edit this image following these instructions: "${theme}".
+              
+IMPORTANT RULES:
+- Keep the main subjects/people in the photo
+- Only modify the background, lighting, or style as requested
+- Maintain the composition and key elements
+- Apply artistic enhancements while preserving the subjects
+- Output format: ${width}x${height}px (${formatDesc})
+- Make it suitable for event poster/social media with space for text overlay
+Ultra high resolution.`
+            },
+            {
+              type: 'image_url',
+              image_url: {
+                url: sourceImage
+              }
+            }
+          ]
+        }
+      ];
+    } else {
+      // Generation mode: create new image from scratch
+      const promptType = type === 'story' 
+        ? 'Instagram story background for a live music event'
+        : 'professional event poster background for a music event';
+        
+      messages = [
+        {
+          role: 'user',
+          content: `Generate a ${promptType} with theme: "${theme}". 
+          Style: Artistic, sophisticated with rich textures.
+          Requirements:
+          - Format ${width}x${height}px (${formatDesc})
+          - Color palette suitable for text overlay (darker areas for readability)
+          - Abstract, artistic background WITHOUT any text or letters
+          - Professional quality for Instagram/Facebook
+          - Theme: ${theme}
+          - Should work well with white/light text overlay
+          Ultra high resolution.`
+        }
+      ];
+    }
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -47,21 +98,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash-image-preview',
-        messages: [
-          {
-            role: 'user',
-            content: `Generate a ${promptType} with theme: "${theme}". 
-            Style: Artistic, sophisticated with rich textures.
-            Requirements:
-            - Format ${width}x${height}px (${formatDesc})
-            - Color palette suitable for text overlay (darker areas for readability)
-            - Abstract, artistic background WITHOUT any text or letters
-            - Professional quality for Instagram/Facebook
-            - Theme: ${theme}
-            - Should work well with white/light text overlay
-            Ultra high resolution.`
-          }
-        ],
+        messages,
         modalities: ['image', 'text'],
       }),
     });
@@ -100,7 +137,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('AI image generated successfully');
+    console.log(`AI image ${isEditing ? 'edited' : 'generated'} successfully`);
     
     return new Response(
       JSON.stringify({ imageUrl }),

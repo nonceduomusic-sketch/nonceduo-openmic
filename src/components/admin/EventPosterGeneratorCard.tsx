@@ -226,12 +226,12 @@ export const EventPosterGeneratorCard: React.FC = () => {
     }
   }, []);
 
-  // Generate AI background based on theme
+  // Generate AI background based on theme (or edit existing image)
   const generateAIBackground = useCallback(async () => {
     if (!config.aiTheme.trim()) {
       toast({
         title: 'Tema mancante',
-        description: 'Scrivi un tema (es. matrimonio, sagra, jazz...)',
+        description: 'Scrivi un tema o istruzioni (es. "migliora lo sfondo", "aggiungi effetto neon"...)',
         variant: 'destructive',
       });
       return;
@@ -241,6 +241,9 @@ export const EventPosterGeneratorCard: React.FC = () => {
 
     try {
       const formatConfig = IMAGE_FORMATS[config.imageFormat];
+      
+      // If there's an uploaded image, send it for editing
+      const hasSourceImage = !!config.uploadedImage;
       
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/generate-event-image`, {
         method: 'POST',
@@ -253,6 +256,8 @@ export const EventPosterGeneratorCard: React.FC = () => {
           width: formatConfig.width,
           height: formatConfig.height,
           type: 'poster',
+          // Pass the uploaded image for editing if available
+          sourceImage: config.uploadedImage || undefined,
         }),
       });
 
@@ -264,9 +269,9 @@ export const EventPosterGeneratorCard: React.FC = () => {
       
       if (data.imageUrl) {
         setAiGeneratedBg(data.imageUrl);
-        updateConfig('uploadedImage', null); // Clear uploaded image
+        updateConfig('uploadedImage', null); // Clear uploaded image since we now have AI result
         toast({
-          title: 'Sfondo AI generato!',
+          title: hasSourceImage ? 'Immagine modificata!' : 'Sfondo AI generato!',
           description: 'Ora genera la locandina completa.',
         });
       } else {
