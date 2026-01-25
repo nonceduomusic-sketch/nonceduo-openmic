@@ -123,7 +123,7 @@ const AppOpenMic: React.FC = () => {
       );
     }
     
-    return <FreeModeOpenMic eventName={freeMode.eventName} />;
+    return <FreeModeOpenMic freeModeState={freeMode} />;
   }
 
   // CASE 3: Eventi READY esistono → Pre-Event Page

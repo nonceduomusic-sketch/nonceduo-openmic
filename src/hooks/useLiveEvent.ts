@@ -50,6 +50,23 @@ export interface FreeModeState {
   eventName: string | null;
   pinEnabled: boolean;
   pinCode: string | null;
+  // Limits
+  openmicMaxSongs: number | null;
+  openmicCurrentCount: number;
+  dedicheMaxTotal: number | null;
+  dedicheCurrentCount: number;
+  expiresAt: string | null;
+  // Reopening
+  reopenActive: boolean;
+  reopenUntil: string | null;
+  reopenMessage: string | null;
+  reopenExtraSongs: number | null;
+  reopenExtraDediche: number | null;
+  // Closure
+  closureMode: string;
+  closureTitle: string;
+  closureMessage: string;
+  closureRedirectUrl: string | null;
 }
 
 export type EventState = 
@@ -71,7 +88,28 @@ export type EventState =
 export const useLiveEvent = () => {
   const [liveEvent, setLiveEvent] = useState<LiveEvent | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
-  const [freeMode, setFreeMode] = useState<FreeModeState>({ openmic: false, dediche: false, active: false, eventName: null, pinEnabled: false, pinCode: null });
+  const [freeMode, setFreeMode] = useState<FreeModeState>({
+    openmic: false,
+    dediche: false,
+    active: false,
+    eventName: null,
+    pinEnabled: false,
+    pinCode: null,
+    openmicMaxSongs: null,
+    openmicCurrentCount: 0,
+    dedicheMaxTotal: null,
+    dedicheCurrentCount: 0,
+    expiresAt: null,
+    reopenActive: false,
+    reopenUntil: null,
+    reopenMessage: null,
+    reopenExtraSongs: null,
+    reopenExtraDediche: null,
+    closureMode: 'overlay',
+    closureTitle: 'Prenotazioni chiuse',
+    closureMessage: 'Grazie per aver partecipato!',
+    closureRedirectUrl: null,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -117,14 +155,35 @@ export const useLiveEvent = () => {
           closure_redirect_url: liveData.closure_redirect_url,
         });
         setUpcomingEvents([]);
-        setFreeMode({ openmic: false, dediche: false, active: false, eventName: null, pinEnabled: false, pinCode: null });
+        setFreeMode({
+          openmic: false,
+          dediche: false,
+          active: false,
+          eventName: null,
+          pinEnabled: false,
+          pinCode: null,
+          openmicMaxSongs: null,
+          openmicCurrentCount: 0,
+          dedicheMaxTotal: null,
+          dedicheCurrentCount: 0,
+          expiresAt: null,
+          reopenActive: false,
+          reopenUntil: null,
+          reopenMessage: null,
+          reopenExtraSongs: null,
+          reopenExtraDediche: null,
+          closureMode: 'overlay',
+          closureTitle: 'Prenotazioni chiuse',
+          closureMessage: 'Grazie per aver partecipato!',
+          closureRedirectUrl: null,
+        });
       } else {
         setLiveEvent(null);
         
-        // Check free mode settings (single row table with event name and enabled formats)
+        // Check free mode settings - fetch ALL fields needed for limits, reopening, and closure
         const { data: freeModeData, error: freeModeError } = await supabase
           .from('free_mode_settings')
-          .select('is_active, openmic_enabled, dediche_enabled, event_name, pin_enabled, pin_code')
+          .select('*')
           .eq('is_active', true)
           .maybeSingle();
 
@@ -141,6 +200,20 @@ export const useLiveEvent = () => {
           eventName: freeModeData?.event_name ?? null,
           pinEnabled: freeModeData?.pin_enabled ?? false,
           pinCode: freeModeData?.pin_code ?? null,
+          openmicMaxSongs: freeModeData?.openmic_max_songs ?? null,
+          openmicCurrentCount: freeModeData?.openmic_current_count ?? 0,
+          dedicheMaxTotal: freeModeData?.dediche_max_total ?? null,
+          dedicheCurrentCount: freeModeData?.dediche_current_count ?? 0,
+          expiresAt: freeModeData?.expires_at ?? null,
+          reopenActive: freeModeData?.reopen_active ?? false,
+          reopenUntil: freeModeData?.reopen_until ?? null,
+          reopenMessage: freeModeData?.reopen_message ?? null,
+          reopenExtraSongs: freeModeData?.reopen_extra_songs ?? null,
+          reopenExtraDediche: freeModeData?.reopen_extra_dediche ?? null,
+          closureMode: freeModeData?.closure_mode ?? 'overlay',
+          closureTitle: freeModeData?.closure_title ?? 'Prenotazioni chiuse',
+          closureMessage: freeModeData?.closure_message ?? 'Grazie per aver partecipato!',
+          closureRedirectUrl: freeModeData?.closure_redirect_url ?? null,
         });
 
         // Only fetch upcoming events if not in free mode

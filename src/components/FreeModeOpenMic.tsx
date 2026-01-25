@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
-import { ChevronLeft, Music2, Zap, Search as SearchIcon, Users, ListMusic } from "lucide-react";
+import React, { useState, useMemo, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ChevronLeft, Music2, Zap, Users, ListMusic, AlertTriangle, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { songs, Song } from "@/data/songs";
 import { SEO } from "@/components/SEO";
@@ -13,27 +13,105 @@ import { useReservationStatuses } from "@/hooks/useReservationStatuses";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
+import { FreeModeState } from "@/hooks/useLiveEvent";
+import { FreeModeClosureOverlay, FreeModeClosureBanner } from "@/components/FreeModeClosureOverlay";
+import { differenceInSeconds, parseISO } from "date-fns";
 
 interface FreeModeOpenMicProps {
-  eventName?: string | null;
+  freeModeState: FreeModeState;
 }
 
 /**
- * FreeModeOpenMic - Open Mic senza limiti (Evento Live)
+ * FreeModeOpenMic - Open Mic con stato Free Mode
  * 
  * Features:
- * - Nessun limite numerico
- * - Nessun countdown
+ * - Limiti numerici e temporali
+ * - Countdown alla scadenza
+ * - Riapertura straordinaria
+ * - Messaggio di chiusura configurabile
  * - Banner con nome evento dinamico
- * - Tutte le funzionalità base di prenotazione
  */
-export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ eventName }) => {
+export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState }) => {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [artistFilter, setArtistFilter] = useState("");
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [showQueue, setShowQueue] = useState(false);
+  const [now, setNow] = useState(new Date());
   
   const { statuses, isSongBooked, isSongCompleted } = useReservationStatuses();
+
+  const {
+    eventName,
+    openmicMaxSongs,
+    openmicCurrentCount,
+    expiresAt,
+    reopenActive,
+    reopenUntil,
+    reopenMessage,
+    closureMode,
+    closureTitle,
+    closureMessage,
+    closureRedirectUrl,
+  } = freeModeState;
+
+  // Update time every second
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Calculate if booking is closed
+  const isExpired = useMemo(() => {
+    if (!expiresAt) return false;
+    return new Date(expiresAt) <= now;
+  }, [expiresAt, now]);
+
+  const isLimitReached = useMemo(() => {
+    if (!openmicMaxSongs) return false;
+    return openmicCurrentCount >= openmicMaxSongs;
+  }, [openmicMaxSongs, openmicCurrentCount]);
+
+  // Check if reopening is active and valid
+  const isReopenValid = useMemo(() => {
+    if (!reopenActive || !reopenUntil) return false;
+    return new Date(reopenUntil) > now;
+  }, [reopenActive, reopenUntil, now]);
+
+  // Is booking closed?
+  const isClosed = (isExpired || isLimitReached) && !isReopenValid;
+
+  // Handle redirect mode
+  useEffect(() => {
+    if (isClosed && closureMode === 'redirect') {
+      if (closureRedirectUrl) {
+        window.location.href = closureRedirectUrl;
+      } else {
+        // Redirect to info page with closure context
+        navigate('/openmic');
+      }
+    }
+  }, [isClosed, closureMode, closureRedirectUrl, navigate]);
+
+  // Calculate remaining time
+  const remainingTime = useMemo(() => {
+    if (!expiresAt || isExpired) return null;
+    const seconds = differenceInSeconds(parseISO(expiresAt), now);
+    if (seconds <= 0) return null;
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return { minutes, seconds: secs, total: seconds };
+  }, [expiresAt, now, isExpired]);
+
+  // Calculate reopen remaining time
+  const reopenRemaining = useMemo(() => {
+    if (!reopenUntil || !isReopenValid) return null;
+    const seconds = differenceInSeconds(parseISO(reopenUntil), now);
+    if (seconds <= 0) return null;
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return { minutes, seconds: secs };
+  }, [reopenUntil, now, isReopenValid]);
 
   // Filter songs based on search and artist
   const filteredSongs = useMemo(() => {
@@ -66,18 +144,19 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ eventName }) =
   }, [statuses]);
 
   const handleBookSong = (song: Song) => {
-    if (isSongBooked(song.title, song.artist)) {
-      return; // Already booked
+    if (isSongBooked(song.title, song.artist) || isClosed) {
+      return; // Already booked or closed
     }
     setSelectedSong(song);
   };
 
   const bookedCount = statuses.filter(s => s.status === 'in_progress').length;
+  const remaining = openmicMaxSongs ? openmicMaxSongs - openmicCurrentCount : null;
 
   return (
     <>
       <SEO 
-        title="Open Mic - Evento Live | Non Ce Duo"
+        title={`Open Mic - ${eventName || 'Evento Live'} | Non Ce Duo`}
         description="Prenota la tua canzone per il karaoke live!"
       />
       
@@ -117,115 +196,152 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ eventName }) =
         </header>
 
         <main className="container mx-auto px-4 py-4 pb-24 space-y-4">
-          {/* Free Mode Banner */}
-          <div className={cn(
-            "relative overflow-hidden rounded-xl p-4",
-            "bg-gradient-to-br from-accent/20 via-accent/10 to-secondary/10",
-            "border border-accent/30",
-          )}>
-            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-accent/20 to-transparent rounded-full -translate-y-1/2 translate-x-1/2" />
-            
-            <div className="relative z-10 flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
-                <Zap className="w-6 h-6 text-accent" />
-              </div>
-              <div>
-                <h2 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
-                  {eventName || 'Evento Live'}
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent"></span>
-                  </span>
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Prenota liberamente senza limiti! 🎤
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Search and Filter */}
-          <div className="space-y-3">
-            <SearchBar 
-              value={search}
-              onChange={setSearch}
-              placeholder="Cerca canzone o artista..."
+          {/* Status Banner */}
+          {isClosed && closureMode === 'overlay' ? (
+            <FreeModeClosureOverlay
+              closureTitle={closureTitle}
+              closureMessage={closureMessage}
             />
-            <ArtistFilter
-              value={artistFilter}
-              onChange={setArtistFilter}
-            />
-          </div>
-
-          {/* Queue Display - Collapsible */}
-          {queueSongs.length > 0 && (
-            <div className="rounded-xl border-2 border-secondary/30 bg-secondary/5 p-3">
-              <Collapsible open={showQueue} onOpenChange={setShowQueue}>
-                <CollapsibleTrigger asChild>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full flex items-center justify-between p-3 h-auto bg-secondary/10 hover:bg-secondary/20 rounded-lg border border-secondary/30"
-                  >
-                    <div className="flex items-center gap-2">
-                      <ListMusic className="w-5 h-5 text-secondary" />
-                      <span className="font-display font-bold text-secondary">Scaletta Live</span>
-                      <span className="text-xs bg-secondary/20 text-secondary px-2 py-0.5 rounded-full">
-                        {queueSongs.length} in coda
-                      </span>
-                    </div>
-                    <span className="text-xs text-secondary/70">
-                      {showQueue ? '▲ Chiudi' : '▼ Vedi chi canta'}
+          ) : (
+            <div className={cn(
+              "relative overflow-hidden rounded-xl p-4",
+              "bg-gradient-to-br from-accent/20 via-accent/10 to-secondary/10",
+              "border border-accent/30",
+              isReopenValid && "ring-2 ring-secondary/50"
+            )}>
+              <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-accent/20 to-transparent rounded-full -translate-y-1/2 translate-x-1/2" />
+              
+              <div className="relative z-10 flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center">
+                  <Zap className="w-6 h-6 text-accent" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
+                    {eventName || 'Evento Live'}
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent"></span>
                     </span>
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="mt-2">
-                  <LiveQueueDisplay songs={queueSongs} />
-                </CollapsibleContent>
-              </Collapsible>
-              <p className="text-xs text-center text-secondary/60 mt-2">
-                👆 Queste sono le canzoni già prenotate stasera
-              </p>
+                  </h2>
+                  
+                  {/* Status info */}
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    {remaining !== null && (
+                      <Badge variant={remaining <= 3 ? "destructive" : "secondary"} className="text-xs">
+                        {remaining} posti rimasti
+                      </Badge>
+                    )}
+                    {remainingTime && (
+                      <Badge variant={remainingTime.total <= 300 ? "destructive" : "outline"} className="text-xs flex items-center gap-1">
+                        <Timer className="w-3 h-3" />
+                        {remainingTime.minutes}m {remainingTime.seconds}s
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Reopen banner */}
+              {isReopenValid && (
+                <div className="mt-3 pt-3 border-t border-secondary/30 flex items-center gap-2 text-secondary">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span className="text-sm font-medium">{reopenMessage || 'Riapertura straordinaria!'}</span>
+                  {reopenRemaining && (
+                    <Badge variant="secondary" className="ml-auto text-xs">
+                      {reopenRemaining.minutes}m {reopenRemaining.seconds}s
+                    </Badge>
+                  )}
+                </div>
+              )}
             </div>
           )}
 
-          {/* Stats */}
-          <div className="flex items-center justify-between text-sm text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <SearchIcon className="w-4 h-4" />
-              {filteredSongs.length} canzoni
-            </span>
-            {bookedCount > 0 && (
-              <span className="flex items-center gap-1.5">
-                <Users className="w-4 h-4" />
-                {bookedCount} in coda
-              </span>
-            )}
-          </div>
+          {/* Don't show content if closed */}
+          {isClosed && closureMode === 'overlay' ? null : (
+            <>
+              {/* Search and Filter */}
+              <div className="space-y-3">
+                <SearchBar 
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Cerca canzone o artista..."
+                />
+                <ArtistFilter
+                  value={artistFilter}
+                  onChange={setArtistFilter}
+                />
+              </div>
 
-          {/* Song Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {filteredSongs.map((song) => (
-              <SongCardWithStatus
-                key={`${song.title}-${song.artist}`}
-                song={song}
-                isBooked={isSongBooked(song.title, song.artist)}
-                isCompleted={isSongCompleted(song.title, song.artist)}
-                onBook={handleBookSong}
-              />
-            ))}
-          </div>
+              {/* Queue Display - Collapsible */}
+              {queueSongs.length > 0 && (
+                <div className="rounded-xl border-2 border-secondary/30 bg-secondary/5 p-3">
+                  <Collapsible open={showQueue} onOpenChange={setShowQueue}>
+                    <CollapsibleTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        className="w-full flex items-center justify-between p-3 h-auto bg-secondary/10 hover:bg-secondary/20 rounded-lg border border-secondary/30"
+                      >
+                        <div className="flex items-center gap-2">
+                          <ListMusic className="w-5 h-5 text-secondary" />
+                          <span className="font-display font-bold text-secondary">Scaletta Live</span>
+                          <span className="text-xs bg-secondary/20 text-secondary px-2 py-0.5 rounded-full">
+                            {queueSongs.length} in coda
+                          </span>
+                        </div>
+                        <span className="text-xs text-secondary/70">
+                          {showQueue ? '▲ Chiudi' : '▼ Vedi chi canta'}
+                        </span>
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <div className="mt-3">
+                        <LiveQueueDisplay songs={queueSongs} />
+                      </div>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+              )}
 
-          {filteredSongs.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              <Music2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>Nessuna canzone trovata</p>
-              <p className="text-sm mt-1">Prova a modificare la ricerca</p>
-            </div>
+              {/* Stats */}
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <span className="flex items-center gap-2">
+                  <Music2 className="w-4 h-4" />
+                  {filteredSongs.length} canzoni
+                </span>
+                {bookedCount > 0 && (
+                  <span className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    {bookedCount} in coda
+                  </span>
+                )}
+              </div>
+
+              {/* Song Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                {filteredSongs.map((song) => (
+                  <SongCardWithStatus
+                    key={`${song.title}-${song.artist}`}
+                    song={song}
+                    isBooked={isSongBooked(song.title, song.artist)}
+                    isCompleted={isSongCompleted(song.title, song.artist)}
+                    onBook={handleBookSong}
+                  />
+                ))}
+              </div>
+
+              {filteredSongs.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Music2 className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>Nessuna canzone trovata</p>
+                  <p className="text-sm mt-1">Prova a modificare la ricerca</p>
+                </div>
+              )}
+            </>
           )}
         </main>
 
         {/* Booking Modal */}
-        {selectedSong && (
+        {selectedSong && !isClosed && (
           <BookingConfirmationModal
             song={selectedSong}
             onClose={() => setSelectedSong(null)}
