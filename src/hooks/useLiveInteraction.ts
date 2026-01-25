@@ -59,39 +59,53 @@ interface VoteCount {
   heart_votes: number;
 }
 
+type VoteType = 'up' | 'fire' | 'heart';
+
 /**
  * Hook per gestire i voti alle performance
+ * Supporta: votazione singola per utente, cambio voto, evidenziazione scelta
  */
 export const usePerformanceVotes = (reservationId?: string) => {
   const [voteCounts, setVoteCounts] = useState<VoteCount | null>(null);
-  const [hasVoted, setHasVoted] = useState(false);
+  const [userVoteType, setUserVoteType] = useState<VoteType | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const fingerprint = typeof window !== 'undefined' 
-    ? localStorage.getItem('session_fingerprint') || `anon_${Date.now()}`
-    : '';
+  const getFingerprint = useCallback(() => {
+    let fp = localStorage.getItem('session_fingerprint');
+    if (!fp) {
+      fp = `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem('session_fingerprint', fp);
+    }
+    return fp;
+  }, []);
 
-  // Fetch initial vote count
+  // Fetch initial vote count and user's existing vote
   useEffect(() => {
     if (!reservationId) return;
 
     const fetchVotes = async () => {
-      const { data } = await supabase
+      const fingerprint = getFingerprint();
+      
+      // Fetch vote counts
+      const { data: counts } = await supabase
         .from('performance_vote_counts')
         .select('*')
         .eq('reservation_id', reservationId)
         .maybeSingle();
       
-      if (data) setVoteCounts(data);
+      if (counts) setVoteCounts(counts);
 
-      // Check if user already voted
+      // Check user's existing vote
       const { data: existingVote } = await supabase
         .from('performance_votes')
-        .select('id')
+        .select('vote_type')
         .eq('reservation_id', reservationId)
         .eq('voter_fingerprint', fingerprint)
         .maybeSingle();
       
-      setHasVoted(!!existingVote);
+      if (existingVote) {
+        setUserVoteType(existingVote.vote_type as VoteType);
+      }
     };
 
     fetchVotes();
@@ -118,32 +132,64 @@ export const usePerformanceVotes = (reservationId?: string) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [reservationId, fingerprint]);
+  }, [reservationId, getFingerprint]);
 
-  const vote = useCallback(async (voteType: 'up' | 'fire' | 'heart') => {
-    if (!reservationId || hasVoted) return false;
-
-    const fp = localStorage.getItem('session_fingerprint') || 
-      `anon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const vote = useCallback(async (voteType: VoteType) => {
+    if (!reservationId || isLoading) return false;
     
-    if (!localStorage.getItem('session_fingerprint')) {
-      localStorage.setItem('session_fingerprint', fp);
-    }
+    // If clicking the same vote type, do nothing (can't remove vote)
+    if (userVoteType === voteType) return false;
 
-    const { error } = await supabase.from('performance_votes').insert({
-      reservation_id: reservationId,
-      voter_fingerprint: fp,
-      vote_type: voteType,
-    });
+    setIsLoading(true);
+    const fingerprint = getFingerprint();
 
-    if (!error) {
-      setHasVoted(true);
-      return true;
+    try {
+      if (userVoteType) {
+        // User is changing their vote - UPDATE
+        const { error } = await supabase
+          .from('performance_votes')
+          .update({ vote_type: voteType })
+          .eq('reservation_id', reservationId)
+          .eq('voter_fingerprint', fingerprint);
+
+        if (!error) {
+          setUserVoteType(voteType);
+          setIsLoading(false);
+          return true;
+        }
+      } else {
+        // First vote - INSERT (use upsert to handle race conditions)
+        const { error } = await supabase
+          .from('performance_votes')
+          .upsert({
+            reservation_id: reservationId,
+            voter_fingerprint: fingerprint,
+            vote_type: voteType,
+          }, {
+            onConflict: 'reservation_id,voter_fingerprint'
+          });
+
+        if (!error) {
+          setUserVoteType(voteType);
+          setIsLoading(false);
+          return true;
+        }
+      }
+    } catch (e) {
+      console.error('Vote error:', e);
     }
+    
+    setIsLoading(false);
     return false;
-  }, [reservationId, hasVoted]);
+  }, [reservationId, userVoteType, isLoading, getFingerprint]);
 
-  return { voteCounts, hasVoted, vote };
+  return { 
+    voteCounts, 
+    userVoteType, 
+    hasVoted: userVoteType !== null, 
+    vote, 
+    isLoading 
+  };
 };
 
 /**
