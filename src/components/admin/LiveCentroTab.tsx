@@ -9,6 +9,7 @@ import {
   Loader2,
   Clock,
   ChevronRight,
+  Maximize2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -22,6 +23,9 @@ import { LyricsDialog } from '@/components/LyricsDialog';
 import { toast } from 'sonner';
 import type { AdminMainTab } from '@/components/admin/AdminSidebar';
 import { triggerHaptic } from '@/lib/haptics';
+import { useAdminFontSize } from '@/hooks/useAdminFontSize';
+import { FontSizeControl } from '@/components/admin/FontSizeControl';
+import { DedicationExpandDialog } from '@/components/admin/DedicationExpandDialog';
 
 interface LiveCentroTabProps {
   onNavigate?: (tab: AdminMainTab, subTab?: string) => void;
@@ -76,6 +80,18 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
   // Lyrics dialog
   const [lyricsOpen, setLyricsOpen] = useState(false);
   const [selectedSong, setSelectedSong] = useState<{ title: string; artist: string } | null>(null);
+
+  // Font size
+  const { fontSize, setFontSize, fontSizeClass } = useAdminFontSize();
+
+  // Dedication expand dialog
+  const [dedicationDialogOpen, setDedicationDialogOpen] = useState(false);
+  const [selectedDedication, setSelectedDedication] = useState<{
+    text: string;
+    senderName: string;
+    songTitle?: string;
+    songArtist?: string;
+  } | null>(null);
 
   // Seen items tracking (localStorage)
   const [seenIds, setSeenIds] = useState<Set<string>>(() => {
@@ -325,16 +341,22 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
             </div>
           </div>
 
-          {/* Toggle completed */}
-          <Button
-            variant={showCompleted ? "secondary" : "outline"}
-            size="sm"
-            className="h-8 px-2.5 rounded-lg text-xs"
-            onClick={() => setShowCompleted(!showCompleted)}
-          >
-            <Check className={cn("w-4 h-4", showCompleted && "text-emerald-500")} />
-            <span className="ml-1 hidden sm:inline">{showCompleted ? 'Fatte' : 'Vedi fatte'}</span>
-          </Button>
+          {/* Controls: Font size + Toggle completed */}
+          <div className="flex items-center gap-2">
+            <FontSizeControl 
+              fontSize={fontSize} 
+              onFontSizeChange={setFontSize} 
+            />
+            <Button
+              variant={showCompleted ? "secondary" : "outline"}
+              size="sm"
+              className="h-8 px-2.5 rounded-lg text-xs"
+              onClick={() => setShowCompleted(!showCompleted)}
+            >
+              <Check className={cn("w-4 h-4", showCompleted && "text-emerald-500")} />
+              <span className="ml-1 hidden sm:inline">{showCompleted ? 'Fatte' : 'Vedi fatte'}</span>
+            </Button>
+          </div>
         </div>
 
         {/* Filter tabs */}
@@ -493,13 +515,31 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                       </span>
                     </div>
 
-                    {/* Dedication preview for songs */}
+                    {/* Dedication preview for songs - clickable to expand */}
                     {item.hasDedication && item.dedicationText && item.type === 'song' && (
-                      <div className="mt-2 px-2 py-1.5 rounded-lg bg-gradient-to-r from-pink-500/10 to-transparent border-l-2 border-pink-400">
-                        <p className="text-xs text-foreground/80 italic line-clamp-1">
-                          "{item.dedicationText}"
-                        </p>
-                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedDedication({
+                            text: item.dedicationText!,
+                            senderName: item.name,
+                            songTitle: item.title,
+                            songArtist: item.subtitle,
+                          });
+                          setDedicationDialogOpen(true);
+                        }}
+                        className="mt-2 w-full text-left px-2 py-1.5 rounded-lg bg-gradient-to-r from-primary/10 to-transparent border-l-2 border-primary hover:from-primary/20 transition-colors group"
+                      >
+                        <div className="flex items-center gap-1">
+                          <p className={cn(
+                            "text-foreground/80 italic line-clamp-2 flex-1",
+                            fontSizeClass
+                          )}>
+                            "{item.dedicationText}"
+                          </p>
+                          <Maximize2 className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary flex-shrink-0" />
+                        </div>
+                      </button>
                     )}
                   </div>
 
@@ -527,6 +567,17 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
         onOpenChange={setLyricsOpen}
         songTitle={selectedSong?.title || ''}
         songArtist={selectedSong?.artist || ''}
+      />
+
+      {/* Dedication Expand Dialog */}
+      <DedicationExpandDialog
+        open={dedicationDialogOpen}
+        onOpenChange={setDedicationDialogOpen}
+        dedicationText={selectedDedication?.text || ''}
+        senderName={selectedDedication?.senderName || ''}
+        songTitle={selectedDedication?.songTitle}
+        songArtist={selectedDedication?.songArtist}
+        fontSizeClass={fontSizeClass}
       />
     </div>
   );

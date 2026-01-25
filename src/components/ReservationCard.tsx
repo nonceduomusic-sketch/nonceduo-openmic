@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Check, RotateCcw, Music, Clock, Heart, Trash2, FileText, AlertTriangle } from 'lucide-react';
+import { Check, RotateCcw, Music, Clock, Heart, Trash2, FileText, AlertTriangle, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Reservation } from '@/hooks/useReservations';
 import { LyricsDialog } from './LyricsDialog';
 import { cn } from '@/lib/utils';
+import { useAdminFontSize } from '@/hooks/useAdminFontSize';
+import { DedicationExpandDialog } from '@/components/admin/DedicationExpandDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,6 +44,8 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
   compact = false,
 }) => {
   const [lyricsDialogOpen, setLyricsDialogOpen] = useState(false);
+  const [dedicationDialogOpen, setDedicationDialogOpen] = useState(false);
+  const { fontSizeClass } = useAdminFontSize();
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -113,28 +117,35 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
           </div>
         </div>
 
-        {/* Dedication section - Instagram style */}
+        {/* Dedication section - clickable to expand */}
         {hasDedication && (
-          <div className={cn(
-            "mt-3 relative overflow-hidden",
-            "rounded-xl",
-            "bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10",
-            "border border-primary/20"
-          )}>
+          <button
+            onClick={() => setDedicationDialogOpen(true)}
+            className={cn(
+              "mt-3 w-full text-left relative overflow-hidden",
+              "rounded-xl",
+              "bg-gradient-to-br from-primary/10 via-secondary/5 to-accent/10",
+              "border border-primary/20 hover:border-primary/40 transition-colors group"
+            )}
+          >
             {/* Header con icona cuore */}
-            <div className="flex items-center gap-2 px-3 pt-3 pb-2">
-              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-                <Heart className="w-3 h-3 text-primary-foreground fill-current" />
+            <div className="flex items-center justify-between gap-2 px-3 pt-3 pb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                  <Heart className="w-3 h-3 text-primary-foreground fill-current" />
+                </div>
+                <span className="text-xs font-semibold text-primary">Dedica speciale</span>
               </div>
-              <span className="text-xs font-semibold text-primary">Dedica speciale</span>
+              <Maximize2 className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
             </div>
             
             {/* Messaggio della dedica */}
             <div className="px-3 pb-3">
               <p className={cn(
-                "text-sm text-foreground leading-relaxed",
+                "text-foreground leading-relaxed",
                 "italic",
-                compact ? "line-clamp-3" : ""
+                compact ? "line-clamp-3" : "line-clamp-4",
+                fontSizeClass
               )}>
                 "{reservation.dedication_message}"
               </p>
@@ -142,7 +153,7 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
             
             {/* Decorazione sfumata in basso */}
             <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary/50 via-secondary/50 to-primary/50" />
-          </div>
+          </button>
         )}
 
         {/* Lyrics/Chords button - always visible */}
@@ -256,6 +267,17 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
         songTitle={reservation.song_title}
         songArtist={reservation.song_artist}
       />
+
+      {hasDedication && (
+        <DedicationExpandDialog
+          open={dedicationDialogOpen}
+          onOpenChange={setDedicationDialogOpen}
+          dedicationText={reservation.dedication_message || ''}
+          senderName={reservation.customer_name}
+          songTitle={reservation.song_title}
+          songArtist={reservation.song_artist}
+        />
+      )}
     </>
   );
 };
