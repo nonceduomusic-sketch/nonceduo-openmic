@@ -1,6 +1,37 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
+const PUSH_SW_URL = '/sw-push.js';
+// IMPORTANT: keep this on a dedicated scope to avoid conflicts with the PWA service worker (vite-plugin-pwa)
+const PUSH_SW_SCOPE = '/sw-push/';
+
+async function getPushServiceWorkerRegistration(): Promise<ServiceWorkerRegistration> {
+  if (!('serviceWorker' in navigator)) {
+    throw new Error('Service Worker non supportato');
+  }
+
+  const existing = await navigator.serviceWorker.getRegistration(PUSH_SW_SCOPE);
+  if (existing) return existing;
+
+  const reg = await navigator.serviceWorker.register(PUSH_SW_URL, { scope: PUSH_SW_SCOPE });
+
+  const sw = reg.installing || reg.waiting || reg.active;
+  if (!sw) return reg;
+  if (sw.state === 'activated') return reg;
+
+  await new Promise<void>((resolve) => {
+    const onStateChange = () => {
+      if (sw.state === 'activated') {
+        sw.removeEventListener('statechange', onStateChange);
+        resolve();
+      }
+    };
+    sw.addEventListener('statechange', onStateChange);
+  });
+
+  return reg;
+}
+
 interface PushNotificationState {
   isSupported: boolean;
   isSubscribed: boolean;
@@ -31,11 +62,8 @@ export const usePushNotifications = (userType: 'admin' | 'user' = 'admin', userI
   // Get existing subscription
   const getExistingSubscription = useCallback(async (): Promise<PushSubscription | null> => {
     try {
-      const registration = await navigator.serviceWorker.getRegistration('/sw-push.js');
-      if (registration) {
-        return await registration.pushManager.getSubscription();
-      }
-      return null;
+      const registration = await getPushServiceWorkerRegistration();
+      return await registration.pushManager.getSubscription();
     } catch (error) {
       console.error('[usePushNotifications] Error getting subscription:', error);
       return null;
@@ -53,8 +81,8 @@ export const usePushNotifications = (userType: 'admin' | 'user' = 'admin', userI
       }
 
       try {
-        // Register service worker
-        await navigator.serviceWorker.register('/sw-push.js', { scope: '/' });
+        // Ensure push-dedicated service worker is registered
+        await getPushServiceWorkerRegistration();
         
         const permission = Notification.permission;
         const subscription = await getExistingSubscription();
@@ -121,17 +149,21 @@ export const usePushNotifications = (userType: 'admin' | 'user' = 'admin', userI
       const vapidKey = new ArrayBuffer(vapidKeyArray.length);
       new Uint8Array(vapidKey).set(vapidKeyArray);
 
-      // Get service worker registration
-      console.log('[usePushNotifications] Waiting for service worker ready...');
-      const registration = await navigator.serviceWorker.ready;
-      console.log('[usePushNotifications] Service worker ready:', registration.active?.state);
-
-      // Subscribe to push
-      console.log('[usePushNotifications] Subscribing to push manager...');
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: vapidKey,
+      // Get the push SW registration (NOT the PWA SW)
+      console.log('[usePushNotifications] Ensuring push service worker registration...');
+      const registration = await getPushServiceWorkerRegistration();
+      console.log('[usePushNotifications] Push service worker state:', {
+        active: registration.active?.state,
+        scope: registration.scope,
       });
+
+      // Subscribe to push (reuse existing subscription if present)
+      console.log('[usePushNotifications] Subscribing to push manager...');
+      const existingSubscription = await registration.pushManager.getSubscription();
+      const subscription = existingSubscription ?? await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: vapidKey,
+        });
       console.log('[usePushNotifications] PushManager subscription created:', subscription.endpoint.substring(0, 50) + '...');
 
       // Get device info
@@ -196,7 +228,8 @@ export const usePushNotifications = (userType: 'admin' | 'user' = 'admin', userI
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      const subscription = await getExistingSubscription();
+      const registration = await getPushServiceWorkerRegistration();
+      const subscription = await registration.pushManager.getSubscription();
       
       if (subscription) {
         // Unsubscribe from push manager
@@ -229,7 +262,7 @@ export const usePushNotifications = (userType: 'admin' | 'user' = 'admin', userI
       }));
       return false;
     }
-  }, [getExistingSubscription]);
+  }, []);
 
   // Send test notification
   const sendTest = useCallback(async (): Promise<boolean> => {
