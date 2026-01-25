@@ -18,6 +18,7 @@ import {
   Wand2,
   RotateCcw,
   Type,
+  QrCode,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,8 +27,10 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import QRCode from 'qrcode';
 
 type EventType = 'public' | 'private';
 type StylePreset = 'minimal' | 'gradient' | 'neon';
@@ -45,6 +48,7 @@ interface EventStoryConfig {
   overlayPosition: OverlayPosition;
   textSize: TextSize;
   aiTheme: string;
+  showQrCode: boolean;
 }
 
 const STORAGE_KEY = 'ncd_story_generator_config';
@@ -59,6 +63,7 @@ const DEFAULT_CONFIG: EventStoryConfig = {
   overlayPosition: 'center',
   textSize: 'medium',
   aiTheme: '',
+  showQrCode: false,
 };
 
 const STYLE_PRESETS: Record<StylePreset, { label: string; description: string; bg: string; accent: string }> = {
@@ -476,7 +481,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
       ctx.fillStyle = config.eventType === 'public' ? '#22c55e' : style.accent;
       ctx.fillText(`${badgeIcon}  ${badgeText}`, canvas.width / 2, badgeY + 12);
 
-      // Draw secret PIN teaser section
+      // Draw secret PIN teaser OR QR code section
       const pinSectionY = isCompact 
         ? canvas.height - (config.imageFormat === 'square' ? 320 : 380)
         : canvas.height - 650;
@@ -487,24 +492,82 @@ export const EventStoryGeneratorCard: React.FC = () => {
       ctx.roundRect(100, pinSectionY - 40, canvas.width - 200, isCompact ? 200 : 280, 20);
       ctx.stroke();
 
-      ctx.font = `700 ${pinTitleSize}px "Orbitron", sans-serif`;
-      ctx.fillStyle = style.accent;
-      if (config.stylePreset === 'neon' && !aiGeneratedBg) {
-        ctx.shadowColor = style.accent;
-        ctx.shadowBlur = 15;
+      if (config.showQrCode) {
+        // Generate and draw QR code
+        const appUrl = 'https://nonceduo-openmic.lovable.app/app/openmic';
+        const qrSize = isCompact ? 120 : 160;
+        
+        try {
+          const qrDataUrl = await QRCode.toDataURL(appUrl, {
+            width: qrSize,
+            margin: 1,
+            color: {
+              dark: '#ffffff',
+              light: '#00000000', // transparent background
+            },
+          });
+          
+          const qrImg = new Image();
+          await new Promise<void>((resolve, reject) => {
+            qrImg.onload = () => resolve();
+            qrImg.onerror = reject;
+            qrImg.src = qrDataUrl;
+          });
+          
+          // Draw QR code centered
+          const qrX = (canvas.width - qrSize) / 2;
+          const qrY = pinSectionY - 10;
+          
+          // QR background circle
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+          ctx.beginPath();
+          ctx.arc(canvas.width / 2, qrY + qrSize / 2, qrSize / 2 + 20, 0, Math.PI * 2);
+          ctx.fill();
+          
+          ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+          
+          // Text below QR
+          ctx.font = `600 ${pinTitleSize}px "Orbitron", sans-serif`;
+          ctx.fillStyle = style.accent;
+          if (config.stylePreset === 'neon' && !aiGeneratedBg) {
+            ctx.shadowColor = style.accent;
+            ctx.shadowBlur = 15;
+          }
+          ctx.fillText('📱 SCANSIONA IL QR', canvas.width / 2, qrY + qrSize + 50);
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
+          
+          ctx.font = `400 ${subtitleSize}px "Inter", sans-serif`;
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+          ctx.fillText('Prenota la tua canzone! (PIN richiesto)', canvas.width / 2, qrY + qrSize + (isCompact ? 80 : 90));
+        } catch (qrError) {
+          console.error('QR generation error:', qrError);
+          // Fallback to text if QR fails
+          ctx.font = `700 ${pinTitleSize}px "Orbitron", sans-serif`;
+          ctx.fillStyle = style.accent;
+          ctx.fillText('🎵 CODICE SEGRETO 🎵', canvas.width / 2, pinSectionY + 30);
+        }
+      } else {
+        // Original PIN teaser
+        ctx.font = `700 ${pinTitleSize}px "Orbitron", sans-serif`;
+        ctx.fillStyle = style.accent;
+        if (config.stylePreset === 'neon' && !aiGeneratedBg) {
+          ctx.shadowColor = style.accent;
+          ctx.shadowBlur = 15;
+        }
+        ctx.fillText('🎵 CODICE SEGRETO 🎵', canvas.width / 2, pinSectionY + 30);
+        
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        
+        ctx.font = `800 ${pinBoxSize}px "Orbitron", sans-serif`;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.fillText('? ? ? ?', canvas.width / 2, pinSectionY + (isCompact ? 90 : 120));
+        
+        ctx.font = `400 ${subtitleSize}px "Inter", sans-serif`;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+        ctx.fillText('Scoprilo partecipando all\'evento!', canvas.width / 2, pinSectionY + (isCompact ? 140 : 190));
       }
-      ctx.fillText('🎵 CODICE SEGRETO 🎵', canvas.width / 2, pinSectionY + 30);
-      
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      
-      ctx.font = `800 ${pinBoxSize}px "Orbitron", sans-serif`;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-      ctx.fillText('? ? ? ?', canvas.width / 2, pinSectionY + (isCompact ? 90 : 120));
-      
-      ctx.font = `400 ${subtitleSize}px "Inter", sans-serif`;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-      ctx.fillText('Scoprilo partecipando all\'evento!', canvas.width / 2, pinSectionY + (isCompact ? 140 : 190));
 
       // Draw private event CTA if applicable (only for story format)
       if (config.eventType === 'private' && config.imageFormat === 'story') {
@@ -908,6 +971,23 @@ export const EventStoryGeneratorCard: React.FC = () => {
             </RadioGroup>
           </div>
         )}
+
+        {/* QR Code Toggle */}
+        <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-accent/10 to-primary/10 border border-accent/20">
+          <div className="flex items-center gap-3">
+            <QrCode className="w-5 h-5 text-accent" />
+            <div>
+              <Label className="text-sm font-medium">Mostra QR Code</Label>
+              <p className="text-xs text-muted-foreground">
+                Link all'app senza mostrare il PIN
+              </p>
+            </div>
+          </div>
+          <Switch
+            checked={config.showQrCode}
+            onCheckedChange={(checked) => updateConfig('showQrCode', checked)}
+          />
+        </div>
 
         {/* Generate Button */}
         <Button
