@@ -19,6 +19,8 @@ import { UserLoginIndicator } from '@/components/UserLoginIndicator';
 import { SEO } from '@/components/SEO';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { NamePromptDialog } from '@/components/NamePromptDialog';
+import { EventContextBanner } from '@/components/EventContextBanner';
+import { LiveEvent } from '@/hooks/useLiveEvent';
 
 const messageSchema = z.object({
   sender_name: z.string().trim()
@@ -41,9 +43,13 @@ interface MessagesProps {
    * We keep UX focused and avoid the global bottom navigation.
    */
   appMode?: boolean;
+  /**
+   * When provided, shows the event context banner.
+   */
+  liveEvent?: LiveEvent | null;
 }
 
-const Messages: React.FC<MessagesProps> = ({ appMode = false }) => {
+const Messages: React.FC<MessagesProps> = ({ appMode = false, liveEvent }) => {
   const [name, setName] = useState('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1173,6 +1179,13 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false }) => {
           </div>
         </div>
       </header>
+
+      {/* Event Context Banner */}
+      {liveEvent && !selectedConversation && !showNewMessageForm && (
+        <div className="container pt-4">
+          <EventContextBanner event={liveEvent} />
+        </div>
+      )}
 
       {/* Blocked user banner */}
       {isBlocked && (
