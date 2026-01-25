@@ -106,6 +106,7 @@ export const AdminEventiTab: React.FC = () => {
 
   // Free mode config state
   const [freeModeConfig, setFreeModeConfig] = useState({
+    eventName: 'Evento Libero',
     openmic: true,
     dediche: true,
     voting: true,
@@ -115,6 +116,14 @@ export const AdminEventiTab: React.FC = () => {
     pinCode: '',
   });
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [editingLiveSettings, setEditingLiveSettings] = useState(false);
+  const [liveEditConfig, setLiveEditConfig] = useState({
+    eventName: '',
+    maxSongs: '',
+    maxDediche: '',
+    durationMinutes: '',
+    pinCode: '',
+  });
 
   const loading = loadingScheduled || loadingFreeMode;
 
@@ -171,6 +180,7 @@ export const AdminEventiTab: React.FC = () => {
     }
     
     await activateFreeMode({
+      eventName: freeModeConfig.eventName || 'Evento Libero',
       openmic: freeModeConfig.openmic,
       dediche: freeModeConfig.dediche,
       voting: freeModeConfig.voting,
@@ -327,24 +337,29 @@ export const AdminEventiTab: React.FC = () => {
             <Card className="ring-2 ring-green-500/50 shadow-lg shadow-green-500/10">
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2 text-lg">
-                    <Zap className="w-5 h-5 text-green-500" />
-                    Evento Libero in Corso
-                  </CardTitle>
-                  <Badge className="bg-green-500 animate-pulse">LIVE</Badge>
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <Zap className="w-5 h-5 text-green-500" />
+                      {freeModeSettings.event_name || 'Evento Libero'}
+                    </CardTitle>
+                    <CardDescription className="text-xs mt-1">
+                      Stato: <Badge variant="outline" className="text-green-500 border-green-500 text-[10px]">LIVE</Badge>
+                    </CardDescription>
+                  </div>
+                  <Badge className="bg-green-500 animate-pulse text-white">LIVE</Badge>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Stats */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-primary/10 rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold">{freeModeSettings.openmic_current_count}</div>
+                    <div className="text-2xl font-bold">{freeModeSettings.openmic_current_count || 0}</div>
                     <div className="text-xs text-muted-foreground">
                       Canzoni {freeModeSettings.openmic_max_songs ? `/ ${freeModeSettings.openmic_max_songs}` : ''}
                     </div>
                   </div>
                   <div className="bg-pink-500/10 rounded-lg p-3 text-center">
-                    <div className="text-2xl font-bold">{freeModeSettings.dediche_current_count}</div>
+                    <div className="text-2xl font-bold">{freeModeSettings.dediche_current_count || 0}</div>
                     <div className="text-xs text-muted-foreground">
                       Dediche {freeModeSettings.dediche_max_total ? `/ ${freeModeSettings.dediche_max_total}` : ''}
                     </div>
@@ -371,7 +386,7 @@ export const AdminEventiTab: React.FC = () => {
 
                 <Separator />
 
-                {/* Live controls */}
+                {/* Live controls - Toggles */}
                 <div className="space-y-3">
                   <h4 className="text-sm font-medium flex items-center gap-2">
                     <Settings2 className="w-4 h-4" />
@@ -412,11 +427,142 @@ export const AdminEventiTab: React.FC = () => {
                       />
                     </div>
                   </div>
+                </div>
 
+                {/* Modifica impostazioni durante live */}
+                <div className="space-y-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-muted-foreground"
+                    onClick={() => {
+                      setEditingLiveSettings(!editingLiveSettings);
+                      if (!editingLiveSettings) {
+                        setLiveEditConfig({
+                          eventName: freeModeSettings.event_name || '',
+                          maxSongs: freeModeSettings.openmic_max_songs?.toString() || '',
+                          maxDediche: freeModeSettings.dediche_max_total?.toString() || '',
+                          durationMinutes: freeModeSettings.duration_minutes?.toString() || '',
+                          pinCode: freeModeSettings.pin_code || '',
+                        });
+                      }
+                    }}
+                  >
+                    <Settings2 className="w-4 h-4 mr-2" />
+                    {editingLiveSettings ? 'Chiudi modifica' : 'Modifica impostazioni'}
+                  </Button>
+
+                  {editingLiveSettings && (
+                    <div className="space-y-3 p-3 bg-muted/20 rounded-lg">
+                      {/* Nome evento */}
+                      <div className="space-y-1">
+                        <Label className="text-xs flex items-center gap-1">
+                          <Sparkles className="w-3 h-3" /> Nome Evento
+                        </Label>
+                        <Input
+                          type="text"
+                          placeholder="Es: Serata Karaoke"
+                          value={liveEditConfig.eventName}
+                          onChange={(e) => setLiveEditConfig(c => ({ ...c, eventName: e.target.value }))}
+                          className="h-8"
+                        />
+                      </div>
+
+                      {/* Limiti */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs flex items-center gap-1">
+                            <Hash className="w-3 h-3" /> Max Canzoni
+                          </Label>
+                          <Input
+                            type="number"
+                            placeholder="Illimitato"
+                            value={liveEditConfig.maxSongs}
+                            onChange={(e) => setLiveEditConfig(c => ({ ...c, maxSongs: e.target.value }))}
+                            className="h-8"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs flex items-center gap-1">
+                            <Hash className="w-3 h-3" /> Max Dediche
+                          </Label>
+                          <Input
+                            type="number"
+                            placeholder="Illimitato"
+                            value={liveEditConfig.maxDediche}
+                            onChange={(e) => setLiveEditConfig(c => ({ ...c, maxDediche: e.target.value }))}
+                            className="h-8"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Durata */}
+                      <div className="space-y-1">
+                        <Label className="text-xs flex items-center gap-1">
+                          <Clock className="w-3 h-3" /> Estendi durata (minuti da ora)
+                        </Label>
+                        <Input
+                          type="number"
+                          placeholder="Nessun limite"
+                          value={liveEditConfig.durationMinutes}
+                          onChange={(e) => setLiveEditConfig(c => ({ ...c, durationMinutes: e.target.value }))}
+                          className="h-8"
+                        />
+                      </div>
+
+                      {/* PIN */}
+                      <div className="space-y-1">
+                        <Label className="text-xs flex items-center gap-1">
+                          <Lock className="w-3 h-3" /> PIN
+                        </Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="text"
+                            placeholder="Nessun PIN"
+                            value={liveEditConfig.pinCode}
+                            onChange={(e) => setLiveEditConfig(c => ({ ...c, pinCode: e.target.value }))}
+                            className="h-8 font-mono"
+                            maxLength={6}
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setLiveEditConfig(c => ({ ...c, pinCode: generateFreeModePin() }))}
+                            className="h-8 px-2"
+                          >
+                            <RefreshCw className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Salva */}
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        onClick={async () => {
+                          await updateLiveSettings({
+                            eventName: liveEditConfig.eventName || undefined,
+                            maxSongs: liveEditConfig.maxSongs ? parseInt(liveEditConfig.maxSongs) : null,
+                            maxDediche: liveEditConfig.maxDediche ? parseInt(liveEditConfig.maxDediche) : null,
+                            durationMinutes: liveEditConfig.durationMinutes ? parseInt(liveEditConfig.durationMinutes) : null,
+                            pinCode: liveEditConfig.pinCode || null,
+                          });
+                          setEditingLiveSettings(false);
+                        }}
+                      >
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Applica Modifiche
+                      </Button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full"
+                    className="flex-1"
                     onClick={resetFreeModeCounters}
                   >
                     <RefreshCw className="w-4 h-4 mr-2" />
@@ -453,6 +599,23 @@ export const AdminEventiTab: React.FC = () => {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
+                {/* Nome Evento */}
+                <div className="space-y-1">
+                  <Label className="text-xs flex items-center gap-1">
+                    <Sparkles className="w-3 h-3" /> Nome Evento
+                  </Label>
+                  <Input
+                    type="text"
+                    placeholder="Es: Serata Karaoke"
+                    value={freeModeConfig.eventName}
+                    onChange={(e) => setFreeModeConfig(c => ({ ...c, eventName: e.target.value }))}
+                    className="h-9"
+                  />
+                  <p className="text-[10px] text-muted-foreground">
+                    Questo nome apparirà nelle pagine dei format
+                  </p>
+                </div>
+
                 {/* Quick toggles */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">

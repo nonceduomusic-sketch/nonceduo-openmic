@@ -450,6 +450,8 @@ export type Database = {
           dediche_enabled: boolean | null
           dediche_max_total: number | null
           duration_minutes: number | null
+          event_name: string | null
+          event_status: string | null
           expires_at: string | null
           id: string
           is_active: boolean | null
@@ -469,6 +471,8 @@ export type Database = {
           dediche_enabled?: boolean | null
           dediche_max_total?: number | null
           duration_minutes?: number | null
+          event_name?: string | null
+          event_status?: string | null
           expires_at?: string | null
           id?: string
           is_active?: boolean | null
@@ -488,6 +492,8 @@ export type Database = {
           dediche_enabled?: boolean | null
           dediche_max_total?: number | null
           duration_minutes?: number | null
+          event_name?: string | null
+          event_status?: string | null
           expires_at?: string | null
           id?: string
           is_active?: boolean | null
