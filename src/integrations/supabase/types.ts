@@ -278,6 +278,7 @@ export type Database = {
           section: string | null
           slug: string | null
           updated_at: string
+          visibility: string | null
         }
         Insert: {
           allowed_participants?: string[] | null
@@ -296,6 +297,7 @@ export type Database = {
           section?: string | null
           slug?: string | null
           updated_at?: string
+          visibility?: string | null
         }
         Update: {
           allowed_participants?: string[] | null
@@ -314,6 +316,7 @@ export type Database = {
           section?: string | null
           slug?: string | null
           updated_at?: string
+          visibility?: string | null
         }
         Relationships: []
       }

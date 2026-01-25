@@ -432,15 +432,29 @@ serve(async (req: Request): Promise<Response> => {
       }
 
       case 'setVisibility': {
-        const { conversation_id, is_public, allowed_participants } = body;
+        const { conversation_id, is_public, allowed_participants, visibility } = body;
+        
+        // Build update object based on what's provided
+        const updateData: Record<string, unknown> = {};
+        
+        // For groups: use is_public and allowed_participants
+        if (is_public !== undefined) {
+          updateData.is_public = is_public;
+        }
+        if (allowed_participants !== undefined) {
+          updateData.allowed_participants = allowed_participants;
+        }
+        
+        // For dediche conversations: use visibility column
+        // Valid values: 'public', 'admin_only', 'author_only'
+        if (visibility !== undefined) {
+          updateData.visibility = visibility;
+        }
+        
         result = await supabase
           .from('conversations')
-          .update({ 
-            is_public: is_public ?? false,
-            allowed_participants: allowed_participants ?? []
-          })
-          .eq('id', conversation_id)
-          .eq('is_group', true); // Only groups can have visibility settings
+          .update(updateData)
+          .eq('id', conversation_id);
         break;
       }
 
