@@ -385,12 +385,9 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false, liveEvent }) => {
     };
   }, [selectedConversation?.id, userSessionId, markMessagesAsRead]);
 
-  // If no conversations exist, show the new message form automatically
-  useEffect(() => {
-    if (!loading && conversations.length === 0 && publicGroups.length === 0) {
-      setShowNewMessageForm(true);
-    }
-  }, [loading, conversations.length, publicGroups.length]);
+  // IMPORTANT (Dediche UX): do NOT auto-open the "Nuova Dedica" form on page entry.
+  // Users should always land on the conversations list first (if any),
+  // and explicitly tap the CTA to start a new dedication.
 
   const handleSubmitNew = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -782,14 +779,14 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false, liveEvent }) => {
       );
     }
 
-    // New message form view
+    // New dedication form view
     if (showNewMessageForm) {
       return (
         <div className="space-y-6">
           <div className="glass-card p-6 neon-border-cyan border">
             <h2 className="font-display text-lg font-semibold mb-4 flex items-center gap-2">
               <MessageCircle className="w-5 h-5 text-secondary" />
-              Nuovo Messaggio
+              Nuova Dedica
             </h2>
             
             <form onSubmit={handleSubmitNew} className="space-y-4">
@@ -979,14 +976,14 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false, liveEvent }) => {
         )}
 
         {/* Empty state */}
-        {!hasConversations && !showNewMessageForm && (
+        {!loading && !hasConversations && !showNewMessageForm && (
           <div className="text-center py-12">
             <MessageCircle className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
             <p className="text-muted-foreground">
               Nessuna conversazione ancora
             </p>
             <p className="text-sm text-muted-foreground mt-1">
-              Clicca "Nuovo Messaggio" per iniziare
+              Clicca "Nuova Dedica" per iniziare
             </p>
           </div>
         )}
