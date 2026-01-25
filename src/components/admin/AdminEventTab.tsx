@@ -4,24 +4,36 @@ import {
   Clock, 
   Music, 
   MessageSquare, 
-  AlertTriangle,
-  Power,
-  PowerOff,
   RefreshCw,
   RotateCcw,
-  Settings2,
-  Timer,
   Hash,
   Sparkles,
+  Plus,
+  Copy,
+  Trash2,
+  ChevronDown,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useEventBookingRules } from '@/hooks/useEventBookingRules';
 import { useToast } from '@/hooks/use-toast';
 import { adminAuditLog } from '@/lib/adminAudit';
@@ -30,12 +42,29 @@ import { EventBookingWindowConfig } from './EventBookingWindowConfig';
 import { EventLimitsConfig } from './EventLimitsConfig';
 import { EventReopenControl } from './EventReopenControl';
 import { EventClosureConfig } from './EventClosureConfig';
+import { EventStatusControl } from './EventStatusControl';
+import { EventPinConfig } from './EventPinConfig';
+import { EventTypeSelector } from './EventTypeSelector';
 
 export const AdminEventTab: React.FC = () => {
-  const { rules, loading, updateRules, toggleActive, resetCounters } = useEventBookingRules();
+  const { 
+    rules, 
+    allRules,
+    liveEvent,
+    loading, 
+    updateRules, 
+    setEventStatus,
+    selectEvent,
+    createRules,
+    duplicateEvent,
+    deleteEvent,
+    resetCounters,
+    generatePin,
+  } = useEventBookingRules();
   const { toast } = useToast();
-  const [activeSection, setActiveSection] = useState<'window' | 'limits' | 'reopen' | 'closure'>('window');
+  const [activeSection, setActiveSection] = useState<'status' | 'window' | 'limits' | 'reopen' | 'closure'>('status');
   const [isSaving, setIsSaving] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   if (loading) {
     return (
@@ -45,36 +74,80 @@ export const AdminEventTab: React.FC = () => {
     );
   }
 
-  if (!rules) {
-    return (
-      <div className="text-center py-12">
-        <AlertTriangle className="w-12 h-12 text-warning mx-auto mb-4" />
-        <p className="text-muted-foreground">Nessuna regola evento configurata</p>
-      </div>
-    );
-  }
-
-  const handleToggleActive = async () => {
+  const handleCreateNew = async () => {
     setIsSaving(true);
-    const success = await toggleActive(!rules.is_active);
-    if (success) {
+    const newId = await createRules({
+      event_name: 'Nuovo Evento',
+      event_status: 'draft',
+      event_type: 'both',
+    });
+    
+    if (newId) {
       toast({
-        title: rules.is_active ? 'Regole disattivate' : 'Regole attivate',
-        description: rules.is_active 
-          ? 'Le limitazioni prenotazioni sono ora disattive' 
-          : 'Le limitazioni prenotazioni sono ora attive',
+        title: 'Evento creato',
+        description: 'Nuovo evento creato in stato Bozza',
       });
       await adminAuditLog({
-        action: rules.is_active ? 'event.rules_deactivated' : 'event.rules_activated',
+        action: 'event.created',
+        entity: 'event_booking_rules',
+        entity_id: newId,
+      });
+    }
+    setIsSaving(false);
+  };
+
+  const handleDuplicate = async () => {
+    if (!rules) return;
+    setIsSaving(true);
+    const newId = await duplicateEvent(rules.id);
+    
+    if (newId) {
+      toast({
+        title: 'Evento duplicato',
+        description: 'Creata una copia dell\'evento in stato Bozza',
+      });
+      await adminAuditLog({
+        action: 'event.duplicated',
+        entity: 'event_booking_rules',
+        entity_id: newId,
+        metadata: { source_id: rules.id },
+      });
+    }
+    setIsSaving(false);
+  };
+
+  const handleDelete = async () => {
+    if (!rules) return;
+    if (rules.event_status === 'live') {
+      toast({
+        title: 'Impossibile eliminare',
+        description: 'Non puoi eliminare un evento LIVE. Chiudilo prima.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setIsSaving(true);
+    const success = await deleteEvent(rules.id);
+    
+    if (success) {
+      toast({
+        title: 'Evento eliminato',
+        description: 'L\'evento è stato eliminato definitivamente',
+      });
+      await adminAuditLog({
+        action: 'event.deleted',
         entity: 'event_booking_rules',
         entity_id: rules.id,
         metadata: { event_name: rules.event_name },
       });
     }
     setIsSaving(false);
+    setDeleteDialogOpen(false);
   };
 
   const handleResetCounters = async () => {
+    if (!rules) return;
     setIsSaving(true);
     const success = await resetCounters();
     if (success) {
@@ -91,57 +164,104 @@ export const AdminEventTab: React.FC = () => {
     setIsSaving(false);
   };
 
+  // Se non ci sono eventi, mostra prompt per crearne uno
+  if (!rules || allRules.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 space-y-4">
+        <Calendar className="w-12 h-12 text-muted-foreground" />
+        <div className="text-center">
+          <h3 className="text-lg font-semibold">Nessun evento configurato</h3>
+          <p className="text-muted-foreground">Crea il tuo primo evento per iniziare</p>
+        </div>
+        <Button onClick={handleCreateNew} disabled={isSaving}>
+          <Plus className="w-4 h-4 mr-2" />
+          Crea Evento
+        </Button>
+      </div>
+    );
+  }
+
+  const hasOtherLiveEvent = liveEvent !== null && liveEvent.id !== rules.id;
+
   return (
     <div className="space-y-6 pb-24 md:pb-6">
-      {/* Header con stato e toggle */}
-      <Card className={cn(
-        "border-2 transition-colors",
-        rules.is_active ? "border-green-500/50 bg-green-500/5" : "border-muted"
-      )}>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={cn(
-                "w-10 h-10 rounded-lg flex items-center justify-center",
-                rules.is_active ? "bg-green-500/20" : "bg-muted"
-              )}>
-                {rules.is_active ? (
-                  <Power className="w-5 h-5 text-green-500" />
-                ) : (
-                  <PowerOff className="w-5 h-5 text-muted-foreground" />
-                )}
-              </div>
-              <div>
-                <CardTitle className="text-lg">
-                  {rules.event_name || 'Regole Evento'}
-                </CardTitle>
-                <CardDescription>
-                  {rules.is_active ? (
-                    <span className="text-green-600 dark:text-green-400">
-                      Limitazioni attive
-                    </span>
-                  ) : (
-                    'Limitazioni disattive'
+      {/* Header: Selettore evento + azioni */}
+      <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Dropdown selettore evento */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Calendar className="w-4 h-4" />
+                <span className="max-w-[200px] truncate">
+                  {rules.event_name || 'Evento senza nome'}
+                </span>
+                <Badge 
+                  variant={rules.event_status === 'live' ? 'default' : 'secondary'}
+                  className={cn(
+                    "ml-1",
+                    rules.event_status === 'live' && "bg-green-500"
                   )}
-                </CardDescription>
-              </div>
-            </div>
+                >
+                  {rules.event_status}
+                </Badge>
+                <ChevronDown className="w-4 h-4 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64">
+              {allRules.map((event) => (
+                <DropdownMenuItem
+                  key={event.id}
+                  onClick={() => selectEvent(event.id)}
+                  className={cn(
+                    "flex items-center justify-between",
+                    event.id === rules.id && "bg-accent"
+                  )}
+                >
+                  <span className="truncate">{event.event_name || 'Senza nome'}</span>
+                  <Badge 
+                    variant={event.event_status === 'live' ? 'default' : 'secondary'}
+                    className={cn(
+                      "ml-2 shrink-0",
+                      event.event_status === 'live' && "bg-green-500"
+                    )}
+                  >
+                    {event.event_status}
+                  </Badge>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleCreateNew}>
+                <Plus className="w-4 h-4 mr-2" />
+                Nuovo evento
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
 
-            <div className="flex items-center gap-3">
-              <Badge variant={rules.is_active ? "default" : "secondary"}>
-                {rules.is_active ? 'ATTIVO' : 'SPENTO'}
-              </Badge>
-              <Switch
-                checked={rules.is_active}
-                onCheckedChange={handleToggleActive}
-                disabled={isSaving}
-              />
-            </div>
-          </div>
-        </CardHeader>
+        {/* Azioni evento */}
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={handleDuplicate} disabled={isSaving}>
+            <Copy className="w-4 h-4 mr-1.5" />
+            <span className="hidden sm:inline">Duplica</span>
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setDeleteDialogOpen(true)}
+            disabled={isSaving || rules.event_status === 'live'}
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash2 className="w-4 h-4 mr-1.5" />
+            <span className="hidden sm:inline">Elimina</span>
+          </Button>
+        </div>
+      </div>
 
-        {/* Stats rapide */}
-        <CardContent className="pt-0">
+      {/* Stats rapide */}
+      <Card>
+        <CardContent className="pt-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div className="bg-muted/50 rounded-lg p-3 text-center">
               <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-xs mb-1">
@@ -219,7 +339,10 @@ export const AdminEventTab: React.FC = () => {
 
       {/* Tabs di configurazione */}
       <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as typeof activeSection)}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="status" className="text-xs sm:text-sm">
+            Stato
+          </TabsTrigger>
           <TabsTrigger value="window" className="text-xs sm:text-sm">
             <Clock className="w-4 h-4 mr-1.5 hidden sm:inline" />
             Finestra
@@ -233,10 +356,38 @@ export const AdminEventTab: React.FC = () => {
             Riapertura
           </TabsTrigger>
           <TabsTrigger value="closure" className="text-xs sm:text-sm">
-            <Settings2 className="w-4 h-4 mr-1.5 hidden sm:inline" />
             Chiusura
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="status" className="mt-4 space-y-4">
+          {/* Controllo Stato */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle>Stato Evento</CardTitle>
+              <CardDescription>
+                Gestisci il ciclo di vita dell'evento: Bozza → Pronto → LIVE → Chiuso
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <EventStatusControl 
+                rules={rules} 
+                onStatusChange={setEventStatus}
+                hasOtherLiveEvent={hasOtherLiveEvent}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Tipo Evento */}
+          <EventTypeSelector rules={rules} onUpdate={updateRules} />
+
+          {/* PIN Config */}
+          <EventPinConfig 
+            rules={rules} 
+            onUpdate={updateRules}
+            generatePin={generatePin}
+          />
+        </TabsContent>
 
         <TabsContent value="window" className="mt-4">
           <EventBookingWindowConfig rules={rules} onUpdate={updateRules} />
@@ -254,6 +405,28 @@ export const AdminEventTab: React.FC = () => {
           <EventClosureConfig rules={rules} onUpdate={updateRules} />
         </TabsContent>
       </Tabs>
+
+      {/* Dialog conferma eliminazione */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Eliminare questo evento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              L'evento "{rules.event_name || 'Senza nome'}" e tutte le sue configurazioni 
+              saranno eliminate definitivamente. Questa azione non può essere annullata.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
