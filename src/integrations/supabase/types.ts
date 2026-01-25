@@ -359,6 +359,7 @@ export type Database = {
           reopen_songs_used: number | null
           reopen_until: string | null
           updated_at: string | null
+          voting_enabled: boolean | null
         }
         Insert: {
           booking_closes_at?: string | null
@@ -398,6 +399,7 @@ export type Database = {
           reopen_songs_used?: number | null
           reopen_until?: string | null
           updated_at?: string | null
+          voting_enabled?: boolean | null
         }
         Update: {
           booking_closes_at?: string | null
@@ -437,6 +439,67 @@ export type Database = {
           reopen_songs_used?: number | null
           reopen_until?: string | null
           updated_at?: string | null
+          voting_enabled?: boolean | null
+        }
+        Relationships: []
+      }
+      free_mode_settings: {
+        Row: {
+          created_at: string | null
+          dediche_current_count: number | null
+          dediche_enabled: boolean | null
+          dediche_max_total: number | null
+          duration_minutes: number | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          openmic_current_count: number | null
+          openmic_enabled: boolean | null
+          openmic_max_songs: number | null
+          pin_code: string | null
+          pin_enabled: boolean | null
+          started_at: string | null
+          updated_at: string | null
+          updated_by: string | null
+          voting_enabled: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          dediche_current_count?: number | null
+          dediche_enabled?: boolean | null
+          dediche_max_total?: number | null
+          duration_minutes?: number | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          openmic_current_count?: number | null
+          openmic_enabled?: boolean | null
+          openmic_max_songs?: number | null
+          pin_code?: string | null
+          pin_enabled?: boolean | null
+          started_at?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          voting_enabled?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          dediche_current_count?: number | null
+          dediche_enabled?: boolean | null
+          dediche_max_total?: number | null
+          duration_minutes?: number | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          openmic_current_count?: number | null
+          openmic_enabled?: boolean | null
+          openmic_max_songs?: number | null
+          pin_code?: string | null
+          pin_enabled?: boolean | null
+          started_at?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+          voting_enabled?: boolean | null
         }
         Relationships: []
       }
