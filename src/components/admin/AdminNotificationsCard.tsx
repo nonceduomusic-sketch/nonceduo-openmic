@@ -20,6 +20,7 @@ import {
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SilentHoursSettings {
   enabled: boolean;
@@ -245,6 +246,31 @@ export const AdminNotificationsCard: React.FC = () => {
     }
   };
 
+  const sendBackgroundTest = async () => {
+    if (permission !== 'granted') {
+      toast.error('Attiva prima le notifiche');
+      return;
+    }
+    if (!isPushSubscribed) {
+      toast.error('Attiva prima le notifiche background');
+      return;
+    }
+
+    const { error } = await supabase.functions.invoke('push-notifications', {
+      body: {
+        action: 'test-delayed',
+        delayMs: 10_000,
+      },
+    });
+
+    if (error) {
+      toast.error('Errore durante il test background');
+      return;
+    }
+
+    toast.success('Ok! Ora manda l’app in background: la notifica arriva tra 10 secondi.');
+  };
+
   const isNotificationsSupported = typeof Notification !== 'undefined';
   const isAndroid = /android/i.test(navigator.userAgent);
 
@@ -436,6 +462,17 @@ export const AdminNotificationsCard: React.FC = () => {
             <BellRing className="w-4 h-4" />
             Invia notifica di test
           </Button>
+
+          {isPushSubscribed && (
+            <Button
+              onClick={sendBackgroundTest}
+              variant="outline"
+              className="w-full gap-2"
+            >
+              <Smartphone className="w-4 h-4" />
+              Test in background (10s)
+            </Button>
+          )}
           
           {isPushSubscribed && (
             <p className="text-xs text-center text-muted-foreground">

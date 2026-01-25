@@ -146,11 +146,13 @@ async function encryptPayload(
     const ikm = await hkdf(clientAuth, sharedSecret, authInfo, 32);
     
     // Derive content encryption key
-    const cekInfo = createInfo('aesgcm', clientPublicKey, localPublicKey);
+    // For RFC8291 (aes128gcm), info MUST include the full string with trailing NUL.
+    // Using the wrong info string results in payloads that Chrome/Android can't decrypt.
+    const cekInfo = createInfo('Content-Encoding: aes128gcm\0', clientPublicKey, localPublicKey);
     const contentKey = await hkdf(salt, ikm, cekInfo, 16);
     
     // Derive nonce
-    const nonceInfo = createInfo('nonce', clientPublicKey, localPublicKey);
+    const nonceInfo = createInfo('Content-Encoding: nonce\0', clientPublicKey, localPublicKey);
     const nonce = await hkdf(salt, ikm, nonceInfo, 12);
     
     // Prepare plaintext with padding
@@ -657,6 +659,69 @@ serve(async (req) => {
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+      }
+
+      case 'test-delayed': {
+        // Schedule a push after a short delay to allow the user to put the PWA in background.
+        const delayMsRaw = (data as any).delayMs;
+        const delayMs = Math.max(0, Math.min(Number.isFinite(Number(delayMsRaw)) ? Number(delayMsRaw) : 10_000, 60_000));
+        const { endpoint } = data as any;
+
+        const payload = {
+          title: '🔔 Test Background',
+          body: 'Se vedi questa notifica, il background push funziona ✅',
+          icon: '/pwa-192x192.png',
+          tag: 'test-background',
+        };
+
+        const run = async () => {
+          try {
+            await new Promise((r) => setTimeout(r, delayMs));
+
+            let subscriptions: any[] = [];
+            if (endpoint) {
+              const { data } = await supabase
+                .from('push_subscriptions')
+                .select('*')
+                .eq('endpoint', endpoint)
+                .limit(1);
+              subscriptions = data || [];
+            } else {
+              const { data } = await supabase
+                .from('push_subscriptions')
+                .select('*')
+                .eq('user_type', 'admin');
+              subscriptions = data || [];
+            }
+
+            console.log(`[push-notifications] Delayed test: sending to ${subscriptions.length} subscription(s) after ${delayMs}ms`);
+
+            let successCount = 0;
+            for (const sub of subscriptions) {
+              const success = await sendWebPush(
+                { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
+                payload,
+                vapidPublicKey,
+                vapidPrivateKey
+              );
+              if (success) successCount++;
+            }
+
+            console.log(`[push-notifications] Delayed test done: sent=${successCount} total=${subscriptions.length}`);
+          } catch (e) {
+            console.error('[push-notifications] Delayed test error:', e);
+          }
+        };
+
+        const edgeRuntime = (globalThis as any).EdgeRuntime;
+        if (edgeRuntime?.waitUntil) {
+          edgeRuntime.waitUntil(run());
+        } else {
+          // Fallback for environments without EdgeRuntime (shouldn't happen in production)
+          await run();
+        }
+
+        return json({ success: true, scheduledInMs: delayMs });
       }
 
       default:
