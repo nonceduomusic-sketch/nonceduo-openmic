@@ -83,7 +83,7 @@ const AppOpenMic: React.FC = () => {
 
   // CASE 2: Serata Aperta (Free Mode) attiva per Open Mic
   if (eventState.type === 'freemode' && freeMode.openmic) {
-    return <FreeModeOpenMic />;
+    return <FreeModeOpenMic eventName={freeMode.eventName} />;
   }
 
   // CASE 3: Eventi READY esistono → Pre-Event Page

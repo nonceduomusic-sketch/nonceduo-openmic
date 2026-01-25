@@ -47,6 +47,7 @@ export interface FreeModeState {
   openmic: boolean;
   dediche: boolean;
   active: boolean;
+  eventName: string | null;
 }
 
 export type EventState = 
@@ -68,7 +69,7 @@ export type EventState =
 export const useLiveEvent = () => {
   const [liveEvent, setLiveEvent] = useState<LiveEvent | null>(null);
   const [upcomingEvents, setUpcomingEvents] = useState<UpcomingEvent[]>([]);
-  const [freeMode, setFreeMode] = useState<FreeModeState>({ openmic: false, dediche: false, active: false });
+  const [freeMode, setFreeMode] = useState<FreeModeState>({ openmic: false, dediche: false, active: false, eventName: null });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -114,26 +115,28 @@ export const useLiveEvent = () => {
           closure_redirect_url: liveData.closure_redirect_url,
         });
         setUpcomingEvents([]);
-        setFreeMode({ openmic: false, dediche: false, active: false });
+        setFreeMode({ openmic: false, dediche: false, active: false, eventName: null });
       } else {
         setLiveEvent(null);
         
-        // Check free mode (global format settings)
-        const { data: formatSettings, error: formatError } = await supabase
-          .from('global_format_settings')
-          .select('format_key, is_active')
-          .in('format_key', ['openmic', 'dediche']);
+        // Check free mode settings (single row table with event name and enabled formats)
+        const { data: freeModeData, error: freeModeError } = await supabase
+          .from('free_mode_settings')
+          .select('is_active, openmic_enabled, dediche_enabled, event_name')
+          .eq('is_active', true)
+          .maybeSingle();
 
-        if (formatError) throw formatError;
+        if (freeModeError) throw freeModeError;
 
-        const openmicActive = formatSettings?.find(f => f.format_key === 'openmic')?.is_active ?? false;
-        const dedicheActive = formatSettings?.find(f => f.format_key === 'dediche')?.is_active ?? false;
-        const freeModeActive = openmicActive || dedicheActive;
+        const openmicActive = freeModeData?.is_active && freeModeData?.openmic_enabled;
+        const dedicheActive = freeModeData?.is_active && freeModeData?.dediche_enabled;
+        const freeModeActive = freeModeData?.is_active ?? false;
 
         setFreeMode({
-          openmic: openmicActive,
-          dediche: dedicheActive,
+          openmic: openmicActive ?? false,
+          dediche: dedicheActive ?? false,
           active: freeModeActive,
+          eventName: freeModeData?.event_name ?? null,
         });
 
         // Only fetch upcoming events if not in free mode
@@ -187,14 +190,14 @@ export const useLiveEvent = () => {
       )
       .subscribe();
 
-    const formatsChannel = supabase
-      .channel(`global-formats-live-${Date.now()}`)
+    const freeModeChannel = supabase
+      .channel(`free-mode-live-${Date.now()}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'global_format_settings',
+          table: 'free_mode_settings',
         },
         () => {
           fetchEvents();
@@ -204,7 +207,7 @@ export const useLiveEvent = () => {
 
     return () => {
       supabase.removeChannel(eventsChannel);
-      supabase.removeChannel(formatsChannel);
+      supabase.removeChannel(freeModeChannel);
     };
   }, [fetchEvents]);
 
