@@ -145,9 +145,13 @@ export const EventStoryGeneratorCard: React.FC = () => {
     return DEFAULT_CONFIG;
   });
 
-  // Save config to localStorage on change
+  // Save config to localStorage on change (with error handling to avoid quota errors)
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, serializeConfig(config));
+    try {
+      localStorage.setItem(STORAGE_KEY, serializeConfig(config));
+    } catch (e) {
+      console.warn('Failed to save config to localStorage:', e);
+    }
   }, [config]);
 
   const updateConfig = <K extends keyof EventStoryConfig>(key: K, value: EventStoryConfig[K]) => {

@@ -120,9 +120,11 @@ const AI_THEME_SUGGESTIONS = [
 ];
 
 // Helper to serialize/deserialize config with Date
+// IMPORTANT: Exclude uploadedImage from localStorage to avoid quota exceeded errors
 const serializeConfig = (config: EventPosterConfig): string => {
+  const { uploadedImage, ...configWithoutImage } = config;
   return JSON.stringify({
-    ...config,
+    ...configWithoutImage,
     eventDate: config.eventDate ? config.eventDate.toISOString() : null,
   });
 };
@@ -133,6 +135,7 @@ const deserializeConfig = (json: string): EventPosterConfig | null => {
     return {
       ...parsed,
       eventDate: parsed.eventDate ? new Date(parsed.eventDate) : undefined,
+      uploadedImage: null, // Never restore image from localStorage
     };
   } catch {
     return null;
@@ -158,9 +161,13 @@ export const EventPosterGeneratorCard: React.FC = () => {
     return DEFAULT_CONFIG;
   });
 
-  // Save config to localStorage on change
+  // Save config to localStorage on change (excluding images to avoid quota errors)
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, serializeConfig(config));
+    try {
+      localStorage.setItem(STORAGE_KEY, serializeConfig(config));
+    } catch (e) {
+      console.warn('Failed to save config to localStorage:', e);
+    }
   }, [config]);
 
   const updateConfig = <K extends keyof EventPosterConfig>(key: K, value: EventPosterConfig[K]) => {
