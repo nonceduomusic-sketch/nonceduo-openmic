@@ -83,29 +83,37 @@ export const usePushNotifications = (userType: 'admin' | 'user' = 'admin', userI
   // Subscribe to push notifications
   const subscribe = useCallback(async (): Promise<boolean> => {
     setState(prev => ({ ...prev, isLoading: true, error: null }));
+    console.log('[usePushNotifications] Starting subscription process...');
 
     try {
       // Request notification permission
       const permission = await Notification.requestPermission();
+      console.log('[usePushNotifications] Permission result:', permission);
       
       if (permission !== 'granted') {
+        const errorMsg = 'Permesso notifiche negato';
+        console.warn('[usePushNotifications] Permission denied');
         setState(prev => ({ 
           ...prev, 
           isLoading: false, 
           permission,
-          error: 'Permesso notifiche negato' 
+          error: errorMsg 
         }));
         return false;
       }
 
       // Get VAPID public key from edge function
+      console.log('[usePushNotifications] Fetching VAPID key...');
       const { data: keyData, error: keyError } = await supabase.functions.invoke('push-notifications', {
         body: { action: 'get-vapid-key' },
       });
 
       if (keyError || !keyData?.publicKey) {
-        throw new Error('Impossibile ottenere la chiave VAPID');
+        const errorMsg = `Impossibile ottenere la chiave VAPID: ${keyError?.message || 'chiave mancante'}`;
+        console.error('[usePushNotifications] VAPID error:', keyError);
+        throw new Error(errorMsg);
       }
+      console.log('[usePushNotifications] VAPID key received, length:', keyData.publicKey.length);
 
       // Convert VAPID key to Uint8Array and then to ArrayBuffer
       const vapidKeyArray = urlBase64ToUint8Array(keyData.publicKey);
@@ -114,13 +122,17 @@ export const usePushNotifications = (userType: 'admin' | 'user' = 'admin', userI
       new Uint8Array(vapidKey).set(vapidKeyArray);
 
       // Get service worker registration
+      console.log('[usePushNotifications] Waiting for service worker ready...');
       const registration = await navigator.serviceWorker.ready;
+      console.log('[usePushNotifications] Service worker ready:', registration.active?.state);
 
       // Subscribe to push
+      console.log('[usePushNotifications] Subscribing to push manager...');
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: vapidKey,
       });
+      console.log('[usePushNotifications] PushManager subscription created:', subscription.endpoint.substring(0, 50) + '...');
 
       // Get device info
       const deviceInfo = {
@@ -131,10 +143,17 @@ export const usePushNotifications = (userType: 'admin' | 'user' = 'admin', userI
       };
 
       // Save subscription to backend
-      const { error: saveError } = await supabase.functions.invoke('push-notifications', {
+      console.log('[usePushNotifications] Saving subscription to backend...');
+      const subscriptionJson = subscription.toJSON();
+      console.log('[usePushNotifications] Subscription keys present:', {
+        hasP256dh: !!subscriptionJson.keys?.p256dh,
+        hasAuth: !!subscriptionJson.keys?.auth,
+      });
+      
+      const { data: saveData, error: saveError } = await supabase.functions.invoke('push-notifications', {
         body: {
           action: 'subscribe',
-          subscription: subscription.toJSON(),
+          subscription: subscriptionJson,
           userType,
           userIdentifier,
           deviceInfo,
@@ -142,8 +161,12 @@ export const usePushNotifications = (userType: 'admin' | 'user' = 'admin', userI
       });
 
       if (saveError) {
-        throw new Error('Errore salvataggio subscription');
+        const errorMsg = `Errore salvataggio subscription: ${saveError.message}`;
+        console.error('[usePushNotifications] Save error:', saveError);
+        throw new Error(errorMsg);
       }
+      
+      console.log('[usePushNotifications] Backend response:', saveData);
 
       setState(prev => ({ 
         ...prev, 
@@ -153,14 +176,16 @@ export const usePushNotifications = (userType: 'admin' | 'user' = 'admin', userI
         error: null,
       }));
 
-      console.log('[usePushNotifications] Subscribed successfully');
+      console.log('[usePushNotifications] ✅ Subscribed successfully!');
       return true;
     } catch (error: any) {
-      console.error('[usePushNotifications] Subscribe error:', error);
+      const errorMsg = error.message || 'Errore durante la registrazione';
+      console.error('[usePushNotifications] ❌ Subscribe error:', error);
+      console.error('[usePushNotifications] Error stack:', error.stack);
       setState(prev => ({ 
         ...prev, 
         isLoading: false, 
-        error: error.message || 'Errore durante la registrazione' 
+        error: errorMsg 
       }));
       return false;
     }
