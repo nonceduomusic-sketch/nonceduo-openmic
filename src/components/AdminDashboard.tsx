@@ -878,7 +878,11 @@ export const AdminDashboard: React.FC = () => {
         ) : mainTab === 'event' ? (
           <AdminEventTab />
         ) : mainTab === 'formats' ? (
-          <AdminFormatsTab access={access} isOwner={staffRole === 'owner'} />
+          <AdminFormatsTab 
+            access={access} 
+            isOwner={staffRole === 'owner'} 
+            onNavigateToEvent={() => setMainTab('event')}
+          />
         ) : mainTab === 'audit' ? (
           staffRole === 'owner' ? (
             <AdminAuditTab />

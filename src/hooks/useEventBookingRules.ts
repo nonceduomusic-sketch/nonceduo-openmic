@@ -24,6 +24,7 @@ export interface EventBookingRules {
   openmic_final_limit_minutes: number | null;
   dediche_enabled: boolean;
   dediche_max_total: number | null;
+  voting_enabled: boolean;
   openmic_current_count: number;
   dediche_current_count: number;
   reopen_active: boolean;
@@ -51,6 +52,7 @@ const normalizeEventRules = (data: any): EventBookingRules => ({
   pin_required: data.pin_required ?? false,
   openmic_enabled: data.openmic_enabled ?? true,
   dediche_enabled: data.dediche_enabled ?? true,
+  voting_enabled: data.voting_enabled ?? true,
   openmic_current_count: data.openmic_current_count ?? 0,
   dediche_current_count: data.dediche_current_count ?? 0,
   reopen_songs_used: data.reopen_songs_used ?? 0,
