@@ -162,8 +162,8 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
       });
     }
 
-    // Sort by timestamp (newest first)
-    return items.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+    // Sort by timestamp (oldest first - chronological order like Open Mic page)
+    return items.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   }, [access, activeReservations, completedReservations, conversations, seenIds, showCompleted]);
 
   // Apply filter
