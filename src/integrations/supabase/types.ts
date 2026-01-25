@@ -768,6 +768,13 @@ export type Database = {
             referencedRelation: "live_sessions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "pin_sessions_live_session_id_fkey"
+            columns: ["live_session_id"]
+            isOneToOne: false
+            referencedRelation: "live_sessions_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       post_comments: {
@@ -1132,6 +1139,33 @@ export type Database = {
         }
         Relationships: []
       }
+      security_rate_limits: {
+        Row: {
+          action_type: string
+          attempted_at: string | null
+          id: string
+          identifier: string
+          success: boolean
+          target_id: string | null
+        }
+        Insert: {
+          action_type: string
+          attempted_at?: string | null
+          id?: string
+          identifier: string
+          success?: boolean
+          target_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          attempted_at?: string | null
+          id?: string
+          identifier?: string
+          success?: boolean
+          target_id?: string | null
+        }
+        Relationships: []
+      }
       typing_indicators: {
         Row: {
           conversation_id: string
@@ -1225,7 +1259,36 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      live_sessions_public: {
+        Row: {
+          created_at: string | null
+          event_link_code: string | null
+          expires_at: string | null
+          id: string | null
+          is_active: boolean | null
+          protected_formats: string[] | null
+          section: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_link_code?: string | null
+          expires_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          protected_formats?: string[] | null
+          section?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_link_code?: string | null
+          expires_at?: string | null
+          id?: string | null
+          is_active?: boolean | null
+          protected_formats?: string[] | null
+          section?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_message_user: {
@@ -1233,6 +1296,7 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_typing_indicators: { Args: never; Returns: undefined }
+      cleanup_old_rate_limits: { Args: never; Returns: undefined }
       create_pin_session: {
         Args: {
           p_device_fingerprint?: string
@@ -1286,6 +1350,14 @@ export type Database = {
       }
       normalize_song_text: { Args: { t: string }; Returns: string }
       touch_pin_session: { Args: { p_token: string }; Returns: undefined }
+      validate_event_pin: {
+        Args: { p_format?: string; p_pin: string }
+        Returns: {
+          is_valid: boolean
+          live_session_id: string
+          protected_formats: string[]
+        }[]
+      }
       validate_format_pin: {
         Args: { p_format: string; p_pin: string }
         Returns: boolean

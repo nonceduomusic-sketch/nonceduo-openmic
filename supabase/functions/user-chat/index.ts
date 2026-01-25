@@ -40,6 +40,56 @@ async function isSessionBlocked(supabase: any, sessionId: string): Promise<boole
   return new Date(data.expires_at) > new Date();
 }
 
+// Rate limiting for password attempts
+async function checkPasswordRateLimit(
+  supabase: any, 
+  sessionId: string, 
+  conversationId: string
+): Promise<{ allowed: boolean; attemptsRemaining: number }> {
+  const identifier = `${sessionId}:${conversationId}`;
+  const maxAttempts = 5;
+  const windowMinutes = 60;
+  
+  // Count recent failed attempts
+  const { data: attempts, error } = await supabase
+    .from("security_rate_limits")
+    .select("id")
+    .eq("identifier", identifier)
+    .eq("action_type", "password_attempt")
+    .eq("success", false)
+    .gte("attempted_at", new Date(Date.now() - windowMinutes * 60 * 1000).toISOString());
+  
+  if (error) {
+    console.error("Rate limit check error:", error);
+    // Fail-open but log the error
+    return { allowed: true, attemptsRemaining: maxAttempts };
+  }
+  
+  const count = attempts?.length || 0;
+  const allowed = count < maxAttempts;
+  const attemptsRemaining = Math.max(0, maxAttempts - count);
+  
+  return { allowed, attemptsRemaining };
+}
+
+async function logPasswordAttempt(
+  supabase: any,
+  sessionId: string,
+  conversationId: string,
+  success: boolean
+): Promise<void> {
+  try {
+    await supabase.from("security_rate_limits").insert({
+      identifier: `${sessionId}:${conversationId}`,
+      action_type: "password_attempt",
+      target_id: conversationId,
+      success,
+    });
+  } catch (error) {
+    console.error("Failed to log password attempt:", error);
+  }
+}
+
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
   if (req.method !== "POST") return json(405, { error: "Method not allowed" });
@@ -358,8 +408,20 @@ serve(async (req: Request): Promise<Response> => {
         .eq("id", inviteLink.conversation_id)
         .single();
 
-      // If password protected, verify password
+      // If password protected, verify password with rate limiting
       if (convData?.password_hash) {
+        // Check rate limit first
+        const { allowed, attemptsRemaining } = await checkPasswordRateLimit(
+          supabase, sessionId, inviteLink.conversation_id
+        );
+        
+        if (!allowed) {
+          return json(429, { 
+            error: "Troppi tentativi. Riprova tra 1 ora.",
+            rate_limited: true
+          });
+        }
+
         if (!password) {
           return json(401, { 
             error: "Password richiesta", 
@@ -405,12 +467,19 @@ serve(async (req: Request): Promise<Response> => {
         const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
         if (hashHex !== storedHashHex) {
+          // Log failed attempt
+          await logPasswordAttempt(supabase, sessionId, inviteLink.conversation_id, false);
+          
           return json(401, { 
             error: "Password errata", 
             requires_password: true,
-            password_hint: convData.password_hint 
+            // Don't show hint after 3 attempts
+            password_hint: attemptsRemaining > 2 ? convData.password_hint : undefined
           });
         }
+        
+        // Log successful attempt
+        await logPasswordAttempt(supabase, sessionId, inviteLink.conversation_id, true);
       }
 
       // Add participant
@@ -486,8 +555,20 @@ serve(async (req: Request): Promise<Response> => {
         return json(200, { already_member: true });
       }
 
-      // If password protected, verify password
+      // If password protected, verify password with rate limiting
       if (convData.password_hash) {
+        // Check rate limit first
+        const { allowed, attemptsRemaining } = await checkPasswordRateLimit(
+          supabase, sessionId, conversationId
+        );
+        
+        if (!allowed) {
+          return json(429, { 
+            error: "Troppi tentativi. Riprova tra 1 ora.",
+            rate_limited: true
+          });
+        }
+
         if (!password) {
           return json(401, { 
             error: "Password richiesta", 
@@ -532,12 +613,19 @@ serve(async (req: Request): Promise<Response> => {
         const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
         if (hashHex !== storedHashHex) {
+          // Log failed attempt
+          await logPasswordAttempt(supabase, sessionId, conversationId, false);
+          
           return json(401, { 
             error: "Password errata", 
             requires_password: true,
-            password_hint: convData.password_hint 
+            // Don't show hint after 3 attempts
+            password_hint: attemptsRemaining > 2 ? convData.password_hint : undefined
           });
         }
+        
+        // Log successful attempt
+        await logPasswordAttempt(supabase, sessionId, conversationId, true);
       }
 
       // Add participant

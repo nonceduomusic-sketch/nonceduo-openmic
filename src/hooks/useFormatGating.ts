@@ -142,44 +142,26 @@ export function useFormatPinValidator(format: FormatKey) {
     setIsValid(null);
 
     try {
-      const { data: liveSession } = await supabase
-        .from('live_sessions')
-        .select('id, pin_code, protected_formats, expires_at')
-        .eq('is_active', true)
-        .maybeSingle();
+      // Use secure RPC function instead of reading pin_code directly
+      // This prevents client-side exposure of PIN codes
+      const { data: isValid, error } = await supabase.rpc('validate_live_session_pin', {
+        p_section: format,
+        p_pin: pin.toUpperCase().trim()
+      });
 
-      if (!liveSession) {
-        setIsValid(true);
-        return true;
+      if (error) {
+        // Check if it's a rate limit error
+        if (error.message?.includes('Troppi tentativi')) {
+          console.warn('Rate limit exceeded for PIN validation');
+          setIsValid(false);
+          return false;
+        }
+        throw error;
       }
 
-      // Check expiration
-      if (liveSession.expires_at && new Date(liveSession.expires_at) < new Date()) {
-        setIsValid(true);
-        return true;
-      }
-
-      // Check if format is protected
-      const protectedFormats = (liveSession.protected_formats as string[]) || [];
-      if (!protectedFormats.includes(format)) {
-        setIsValid(true);
-        return true;
-      }
-
-      // Validate PIN
-      const valid = liveSession.pin_code === pin.toUpperCase().trim();
+      // RPC returns boolean directly
+      const valid = isValid === true;
       setIsValid(valid);
-
-      // Log failed attempt (don't await to not block)
-      if (!valid) {
-        supabase.from('admin_audit_logs').insert({
-          action: 'live_session_pin_failed',
-          section: format,
-          entity: 'live_sessions',
-          entity_id: liveSession.id,
-          metadata: { attempted_pin: pin.substring(0, 2) + '***', format }
-        }).then(() => {});
-      }
 
       return valid;
     } catch (error) {
