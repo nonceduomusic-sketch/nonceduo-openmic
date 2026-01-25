@@ -39,6 +39,7 @@ export interface EventBookingRules {
   closure_title: string | null;
   closure_message: string | null;
   closure_redirect_url: string | null;
+  closure_preview_enabled: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -59,6 +60,7 @@ const normalizeEventRules = (data: any): EventBookingRules => ({
   reopen_dediche_used: data.reopen_dediche_used ?? 0,
   reopen_active: data.reopen_active ?? false,
   is_active: data.is_active ?? false,
+  closure_preview_enabled: data.closure_preview_enabled ?? false,
 });
 
 export const useEventBookingRules = () => {

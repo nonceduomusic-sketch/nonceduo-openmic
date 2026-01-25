@@ -56,6 +56,7 @@ const adaptToEventRules = (settings: FreeModeSettings | null): EventBookingRules
       closure_title: 'Prenotazioni chiuse',
       closure_message: 'Grazie per aver partecipato!',
       closure_redirect_url: null,
+      closure_preview_enabled: false,
       booking_opens_at: null,
       booking_closes_at: null,
       close_minutes_before_end: null,
@@ -97,6 +98,7 @@ const adaptToEventRules = (settings: FreeModeSettings | null): EventBookingRules
     closure_title: settings.closure_title || 'Prenotazioni chiuse',
     closure_message: settings.closure_message || 'Grazie per aver partecipato!',
     closure_redirect_url: settings.closure_redirect_url ?? null,
+    closure_preview_enabled: settings.closure_preview_enabled ?? false,
     booking_opens_at: settings.booking_opens_at ?? null,
     booking_closes_at: settings.booking_closes_at ?? null,
     close_minutes_before_end: settings.close_minutes_before_end ?? null,
@@ -154,6 +156,7 @@ export const FreeModeFullPanel: React.FC = () => {
     if (updates.closure_title !== undefined) freeModeUpdates.closure_title = updates.closure_title;
     if (updates.closure_message !== undefined) freeModeUpdates.closure_message = updates.closure_message;
     if (updates.closure_redirect_url !== undefined) freeModeUpdates.closure_redirect_url = updates.closure_redirect_url;
+    if ((updates as any).closure_preview_enabled !== undefined) freeModeUpdates.closure_preview_enabled = (updates as any).closure_preview_enabled;
     if (updates.booking_opens_at !== undefined) freeModeUpdates.booking_opens_at = updates.booking_opens_at;
     if (updates.booking_closes_at !== undefined) freeModeUpdates.booking_closes_at = updates.booking_closes_at;
     if (updates.close_minutes_before_end !== undefined) freeModeUpdates.close_minutes_before_end = updates.close_minutes_before_end;

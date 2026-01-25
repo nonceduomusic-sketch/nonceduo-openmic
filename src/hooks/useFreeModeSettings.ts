@@ -43,6 +43,7 @@ export interface FreeModeSettings {
   closure_title: string;
   closure_message: string;
   closure_redirect_url: string | null;
+  closure_preview_enabled: boolean;
 }
 
 export const useFreeModeSettings = () => {

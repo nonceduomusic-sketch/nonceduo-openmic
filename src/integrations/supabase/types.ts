@@ -327,6 +327,7 @@ export type Database = {
           close_minutes_before_end: number | null
           closure_message: string | null
           closure_mode: string | null
+          closure_preview_enabled: boolean | null
           closure_redirect_url: string | null
           closure_title: string | null
           created_at: string | null
@@ -367,6 +368,7 @@ export type Database = {
           close_minutes_before_end?: number | null
           closure_message?: string | null
           closure_mode?: string | null
+          closure_preview_enabled?: boolean | null
           closure_redirect_url?: string | null
           closure_title?: string | null
           created_at?: string | null
@@ -407,6 +409,7 @@ export type Database = {
           close_minutes_before_end?: number | null
           closure_message?: string | null
           closure_mode?: string | null
+          closure_preview_enabled?: boolean | null
           closure_redirect_url?: string | null
           closure_title?: string | null
           created_at?: string | null
@@ -450,6 +453,7 @@ export type Database = {
           close_minutes_before_end: number | null
           closure_message: string | null
           closure_mode: string | null
+          closure_preview_enabled: boolean | null
           closure_redirect_url: string | null
           closure_title: string | null
           created_at: string | null
@@ -489,6 +493,7 @@ export type Database = {
           close_minutes_before_end?: number | null
           closure_message?: string | null
           closure_mode?: string | null
+          closure_preview_enabled?: boolean | null
           closure_redirect_url?: string | null
           closure_title?: string | null
           created_at?: string | null
@@ -528,6 +533,7 @@ export type Database = {
           close_minutes_before_end?: number | null
           closure_message?: string | null
           closure_mode?: string | null
+          closure_preview_enabled?: boolean | null
           closure_redirect_url?: string | null
           closure_title?: string | null
           created_at?: string | null
