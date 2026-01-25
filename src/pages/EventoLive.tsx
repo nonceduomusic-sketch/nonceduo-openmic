@@ -22,7 +22,7 @@ import { toast } from 'sonner';
 
 interface EventSession {
   id: string;
-  pin_code: string;
+  // pin_code removed for security - validation done via RPC
   protected_formats: string[];
   expires_at: string | null;
   is_active: boolean;
@@ -60,9 +60,10 @@ const EventoLive: React.FC = () => {
 
     try {
       // First check if there's ANY session with this link code (active or not)
+      // Note: pin_code is NOT selected - validation is done via secure RPC
       const { data: anySession, error: anyError } = await supabase
         .from('live_sessions')
-        .select('id, pin_code, protected_formats, expires_at, is_active')
+        .select('id, protected_formats, expires_at, is_active')
         .eq('event_link_code', linkCode)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -127,46 +128,41 @@ const EventoLive: React.FC = () => {
     setIsValidating(true);
     
     const inputPin = pin.toUpperCase().trim();
-    const isCorrect = inputPin === session.pin_code;
     
-    if (isCorrect) {
-      try {
-        // Use the same backend RPC used by the app gating flow.
-        // This ensures session tokens + invalidation are consistent.
-        const { data: token, error } = await supabase.rpc('create_pin_session', {
-          p_live_session_id: session.id,
-          p_format: session.protected_formats?.[0] || 'openmic',
-          p_pin_code: inputPin,
-          p_device_fingerprint: navigator.userAgent.substring(0, 100),
-        });
-
-        if (error || !token) {
-          console.error('Error creating PIN session via RPC:', error);
-        } else {
-          const storedSession = {
-            token: token as string,
-            liveSessionId: session.id,
-            pinCodeHash: hashPinLight(inputPin),
-            createdAt: new Date().toISOString(),
-          };
-          localStorage.setItem('ncd_pin_sessions_v2', JSON.stringify(storedSession));
-        }
+    try {
+      // Use secure RPC to validate PIN - this also creates the session if valid
+      // Never compare PIN client-side as it exposes the code
+      const { data: token, error } = await supabase.rpc('create_pin_session', {
+        p_live_session_id: session.id,
+        p_format: session.protected_formats?.[0] || 'openmic',
+        p_pin_code: inputPin,
+        p_device_fingerprint: navigator.userAgent.substring(0, 100),
+      });
+      
+      const isCorrect = !!token && !error;
+      
+      if (isCorrect) {
+        // Store session locally for persistence
+        const storedSession = {
+          token: token as string,
+          liveSessionId: session.id,
+          pinCodeHash: hashPinLight(inputPin),
+          createdAt: new Date().toISOString(),
+        };
+        localStorage.setItem('ncd_pin_sessions_v2', JSON.stringify(storedSession));
 
         setIsValid(true);
         setValidatedFormats(session.protected_formats);
         toast.success('PIN corretto! Ora puoi accedere.');
-      } catch (error) {
-        console.error('Error saving PIN session:', error);
-        // Still allow access even if session save fails
-        setIsValid(true);
-        setValidatedFormats(session.protected_formats);
-        toast.success('PIN corretto!');
+      } else {
+        toast.error('PIN non valido - chiedi il codice al performer o al locale');
       }
-    } else {
-      toast.error('PIN non valido - chiedi il codice al performer o al locale');
+    } catch (error) {
+      console.error('Error validating PIN:', error);
+      toast.error('Errore durante la validazione. Riprova.');
+    } finally {
+      setIsValidating(false);
     }
-    
-    setIsValidating(false);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
