@@ -176,7 +176,7 @@ export const LiveStatusCard: React.FC<LiveStatusCardProps> = ({
             <div className="flex items-center gap-2 text-sm">
               <Instagram className="w-4 h-4 text-pink-400" />
               <span className="text-muted-foreground">
-                Seguici su <span className="font-semibold text-pink-400">@nonceduo</span> per i prossimi eventi!
+                 Seguici su <span className="font-semibold text-pink-400">@nonceduo.music</span> per i prossimi eventi!
               </span>
             </div>
           </div>
