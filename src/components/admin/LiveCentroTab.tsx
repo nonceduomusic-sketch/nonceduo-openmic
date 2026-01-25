@@ -10,6 +10,8 @@ import {
   Clock,
   ChevronRight,
   Maximize2,
+  Flame,
+  ThumbsUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +28,7 @@ import { triggerHaptic } from '@/lib/haptics';
 import { useAdminFontSize } from '@/hooks/useAdminFontSize';
 import { FontSizeControl } from '@/components/admin/FontSizeControl';
 import { DedicationExpandDialog } from '@/components/admin/DedicationExpandDialog';
+import { useAllVoteCounts } from '@/hooks/useAllVoteCounts';
 
 interface LiveCentroTabProps {
   onNavigate?: (tab: AdminMainTab, subTab?: string) => void;
@@ -66,7 +69,7 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
   } = useReservations();
 
   const { conversations, loading: conversationsLoading } = useConversations();
-
+  const { getVotesForReservation } = useAllVoteCounts();
   // Filter state - default to 'queue' so completed items are hidden by default
   const [activeFilter, setActiveFilter] = useState<FilterTab>('queue');
   const [showCompleted, setShowCompleted] = useState(false);
@@ -504,8 +507,8 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                       {item.title}
                     </p>
 
-                    {/* Subtitle + time */}
-                    <div className="flex items-center gap-2 mt-1">
+                    {/* Subtitle + time + votes */}
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
                       <span className="text-xs text-muted-foreground truncate">
                         {item.subtitle}
                       </span>
@@ -513,6 +516,34 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                         <Clock className="w-3 h-3" />
                         {formatDistanceToNow(item.timestamp, { addSuffix: false, locale: it })}
                       </span>
+                      
+                      {/* Vote counts for songs */}
+                      {item.type === 'song' && (() => {
+                        const votes = getVotesForReservation((item.originalData as Reservation).id);
+                        if (!votes || votes.total_votes === 0) return null;
+                        return (
+                          <div className="flex items-center gap-1.5 ml-auto">
+                            {votes.fire_votes > 0 && (
+                              <span className="flex items-center gap-0.5 text-xs text-orange-500">
+                                <Flame className="w-3 h-3" />
+                                {votes.fire_votes}
+                              </span>
+                            )}
+                            {votes.heart_votes > 0 && (
+                              <span className="flex items-center gap-0.5 text-xs text-pink-500">
+                                <Heart className="w-3 h-3 fill-current" />
+                                {votes.heart_votes}
+                              </span>
+                            )}
+                            {votes.total_votes > 0 && (
+                              <span className="flex items-center gap-0.5 text-xs text-secondary font-semibold bg-secondary/10 px-1.5 py-0.5 rounded-full">
+                                <ThumbsUp className="w-3 h-3" />
+                                {votes.total_votes}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {/* Dedication preview for songs - clickable to expand */}
