@@ -63,10 +63,24 @@ export const useMessages = () => {
             const newMessage = payload.new as Message;
             setMessages((prev) => [newMessage, ...prev]);
             
-            // Dispatch event for notification
+            // Dispatch event for notification (in-app)
             window.dispatchEvent(
               new CustomEvent('new-message', { detail: newMessage })
             );
+            
+            // Send push notification to all admin devices (background)
+            supabase.functions.invoke('push-notifications', {
+              body: {
+                action: 'send',
+                title: '✉️ Nuovo messaggio!',
+                body: `${newMessage.sender_name}: ${newMessage.message_text.substring(0, 50)}${newMessage.message_text.length > 50 ? '...' : ''}`,
+                tag: 'message-' + newMessage.id,
+              },
+            }).catch(err => {
+              if (import.meta.env.DEV) {
+                console.error('[useMessages] Failed to send push:', err);
+              }
+            });
           } else if (payload.eventType === 'UPDATE') {
             setMessages((prev) =>
               prev.map((msg) =>
