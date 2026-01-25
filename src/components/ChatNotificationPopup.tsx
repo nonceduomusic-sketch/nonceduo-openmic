@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { forwardRef, useEffect, useState } from 'react';
 import { X, MessageCircle, Users } from 'lucide-react';
 import { ChatMessage } from '@/hooks/useConversations';
 
@@ -9,12 +9,12 @@ interface ChatNotificationPopupProps {
   onClose: () => void;
 }
 
-export const ChatNotificationPopup: React.FC<ChatNotificationPopupProps> = ({
+export const ChatNotificationPopup = forwardRef<HTMLDivElement, ChatNotificationPopupProps>(({
   message,
   conversationName,
   isGroup,
   onClose,
-}) => {
+}, ref) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -27,8 +27,14 @@ export const ChatNotificationPopup: React.FC<ChatNotificationPopupProps> = ({
     return () => clearTimeout(timer);
   }, [onClose]);
 
+  const handleClose = () => {
+    setIsVisible(false);
+    setTimeout(onClose, 300);
+  };
+
   return (
     <div
+      ref={ref}
       className={`fixed top-4 right-4 z-50 w-full max-w-sm transition-all duration-300 ${
         isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
       }`}
@@ -63,10 +69,7 @@ export const ChatNotificationPopup: React.FC<ChatNotificationPopupProps> = ({
           </div>
 
           <button
-            onClick={() => {
-              setIsVisible(false);
-              setTimeout(onClose, 300);
-            }}
+            onClick={handleClose}
             className="p-1 rounded-full hover:bg-muted transition-colors"
           >
             <X className="w-4 h-4" />
@@ -75,4 +78,6 @@ export const ChatNotificationPopup: React.FC<ChatNotificationPopupProps> = ({
       </div>
     </div>
   );
-};
+});
+
+ChatNotificationPopup.displayName = 'ChatNotificationPopup';
