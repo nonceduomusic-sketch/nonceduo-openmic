@@ -1,5 +1,5 @@
 import React from "react";
-import { Bell, ListMusic, MessageSquare, Music, Newspaper, SlidersHorizontal } from "lucide-react";
+import { Bell, Calendar, ListMusic, MessageSquare, Music, Newspaper, SlidersHorizontal } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AdminMainTab } from "@/components/admin/AdminSidebar";
 
@@ -30,6 +30,7 @@ type Item = {
 
 const ITEMS: Item[] = [
   { key: "notifications", label: "Centro", icon: Bell, badge: (b) => b.totalNotifications },
+  { key: "event", label: "Evento", icon: Calendar },
   { key: "formats", label: "Formati", icon: SlidersHorizontal },
   { key: "openmic", label: "Open Mic", icon: Music, badge: (b) => b.openmicActiveCount, gatedBy: "openmic" },
   { key: "dediche", label: "Dediche", icon: MessageSquare, badge: (b) => b.dedicheUnread, gatedBy: "dediche" },

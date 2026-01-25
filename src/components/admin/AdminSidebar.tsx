@@ -10,12 +10,13 @@ import {
   SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { Bell, Database, ListMusic, MessageSquare, Music, Newspaper, Settings, Shield, Sliders, Users } from "lucide-react";
+import { Bell, Calendar, Database, ListMusic, MessageSquare, Music, Newspaper, Settings, Shield, Sliders, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AdminSectionKey } from "@/hooks/useAdminSectionAccess";
 
 export type AdminMainTab =
   | "notifications"
+  | "event"
   | "openmic"
   | "dediche"
   | "community"
@@ -35,6 +36,7 @@ type Item = {
 
 const ITEMS: Item[] = [
   { key: "notifications", label: "Centro", icon: Bell, group: "Operativo" },
+  { key: "event", label: "Evento", icon: Calendar, group: "Operativo" },
   { key: "formats", label: "Formati", icon: Sliders, group: "Operativo" },
   { key: "openmic", label: "Open Mic", icon: Music, group: "Operativo" },
   { key: "songs", label: "Canzoni", icon: ListMusic, group: "Operativo" },
