@@ -37,6 +37,7 @@ type EventType = 'public' | 'private';
 type StylePreset = 'minimal' | 'gradient' | 'neon';
 type ImageFormat = 'square' | 'portrait' | 'story';
 type OverlayPosition = 'bottom' | 'top' | 'center';
+type TextSize = 'small' | 'medium' | 'large';
 
 interface EventPosterConfig {
   venueName: string;
@@ -46,6 +47,7 @@ interface EventPosterConfig {
   stylePreset: StylePreset;
   imageFormat: ImageFormat;
   overlayPosition: OverlayPosition;
+  textSize: TextSize;
   additionalInfo: string;
   uploadedImage: string | null;
   aiTheme: string;
@@ -61,6 +63,7 @@ const DEFAULT_CONFIG: EventPosterConfig = {
   stylePreset: 'neon',
   imageFormat: 'square',
   overlayPosition: 'bottom',
+  textSize: 'medium',
   additionalInfo: '',
   uploadedImage: null,
   aiTheme: '',
@@ -106,6 +109,12 @@ const OVERLAY_POSITIONS: Record<OverlayPosition, { label: string; icon: React.Re
   bottom: { label: 'In basso', icon: <Layout className="w-4 h-4 rotate-180" /> },
   top: { label: 'In alto', icon: <Layout className="w-4 h-4" /> },
   center: { label: 'Centrale', icon: <Type className="w-4 h-4" /> },
+};
+
+const TEXT_SIZES: Record<TextSize, { label: string; scale: number }> = {
+  small: { label: 'Piccolo', scale: 0.75 },
+  medium: { label: 'Medio', scale: 1 },
+  large: { label: 'Grande', scale: 1.25 },
 };
 
 // AI Theme presets
@@ -403,11 +412,19 @@ export const EventPosterGeneratorCard: React.FC = () => {
         ctx.shadowBlur = 20;
       }
 
+      // Text size scale
+      const textScale = TEXT_SIZES[config.textSize].scale;
+      const baseTitleSize = 56;
+      const baseDateSize = 36;
+      const scaledTitleSize = Math.round(baseTitleSize * textScale);
+      const scaledDateSize = Math.round(baseDateSize * textScale);
+      const lineHeight = Math.round(65 * textScale);
+
       // Draw venue name if provided - OPTIONAL
       let currentY = textCenterY - 60;
       
       if (config.venueName) {
-        ctx.font = 'bold 56px "Orbitron", sans-serif';
+        ctx.font = `bold ${scaledTitleSize}px "Orbitron", sans-serif`;
         ctx.fillStyle = '#ffffff';
         
         // Word wrap
@@ -429,10 +446,10 @@ export const EventPosterGeneratorCard: React.FC = () => {
         if (currentLine) lines.push(currentLine);
         
         lines.forEach((line, i) => {
-          ctx.fillText(line, canvas.width / 2, currentY + i * 65);
+          ctx.fillText(line, canvas.width / 2, currentY + i * lineHeight);
         });
         
-        currentY += lines.length * 65 + 20;
+        currentY += lines.length * lineHeight + 20;
       }
 
       ctx.shadowColor = 'transparent';
@@ -451,7 +468,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
           dateTimeText += dateTimeText ? ` • ORE ${config.eventTime}` : `ORE ${config.eventTime}`;
         }
         
-        ctx.font = '600 36px "Inter", sans-serif';
+        ctx.font = `600 ${scaledDateSize}px "Inter", sans-serif`;
         ctx.fillStyle = style.accent;
         
         if (config.stylePreset === 'neon') {
@@ -777,6 +794,38 @@ export const EventPosterGeneratorCard: React.FC = () => {
                   >
                     {posConfig.icon}
                     <span className="text-xs">{posConfig.label}</span>
+                  </Label>
+                </div>
+              );
+            })}
+          </RadioGroup>
+        </div>
+
+        {/* Text Size */}
+        <div className="space-y-3">
+          <Label className="flex items-center gap-2">
+            <Type className="w-4 h-4" />
+            Dimensione Testo
+          </Label>
+          <RadioGroup
+            value={config.textSize}
+            onValueChange={(value) => updateConfig('textSize', value as TextSize)}
+            className="grid grid-cols-3 gap-2"
+          >
+            {(Object.keys(TEXT_SIZES) as TextSize[]).map((size) => {
+              const sizeConfig = TEXT_SIZES[size];
+              return (
+                <div key={size}>
+                  <RadioGroupItem value={size} id={`size-${size}`} className="peer sr-only" />
+                  <Label
+                    htmlFor={`size-${size}`}
+                    className={cn(
+                      "flex flex-col items-center gap-1 p-3 rounded-xl border-2 cursor-pointer transition-all",
+                      "border-muted hover:border-muted-foreground/50",
+                      config.textSize === size && "border-primary bg-primary/10"
+                    )}
+                  >
+                    <span className="text-xs">{sizeConfig.label}</span>
                   </Label>
                 </div>
               );
