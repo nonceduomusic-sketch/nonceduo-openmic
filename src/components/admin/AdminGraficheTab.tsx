@@ -29,7 +29,7 @@ export const AdminGraficheTab: React.FC = () => {
           <Image className="w-5 h-5 text-white" />
         </div>
         <div>
-          <h2 className="text-xl font-bold">Grafiche AI</h2>
+          <h2 className="text-xl font-bold">Grafiche</h2>
           <p className="text-sm text-muted-foreground">
             Genera locandine e storie per i social
           </p>
@@ -65,7 +65,6 @@ export const AdminGraficheTab: React.FC = () => {
           <ul className="space-y-1 mt-1">
             <li><strong>Locandine:</strong> Post Instagram (1:1), Portrait (4:5), Story (9:16)</li>
             <li><strong>Storie:</strong> Formato 9:16 ottimizzato per Instagram/Facebook Stories</li>
-            <li><strong>AI Editing:</strong> Carica un'immagine e l'AI la modifica preservando i soggetti</li>
             <li><strong>QR Code:</strong> Le storie possono includere un QR che porta all'app (senza PIN)</li>
           </ul>
         </AlertDescription>
