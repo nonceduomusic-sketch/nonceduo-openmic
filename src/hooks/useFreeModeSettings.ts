@@ -4,6 +4,8 @@ import { toast } from 'sonner';
 
 export interface FreeModeSettings {
   id: string;
+  event_name: string;
+  event_status: string;
   openmic_enabled: boolean;
   dediche_enabled: boolean;
   voting_enabled: boolean;
@@ -22,6 +24,8 @@ export interface FreeModeSettings {
 }
 
 const defaultSettings: Omit<FreeModeSettings, 'id' | 'created_at' | 'updated_at'> = {
+  event_name: 'Evento Libero',
+  event_status: 'draft',
   openmic_enabled: true,
   dediche_enabled: true,
   voting_enabled: true,
@@ -103,6 +107,7 @@ export const useFreeModeSettings = () => {
 
   // Attiva Free Mode
   const activateFreeMode = async (config?: {
+    eventName?: string;
     openmic?: boolean;
     dediche?: boolean;
     voting?: boolean;
@@ -113,11 +118,13 @@ export const useFreeModeSettings = () => {
   }): Promise<boolean> => {
     const updates: Partial<FreeModeSettings> = {
       is_active: true,
+      event_status: 'live',
       started_at: new Date().toISOString(),
       openmic_current_count: 0,
       dediche_current_count: 0,
     };
 
+    if (config?.eventName !== undefined) updates.event_name = config.eventName;
     if (config?.openmic !== undefined) updates.openmic_enabled = config.openmic;
     if (config?.dediche !== undefined) updates.dediche_enabled = config.dediche;
     if (config?.voting !== undefined) updates.voting_enabled = config.voting;
@@ -151,6 +158,7 @@ export const useFreeModeSettings = () => {
   const deactivateFreeMode = async (): Promise<boolean> => {
     const success = await updateSettings({
       is_active: false,
+      event_status: 'closed',
       started_at: null,
       expires_at: null,
     });
@@ -162,20 +170,33 @@ export const useFreeModeSettings = () => {
 
   // Modifica impostazioni durante l'evento
   const updateLiveSettings = async (updates: {
+    eventName?: string;
     openmic?: boolean;
     dediche?: boolean;
     voting?: boolean;
     maxSongs?: number | null;
     maxDediche?: number | null;
+    durationMinutes?: number | null;
     pinCode?: string | null;
   }): Promise<boolean> => {
     const dbUpdates: Partial<FreeModeSettings> = {};
     
+    if (updates.eventName !== undefined) dbUpdates.event_name = updates.eventName;
     if (updates.openmic !== undefined) dbUpdates.openmic_enabled = updates.openmic;
     if (updates.dediche !== undefined) dbUpdates.dediche_enabled = updates.dediche;
     if (updates.voting !== undefined) dbUpdates.voting_enabled = updates.voting;
     if (updates.maxSongs !== undefined) dbUpdates.openmic_max_songs = updates.maxSongs;
     if (updates.maxDediche !== undefined) dbUpdates.dediche_max_total = updates.maxDediche;
+    
+    if (updates.durationMinutes !== undefined) {
+      if (updates.durationMinutes && updates.durationMinutes > 0) {
+        dbUpdates.duration_minutes = updates.durationMinutes;
+        dbUpdates.expires_at = new Date(Date.now() + updates.durationMinutes * 60 * 1000).toISOString();
+      } else {
+        dbUpdates.duration_minutes = null;
+        dbUpdates.expires_at = null;
+      }
+    }
     
     if (updates.pinCode !== undefined) {
       if (updates.pinCode) {
