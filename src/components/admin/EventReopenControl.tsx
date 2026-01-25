@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, Clock, Music, MessageSquare, Play, Square, AlertCircle } from 'lucide-react';
+import { Sparkles, Clock, Music, MessageSquare, Play, Square, Zap } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
 import { adminAuditLog } from '@/lib/adminAudit';
 import { cn } from '@/lib/utils';
@@ -22,9 +23,13 @@ export const EventReopenControl: React.FC<Props> = ({ rules, onUpdate }) => {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
   
-  // Form state
-  const [reopenMode, setReopenMode] = useState<'time' | 'songs' | 'dediche'>('time');
+  // Form state - modalità base
+  const [reopenMode, setReopenMode] = useState<'time' | 'songs' | 'dediche' | 'combo'>('time');
   const [reopenMinutes, setReopenMinutes] = useState('5');
+  
+  // Form state - canzoni e dediche separati
+  const [enableSongs, setEnableSongs] = useState(true);
+  const [enableDediche, setEnableDediche] = useState(false);
   const [reopenSongs, setReopenSongs] = useState('3');
   const [reopenDediche, setReopenDediche] = useState('5');
   const [reopenMessage, setReopenMessage] = useState('🎉 A grande richiesta, riapriamo per pochi minuti!');
@@ -81,6 +86,11 @@ export const EventReopenControl: React.FC<Props> = ({ rules, onUpdate }) => {
       updates.reopen_extra_dediche = parseInt(reopenDediche) || 5;
       updates.reopen_until = null;
       updates.reopen_extra_songs = null;
+    } else if (reopenMode === 'combo') {
+      // Combo mode: both songs and dediche with individual limits
+      updates.reopen_extra_songs = enableSongs ? (parseInt(reopenSongs) || 3) : null;
+      updates.reopen_extra_dediche = enableDediche ? (parseInt(reopenDediche) || 5) : null;
+      updates.reopen_until = null;
     }
 
     const success = await onUpdate(updates);
@@ -94,7 +104,12 @@ export const EventReopenControl: React.FC<Props> = ({ rules, onUpdate }) => {
         action: 'event.reopen_started',
         entity: 'event_booking_rules',
         entity_id: rules.id,
-        metadata: { mode: reopenMode, message: reopenMessage },
+        metadata: { 
+          mode: reopenMode, 
+          message: reopenMessage,
+          songs: reopenMode === 'combo' && enableSongs ? reopenSongs : undefined,
+          dediche: reopenMode === 'combo' && enableDediche ? reopenDediche : undefined,
+        },
       });
     } else {
       toast({
@@ -144,8 +159,16 @@ export const EventReopenControl: React.FC<Props> = ({ rules, onUpdate }) => {
     if (rules.reopen_mode === 'dediche' && rules.reopen_extra_dediche) {
       return rules.reopen_dediche_used >= rules.reopen_extra_dediche;
     }
+    if (rules.reopen_mode === 'combo') {
+      const songsExhausted = rules.reopen_extra_songs ? rules.reopen_songs_used >= rules.reopen_extra_songs : true;
+      const dedicheExhausted = rules.reopen_extra_dediche ? rules.reopen_dediche_used >= rules.reopen_extra_dediche : true;
+      return songsExhausted && dedicheExhausted;
+    }
     return false;
   };
+
+  // Check if combo mode is valid (at least one option selected)
+  const isComboValid = reopenMode !== 'combo' || enableSongs || enableDediche;
 
   return (
     <Card>
@@ -173,6 +196,12 @@ export const EventReopenControl: React.FC<Props> = ({ rules, onUpdate }) => {
               <div className="flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-green-500" />
                 <span className="font-medium">Riapertura in corso</span>
+                {rules.reopen_mode === 'combo' && (
+                  <Badge variant="secondary" className="text-xs">
+                    <Zap className="w-3 h-3 mr-1" />
+                    Combo
+                  </Badge>
+                )}
               </div>
               <Badge variant="default" className="bg-green-500">
                 ATTIVA
@@ -201,11 +230,14 @@ export const EventReopenControl: React.FC<Props> = ({ rules, onUpdate }) => {
               </div>
             )}
 
-            {/* Slots-based progress */}
+            {/* Single mode: songs only */}
             {rules.reopen_mode === 'songs' && rules.reopen_extra_songs && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span>Canzoni extra</span>
+                  <span className="flex items-center gap-1.5">
+                    <Music className="w-4 h-4" />
+                    Canzoni extra
+                  </span>
                   <span className="font-medium">
                     {rules.reopen_songs_used} / {rules.reopen_extra_songs}
                   </span>
@@ -217,10 +249,14 @@ export const EventReopenControl: React.FC<Props> = ({ rules, onUpdate }) => {
               </div>
             )}
 
+            {/* Single mode: dediche only */}
             {rules.reopen_mode === 'dediche' && rules.reopen_extra_dediche && (
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span>Dediche extra</span>
+                  <span className="flex items-center gap-1.5">
+                    <MessageSquare className="w-4 h-4" />
+                    Dediche extra
+                  </span>
                   <span className="font-medium">
                     {rules.reopen_dediche_used} / {rules.reopen_extra_dediche}
                   </span>
@@ -229,6 +265,46 @@ export const EventReopenControl: React.FC<Props> = ({ rules, onUpdate }) => {
                   value={(rules.reopen_dediche_used / rules.reopen_extra_dediche) * 100} 
                   className="h-2"
                 />
+              </div>
+            )}
+
+            {/* Combo mode: both */}
+            {rules.reopen_mode === 'combo' && (
+              <div className="space-y-3">
+                {rules.reopen_extra_songs && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-1.5">
+                        <Music className="w-4 h-4" />
+                        Canzoni extra
+                      </span>
+                      <span className="font-medium">
+                        {rules.reopen_songs_used} / {rules.reopen_extra_songs}
+                      </span>
+                    </div>
+                    <Progress 
+                      value={(rules.reopen_songs_used / rules.reopen_extra_songs) * 100} 
+                      className="h-2"
+                    />
+                  </div>
+                )}
+                {rules.reopen_extra_dediche && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-1.5">
+                        <MessageSquare className="w-4 h-4" />
+                        Dediche extra
+                      </span>
+                      <span className="font-medium">
+                        {rules.reopen_dediche_used} / {rules.reopen_extra_dediche}
+                      </span>
+                    </div>
+                    <Progress 
+                      value={(rules.reopen_dediche_used / rules.reopen_extra_dediche) * 100} 
+                      className="h-2"
+                    />
+                  </div>
+                )}
               </div>
             )}
 
@@ -251,7 +327,8 @@ export const EventReopenControl: React.FC<Props> = ({ rules, onUpdate }) => {
             <div className="space-y-4">
               <Label>Modalità riapertura</Label>
               
-              <RadioGroup value={reopenMode} onValueChange={(v) => setReopenMode(v as 'time' | 'songs' | 'dediche')}>
+              <RadioGroup value={reopenMode} onValueChange={(v) => setReopenMode(v as 'time' | 'songs' | 'dediche' | 'combo')}>
+                {/* Time mode */}
                 <div className="flex items-start space-x-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
                   <RadioGroupItem value="time" id="reopen-time" className="mt-1" />
                   <div className="flex-1 space-y-2">
@@ -260,7 +337,7 @@ export const EventReopenControl: React.FC<Props> = ({ rules, onUpdate }) => {
                       Per tempo
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Riapri per un numero di minuti
+                      Riapri tutto per un numero di minuti (Open Mic + Dediche)
                     </p>
                     {reopenMode === 'time' && (
                       <div className="flex items-center gap-2 pt-2">
@@ -278,15 +355,16 @@ export const EventReopenControl: React.FC<Props> = ({ rules, onUpdate }) => {
                   </div>
                 </div>
 
+                {/* Songs only */}
                 <div className="flex items-start space-x-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
                   <RadioGroupItem value="songs" id="reopen-songs" className="mt-1" />
                   <div className="flex-1 space-y-2">
                     <Label htmlFor="reopen-songs" className="font-medium cursor-pointer flex items-center gap-2">
                       <Music className="w-4 h-4" />
-                      Per canzoni
+                      Solo Open Mic
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Riapri per un numero limitato di canzoni extra
+                      Riapri solo le prenotazioni canzoni
                     </p>
                     {reopenMode === 'songs' && (
                       <div className="flex items-center gap-2 pt-2">
@@ -304,15 +382,16 @@ export const EventReopenControl: React.FC<Props> = ({ rules, onUpdate }) => {
                   </div>
                 </div>
 
+                {/* Dediche only */}
                 <div className="flex items-start space-x-3 p-3 rounded-lg border border-border hover:bg-muted/50 transition-colors">
                   <RadioGroupItem value="dediche" id="reopen-dediche" className="mt-1" />
                   <div className="flex-1 space-y-2">
                     <Label htmlFor="reopen-dediche" className="font-medium cursor-pointer flex items-center gap-2">
                       <MessageSquare className="w-4 h-4" />
-                      Per dediche
+                      Solo Dediche
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Riapri per un numero limitato di dediche extra
+                      Riapri solo le dediche
                     </p>
                     {reopenMode === 'dediche' && (
                       <div className="flex items-center gap-2 pt-2">
@@ -325,6 +404,80 @@ export const EventReopenControl: React.FC<Props> = ({ rules, onUpdate }) => {
                           className="w-20"
                         />
                         <span className="text-sm text-muted-foreground">dediche extra</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Combo mode */}
+                <div className="flex items-start space-x-3 p-3 rounded-lg border-2 border-primary/30 bg-primary/5 hover:bg-primary/10 transition-colors">
+                  <RadioGroupItem value="combo" id="reopen-combo" className="mt-1" />
+                  <div className="flex-1 space-y-3">
+                    <Label htmlFor="reopen-combo" className="font-medium cursor-pointer flex items-center gap-2">
+                      <Zap className="w-4 h-4 text-primary" />
+                      Open Mic + Dediche
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Riapri entrambi con limiti separati
+                    </p>
+                    
+                    {reopenMode === 'combo' && (
+                      <div className="space-y-3 pt-2 border-t border-border/50">
+                        {/* Songs toggle */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Switch 
+                              checked={enableSongs}
+                              onCheckedChange={setEnableSongs}
+                              id="combo-songs"
+                            />
+                            <Label htmlFor="combo-songs" className="text-sm flex items-center gap-1.5 cursor-pointer">
+                              <Music className="w-3.5 h-3.5" />
+                              Canzoni extra
+                            </Label>
+                          </div>
+                          {enableSongs && (
+                            <Input
+                              type="number"
+                              min="1"
+                              max="20"
+                              value={reopenSongs}
+                              onChange={(e) => setReopenSongs(e.target.value)}
+                              className="w-16 h-8 text-sm"
+                            />
+                          )}
+                        </div>
+
+                        {/* Dediche toggle */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Switch 
+                              checked={enableDediche}
+                              onCheckedChange={setEnableDediche}
+                              id="combo-dediche"
+                            />
+                            <Label htmlFor="combo-dediche" className="text-sm flex items-center gap-1.5 cursor-pointer">
+                              <MessageSquare className="w-3.5 h-3.5" />
+                              Dediche extra
+                            </Label>
+                          </div>
+                          {enableDediche && (
+                            <Input
+                              type="number"
+                              min="1"
+                              max="50"
+                              value={reopenDediche}
+                              onChange={(e) => setReopenDediche(e.target.value)}
+                              className="w-16 h-8 text-sm"
+                            />
+                          )}
+                        </div>
+
+                        {!enableSongs && !enableDediche && (
+                          <p className="text-xs text-destructive">
+                            Seleziona almeno un'opzione
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -348,7 +501,7 @@ export const EventReopenControl: React.FC<Props> = ({ rules, onUpdate }) => {
 
             <Button
               onClick={handleStartReopen}
-              disabled={isSaving}
+              disabled={isSaving || !isComboValid}
               className="w-full"
             >
               <Play className="w-4 h-4 mr-2" />
