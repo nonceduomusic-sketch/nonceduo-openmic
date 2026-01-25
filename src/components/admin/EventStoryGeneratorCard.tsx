@@ -17,6 +17,7 @@ import {
   Sparkles,
   Wand2,
   RotateCcw,
+  Type,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,6 +32,8 @@ import { useToast } from '@/hooks/use-toast';
 type EventType = 'public' | 'private';
 type StylePreset = 'minimal' | 'gradient' | 'neon';
 type ImageFormat = 'story' | 'square' | 'portrait';
+type OverlayPosition = 'bottom' | 'top' | 'center';
+type TextSize = 'small' | 'medium' | 'large';
 
 interface EventStoryConfig {
   venueName: string;
@@ -39,6 +42,8 @@ interface EventStoryConfig {
   eventType: EventType;
   stylePreset: StylePreset;
   imageFormat: ImageFormat;
+  overlayPosition: OverlayPosition;
+  textSize: TextSize;
   aiTheme: string;
 }
 
@@ -51,6 +56,8 @@ const DEFAULT_CONFIG: EventStoryConfig = {
   eventType: 'public',
   stylePreset: 'neon',
   imageFormat: 'story',
+  overlayPosition: 'center',
+  textSize: 'medium',
   aiTheme: '',
 };
 
@@ -94,6 +101,18 @@ const IMAGE_FORMATS: Record<ImageFormat, { label: string; description: string; w
     width: 1080,
     height: 1350,
   },
+};
+
+const OVERLAY_POSITIONS: Record<OverlayPosition, { label: string; icon: React.ReactNode }> = {
+  top: { label: 'In alto', icon: <Layout className="w-4 h-4" /> },
+  center: { label: 'Centrale', icon: <Layout className="w-4 h-4 rotate-90" /> },
+  bottom: { label: 'In basso', icon: <Layout className="w-4 h-4 rotate-180" /> },
+};
+
+const TEXT_SIZES: Record<TextSize, { label: string; scale: number }> = {
+  small: { label: 'Piccolo', scale: 0.75 },
+  medium: { label: 'Medio', scale: 1 },
+  large: { label: 'Grande', scale: 1.25 },
 };
 
 // AI Theme presets
@@ -321,19 +340,28 @@ export const EventStoryGeneratorCard: React.FC = () => {
         }
       }
 
-      // Adjust sizing based on format
+      // Adjust sizing based on format and text scale
       const isCompact = config.imageFormat !== 'story';
-      const titleSize = isCompact ? 56 : 72;
-      const dateSize = isCompact ? 38 : 48;
-      const timeSize = isCompact ? 32 : 42;
-      const badgeSize = isCompact ? 26 : 32;
-      const pinTitleSize = isCompact ? 28 : 36;
-      const pinBoxSize = isCompact ? 48 : 64;
-      const subtitleSize = isCompact ? 22 : 28;
-      const footerSize = isCompact ? 20 : 24;
+      const textScale = TEXT_SIZES[config.textSize].scale;
+      const titleSize = Math.round((isCompact ? 56 : 72) * textScale);
+      const dateSize = Math.round((isCompact ? 38 : 48) * textScale);
+      const timeSize = Math.round((isCompact ? 32 : 42) * textScale);
+      const badgeSize = Math.round((isCompact ? 26 : 32) * textScale);
+      const pinTitleSize = Math.round((isCompact ? 28 : 36) * textScale);
+      const pinBoxSize = Math.round((isCompact ? 48 : 64) * textScale);
+      const subtitleSize = Math.round((isCompact ? 22 : 28) * textScale);
+      const footerSize = Math.round((isCompact ? 20 : 24) * textScale);
+      const lineHeight = Math.round((isCompact ? 70 : 90) * textScale);
 
-      // Calculate vertical positions based on format
-      const titleStartY = isCompact ? canvas.height * 0.2 : 380;
+      // Calculate vertical positions based on format and overlay position
+      let titleStartY: number;
+      if (config.overlayPosition === 'top') {
+        titleStartY = isCompact ? canvas.height * 0.1 : 200;
+      } else if (config.overlayPosition === 'bottom') {
+        titleStartY = isCompact ? canvas.height * 0.5 : canvas.height - 700;
+      } else {
+        titleStartY = isCompact ? canvas.height * 0.2 : 380;
+      }
 
       ctx.textAlign = 'center';
 
@@ -368,7 +396,6 @@ export const EventStoryGeneratorCard: React.FC = () => {
         }
         if (currentLine) lines.push(currentLine);
 
-        const lineHeight = isCompact ? 70 : 90;
         lines.forEach((line, i) => {
           ctx.fillText(line, canvas.width / 2, currentY + i * lineHeight);
         });
@@ -645,6 +672,71 @@ export const EventStoryGeneratorCard: React.FC = () => {
                   >
                     <span className="text-xs font-medium">{fmtConfig.label}</span>
                     <span className="text-[10px] text-muted-foreground">{fmtConfig.description}</span>
+                  </Label>
+                </div>
+              );
+            })}
+          </RadioGroup>
+        </div>
+
+        {/* Overlay Position */}
+        <div className="space-y-3">
+          <Label className="flex items-center gap-2">
+            <Layout className="w-4 h-4" />
+            Posizione Testo
+          </Label>
+          <RadioGroup
+            value={config.overlayPosition}
+            onValueChange={(value) => updateConfig('overlayPosition', value as OverlayPosition)}
+            className="grid grid-cols-3 gap-2"
+          >
+            {(Object.keys(OVERLAY_POSITIONS) as OverlayPosition[]).map((pos) => {
+              const posConfig = OVERLAY_POSITIONS[pos];
+              return (
+                <div key={pos}>
+                  <RadioGroupItem value={pos} id={`story-pos-${pos}`} className="peer sr-only" />
+                  <Label
+                    htmlFor={`story-pos-${pos}`}
+                    className={cn(
+                      "flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 cursor-pointer transition-all",
+                      "border-muted hover:border-muted-foreground/50",
+                      config.overlayPosition === pos && "border-primary bg-primary/10"
+                    )}
+                  >
+                    {posConfig.icon}
+                    <span className="text-xs">{posConfig.label}</span>
+                  </Label>
+                </div>
+              );
+            })}
+          </RadioGroup>
+        </div>
+
+        {/* Text Size */}
+        <div className="space-y-3">
+          <Label className="flex items-center gap-2">
+            <Type className="w-4 h-4" />
+            Dimensione Testo
+          </Label>
+          <RadioGroup
+            value={config.textSize}
+            onValueChange={(value) => updateConfig('textSize', value as TextSize)}
+            className="grid grid-cols-3 gap-2"
+          >
+            {(Object.keys(TEXT_SIZES) as TextSize[]).map((size) => {
+              const sizeConfig = TEXT_SIZES[size];
+              return (
+                <div key={size}>
+                  <RadioGroupItem value={size} id={`story-size-${size}`} className="peer sr-only" />
+                  <Label
+                    htmlFor={`story-size-${size}`}
+                    className={cn(
+                      "flex flex-col items-center gap-1 p-3 rounded-xl border-2 cursor-pointer transition-all",
+                      "border-muted hover:border-muted-foreground/50",
+                      config.textSize === size && "border-primary bg-primary/10"
+                    )}
+                  >
+                    <span className="text-xs">{sizeConfig.label}</span>
                   </Label>
                 </div>
               );
