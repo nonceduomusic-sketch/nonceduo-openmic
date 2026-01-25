@@ -3,6 +3,7 @@ import Messages from "@/pages/Messages";
 import DedicheInfo from "@/pages/DedicheInfo";
 import { PreEventPage } from "@/components/PreEventPage";
 import { FormatPinGate } from "@/components/FormatPinGate";
+import { FreeModeDediche } from "@/components/FreeModeDediche";
 import { useLiveEvent } from "@/hooks/useLiveEvent";
 import { usePinSession } from "@/hooks/usePinSession";
 
@@ -15,11 +16,12 @@ import { usePinSession } from "@/hooks/usePinSession";
  *    - Se event_type = 'dediche' o 'both':
  *      - Se pin_required && !pinValidated → mostra PIN gate
  *      - Altrimenti → mostra LIVE
- * 2. Se esistono eventi READY → mostra PreEventPage
- * 3. Altrimenti → mostra Info
+ * 2. Se Serata Aperta (Free Mode) attiva per dediche → mostra Dediche senza limiti
+ * 3. Se esistono eventi READY → mostra PreEventPage
+ * 4. Altrimenti → mostra Info
  */
 const AppDediche: React.FC = () => {
-  const { eventState, liveEvent, upcomingEvents, isDedicheVisible } = useLiveEvent();
+  const { eventState, liveEvent, upcomingEvents, isDedicheVisible, isFreeMode, freeMode } = useLiveEvent();
   const { 
     hasValidSession, 
     loading: sessionLoading, 
@@ -79,12 +81,17 @@ const AppDediche: React.FC = () => {
     return <Messages appMode liveEvent={liveEvent} />;
   }
 
-  // CASE 2: Eventi READY esistono → Pre-Event Page
+  // CASE 2: Serata Aperta (Free Mode) attiva per Dediche
+  if (eventState.type === 'freemode' && freeMode.dediche) {
+    return <FreeModeDediche />;
+  }
+
+  // CASE 3: Eventi READY esistono → Pre-Event Page
   if (eventState.type === 'upcoming') {
     return <PreEventPage events={upcomingEvents} />;
   }
 
-  // CASE 3: Nessun evento → Info page
+  // CASE 4: Nessun evento → Info page
   return <DedicheInfo />;
 };
 
