@@ -86,10 +86,23 @@ export const useReservations = () => {
           if (payload.eventType === 'INSERT') {
             const newReservation = payload.new as Reservation;
             setReservations((prev) => normalizeReservations([...prev, newReservation]));
-            // Trigger notification for admin
+            // Trigger notification for admin (in-app)
             window.dispatchEvent(
               new CustomEvent('new-reservation', { detail: newReservation })
             );
+            // Send push notification to all admin devices (background)
+            supabase.functions.invoke('push-notifications', {
+              body: {
+                action: 'send',
+                title: '🎤 Nuova prenotazione!',
+                body: `${newReservation.customer_name} - ${newReservation.song_title}`,
+                tag: 'reservation-' + newReservation.id,
+              },
+            }).catch(err => {
+              if (import.meta.env.DEV) {
+                console.error('[useReservations] Failed to send push:', err);
+              }
+            });
           } else if (payload.eventType === 'UPDATE') {
             setReservations((prev) =>
               normalizeReservations(
