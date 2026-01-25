@@ -759,8 +759,8 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false, liveEvent }) => {
               <ArrowLeft className="w-3 h-3" />
               Torna alla lista conversazioni
             </button>
-            <form onSubmit={(e) => { clearTypingIndicator(); handleSendReply(e); }} className="flex gap-2 p-4">
-              <Input
+            <form onSubmit={(e) => { clearTypingIndicator(); handleSendReply(e); }} className="flex gap-2 p-4 items-end">
+              <Textarea
                 value={message}
                 onChange={(e) => {
                   setMessage(e.target.value);
@@ -770,14 +770,26 @@ const Messages: React.FC<MessagesProps> = ({ appMode = false, liveEvent }) => {
                     clearTypingIndicator();
                   }
                 }}
-                placeholder="Scrivi un messaggio..."
-                className="flex-1 bg-muted border-border"
+                onKeyDown={(e) => {
+                  // Invio senza Shift = manda messaggio
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (message.trim() && !isBlocked && !isSubmitting) {
+                      clearTypingIndicator();
+                      handleSendReply(e as any);
+                    }
+                  }
+                  // Shift+Invio = va a capo (comportamento nativo Textarea)
+                }}
+                placeholder="Scrivi... (Invio = invia, Shift+Invio = a capo)"
+                className="flex-1 bg-muted border-border min-h-[44px] max-h-[120px] resize-none"
                 disabled={isBlocked || isSubmitting}
+                rows={1}
               />
               <Button
                 type="submit"
                 disabled={!message.trim() || isSubmitting || isBlocked}
-                className="neon-button-cyan"
+                className="neon-button-cyan h-11"
               >
                 <Send className="w-4 h-4" />
               </Button>
