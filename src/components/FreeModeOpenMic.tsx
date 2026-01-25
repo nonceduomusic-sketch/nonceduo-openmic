@@ -14,12 +14,12 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 /**
- * FreeModeOpenMic - Open Mic senza limiti (Serata Aperta)
+ * FreeModeOpenMic - Open Mic senza limiti (Evento Live)
  * 
  * Features:
  * - Nessun limite numerico
  * - Nessun countdown
- * - Banner "Serata Aperta" distintivo
+ * - Banner "Evento Live" distintivo
  * - Tutte le funzionalità base di prenotazione
  */
 export const FreeModeOpenMic: React.FC = () => {
@@ -71,7 +71,7 @@ export const FreeModeOpenMic: React.FC = () => {
   return (
     <>
       <SEO 
-        title="Open Mic - Serata Aperta | Non Ce Duo"
+        title="Open Mic - Evento Live | Non Ce Duo"
         description="Prenota la tua canzone per il karaoke live!"
       />
       
@@ -125,7 +125,7 @@ export const FreeModeOpenMic: React.FC = () => {
               </div>
               <div>
                 <h2 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
-                  Serata Aperta
+                  Evento Live
                   <span className="relative flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-accent"></span>

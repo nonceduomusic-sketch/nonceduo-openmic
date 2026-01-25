@@ -6,16 +6,16 @@ import { SEO } from "@/components/SEO";
 import { cn } from "@/lib/utils";
 
 /**
- * FreeModeDediche - Dediche senza limiti (Serata Aperta)
+ * FreeModeDediche - Dediche senza limiti (Evento Live)
  * 
- * Wraps the Messages component with a Free Mode banner header.
+ * Wraps the Messages component with an Evento Live banner header.
  * No event limits applied.
  */
 export const FreeModeDediche: React.FC = () => {
   return (
     <>
       <SEO 
-        title="Dediche - Serata Aperta | Non Ce Duo"
+        title="Dediche - Evento Live | Non Ce Duo"
         description="Invia le tue dediche liberamente!"
       />
       
@@ -54,7 +54,7 @@ export const FreeModeDediche: React.FC = () => {
               </div>
               <div>
                 <h2 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
-                  Serata Aperta
+                  Evento Live
                   <span className="relative flex h-2.5 w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-secondary"></span>
