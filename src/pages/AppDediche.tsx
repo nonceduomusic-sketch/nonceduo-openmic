@@ -123,7 +123,7 @@ const AppDediche: React.FC = () => {
       );
     }
     
-    return <FreeModeDediche eventName={freeMode.eventName} />;
+    return <FreeModeDediche freeModeState={freeMode} />;
   }
 
   // CASE 3: Eventi READY esistono → Pre-Event Page

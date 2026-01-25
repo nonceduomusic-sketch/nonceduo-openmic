@@ -1,26 +1,109 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import { ChevronLeft, MessageCircle, Zap } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { ChevronLeft, MessageCircle, Zap, AlertTriangle, Timer } from "lucide-react";
 import Messages from "@/pages/Messages";
 import { SEO } from "@/components/SEO";
 import { cn } from "@/lib/utils";
+import { FreeModeState } from "@/hooks/useLiveEvent";
+import { FreeModeClosureOverlay } from "@/components/FreeModeClosureOverlay";
+import { Badge } from "@/components/ui/badge";
+import { differenceInSeconds, parseISO } from "date-fns";
 
 interface FreeModeDedicheProps {
-  eventName?: string | null;
+  freeModeState: FreeModeState;
 }
 
 /**
- * FreeModeDediche - Dediche senza limiti (Evento Live)
+ * FreeModeDediche - Dediche con stato Free Mode
  * 
- * Wraps the Messages component with an event banner header.
- * No event limits applied.
+ * Features:
+ * - Limiti numerici e temporali
+ * - Countdown alla scadenza
+ * - Riapertura straordinaria
+ * - Messaggio di chiusura configurabile
  */
-export const FreeModeDediche: React.FC<FreeModeDedicheProps> = ({ eventName }) => {
+export const FreeModeDediche: React.FC<FreeModeDedicheProps> = ({ freeModeState }) => {
+  const navigate = useNavigate();
+  const [now, setNow] = useState(new Date());
+
+  const {
+    eventName,
+    dedicheMaxTotal,
+    dedicheCurrentCount,
+    expiresAt,
+    reopenActive,
+    reopenUntil,
+    reopenMessage,
+    closureMode,
+    closureTitle,
+    closureMessage,
+    closureRedirectUrl,
+  } = freeModeState;
+
+  // Update time every second
+  useEffect(() => {
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Calculate if booking is closed
+  const isExpired = useMemo(() => {
+    if (!expiresAt) return false;
+    return new Date(expiresAt) <= now;
+  }, [expiresAt, now]);
+
+  const isLimitReached = useMemo(() => {
+    if (!dedicheMaxTotal) return false;
+    return dedicheCurrentCount >= dedicheMaxTotal;
+  }, [dedicheMaxTotal, dedicheCurrentCount]);
+
+  // Check if reopening is active and valid
+  const isReopenValid = useMemo(() => {
+    if (!reopenActive || !reopenUntil) return false;
+    return new Date(reopenUntil) > now;
+  }, [reopenActive, reopenUntil, now]);
+
+  // Is booking closed?
+  const isClosed = (isExpired || isLimitReached) && !isReopenValid;
+
+  // Handle redirect mode
+  useEffect(() => {
+    if (isClosed && closureMode === 'redirect') {
+      if (closureRedirectUrl) {
+        window.location.href = closureRedirectUrl;
+      } else {
+        navigate('/messaggi');
+      }
+    }
+  }, [isClosed, closureMode, closureRedirectUrl, navigate]);
+
+  // Calculate remaining time
+  const remainingTime = useMemo(() => {
+    if (!expiresAt || isExpired) return null;
+    const seconds = differenceInSeconds(parseISO(expiresAt), now);
+    if (seconds <= 0) return null;
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return { minutes, seconds: secs, total: seconds };
+  }, [expiresAt, now, isExpired]);
+
+  // Calculate reopen remaining time
+  const reopenRemaining = useMemo(() => {
+    if (!reopenUntil || !isReopenValid) return null;
+    const seconds = differenceInSeconds(parseISO(reopenUntil), now);
+    if (seconds <= 0) return null;
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return { minutes, seconds: secs };
+  }, [reopenUntil, now, isReopenValid]);
+
+  const remaining = dedicheMaxTotal ? dedicheMaxTotal - dedicheCurrentCount : null;
+
   return (
     <>
       <SEO 
-        title="Dediche - Evento Live | Non Ce Duo"
-        description="Invia le tue dediche liberamente!"
+        title={`Dediche - ${eventName || 'Evento Live'} | Non Ce Duo`}
+        description="Invia le tue dediche per l'evento!"
       />
       
       <div className="min-h-screen bg-background flex flex-col">
@@ -45,37 +128,72 @@ export const FreeModeDediche: React.FC<FreeModeDedicheProps> = ({ eventName }) =
 
         {/* Free Mode Banner */}
         <div className="container mx-auto px-4 py-4">
-          <div className={cn(
-            "relative overflow-hidden rounded-xl p-4",
-            "bg-gradient-to-br from-secondary/20 via-secondary/10 to-accent/10",
-            "border border-secondary/30",
-          )}>
-            <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-secondary/20 to-transparent rounded-full -translate-y-1/2 translate-x-1/2" />
-            
-            <div className="relative z-10 flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-secondary/20 flex items-center justify-center">
-                <Zap className="w-6 h-6 text-secondary" />
+          {isClosed && closureMode === 'overlay' ? (
+            <FreeModeClosureOverlay
+              closureTitle={closureTitle}
+              closureMessage={closureMessage}
+            />
+          ) : (
+            <div className={cn(
+              "relative overflow-hidden rounded-xl p-4",
+              "bg-gradient-to-br from-secondary/20 via-secondary/10 to-accent/10",
+              "border border-secondary/30",
+              isReopenValid && "ring-2 ring-accent/50"
+            )}>
+              <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-secondary/20 to-transparent rounded-full -translate-y-1/2 translate-x-1/2" />
+              
+              <div className="relative z-10 flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-secondary/20 flex items-center justify-center">
+                  <Zap className="w-6 h-6 text-secondary" />
+                </div>
+                <div className="flex-1">
+                  <h2 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
+                    {eventName || 'Evento Live'}
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-secondary"></span>
+                    </span>
+                  </h2>
+                  
+                  {/* Status info */}
+                  <div className="flex flex-wrap items-center gap-2 mt-1">
+                    {remaining !== null && (
+                      <Badge variant={remaining <= 3 ? "destructive" : "secondary"} className="text-xs">
+                        {remaining} dediche rimaste
+                      </Badge>
+                    )}
+                    {remainingTime && (
+                      <Badge variant={remainingTime.total <= 300 ? "destructive" : "outline"} className="text-xs flex items-center gap-1">
+                        <Timer className="w-3 h-3" />
+                        {remainingTime.minutes}m {remainingTime.seconds}s
+                      </Badge>
+                    )}
+                  </div>
+                </div>
               </div>
-              <div>
-                <h2 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
-                  {eventName || 'Evento Live'}
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-secondary opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-secondary"></span>
-                  </span>
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                  Invia le tue dediche liberamente! 💌
-                </p>
-              </div>
+
+              {/* Reopen banner */}
+              {isReopenValid && (
+                <div className="mt-3 pt-3 border-t border-accent/30 flex items-center gap-2 text-accent">
+                  <AlertTriangle className="w-4 h-4" />
+                  <span className="text-sm font-medium">{reopenMessage || 'Riapertura straordinaria!'}</span>
+                  {reopenRemaining && (
+                    <Badge variant="secondary" className="ml-auto text-xs">
+                      {reopenRemaining.minutes}m {reopenRemaining.seconds}s
+                    </Badge>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Messages Component without event context (no limits) */}
-        <div className="flex-1">
-          <Messages appMode />
-        </div>
+        {/* Messages Component - only show if not closed */}
+        {(!isClosed || closureMode !== 'overlay') && (
+          <div className="flex-1">
+            <Messages appMode />
+          </div>
+        )}
       </div>
     </>
   );

@@ -193,7 +193,7 @@ export const BookingStatusBanner: React.FC<BookingStatusBannerProps> = ({
 
   const colors = getUrgencyColors(reopenInfo ? 'safe' : overallUrgency);
 
-  // Don't show if closed
+  // Don't show if closed - use dynamic closure message from admin
   if (countdown?.expired && !reopenInfo) {
     return (
       <div className={cn(
@@ -205,8 +205,12 @@ export const BookingStatusBanner: React.FC<BookingStatusBannerProps> = ({
             <AlertTriangle className="w-5 h-5 text-destructive" />
           </div>
           <div>
-            <span className="text-base font-bold text-destructive">Prenotazioni chiuse</span>
-            <p className="text-xs text-destructive/70">Grazie per aver partecipato!</p>
+            <span className="text-base font-bold text-destructive">
+              {event.closure_title || 'Prenotazioni chiuse'}
+            </span>
+            <p className="text-xs text-destructive/70">
+              {event.closure_message || 'Grazie per aver partecipato!'}
+            </p>
           </div>
         </div>
       </div>
