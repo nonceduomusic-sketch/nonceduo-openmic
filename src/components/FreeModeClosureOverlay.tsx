@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Music2, Instagram, Facebook, Heart, PartyPopper } from 'lucide-react';
+ import { Clock, Music2, Instagram, Heart, PartyPopper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -53,28 +53,18 @@ export const FreeModeClosureOverlay: React.FC<FreeModeClosureOverlayProps> = ({
       <p className="text-xs text-muted-foreground mb-3">
         Seguici per i prossimi eventi:
       </p>
-      <div className="flex justify-center gap-3">
-        <Button variant="outline" size="sm" className="gap-2" asChild>
-          <a
-            href="https://instagram.com/nonceduo"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Instagram className="w-4 h-4" />
-            Instagram
-          </a>
-        </Button>
-        <Button variant="outline" size="sm" className="gap-2" asChild>
-          <a
-            href="https://facebook.com/nonceduo"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Facebook className="w-4 h-4" />
-            Facebook
-          </a>
-        </Button>
-      </div>
+       <div className="flex justify-center">
+         <Button variant="outline" size="sm" className="gap-2" asChild>
+           <a
+             href="https://www.instagram.com/nonceduo.music/"
+             target="_blank"
+             rel="noopener noreferrer"
+           >
+             <Instagram className="w-4 h-4" />
+             Instagram
+           </a>
+         </Button>
+       </div>
     </div>
   );
 };
