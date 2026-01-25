@@ -649,62 +649,10 @@ export const EventStoryGeneratorCard: React.FC = () => {
           </Button>
         </div>
         <CardDescription>
-          Genera una grafica professionale per social. Tutti i campi sono opzionali.
-          Usa l'AI per generare uno sfondo a tema!
+          Genera una grafica professionale per storie. Tutti i campi sono opzionali.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* AI Theme Generator - NEW */}
-        <div className="space-y-3 p-4 rounded-xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/20">
-          <Label className="flex items-center gap-2 text-sm font-medium">
-            <Sparkles className="w-4 h-4 text-purple-400" />
-            Genera Sfondo AI a Tema
-            <span className="text-xs text-muted-foreground">(opzionale)</span>
-          </Label>
-          <div className="flex gap-2">
-            <Input
-              placeholder="Es. matrimonio, sagra, jazz, elegante..."
-              value={config.aiTheme}
-              onChange={(e) => updateConfig('aiTheme', e.target.value)}
-              className="bg-background/50 flex-1"
-            />
-            <Button
-              onClick={generateAIBackground}
-              disabled={isGeneratingAI || !config.aiTheme.trim()}
-              variant="secondary"
-              className="gap-2 shrink-0"
-            >
-              {isGeneratingAI ? (
-                <RefreshCw className="w-4 h-4 animate-spin" />
-              ) : (
-                <Wand2 className="w-4 h-4" />
-              )}
-              Genera
-            </Button>
-          </div>
-          <div className="flex flex-wrap gap-1.5">
-            {AI_THEME_SUGGESTIONS.map((theme) => (
-              <button
-                key={theme}
-                onClick={() => updateConfig('aiTheme', theme)}
-                className={cn(
-                  "text-xs px-2 py-1 rounded-full border transition-colors",
-                  config.aiTheme === theme
-                    ? "bg-purple-500/20 border-purple-500/50 text-purple-300"
-                    : "border-border hover:border-purple-500/30 text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {theme}
-              </button>
-            ))}
-          </div>
-          {aiGeneratedBg && (
-            <div className="flex items-center gap-2 text-xs text-green-400">
-              <Check className="w-3 h-3" />
-              Sfondo AI pronto! Genera la grafica.
-            </div>
-          )}
-        </div>
 
         {/* Image Format */}
         <div className="space-y-3">

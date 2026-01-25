@@ -485,36 +485,36 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                     )}
                   </div>
 
-                  {/* Content */}
-                  <div className="flex-1 min-w-0">
-                    {/* Name row */}
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <span className="font-semibold text-foreground text-base truncate">
-                        {item.name}
-                      </span>
-                      {item.hasDedication && item.type === 'song' && (
-                        <Heart className="w-4 h-4 text-pink-400 fill-pink-400 flex-shrink-0" />
-                      )}
-                      {item.status === 'completed' && (
-                        <Badge variant="secondary" className="text-xs h-5">
-                          <Check className="w-3 h-3 mr-0.5" /> Fatta
-                        </Badge>
-                      )}
-                    </div>
+                    {/* Content */}
+                    <div className="flex-1 min-w-0">
+                      {/* Name row */}
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className={cn("font-semibold text-foreground truncate", fontSizeClass === 'text-xs' ? 'text-sm' : fontSizeClass === 'text-base' ? 'text-lg' : 'text-base')}>
+                          {item.name}
+                        </span>
+                        {item.hasDedication && item.type === 'song' && (
+                          <Heart className="w-4 h-4 text-pink-400 fill-pink-400 flex-shrink-0" />
+                        )}
+                        {item.status === 'completed' && (
+                          <Badge variant="secondary" className="text-xs h-5">
+                            <Check className="w-3 h-3 mr-0.5" /> Fatta
+                          </Badge>
+                        )}
+                      </div>
 
-                    {/* Title */}
-                    <p className="font-medium text-sm text-foreground truncate leading-snug">
-                      {item.title}
-                    </p>
+                      {/* Title */}
+                      <p className={cn("font-medium text-foreground truncate leading-snug", fontSizeClass)}>
+                        {item.title}
+                      </p>
 
-                    {/* Subtitle + time + votes */}
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span className="text-xs text-muted-foreground truncate">
-                        {item.subtitle}
-                      </span>
-                      <span className="text-xs text-muted-foreground/60 flex-shrink-0 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {formatDistanceToNow(item.timestamp, { addSuffix: false, locale: it })}
+                      {/* Subtitle + time + votes */}
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <span className={cn("text-muted-foreground truncate", fontSizeClass === 'text-base' ? 'text-sm' : 'text-xs')}>
+                          {item.subtitle}
+                        </span>
+                        <span className="text-xs text-muted-foreground/60 flex-shrink-0 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          {formatDistanceToNow(item.timestamp, { addSuffix: false, locale: it })}
                       </span>
                       
                       {/* Vote counts for songs */}

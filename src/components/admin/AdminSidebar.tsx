@@ -60,7 +60,7 @@ const ITEMS: Item[] = [
   { key: "notifications", label: "Centro", icon: Bell, group: "Live", description: "Dashboard in tempo reale" },
   { key: "event", label: "Eventi", icon: Calendar, group: "Live", description: "Eventi liberi e programmati" },
   { key: "formats", label: "Formati", icon: SlidersHorizontal, group: "Live", description: "Toggle e votazioni" },
-  { key: "grafiche", label: "Grafiche", icon: Image, group: "Live", description: "Genera locandine AI" },
+  { key: "grafiche", label: "Grafiche", icon: Image, group: "Live", description: "Locandine e storie" },
   
   // === GRUPPO OPERATIVO ===
   { key: "openmic", label: "Open Mic", icon: Music, group: "Operativo", description: "Prenotazioni canzoni" },
