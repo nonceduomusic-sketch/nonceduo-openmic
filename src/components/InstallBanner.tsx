@@ -25,16 +25,16 @@ export const InstallBanner: React.FC = () => {
       return;
     }
 
-    // Check if mobile browser
+    // Check if mobile or tablet browser (show on both)
     const ua = navigator.userAgent.toLowerCase();
-    const isMobile = /iphone|ipad|ipod|android|mobile/.test(ua);
+    const isMobileOrTablet = /iphone|ipad|ipod|android|mobile|tablet/.test(ua);
     
-    if (!isMobile) {
+    if (!isMobileOrTablet) {
       setShowBanner(false);
       return;
     }
 
-    // Show banner on mobile browsers
+    // Show banner on mobile and tablet browsers
     setShowBanner(true);
 
     // Listen for install prompt (Android Chrome)
