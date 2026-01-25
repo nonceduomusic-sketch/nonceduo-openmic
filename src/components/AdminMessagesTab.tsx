@@ -168,6 +168,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
   const [visibilityTarget, setVisibilityTarget] = useState<Conversation | null>(null);
   const [allowedParticipantsInput, setAllowedParticipantsInput] = useState<string[]>([]);
   const [visibilityMode, setVisibilityMode] = useState<'public' | 'private' | 'restricted'>('private');
+  const [dedicheVisibility, setDedicheVisibility] = useState<'public' | 'admin_only' | 'author_only'>('author_only');
   
   // Group members dialog
   const [showMembersDialog, setShowMembersDialog] = useState(false);
@@ -600,28 +601,57 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
   const handleSetVisibility = async () => {
     if (!visibilityTarget) return;
     
-    const isPublic = visibilityMode === 'public';
-    const allowedList = visibilityMode === 'restricted' ? allowedParticipantsInput : [];
+    // Check if this is a dediche conversation (non-group in dediche section)
+    const isDedicheConversation = section === 'dediche' && !visibilityTarget.is_group;
     
-    const success = await adminSetGroupVisibility(visibilityTarget.id, isPublic, allowedList);
-    if (success) {
-      setShowVisibilityDialog(false);
-      setVisibilityTarget(null);
-      setAllowedParticipantsInput([]);
-      setVisibilityMode('private');
+    if (isDedicheConversation) {
+      // Use new dediche visibility
+      const success = await adminSetGroupVisibility(
+        visibilityTarget.id, 
+        false, 
+        undefined, 
+        dedicheVisibility
+      );
+      if (success) {
+        setShowVisibilityDialog(false);
+        setVisibilityTarget(null);
+        setDedicheVisibility('author_only');
+      }
+    } else {
+      // Legacy group visibility
+      const isPublic = visibilityMode === 'public';
+      const allowedList = visibilityMode === 'restricted' ? allowedParticipantsInput : [];
+      
+      const success = await adminSetGroupVisibility(visibilityTarget.id, isPublic, allowedList);
+      if (success) {
+        setShowVisibilityDialog(false);
+        setVisibilityTarget(null);
+        setAllowedParticipantsInput([]);
+        setVisibilityMode('private');
+      }
     }
   };
 
   // Initialize visibility dialog state when target changes
   const openVisibilityDialog = (conv: Conversation) => {
     setVisibilityTarget(conv);
-    if (conv.is_public) {
-      setVisibilityMode('public');
-    } else if (conv.allowed_participants && conv.allowed_participants.length > 0) {
-      setVisibilityMode('restricted');
-      setAllowedParticipantsInput(conv.allowed_participants);
+    
+    // Check if this is a dediche conversation
+    const isDedicheConversation = section === 'dediche' && !conv.is_group;
+    
+    if (isDedicheConversation) {
+      // Use dediche visibility
+      setDedicheVisibility(conv.visibility || 'author_only');
     } else {
-      setVisibilityMode('private');
+      // Legacy group visibility
+      if (conv.is_public) {
+        setVisibilityMode('public');
+      } else if (conv.allowed_participants && conv.allowed_participants.length > 0) {
+        setVisibilityMode('restricted');
+        setAllowedParticipantsInput(conv.allowed_participants);
+      } else {
+        setVisibilityMode('private');
+      }
     }
     setShowVisibilityDialog(true);
   };
@@ -698,9 +728,20 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
                         ? selectedConversation.name 
                         : getParticipantNames(selectedConversation)}
                     </h3>
+                    {/* Group visibility icon */}
                     {selectedConversation.is_group && (
                       selectedConversation.is_public ? (
                         <Globe className="w-4 h-4 text-secondary" />
+                      ) : (
+                        <Lock className="w-4 h-4 text-muted-foreground" />
+                      )
+                    )}
+                    {/* Dediche visibility icon */}
+                    {section === 'dediche' && !selectedConversation.is_group && (
+                      selectedConversation.visibility === 'public' ? (
+                        <Globe className="w-4 h-4 text-secondary" />
+                      ) : selectedConversation.visibility === 'admin_only' ? (
+                        <Eye className="w-4 h-4 text-primary" />
                       ) : (
                         <Lock className="w-4 h-4 text-muted-foreground" />
                       )
@@ -816,6 +857,37 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
                       }}>
                         <Link2 className="w-4 h-4 mr-2" />
                         Crea link invito
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
+                
+                {/* Dediche conversation visibility dropdown - only for non-group dediche */}
+                {section === 'dediche' && !selectedConversation.is_group && permissions.canEditGroups && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon">
+                        <MoreVertical className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => openVisibilityDialog(selectedConversation)}>
+                        {selectedConversation.visibility === 'public' ? (
+                          <>
+                            <Globe className="w-4 h-4 mr-2 text-secondary" />
+                            Visibilità: Pubblica
+                          </>
+                        ) : selectedConversation.visibility === 'admin_only' ? (
+                          <>
+                            <Eye className="w-4 h-4 mr-2 text-primary" />
+                            Visibilità: Solo Staff
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="w-4 h-4 mr-2 text-muted-foreground" />
+                            Visibilità: Solo Autore
+                          </>
+                        )}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -1764,116 +1836,180 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
           setVisibilityTarget(null);
           setAllowedParticipantsInput([]);
           setVisibilityMode('private');
+          setDedicheVisibility('author_only');
         }
       }}>
         <DialogContent className="glass-card max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Globe className="w-5 h-5 text-secondary" />
-              Visibilità Gruppo
+              {section === 'dediche' && visibilityTarget && !visibilityTarget.is_group 
+                ? 'Visibilità Dedica' 
+                : 'Visibilità Gruppo'}
             </DialogTitle>
           </DialogHeader>
           
           <div className="space-y-4 py-4">
             <p className="text-sm text-muted-foreground mb-4">
-              Gruppo: <strong>{visibilityTarget?.name}</strong>
+              {visibilityTarget?.is_group 
+                ? <>Gruppo: <strong>{visibilityTarget?.name}</strong></>
+                : <>Conversazione con: <strong>{visibilityTarget?.participants?.map(p => p.participant_name).join(', ') || 'Sconosciuto'}</strong></>
+              }
             </p>
             
-            {/* Visibility options */}
-            <div className="space-y-3">
-              <div 
-                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                  visibilityMode === 'public' 
-                    ? 'border-secondary bg-secondary/10' 
-                    : 'border-border hover:border-muted-foreground'
-                }`}
-                onClick={() => setVisibilityMode('public')}
-              >
-                <div className="flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-secondary" />
-                  <span className="font-medium">Pubblico</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Tutti gli utenti possono vedere e unirsi al gruppo
-                </p>
-              </div>
-              
-              <div 
-                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                  visibilityMode === 'private' 
-                    ? 'border-primary bg-primary/10' 
-                    : 'border-border hover:border-muted-foreground'
-                }`}
-                onClick={() => setVisibilityMode('private')}
-              >
-                <div className="flex items-center gap-2">
-                  <Lock className="w-4 h-4 text-primary" />
-                  <span className="font-medium">Privato</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Solo i partecipanti attuali possono vedere il gruppo
-                </p>
-              </div>
-              
-              <div 
-                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                  visibilityMode === 'restricted' 
-                    ? 'border-accent bg-accent/10' 
-                    : 'border-border hover:border-muted-foreground'
-                }`}
-                onClick={() => setVisibilityMode('restricted')}
-              >
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-accent-foreground" />
-                  <span className="font-medium">Utenti Selezionati</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Solo gli utenti che selezioni potranno vedere e unirsi
-                </p>
-              </div>
-            </div>
-            
-            {/* User selection for restricted mode */}
-            {visibilityMode === 'restricted' && (
-              <div className="space-y-2 pt-2">
-                <Label className="text-sm font-medium">Seleziona utenti abilitati:</Label>
-                <ScrollArea className="h-40 border rounded-lg p-2">
-                  {allKnownParticipants.length === 0 ? (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                      Nessun utente disponibile
-                    </p>
-                  ) : (
-                    <div className="space-y-2">
-                      {allKnownParticipants.map((p) => (
-                        <div key={p.session_id} className="flex items-center gap-2">
-                          <Checkbox
-                            id={`participant-${p.session_id}`}
-                            checked={allowedParticipantsInput.includes(p.session_id)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setAllowedParticipantsInput(prev => [...prev, p.session_id]);
-                              } else {
-                                setAllowedParticipantsInput(prev => prev.filter(id => id !== p.session_id));
-                              }
-                            }}
-                          />
-                          <label 
-                            htmlFor={`participant-${p.session_id}`}
-                            className="text-sm cursor-pointer flex-1"
-                          >
-                            {p.name}
-                          </label>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-                {allowedParticipantsInput.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {allowedParticipantsInput.length} utenti selezionati
+            {/* Dediche visibility options */}
+            {section === 'dediche' && visibilityTarget && !visibilityTarget.is_group ? (
+              <div className="space-y-3">
+                <div 
+                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                    dedicheVisibility === 'public' 
+                      ? 'border-secondary bg-secondary/10' 
+                      : 'border-border hover:border-muted-foreground'
+                  }`}
+                  onClick={() => setDedicheVisibility('public')}
+                >
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-secondary" />
+                    <span className="font-medium">Pubblica</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Tutti gli utenti dell'evento possono vedere questa dedica
                   </p>
-                )}
+                </div>
+                
+                <div 
+                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                    dedicheVisibility === 'admin_only' 
+                      ? 'border-primary bg-primary/10' 
+                      : 'border-border hover:border-muted-foreground'
+                  }`}
+                  onClick={() => setDedicheVisibility('admin_only')}
+                >
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-primary" />
+                    <span className="font-medium">Solo Staff</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Solo lo staff può vedere questa dedica
+                  </p>
+                </div>
+                
+                <div 
+                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                    dedicheVisibility === 'author_only' 
+                      ? 'border-accent bg-accent/10' 
+                      : 'border-border hover:border-muted-foreground'
+                  }`}
+                  onClick={() => setDedicheVisibility('author_only')}
+                >
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-4 h-4 text-accent-foreground" />
+                    <span className="font-medium">Solo Autore</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Solo l'autore e lo staff possono vedere questa dedica
+                  </p>
+                </div>
               </div>
+            ) : (
+              /* Group visibility options */
+              <>
+                <div className="space-y-3">
+                  <div 
+                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                      visibilityMode === 'public' 
+                        ? 'border-secondary bg-secondary/10' 
+                        : 'border-border hover:border-muted-foreground'
+                    }`}
+                    onClick={() => setVisibilityMode('public')}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Globe className="w-4 h-4 text-secondary" />
+                      <span className="font-medium">Pubblico</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Tutti gli utenti possono vedere e unirsi al gruppo
+                    </p>
+                  </div>
+                  
+                  <div 
+                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                      visibilityMode === 'private' 
+                        ? 'border-primary bg-primary/10' 
+                        : 'border-border hover:border-muted-foreground'
+                    }`}
+                    onClick={() => setVisibilityMode('private')}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Lock className="w-4 h-4 text-primary" />
+                      <span className="font-medium">Privato</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Solo i partecipanti attuali possono vedere il gruppo
+                    </p>
+                  </div>
+                  
+                  <div 
+                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                      visibilityMode === 'restricted' 
+                        ? 'border-accent bg-accent/10' 
+                        : 'border-border hover:border-muted-foreground'
+                    }`}
+                    onClick={() => setVisibilityMode('restricted')}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-accent-foreground" />
+                      <span className="font-medium">Utenti Selezionati</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Solo gli utenti che selezioni potranno vedere e unirsi
+                    </p>
+                  </div>
+                </div>
+                
+                {/* User selection for restricted mode */}
+                {visibilityMode === 'restricted' && (
+                  <div className="space-y-2 pt-2">
+                    <Label className="text-sm font-medium">Seleziona utenti abilitati:</Label>
+                    <ScrollArea className="h-40 border rounded-lg p-2">
+                      {allKnownParticipants.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-4">
+                          Nessun utente disponibile
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {allKnownParticipants.map((p) => (
+                            <div key={p.session_id} className="flex items-center gap-2">
+                              <Checkbox
+                                id={`participant-${p.session_id}`}
+                                checked={allowedParticipantsInput.includes(p.session_id)}
+                                onCheckedChange={(checked) => {
+                                  if (checked) {
+                                    setAllowedParticipantsInput(prev => [...prev, p.session_id]);
+                                  } else {
+                                    setAllowedParticipantsInput(prev => prev.filter(id => id !== p.session_id));
+                                  }
+                                }}
+                              />
+                              <label 
+                                htmlFor={`participant-${p.session_id}`}
+                                className="text-sm cursor-pointer flex-1"
+                              >
+                                {p.name}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </ScrollArea>
+                    {allowedParticipantsInput.length > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        {allowedParticipantsInput.length} utenti selezionati
+                      </p>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
           
@@ -1883,13 +2019,14 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
               setVisibilityTarget(null);
               setAllowedParticipantsInput([]);
               setVisibilityMode('private');
+              setDedicheVisibility('author_only');
             }}>
               Annulla
             </Button>
             <Button 
               onClick={handleSetVisibility}
               className="neon-button-cyan"
-              disabled={visibilityMode === 'restricted' && allowedParticipantsInput.length === 0}
+              disabled={visibilityMode === 'restricted' && allowedParticipantsInput.length === 0 && visibilityTarget?.is_group}
             >
               <Check className="w-4 h-4 mr-2" />
               Salva

@@ -33,6 +33,7 @@ export interface Conversation {
   allowed_participants?: string[];
   password_hash?: string | null;
   password_hint?: string | null;
+  visibility?: 'public' | 'admin_only' | 'author_only';
   created_at: string;
   updated_at: string;
   participants?: Participant[];
@@ -744,19 +745,40 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
     }
   };
 
-  // Admin: Set group visibility
+  // Admin: Set group visibility (for groups) or dediche visibility
   const adminSetGroupVisibility = async (
     conversationId: string,
     isPublic: boolean,
-    allowedParticipants?: string[]
+    allowedParticipants?: string[],
+    dedicheVisibility?: 'public' | 'admin_only' | 'author_only'
   ): Promise<boolean> => {
     try {
-      await callAdminChatApi('setVisibility', {
+      const payload: Record<string, unknown> = {
         conversation_id: conversationId,
-        is_public: isPublic,
-        allowed_participants: allowedParticipants || [],
-      });
-      toast.success(isPublic ? 'Gruppo reso pubblico' : 'Gruppo reso privato');
+      };
+      
+      // If dedicheVisibility is provided, use the new visibility column
+      if (dedicheVisibility) {
+        payload.visibility = dedicheVisibility;
+      } else {
+        // Legacy group visibility
+        payload.is_public = isPublic;
+        payload.allowed_participants = allowedParticipants || [];
+      }
+      
+      await callAdminChatApi('setVisibility', payload);
+      
+      // Success message based on type
+      if (dedicheVisibility) {
+        const labels: Record<string, string> = {
+          public: 'Dedica visibile a tutti',
+          admin_only: 'Dedica visibile solo allo staff',
+          author_only: 'Dedica visibile solo all\'autore',
+        };
+        toast.success(labels[dedicheVisibility]);
+      } else {
+        toast.success(isPublic ? 'Gruppo reso pubblico' : 'Gruppo reso privato');
+      }
       return true;
     } catch (error) {
       console.error('Error setting visibility:', error);
