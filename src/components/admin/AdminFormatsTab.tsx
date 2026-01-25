@@ -30,11 +30,11 @@ interface AdminFormatsTabProps {
 /**
  * Tab Formati semplificato:
  * 
- * 1. Serata Aperta (QuickFreeModeCard) - Toggle rapido
+ * 1. Evento Live (QuickFreeModeCard) - Toggle rapido
  * 2. Controllo Dettagliato (ActiveFormatsCard) - Toggle singoli
  * 3. Notifiche Admin - Impostazioni avvisi
  * 
- * La gestione PIN e Evento è delegata al tab "Evento".
+ * La gestione PIN e Evento programmato è delegata al tab "Evento".
  */
 export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
   access = { openmic: true, dediche: true, community: true },
@@ -84,7 +84,7 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
               {hasLiveEvent 
                 ? `Evento "${liveEvent?.event_name}" attivo`
                 : isFreeMode 
-                  ? 'Serata Aperta'
+                  ? 'Evento Live'
                   : 'Offline'}
             </p>
           </div>
@@ -100,7 +100,7 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
         {isFreeMode && !hasLiveEvent && (
           <Badge className="bg-accent text-accent-foreground">
             <Zap className="w-3 h-3 mr-1" />
-            Aperta
+            Live
           </Badge>
         )}
         {!hasAnyActive && (
@@ -108,7 +108,7 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
         )}
       </div>
 
-      {/* Serata Aperta - Toggle rapido */}
+      {/* Evento Live - Toggle rapido */}
       {canManageActive && (access.openmic || access.dediche) && (
         <QuickFreeModeCard />
       )}
@@ -148,8 +148,8 @@ export const AdminFormatsTab: React.FC<AdminFormatsTabProps> = ({
       <Alert className="bg-muted/30 border-muted-foreground/20">
         <Info className="h-4 w-4" />
         <AlertDescription className="text-xs text-muted-foreground">
-          <strong>Serata Aperta</strong> attiva i formati senza limiti. 
-          Per eventi con timer, limiti e PIN usa il tab <strong>Evento</strong>.
+          <strong>Evento Live</strong> attiva i formati senza limiti. 
+          Per eventi programmati con timer, limiti e PIN usa il tab <strong>Evento</strong>.
         </AlertDescription>
       </Alert>
     </div>

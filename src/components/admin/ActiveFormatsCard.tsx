@@ -77,7 +77,7 @@ export const ActiveFormatsCard: React.FC<ActiveFormatsCardProps> = ({ disabled =
             {freeModeActive && (
               <Badge variant="outline" className="text-xs bg-accent/10 text-accent border-accent/30">
                 <Zap className="w-3 h-3 mr-1" />
-                Serata Aperta
+                Evento Live
               </Badge>
             )}
           </div>
@@ -90,7 +90,7 @@ export const ActiveFormatsCard: React.FC<ActiveFormatsCardProps> = ({ disabled =
           </p>
         ) : (
           <p className="text-sm md:text-xs text-muted-foreground mb-3">
-            Attiva un formato per abilitare la <strong>Serata Aperta</strong> (senza limiti)
+            Attiva un formato per abilitare l'<strong>Evento Live</strong> (senza limiti)
           </p>
         )}
         
@@ -170,7 +170,7 @@ export const ActiveFormatsCard: React.FC<ActiveFormatsCardProps> = ({ disabled =
           <div className="mt-3 p-3 rounded-lg bg-accent/10 border border-accent/30">
             <div className="flex items-center gap-2 text-accent mb-1">
               <Zap className="w-4 h-4" />
-              <span className="font-medium text-sm">Serata Aperta attiva!</span>
+              <span className="font-medium text-sm">Evento Live attivo!</span>
             </div>
             <p className="text-xs text-muted-foreground">
               Gli utenti possono usare {settings.openmic && settings.dediche ? 'Open Mic e Dediche' : settings.openmic ? 'Open Mic' : 'Dediche'} senza limiti numerici o temporali.

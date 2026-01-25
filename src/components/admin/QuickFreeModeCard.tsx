@@ -8,10 +8,10 @@ import { useGlobalFormatSettings } from '@/hooks/useGlobalFormatSettings';
 import { useLiveEvent } from '@/hooks/useLiveEvent';
 
 /**
- * QuickFreeModeCard - Pannello rapido per attivare/disattivare la Serata Aperta
+ * QuickFreeModeCard - Pannello rapido per attivare/disattivare l'Evento Live (Free Mode)
  * 
  * Permette all'admin di:
- * - Attivare Open Mic + Dediche insieme (Serata Aperta completa)
+ * - Attivare Open Mic + Dediche insieme (Evento Live completo)
  * - Attivare solo Open Mic
  * - Attivare solo Dediche
  * - Disattivare tutto
@@ -80,7 +80,7 @@ export const QuickFreeModeCard: React.FC = () => {
               "w-5 h-5 transition-colors",
               anyActive ? "text-accent" : "text-muted-foreground"
             )} />
-            <span>Serata Aperta</span>
+            <span>Evento Live</span>
           </div>
           {anyActive && (
             <Badge variant="outline" className="bg-accent/10 text-accent border-accent/30">
@@ -91,7 +91,7 @@ export const QuickFreeModeCard: React.FC = () => {
       </CardHeader>
       <CardContent className="px-4 pb-4 space-y-3">
         <p className="text-sm text-muted-foreground">
-          Attiva rapidamente i formati senza creare un evento programmato.
+          Attiva rapidamente i formati senza limiti di tempo o prenotazioni.
         </p>
 
         {/* Quick Action Buttons */}
@@ -161,7 +161,7 @@ export const QuickFreeModeCard: React.FC = () => {
           <div className="p-2 rounded-lg bg-accent/10 border border-accent/20 text-center">
             <p className="text-xs text-accent">
               <Zap className="w-3 h-3 inline mr-1" />
-              Gli utenti possono usare {bothActive ? 'entrambi i formati' : settings.openmic ? 'Open Mic' : 'Dediche'} senza limiti
+              Evento Live attivo! {bothActive ? 'Entrambi i formati' : settings.openmic ? 'Open Mic' : 'Dediche'} senza limiti
             </p>
           </div>
         )}
