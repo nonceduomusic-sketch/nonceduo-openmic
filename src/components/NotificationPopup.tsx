@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { forwardRef, useEffect, useState } from 'react';
 import { X, Bell, Music } from 'lucide-react';
 import { Reservation } from '@/hooks/useReservations';
 
@@ -7,10 +7,10 @@ interface NotificationPopupProps {
   onClose: () => void;
 }
 
-export const NotificationPopup: React.FC<NotificationPopupProps> = ({
+export const NotificationPopup = forwardRef<HTMLDivElement, NotificationPopupProps>(({
   reservation,
   onClose,
-}) => {
+}, ref) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
@@ -23,8 +23,14 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({
     return () => clearTimeout(timer);
   }, [onClose]);
 
+  const handleClose = () => {
+    setIsVisible(false);
+    setTimeout(onClose, 300);
+  };
+
   return (
     <div
+      ref={ref}
       className={`fixed top-4 right-4 z-50 w-full max-w-sm transition-all duration-300 ${
         isVisible ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
       }`}
@@ -52,10 +58,7 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({
           </div>
 
           <button
-            onClick={() => {
-              setIsVisible(false);
-              setTimeout(onClose, 300);
-            }}
+            onClick={handleClose}
             className="p-1 rounded-full hover:bg-muted transition-colors"
           >
             <X className="w-4 h-4" />
@@ -64,4 +67,6 @@ export const NotificationPopup: React.FC<NotificationPopupProps> = ({
       </div>
     </div>
   );
-};
+});
+
+NotificationPopup.displayName = 'NotificationPopup';

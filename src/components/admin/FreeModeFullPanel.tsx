@@ -1,20 +1,109 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
 import { 
-  Zap, Music, MessageSquare, ThumbsUp, Clock, Hash, 
-  Lock, Play, Square, Settings2, RefreshCw, AlertTriangle,
-  Calendar, Timer, RotateCcw, X, Check, Edit2
+  Zap, Play, Square, Music, MessageSquare, Clock, RotateCcw
 } from 'lucide-react';
-import { useFreeModeSettings } from '@/hooks/useFreeModeSettings';
+import { useFreeModeSettings, FreeModeSettings } from '@/hooks/useFreeModeSettings';
 import { cn } from '@/lib/utils';
+import type { EventBookingRules } from '@/hooks/useEventBookingRules';
+
+// Import shared components from scheduled events
+import { EventLimitsConfig } from './EventLimitsConfig';
+import { EventReopenControl } from './EventReopenControl';
+import { EventClosureConfig } from './EventClosureConfig';
+import { EventPinConfig } from './EventPinConfig';
+
+/**
+ * Adapter che converte FreeModeSettings nel formato EventBookingRules
+ * per poter riutilizzare gli stessi componenti dell'evento programmato
+ */
+const adaptToEventRules = (settings: FreeModeSettings | null): EventBookingRules => {
+  if (!settings) {
+    return {
+      id: 'free-mode',
+      event_name: 'Evento Libero',
+      event_status: 'draft',
+      event_type: 'both',
+      is_active: false,
+      openmic_enabled: true,
+      dediche_enabled: true,
+      voting_enabled: true,
+      openmic_max_songs: null,
+      dediche_max_total: null,
+      openmic_current_count: 0,
+      dediche_current_count: 0,
+      openmic_final_limit_enabled: false,
+      openmic_final_limit_songs: null,
+      openmic_final_limit_minutes: null,
+      pin_required: false,
+      pin_code: null,
+      reopen_active: false,
+      reopen_mode: null,
+      reopen_until: null,
+      reopen_extra_songs: null,
+      reopen_extra_dediche: null,
+      reopen_songs_used: 0,
+      reopen_dediche_used: 0,
+      reopen_message: null,
+      closure_mode: 'overlay',
+      closure_title: 'Prenotazioni chiuse',
+      closure_message: 'Grazie per aver partecipato!',
+      closure_redirect_url: null,
+      booking_opens_at: null,
+      booking_closes_at: null,
+      close_minutes_before_end: null,
+      event_date: null,
+      event_start_time: null,
+      event_end_time: null,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  return {
+    id: settings.id,
+    event_name: settings.event_name || 'Evento Libero',
+    event_status: settings.is_active ? 'live' : 'draft',
+    event_type: 'both',
+    is_active: settings.is_active ?? false,
+    openmic_enabled: settings.openmic_enabled ?? true,
+    dediche_enabled: settings.dediche_enabled ?? true,
+    voting_enabled: settings.voting_enabled ?? true,
+    openmic_max_songs: settings.openmic_max_songs ?? null,
+    dediche_max_total: settings.dediche_max_total ?? null,
+    openmic_current_count: settings.openmic_current_count || 0,
+    dediche_current_count: settings.dediche_current_count || 0,
+    openmic_final_limit_enabled: settings.openmic_final_limit_enabled ?? false,
+    openmic_final_limit_songs: settings.openmic_final_limit_songs ?? null,
+    openmic_final_limit_minutes: settings.openmic_final_limit_minutes ?? null,
+    pin_required: settings.pin_enabled ?? false,
+    pin_code: settings.pin_code ?? null,
+    reopen_active: settings.reopen_active ?? false,
+    reopen_mode: settings.reopen_mode ?? null,
+    reopen_until: settings.reopen_until ?? null,
+    reopen_extra_songs: settings.reopen_extra_songs ?? null,
+    reopen_extra_dediche: settings.reopen_extra_dediche ?? null,
+    reopen_songs_used: settings.reopen_songs_used || 0,
+    reopen_dediche_used: settings.reopen_dediche_used || 0,
+    reopen_message: settings.reopen_message ?? null,
+    closure_mode: settings.closure_mode || 'overlay',
+    closure_title: settings.closure_title || 'Prenotazioni chiuse',
+    closure_message: settings.closure_message || 'Grazie per aver partecipato!',
+    closure_redirect_url: settings.closure_redirect_url ?? null,
+    booking_opens_at: settings.booking_opens_at ?? null,
+    booking_closes_at: settings.booking_closes_at ?? null,
+    close_minutes_before_end: settings.close_minutes_before_end ?? null,
+    event_date: null,
+    event_start_time: null,
+    event_end_time: null,
+    created_at: settings.created_at || new Date().toISOString(),
+    updated_at: settings.updated_at || new Date().toISOString(),
+  };
+};
 
 export const FreeModeFullPanel: React.FC = () => {
   const { 
@@ -22,52 +111,50 @@ export const FreeModeFullPanel: React.FC = () => {
     loading, 
     activateFreeMode, 
     deactivateFreeMode,
-    updateLiveSettings,
-    activateReopen,
-    deactivateReopen,
+    updateSettings,
     resetCounters,
     generatePin,
     getTimeRemaining,
-    getReopenTimeRemaining,
   } = useFreeModeSettings();
 
-  // Setup config state
-  const [config, setConfig] = useState({
-    eventName: 'Evento Libero',
-    openmic: true,
-    dediche: true,
-    voting: true,
-    maxSongs: '',
-    maxDediche: '',
-    durationMinutes: '',
-    pinCode: '',
-    closureMode: 'overlay',
-    closureTitle: 'Prenotazioni chiuse',
-    closureMessage: 'Grazie per aver partecipato!',
-  });
+  const [activeSection, setActiveSection] = useState<'limits' | 'pin' | 'reopen' | 'closure'>('limits');
 
-  // Live editing state
-  const [editingSection, setEditingSection] = useState<string | null>(null);
-  const [liveEdit, setLiveEdit] = useState({
-    eventName: '',
-    maxSongs: '',
-    maxDediche: '',
-    durationMinutes: '',
-    pinCode: '',
-    closureTitle: '',
-    closureMessage: '',
-  });
+  // Convert settings to EventBookingRules format for shared components
+  const rules = useMemo(() => adaptToEventRules(settings), [settings]);
 
-  // Reopen config state
-  const [reopenConfig, setReopenConfig] = useState({
-    mode: 'time' as 'time' | 'count' | 'combo',
-    minutes: '30',
-    extraSongs: '5',
-    extraDediche: '3',
-    message: 'Riapertura straordinaria!',
-  });
+  // Handler che converte gli aggiornamenti EventBookingRules -> FreeModeSettings
+  const handleUpdate = async (updates: Partial<EventBookingRules>): Promise<boolean> => {
+    const freeModeUpdates: Partial<FreeModeSettings> = {};
 
-  const [showReopen, setShowReopen] = useState(false);
+    if (updates.event_name !== undefined) freeModeUpdates.event_name = updates.event_name;
+    if (updates.openmic_enabled !== undefined) freeModeUpdates.openmic_enabled = updates.openmic_enabled;
+    if (updates.dediche_enabled !== undefined) freeModeUpdates.dediche_enabled = updates.dediche_enabled;
+    if (updates.voting_enabled !== undefined) freeModeUpdates.voting_enabled = updates.voting_enabled;
+    if (updates.openmic_max_songs !== undefined) freeModeUpdates.openmic_max_songs = updates.openmic_max_songs;
+    if (updates.dediche_max_total !== undefined) freeModeUpdates.dediche_max_total = updates.dediche_max_total;
+    if (updates.openmic_final_limit_enabled !== undefined) freeModeUpdates.openmic_final_limit_enabled = updates.openmic_final_limit_enabled;
+    if (updates.openmic_final_limit_songs !== undefined) freeModeUpdates.openmic_final_limit_songs = updates.openmic_final_limit_songs;
+    if (updates.openmic_final_limit_minutes !== undefined) freeModeUpdates.openmic_final_limit_minutes = updates.openmic_final_limit_minutes;
+    if (updates.pin_required !== undefined) freeModeUpdates.pin_enabled = updates.pin_required;
+    if (updates.pin_code !== undefined) freeModeUpdates.pin_code = updates.pin_code;
+    if (updates.reopen_active !== undefined) freeModeUpdates.reopen_active = updates.reopen_active;
+    if (updates.reopen_mode !== undefined) freeModeUpdates.reopen_mode = updates.reopen_mode;
+    if (updates.reopen_until !== undefined) freeModeUpdates.reopen_until = updates.reopen_until;
+    if (updates.reopen_extra_songs !== undefined) freeModeUpdates.reopen_extra_songs = updates.reopen_extra_songs;
+    if (updates.reopen_extra_dediche !== undefined) freeModeUpdates.reopen_extra_dediche = updates.reopen_extra_dediche;
+    if (updates.reopen_songs_used !== undefined) freeModeUpdates.reopen_songs_used = updates.reopen_songs_used;
+    if (updates.reopen_dediche_used !== undefined) freeModeUpdates.reopen_dediche_used = updates.reopen_dediche_used;
+    if (updates.reopen_message !== undefined) freeModeUpdates.reopen_message = updates.reopen_message;
+    if (updates.closure_mode !== undefined) freeModeUpdates.closure_mode = updates.closure_mode;
+    if (updates.closure_title !== undefined) freeModeUpdates.closure_title = updates.closure_title;
+    if (updates.closure_message !== undefined) freeModeUpdates.closure_message = updates.closure_message;
+    if (updates.closure_redirect_url !== undefined) freeModeUpdates.closure_redirect_url = updates.closure_redirect_url;
+    if (updates.booking_opens_at !== undefined) freeModeUpdates.booking_opens_at = updates.booking_opens_at;
+    if (updates.booking_closes_at !== undefined) freeModeUpdates.booking_closes_at = updates.booking_closes_at;
+    if (updates.close_minutes_before_end !== undefined) freeModeUpdates.close_minutes_before_end = updates.close_minutes_before_end;
+
+    return await updateSettings(freeModeUpdates);
+  };
 
   if (loading) {
     return (
@@ -84,242 +171,61 @@ export const FreeModeFullPanel: React.FC = () => {
 
   const isActive = settings?.is_active;
   const timeRemaining = getTimeRemaining();
-  const reopenTimeRemaining = getReopenTimeRemaining();
 
   const handleActivate = async () => {
     await activateFreeMode({
-      eventName: config.eventName,
-      openmic: config.openmic,
-      dediche: config.dediche,
-      voting: config.voting,
-      maxSongs: config.maxSongs ? parseInt(config.maxSongs) : undefined,
-      maxDediche: config.maxDediche ? parseInt(config.maxDediche) : undefined,
-      durationMinutes: config.durationMinutes ? parseInt(config.durationMinutes) : undefined,
-      pinCode: config.pinCode || undefined,
-      closureMode: config.closureMode,
-      closureTitle: config.closureTitle,
-      closureMessage: config.closureMessage,
+      eventName: settings?.event_name || 'Evento Libero',
+      openmic: settings?.openmic_enabled ?? true,
+      dediche: settings?.dediche_enabled ?? true,
+      voting: settings?.voting_enabled ?? true,
+      maxSongs: settings?.openmic_max_songs ?? undefined,
+      maxDediche: settings?.dediche_max_total ?? undefined,
+      durationMinutes: settings?.duration_minutes ?? undefined,
+      pinCode: settings?.pin_code || undefined,
+      closureMode: settings?.closure_mode || 'overlay',
+      closureTitle: settings?.closure_title || 'Prenotazioni chiuse',
+      closureMessage: settings?.closure_message || 'Grazie per aver partecipato!',
     });
   };
 
-  const handleGeneratePin = () => {
-    setConfig(prev => ({ ...prev, pinCode: generatePin() }));
-  };
-
-  const handleGenerateLivePin = () => {
-    setLiveEdit(prev => ({ ...prev, pinCode: generatePin() }));
-  };
-
-  const startEditSection = (section: string) => {
-    if (!settings) return;
-    setLiveEdit({
-      eventName: settings.event_name || '',
-      maxSongs: settings.openmic_max_songs?.toString() || '',
-      maxDediche: settings.dediche_max_total?.toString() || '',
-      durationMinutes: settings.duration_minutes?.toString() || '',
-      pinCode: settings.pin_code || '',
-      closureTitle: settings.closure_title || '',
-      closureMessage: settings.closure_message || '',
-    });
-    setEditingSection(section);
-  };
-
-  const cancelEdit = () => {
-    setEditingSection(null);
-  };
-
-  const saveEdit = async (section: string) => {
-    const updates: Record<string, unknown> = {};
-    
-    switch (section) {
-      case 'name':
-        updates.eventName = liveEdit.eventName;
-        break;
-      case 'limits':
-        updates.maxSongs = liveEdit.maxSongs ? parseInt(liveEdit.maxSongs) : null;
-        updates.maxDediche = liveEdit.maxDediche ? parseInt(liveEdit.maxDediche) : null;
-        break;
-      case 'duration':
-        updates.durationMinutes = liveEdit.durationMinutes ? parseInt(liveEdit.durationMinutes) : null;
-        break;
-      case 'pin':
-        updates.pinCode = liveEdit.pinCode || null;
-        break;
-      case 'closure':
-        updates.closureTitle = liveEdit.closureTitle;
-        updates.closureMessage = liveEdit.closureMessage;
-        break;
-    }
-    
-    await updateLiveSettings(updates);
-    setEditingSection(null);
-  };
-
-  const handleLiveToggle = async (key: 'openmic' | 'dediche' | 'voting', value: boolean) => {
-    await updateLiveSettings({ [key]: value });
-  };
-
-  const handleActivateReopen = async () => {
-    await activateReopen({
-      mode: reopenConfig.mode,
-      minutes: reopenConfig.minutes ? parseInt(reopenConfig.minutes) : undefined,
-      extraSongs: reopenConfig.extraSongs ? parseInt(reopenConfig.extraSongs) : undefined,
-      extraDediche: reopenConfig.extraDediche ? parseInt(reopenConfig.extraDediche) : undefined,
-      message: reopenConfig.message,
-    });
-    setShowReopen(false);
-  };
-
-  // ========== INACTIVE STATE: Setup Form ==========
+  // ========== INACTIVE STATE: Setup ==========
   if (!isActive) {
     return (
       <Card className="glass-card">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Zap className="w-5 h-5 text-muted-foreground" />
-            Nuovo Evento Libero
+            Configura Evento Libero
           </CardTitle>
         </CardHeader>
         
-        <CardContent>
-          <Tabs defaultValue="base" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="base">Base</TabsTrigger>
-              <TabsTrigger value="limits">Limiti</TabsTrigger>
-              <TabsTrigger value="closure">Chiusura</TabsTrigger>
+        <CardContent className="space-y-4">
+          <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as typeof activeSection)}>
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="limits" className="text-xs">Limiti</TabsTrigger>
+              <TabsTrigger value="pin" className="text-xs">PIN</TabsTrigger>
+              <TabsTrigger value="reopen" className="text-xs">Riapertura</TabsTrigger>
+              <TabsTrigger value="closure" className="text-xs">Chiusura</TabsTrigger>
             </TabsList>
 
-            <TabsContent value="base" className="space-y-4">
-              {/* Nome Evento */}
-              <div className="space-y-2">
-                <Label>Nome Evento</Label>
-                <Input
-                  value={config.eventName}
-                  onChange={(e) => setConfig(c => ({ ...c, eventName: e.target.value }))}
-                  placeholder="Evento Libero"
-                />
-              </div>
-
-              {/* Format toggles */}
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">Formati attivi</Label>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Music className="w-4 h-4 text-primary" />
-                      <span className="text-sm">Open Mic</span>
-                    </div>
-                    <Switch
-                      checked={config.openmic}
-                      onCheckedChange={(v) => setConfig(c => ({ ...c, openmic: v }))}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="w-4 h-4 text-pink-500" />
-                      <span className="text-sm">Dediche</span>
-                    </div>
-                    <Switch
-                      checked={config.dediche}
-                      onCheckedChange={(v) => setConfig(c => ({ ...c, dediche: v }))}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <ThumbsUp className="w-4 h-4 text-blue-500" />
-                      <span className="text-sm">Votazioni</span>
-                    </div>
-                    <Switch
-                      checked={config.voting}
-                      onCheckedChange={(v) => setConfig(c => ({ ...c, voting: v }))}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* PIN Protection */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-1">
-                  <Lock className="w-3 h-3" /> PIN di Accesso
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={config.pinCode}
-                    onChange={(e) => setConfig(c => ({ ...c, pinCode: e.target.value }))}
-                    placeholder="Opzionale"
-                    className="font-mono"
-                    maxLength={6}
-                  />
-                  <Button type="button" variant="outline" size="icon" onClick={handleGeneratePin}>
-                    <RefreshCw className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
+            <TabsContent value="limits" className="mt-4">
+              <EventLimitsConfig rules={rules} onUpdate={handleUpdate} />
             </TabsContent>
 
-            <TabsContent value="limits" className="space-y-4">
-              {/* Durata */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> Durata (minuti)
-                </Label>
-                <Input
-                  type="number"
-                  value={config.durationMinutes}
-                  onChange={(e) => setConfig(c => ({ ...c, durationMinutes: e.target.value }))}
-                  placeholder="Illimitato"
-                />
-              </div>
-
-              {/* Limiti numerici */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1">
-                    <Hash className="w-3 h-3" /> Max Canzoni
-                  </Label>
-                  <Input
-                    type="number"
-                    value={config.maxSongs}
-                    onChange={(e) => setConfig(c => ({ ...c, maxSongs: e.target.value }))}
-                    placeholder="∞"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-1">
-                    <Hash className="w-3 h-3" /> Max Dediche
-                  </Label>
-                  <Input
-                    type="number"
-                    value={config.maxDediche}
-                    onChange={(e) => setConfig(c => ({ ...c, maxDediche: e.target.value }))}
-                    placeholder="∞"
-                  />
-                </div>
-              </div>
+            <TabsContent value="pin" className="mt-4">
+              <EventPinConfig rules={rules} onUpdate={handleUpdate} generatePin={generatePin} />
             </TabsContent>
 
-            <TabsContent value="closure" className="space-y-4">
-              <div className="space-y-2">
-                <Label>Titolo Chiusura</Label>
-                <Input
-                  value={config.closureTitle}
-                  onChange={(e) => setConfig(c => ({ ...c, closureTitle: e.target.value }))}
-                  placeholder="Prenotazioni chiuse"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Messaggio Chiusura</Label>
-                <Textarea
-                  value={config.closureMessage}
-                  onChange={(e) => setConfig(c => ({ ...c, closureMessage: e.target.value }))}
-                  placeholder="Grazie per aver partecipato!"
-                  rows={3}
-                />
-              </div>
+            <TabsContent value="reopen" className="mt-4">
+              <EventReopenControl rules={rules} onUpdate={handleUpdate} />
+            </TabsContent>
+
+            <TabsContent value="closure" className="mt-4">
+              <EventClosureConfig rules={rules} onUpdate={handleUpdate} />
             </TabsContent>
           </Tabs>
 
-          <Separator className="my-4" />
+          <Separator />
 
           <Button className="w-full bg-green-600 hover:bg-green-700" onClick={handleActivate}>
             <Play className="w-4 h-4 mr-2" />
@@ -350,15 +256,31 @@ export const FreeModeFullPanel: React.FC = () => {
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-primary/10 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold">{settings?.openmic_current_count || 0}</div>
-            <div className="text-xs text-muted-foreground">
-              Canzoni {settings?.openmic_max_songs ? `/ ${settings.openmic_max_songs}` : ''}
+            <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-xs mb-1">
+              <Music className="w-3.5 h-3.5" />
+              <span>Canzoni</span>
+            </div>
+            <div className="text-2xl font-bold">
+              {settings?.openmic_current_count || 0}
+              {settings?.openmic_max_songs && (
+                <span className="text-muted-foreground font-normal text-sm">
+                  /{settings.openmic_max_songs}
+                </span>
+              )}
             </div>
           </div>
-          <div className="bg-pink-500/10 rounded-lg p-3 text-center">
-            <div className="text-2xl font-bold">{settings?.dediche_current_count || 0}</div>
-            <div className="text-xs text-muted-foreground">
-              Dediche {settings?.dediche_max_total ? `/ ${settings.dediche_max_total}` : ''}
+          <div className="bg-secondary/10 rounded-lg p-3 text-center">
+            <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-xs mb-1">
+              <MessageSquare className="w-3.5 h-3.5" />
+              <span>Dediche</span>
+            </div>
+            <div className="text-2xl font-bold">
+              {settings?.dediche_current_count || 0}
+              {settings?.dediche_max_total && (
+                <span className="text-muted-foreground font-normal text-sm">
+                  /{settings.dediche_max_total}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -367,7 +289,7 @@ export const FreeModeFullPanel: React.FC = () => {
         {timeRemaining !== null && (
           <div className={cn(
             "flex items-center justify-center gap-2 rounded-lg p-2",
-            timeRemaining > 0 ? "text-orange-500 bg-orange-500/10" : "text-red-500 bg-red-500/10"
+            timeRemaining > 0 ? "text-warning bg-warning/10" : "text-destructive bg-destructive/10"
           )}>
             <Clock className="w-4 h-4" />
             <span className="font-medium">
@@ -376,337 +298,65 @@ export const FreeModeFullPanel: React.FC = () => {
           </div>
         )}
 
-        {/* PIN display */}
-        {settings?.pin_enabled && settings?.pin_code && (
-          <div className="flex items-center justify-center gap-2 bg-secondary/20 rounded-lg p-2">
-            <Lock className="w-4 h-4" />
-            <span className="font-mono font-bold tracking-widest">{settings.pin_code}</span>
+        {/* Reopen banner */}
+        {settings?.reopen_active && (
+          <div className="bg-warning/20 border border-warning/30 rounded-lg p-3">
+            <div className="flex items-center gap-2 text-warning">
+              <RotateCcw className="w-4 h-4" />
+              <span className="font-medium">Riapertura Attiva</span>
+            </div>
           </div>
         )}
 
-        {/* Reopen banner */}
-        {settings?.reopen_active && (
-          <div className="bg-amber-500/20 border border-amber-500/30 rounded-lg p-3 space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-amber-600">
-                <RotateCcw className="w-4 h-4" />
-                <span className="font-medium">Riapertura Attiva</span>
-              </div>
-              <Button variant="ghost" size="sm" onClick={deactivateReopen}>
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-            {reopenTimeRemaining !== null && reopenTimeRemaining > 0 && (
-              <div className="text-sm text-amber-600">
-                Tempo: {reopenTimeRemaining} min
-              </div>
-            )}
-            {(settings?.reopen_extra_songs || settings?.reopen_extra_dediche) && (
-              <div className="text-sm text-amber-600">
-                Extra: {settings.reopen_songs_used || 0}/{settings.reopen_extra_songs || 0} canzoni, 
-                {settings.reopen_dediche_used || 0}/{settings.reopen_extra_dediche || 0} dediche
-              </div>
-            )}
-          </div>
-        )}
+        {/* Reset contatori */}
+        <div className="flex justify-end">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={resetCounters}
+            disabled={(settings?.openmic_current_count === 0 && settings?.dediche_current_count === 0)}
+          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Azzera contatori
+          </Button>
+        </div>
 
         <Separator />
 
-        {/* Live Controls Tabs */}
-        <Tabs defaultValue="controls" className="space-y-3">
-          <TabsList className="grid w-full grid-cols-3 h-9">
-            <TabsTrigger value="controls" className="text-xs">Controlli</TabsTrigger>
-            <TabsTrigger value="edit" className="text-xs">Modifica</TabsTrigger>
+        {/* Live Controls Tabs - using shared components */}
+        <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as typeof activeSection)}>
+          <TabsList className="grid w-full grid-cols-4 h-9">
+            <TabsTrigger value="limits" className="text-xs">Limiti</TabsTrigger>
+            <TabsTrigger value="pin" className="text-xs">PIN</TabsTrigger>
             <TabsTrigger value="reopen" className="text-xs">Riapertura</TabsTrigger>
+            <TabsTrigger value="closure" className="text-xs">Chiusura</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="controls" className="space-y-3">
-            {/* Format toggles */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <Music className="w-4 h-4 text-primary" />
-                  <span className="text-sm">Open Mic</span>
-                </div>
-                <Switch
-                  checked={settings?.openmic_enabled}
-                  onCheckedChange={(v) => handleLiveToggle('openmic', v)}
-                />
-              </div>
-              <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4 text-pink-500" />
-                  <span className="text-sm">Dediche</span>
-                </div>
-                <Switch
-                  checked={settings?.dediche_enabled}
-                  onCheckedChange={(v) => handleLiveToggle('dediche', v)}
-                />
-              </div>
-              <div className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
-                <div className="flex items-center gap-2">
-                  <ThumbsUp className="w-4 h-4 text-blue-500" />
-                  <span className="text-sm">Votazioni</span>
-                </div>
-                <Switch
-                  checked={settings?.voting_enabled}
-                  onCheckedChange={(v) => handleLiveToggle('voting', v)}
-                />
-              </div>
-            </div>
-
-            <Button variant="outline" size="sm" className="w-full" onClick={resetCounters}>
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Reset Contatori
-            </Button>
+          <TabsContent value="limits" className="mt-3">
+            <EventLimitsConfig rules={rules} onUpdate={handleUpdate} />
           </TabsContent>
 
-          <TabsContent value="edit" className="space-y-3">
-            {/* Edit Name */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs">Nome Evento</Label>
-                {editingSection !== 'name' ? (
-                  <Button variant="ghost" size="sm" onClick={() => startEditSection('name')}>
-                    <Edit2 className="w-3 h-3" />
-                  </Button>
-                ) : (
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => saveEdit('name')}>
-                      <Check className="w-3 h-3 text-green-500" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={cancelEdit}>
-                      <X className="w-3 h-3" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-              {editingSection === 'name' ? (
-                <Input
-                  value={liveEdit.eventName}
-                  onChange={(e) => setLiveEdit(c => ({ ...c, eventName: e.target.value }))}
-                  className="h-8"
-                />
-              ) : (
-                <div className="text-sm p-2 bg-muted/30 rounded">{settings?.event_name}</div>
-              )}
-            </div>
-
-            {/* Edit Limits */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs">Limiti</Label>
-                {editingSection !== 'limits' ? (
-                  <Button variant="ghost" size="sm" onClick={() => startEditSection('limits')}>
-                    <Edit2 className="w-3 h-3" />
-                  </Button>
-                ) : (
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => saveEdit('limits')}>
-                      <Check className="w-3 h-3 text-green-500" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={cancelEdit}>
-                      <X className="w-3 h-3" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-              {editingSection === 'limits' ? (
-                <div className="grid grid-cols-2 gap-2">
-                  <Input
-                    type="number"
-                    value={liveEdit.maxSongs}
-                    onChange={(e) => setLiveEdit(c => ({ ...c, maxSongs: e.target.value }))}
-                    placeholder="Max canzoni"
-                    className="h-8"
-                  />
-                  <Input
-                    type="number"
-                    value={liveEdit.maxDediche}
-                    onChange={(e) => setLiveEdit(c => ({ ...c, maxDediche: e.target.value }))}
-                    placeholder="Max dediche"
-                    className="h-8"
-                  />
-                </div>
-              ) : (
-                <div className="text-sm p-2 bg-muted/30 rounded">
-                  Canzoni: {settings?.openmic_max_songs || '∞'} | Dediche: {settings?.dediche_max_total || '∞'}
-                </div>
-              )}
-            </div>
-
-            {/* Edit Duration */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs">Durata (min)</Label>
-                {editingSection !== 'duration' ? (
-                  <Button variant="ghost" size="sm" onClick={() => startEditSection('duration')}>
-                    <Edit2 className="w-3 h-3" />
-                  </Button>
-                ) : (
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => saveEdit('duration')}>
-                      <Check className="w-3 h-3 text-green-500" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={cancelEdit}>
-                      <X className="w-3 h-3" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-              {editingSection === 'duration' ? (
-                <Input
-                  type="number"
-                  value={liveEdit.durationMinutes}
-                  onChange={(e) => setLiveEdit(c => ({ ...c, durationMinutes: e.target.value }))}
-                  placeholder="Illimitato"
-                  className="h-8"
-                />
-              ) : (
-                <div className="text-sm p-2 bg-muted/30 rounded">
-                  {settings?.duration_minutes ? `${settings.duration_minutes} min` : 'Illimitato'}
-                </div>
-              )}
-            </div>
-
-            {/* Edit PIN */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs">PIN</Label>
-                {editingSection !== 'pin' ? (
-                  <Button variant="ghost" size="sm" onClick={() => startEditSection('pin')}>
-                    <Edit2 className="w-3 h-3" />
-                  </Button>
-                ) : (
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => saveEdit('pin')}>
-                      <Check className="w-3 h-3 text-green-500" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={cancelEdit}>
-                      <X className="w-3 h-3" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-              {editingSection === 'pin' ? (
-                <div className="flex gap-2">
-                  <Input
-                    value={liveEdit.pinCode}
-                    onChange={(e) => setLiveEdit(c => ({ ...c, pinCode: e.target.value }))}
-                    placeholder="Nessun PIN"
-                    className="h-8 font-mono"
-                    maxLength={6}
-                  />
-                  <Button type="button" variant="outline" size="sm" onClick={handleGenerateLivePin}>
-                    <RefreshCw className="w-3 h-3" />
-                  </Button>
-                </div>
-              ) : (
-                <div className="text-sm p-2 bg-muted/30 rounded font-mono">
-                  {settings?.pin_code || 'Nessun PIN'}
-                </div>
-              )}
-            </div>
+          <TabsContent value="pin" className="mt-3">
+            <EventPinConfig rules={rules} onUpdate={handleUpdate} generatePin={generatePin} />
           </TabsContent>
 
-          <TabsContent value="reopen" className="space-y-3">
-            {!settings?.reopen_active ? (
-              <>
-                <div className="space-y-2">
-                  <Label className="text-xs">Modalità Riapertura</Label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(['time', 'count', 'combo'] as const).map((mode) => (
-                      <Button
-                        key={mode}
-                        variant={reopenConfig.mode === mode ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => setReopenConfig(c => ({ ...c, mode }))}
-                        className="text-xs"
-                      >
-                        {mode === 'time' && <Timer className="w-3 h-3 mr-1" />}
-                        {mode === 'count' && <Hash className="w-3 h-3 mr-1" />}
-                        {mode === 'combo' && <Zap className="w-3 h-3 mr-1" />}
-                        {mode === 'time' ? 'Tempo' : mode === 'count' ? 'Conteggio' : 'Combo'}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
+          <TabsContent value="reopen" className="mt-3">
+            <EventReopenControl rules={rules} onUpdate={handleUpdate} />
+          </TabsContent>
 
-                {(reopenConfig.mode === 'time' || reopenConfig.mode === 'combo') && (
-                  <div className="space-y-1">
-                    <Label className="text-xs">Minuti</Label>
-                    <Input
-                      type="number"
-                      value={reopenConfig.minutes}
-                      onChange={(e) => setReopenConfig(c => ({ ...c, minutes: e.target.value }))}
-                      className="h-8"
-                    />
-                  </div>
-                )}
-
-                {(reopenConfig.mode === 'count' || reopenConfig.mode === 'combo') && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Extra Canzoni</Label>
-                      <Input
-                        type="number"
-                        value={reopenConfig.extraSongs}
-                        onChange={(e) => setReopenConfig(c => ({ ...c, extraSongs: e.target.value }))}
-                        className="h-8"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Extra Dediche</Label>
-                      <Input
-                        type="number"
-                        value={reopenConfig.extraDediche}
-                        onChange={(e) => setReopenConfig(c => ({ ...c, extraDediche: e.target.value }))}
-                        className="h-8"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="space-y-1">
-                  <Label className="text-xs">Messaggio</Label>
-                  <Input
-                    value={reopenConfig.message}
-                    onChange={(e) => setReopenConfig(c => ({ ...c, message: e.target.value }))}
-                    placeholder="Riapertura straordinaria!"
-                    className="h-8"
-                  />
-                </div>
-
-                <Button
-                  className="w-full bg-amber-600 hover:bg-amber-700"
-                  size="sm"
-                  onClick={handleActivateReopen}
-                >
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Attiva Riapertura
-                </Button>
-              </>
-            ) : (
-              <div className="text-center py-4 text-muted-foreground">
-                <RotateCcw className="w-8 h-8 mx-auto mb-2 text-amber-500" />
-                <p className="text-sm">Riapertura già attiva</p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="mt-2"
-                  onClick={deactivateReopen}
-                >
-                  Disattiva
-                </Button>
-              </div>
-            )}
+          <TabsContent value="closure" className="mt-3">
+            <EventClosureConfig rules={rules} onUpdate={handleUpdate} />
           </TabsContent>
         </Tabs>
 
         <Separator />
 
         {/* Stop button */}
-        <Button variant="destructive" className="w-full" onClick={deactivateFreeMode}>
+        <Button 
+          variant="destructive" 
+          className="w-full"
+          onClick={deactivateFreeMode}
+        >
           <Square className="w-4 h-4 mr-2" />
           Termina Evento
         </Button>
