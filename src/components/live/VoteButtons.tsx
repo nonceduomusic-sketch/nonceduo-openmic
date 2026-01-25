@@ -24,10 +24,7 @@ export const VoteButtons: React.FC<VoteButtonsProps> = ({
   const { voteCounts, hasVoted, vote } = usePerformanceVotes(reservationId);
   const { isActive: votingEnabled, loading: votingLoading } = useFormatActiveCheck('voting');
 
-  // Don't render if voting is disabled
-  if (votingLoading) return null;
-  if (!votingEnabled) return null;
-
+  // useCallback must be called before any conditional returns (React hooks rules)
   const handleVote = useCallback(async (type: 'up' | 'fire' | 'heart') => {
     triggerHaptic('medium');
     const success = await vote(type);
@@ -37,6 +34,10 @@ export const VoteButtons: React.FC<VoteButtonsProps> = ({
       else fireEmojiRain('👍');
     }
   }, [vote]);
+
+  // Don't render if voting is disabled (after all hooks are called)
+  if (votingLoading) return null;
+  if (!votingEnabled) return null;
 
   const buttons = [
     { type: 'up' as const, icon: ThumbsUp, label: 'Bravo!', color: 'text-secondary' },
