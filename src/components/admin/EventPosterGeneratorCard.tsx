@@ -30,8 +30,13 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+
+// Brand logo assets
+import brandLogoText from '@/assets/brand-logo-text.png';
+import brandLogoSplash from '@/assets/brand-logo-splash.png';
 
 type EventType = 'public' | 'private';
 type StylePreset = 'minimal' | 'gradient' | 'neon';
@@ -51,6 +56,8 @@ interface EventPosterConfig {
   additionalInfo: string;
   uploadedImage: string | null;
   aiTheme: string;
+  useBrandLogo: boolean;
+  showSplash: boolean;
 }
 
 const STORAGE_KEY = 'ncd_poster_generator_config';
@@ -67,6 +74,8 @@ const DEFAULT_CONFIG: EventPosterConfig = {
   additionalInfo: '',
   uploadedImage: null,
   aiTheme: '',
+  useBrandLogo: true,
+  showSplash: false,
 };
 
 const STYLE_PRESETS: Record<StylePreset, { label: string; accent: string }> = {
@@ -420,14 +429,67 @@ export const EventPosterGeneratorCard: React.FC = () => {
       const scaledDateSize = Math.round(baseDateSize * textScale);
       const lineHeight = Math.round(65 * textScale);
 
-      // Draw band name as main title - ALWAYS VISIBLE
+      // Draw brand title - either logo or text
       let currentY = textCenterY - 80;
       
-      ctx.font = `bold ${scaledTitleSize}px "Orbitron", sans-serif`;
-      ctx.fillStyle = '#ffffff';
-      
-      ctx.fillText("NON C'È DUO", canvas.width / 2, currentY);
-      currentY += lineHeight;
+      if (config.useBrandLogo) {
+        // Load and draw splash behind logo if enabled
+        if (config.showSplash) {
+          try {
+            const splashImg = new Image();
+            await new Promise<void>((resolve, reject) => {
+              splashImg.onload = () => resolve();
+              splashImg.onerror = reject;
+              splashImg.src = brandLogoSplash;
+            });
+            
+            const splashSize = 280;
+            const splashX = (canvas.width - splashSize) / 2;
+            const splashY = currentY - splashSize / 2 - 10;
+            
+            ctx.globalAlpha = 0.3;
+            ctx.drawImage(splashImg, splashX, splashY, splashSize, splashSize);
+            ctx.globalAlpha = 1;
+          } catch (e) {
+            console.error('Failed to load splash:', e);
+          }
+        }
+        
+        // Load and draw brand logo
+        try {
+          const logoImg = new Image();
+          await new Promise<void>((resolve, reject) => {
+            logoImg.onload = () => resolve();
+            logoImg.onerror = reject;
+            logoImg.src = brandLogoText;
+          });
+          
+          // Calculate logo size maintaining aspect ratio
+          const logoMaxWidth = 450;
+          const logoAspect = logoImg.width / logoImg.height;
+          const logoWidth = Math.min(logoMaxWidth, canvas.width - 80);
+          const logoHeight = logoWidth / logoAspect;
+          const logoX = (canvas.width - logoWidth) / 2;
+          const logoY = currentY - logoHeight / 2;
+          
+          ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight);
+          currentY += logoHeight / 2 + 30;
+        } catch (e) {
+          console.error('Failed to load logo:', e);
+          // Fallback to text
+          ctx.font = `bold ${scaledTitleSize}px "Orbitron", sans-serif`;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText("NON C'È DUO", canvas.width / 2, currentY);
+          currentY += lineHeight;
+        }
+      } else {
+        // Draw text title
+        ctx.font = `bold ${scaledTitleSize}px "Orbitron", sans-serif`;
+        ctx.fillStyle = '#ffffff';
+        
+        ctx.fillText("NON C'È DUO", canvas.width / 2, currentY);
+        currentY += lineHeight;
+      }
 
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
@@ -463,9 +525,6 @@ export const EventPosterGeneratorCard: React.FC = () => {
         
         currentY += lines.length * venueLineHeight + 15;
       }
-
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
 
       // Draw date and time if provided - OPTIONAL
       if (config.eventDate || config.eventTime) {
@@ -770,6 +829,38 @@ export const EventPosterGeneratorCard: React.FC = () => {
           </RadioGroup>
         </div>
 
+        {/* Brand Logo Toggle */}
+        <div className="space-y-3 p-4 rounded-xl bg-muted/30 border border-border/50">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="poster-use-brand-logo" className="flex items-center gap-2 cursor-pointer">
+              <ImagePlus className="w-4 h-4" />
+              <span>Usa Logo Colorato</span>
+            </Label>
+            <Switch
+              id="poster-use-brand-logo"
+              checked={config.useBrandLogo}
+              onCheckedChange={(checked) => updateConfig('useBrandLogo', checked)}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Sostituisce il testo con il logo "NON C'È DUO" arcobaleno
+          </p>
+          
+          {config.useBrandLogo && (
+            <div className="flex items-center justify-between pt-2 border-t border-border/50">
+              <Label htmlFor="poster-show-splash" className="flex items-center gap-2 cursor-pointer">
+                <Sparkles className="w-4 h-4" />
+                <span>Aggiungi Splash Paint</span>
+              </Label>
+              <Switch
+                id="poster-show-splash"
+                checked={config.showSplash}
+                onCheckedChange={(checked) => updateConfig('showSplash', checked)}
+              />
+            </div>
+          )}
+        </div>
+
         {/* Venue Name (Optional - shown as subtitle under band name) */}
         <div className="space-y-2">
           <Label htmlFor="poster-venue" className="flex items-center gap-2">
@@ -785,7 +876,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
             className="bg-muted/50"
           />
           <p className="text-xs text-muted-foreground">
-            Apparirà sotto "NON C'È DUO" come @NOME LOCALE
+            Apparirà sotto il logo/titolo come @NOME LOCALE
           </p>
         </div>
 

@@ -19,6 +19,7 @@ import {
   RotateCcw,
   Type,
   QrCode,
+  ImagePlus,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,10 @@ import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import QRCode from 'qrcode';
+
+// Brand logo assets
+import brandLogoText from '@/assets/brand-logo-text.png';
+import brandLogoSplash from '@/assets/brand-logo-splash.png';
 
 type EventType = 'public' | 'private';
 type StylePreset = 'minimal' | 'gradient' | 'neon';
@@ -57,6 +62,8 @@ interface EventStoryConfig {
   qrPosition: QrPosition;
   qrDestination: QrDestination;
   additionalInfo: string;
+  useBrandLogo: boolean;
+  showSplash: boolean;
 }
 
 const STORAGE_KEY = 'ncd_story_generator_config';
@@ -76,6 +83,8 @@ const DEFAULT_CONFIG: EventStoryConfig = {
   qrPosition: 'center',
   qrDestination: 'app',
   additionalInfo: '',
+  useBrandLogo: true,
+  showSplash: false,
 };
 
 const QR_SIZES: Record<QrSize, { label: string; scale: number }> = {
@@ -400,23 +409,77 @@ export const EventStoryGeneratorCard: React.FC = () => {
 
       ctx.textAlign = 'center';
 
-      // Draw band name as main title - ALWAYS VISIBLE
+      // Draw brand title - either logo or text
       let currentY = titleStartY;
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `bold ${titleSize}px "Orbitron", sans-serif`;
       
-      if (config.stylePreset === 'neon' && !aiGeneratedBg) {
-        ctx.shadowColor = style.accent;
-        ctx.shadowBlur = 30;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
+      if (config.useBrandLogo) {
+        // Load and draw splash behind logo if enabled
+        if (config.showSplash) {
+          try {
+            const splashImg = new Image();
+            await new Promise<void>((resolve, reject) => {
+              splashImg.onload = () => resolve();
+              splashImg.onerror = reject;
+              splashImg.src = brandLogoSplash;
+            });
+            
+            const splashSize = isCompact ? 320 : 450;
+            const splashX = (canvas.width - splashSize) / 2;
+            const splashY = currentY - splashSize / 2 - 20;
+            
+            ctx.globalAlpha = 0.35;
+            ctx.drawImage(splashImg, splashX, splashY, splashSize, splashSize);
+            ctx.globalAlpha = 1;
+          } catch (e) {
+            console.error('Failed to load splash:', e);
+          }
+        }
+        
+        // Load and draw brand logo
+        try {
+          const logoImg = new Image();
+          await new Promise<void>((resolve, reject) => {
+            logoImg.onload = () => resolve();
+            logoImg.onerror = reject;
+            logoImg.src = brandLogoText;
+          });
+          
+          // Calculate logo size maintaining aspect ratio
+          const logoMaxWidth = isCompact ? 500 : 700;
+          const logoAspect = logoImg.width / logoImg.height;
+          const logoWidth = Math.min(logoMaxWidth, canvas.width - 100);
+          const logoHeight = logoWidth / logoAspect;
+          const logoX = (canvas.width - logoWidth) / 2;
+          const logoY = currentY - logoHeight / 2;
+          
+          ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight);
+          currentY += logoHeight / 2 + (isCompact ? 30 : 50);
+        } catch (e) {
+          console.error('Failed to load logo:', e);
+          // Fallback to text
+          ctx.fillStyle = '#ffffff';
+          ctx.font = `bold ${titleSize}px "Orbitron", sans-serif`;
+          ctx.fillText("NON C'È DUO", canvas.width / 2, currentY);
+          currentY += lineHeight;
+        }
+      } else {
+        // Draw text title
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold ${titleSize}px "Orbitron", sans-serif`;
+        
+        if (config.stylePreset === 'neon' && !aiGeneratedBg) {
+          ctx.shadowColor = style.accent;
+          ctx.shadowBlur = 30;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 0;
+        }
+        
+        ctx.fillText("NON C'È DUO", canvas.width / 2, currentY);
+        currentY += lineHeight;
+        
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
       }
-      
-      ctx.fillText("NON C'È DUO", canvas.width / 2, currentY);
-      currentY += lineHeight;
-      
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
 
       // Draw venue name as subtitle - OPTIONAL
       if (config.venueName) {
@@ -852,6 +915,38 @@ export const EventStoryGeneratorCard: React.FC = () => {
           </RadioGroup>
         </div>
 
+        {/* Brand Logo Toggle */}
+        <div className="space-y-3 p-4 rounded-xl bg-muted/30 border border-border/50">
+          <div className="flex items-center justify-between">
+            <Label htmlFor="use-brand-logo" className="flex items-center gap-2 cursor-pointer">
+              <ImagePlus className="w-4 h-4" />
+              <span>Usa Logo Colorato</span>
+            </Label>
+            <Switch
+              id="use-brand-logo"
+              checked={config.useBrandLogo}
+              onCheckedChange={(checked) => updateConfig('useBrandLogo', checked)}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Sostituisce il testo con il logo "NON C'È DUO" arcobaleno
+          </p>
+          
+          {config.useBrandLogo && (
+            <div className="flex items-center justify-between pt-2 border-t border-border/50">
+              <Label htmlFor="show-splash" className="flex items-center gap-2 cursor-pointer">
+                <Sparkles className="w-4 h-4" />
+                <span>Aggiungi Splash Paint</span>
+              </Label>
+              <Switch
+                id="show-splash"
+                checked={config.showSplash}
+                onCheckedChange={(checked) => updateConfig('showSplash', checked)}
+              />
+            </div>
+          )}
+        </div>
+
         {/* Venue Name - OPTIONAL (shown as subtitle under band name) */}
         <div className="space-y-2">
           <Label htmlFor="venue-name" className="flex items-center gap-2">
@@ -867,7 +962,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
             className="bg-muted/50"
           />
           <p className="text-xs text-muted-foreground">
-            Apparirà sotto "NON C'È DUO" come @NOME LOCALE
+            Apparirà sotto il logo/titolo come @NOME LOCALE
           </p>
         </div>
 
