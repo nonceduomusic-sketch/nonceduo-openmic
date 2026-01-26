@@ -1,14 +1,13 @@
 import React, { useState, useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
-import { Move, Lock, Unlock } from "lucide-react";
+import { Move, GripVertical } from "lucide-react";
 
-export interface DraggableElement {
+export interface DraggableElementConfig {
   id: string;
   label: string;
   x: number; // percentage 0-100
   y: number; // percentage 0-100
   enabled: boolean;
-  locked?: boolean;
 }
 
 interface DraggablePreviewProps {
@@ -16,32 +15,29 @@ interface DraggablePreviewProps {
   height: number;
   backgroundImage?: string;
   backgroundColor?: string;
-  elements: DraggableElement[];
+  elements: DraggableElementConfig[];
   onElementMove: (id: string, x: number, y: number) => void;
-  onElementToggleLock?: (id: string) => void;
   snapToGrid?: boolean;
-  gridSize?: number; // percentage, default 33.33 (thirds)
+  gridDivisions?: number; // default 3 (thirds)
   margin?: number; // percentage from edges, default 8
   className?: string;
 }
 
-const ELEMENT_COLORS: Record<string, string> = {
-  logo: "bg-primary/80 border-primary",
-  foto: "bg-secondary/80 border-secondary",
-  qr: "bg-accent/80 border-accent",
-  testo: "bg-muted-foreground/80 border-muted-foreground",
+const ELEMENT_STYLES: Record<string, { bg: string; border: string }> = {
+  logo: { bg: "bg-primary/90", border: "border-primary" },
+  foto: { bg: "bg-secondary/90", border: "border-secondary" },
+  qr: { bg: "bg-accent/90", border: "border-accent" },
 };
 
 export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
   width,
   height,
   backgroundImage,
-  backgroundColor = "#1a1a2e",
+  backgroundColor = "hsl(var(--muted))",
   elements,
   onElementMove,
-  onElementToggleLock,
   snapToGrid = true,
-  gridSize = 33.33,
+  gridDivisions = 3,
   margin = 8,
   className,
 }) => {
@@ -49,8 +45,11 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
   const [dragging, setDragging] = useState<string | null>(null);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
 
+  const gridSize = 100 / gridDivisions;
+
   const snapValue = useCallback((value: number): number => {
     if (!snapToGrid) return value;
+    // Snap to grid lines (0, 33.33, 66.66, 100 for thirds)
     const snapped = Math.round(value / gridSize) * gridSize;
     return Math.max(margin, Math.min(100 - margin, snapped));
   }, [snapToGrid, gridSize, margin]);
@@ -61,7 +60,7 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
 
   const handlePointerDown = useCallback((e: React.PointerEvent, elementId: string) => {
     const element = elements.find(el => el.id === elementId);
-    if (!element?.enabled || element.locked) return;
+    if (!element?.enabled) return;
     
     e.preventDefault();
     e.stopPropagation();
@@ -97,26 +96,44 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
   }, [dragging, elements, snapToGrid, snapValue, onElementMove]);
 
+  // Calculate preview dimensions maintaining aspect ratio
   const aspectRatio = width / height;
-  const previewHeight = 300;
-  const previewWidth = previewHeight * aspectRatio;
+  const maxPreviewHeight = 320;
+  const maxPreviewWidth = 280;
+  
+  let previewWidth: number;
+  let previewHeight: number;
+  
+  if (aspectRatio > maxPreviewWidth / maxPreviewHeight) {
+    previewWidth = maxPreviewWidth;
+    previewHeight = previewWidth / aspectRatio;
+  } else {
+    previewHeight = maxPreviewHeight;
+    previewWidth = previewHeight * aspectRatio;
+  }
+
+  const enabledElements = elements.filter(el => el.enabled);
+
+  if (enabledElements.length === 0) {
+    return null;
+  }
 
   return (
     <div className={cn("space-y-3", className)}>
       <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <Move className="w-3 h-3" />
-          Trascina gli elementi per posizionarli
+        <span className="flex items-center gap-1.5">
+          <Move className="w-3.5 h-3.5" />
+          Trascina per posizionare
         </span>
         {snapToGrid && (
-          <span className="text-primary/70">Snap ai terzi attivo</span>
+          <span className="text-primary/70 text-[10px]">Snap attivo</span>
         )}
       </div>
 
       {/* Preview Container */}
       <div
         ref={containerRef}
-        className="relative mx-auto rounded-lg overflow-hidden border-2 border-border shadow-lg cursor-crosshair touch-none"
+        className="relative mx-auto rounded-xl overflow-hidden border-2 border-border shadow-xl cursor-crosshair touch-none select-none"
         style={{
           width: previewWidth,
           height: previewHeight,
@@ -131,16 +148,26 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
       >
         {/* Grid overlay (visible when dragging) */}
         {dragging && snapToGrid && (
-          <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute inset-0 pointer-events-none z-10">
             {/* Vertical lines */}
-            <div className="absolute top-0 bottom-0 left-1/3 w-px bg-white/20" />
-            <div className="absolute top-0 bottom-0 left-2/3 w-px bg-white/20" />
+            {Array.from({ length: gridDivisions - 1 }).map((_, i) => (
+              <div 
+                key={`v-${i}`}
+                className="absolute top-0 bottom-0 w-px bg-white/30" 
+                style={{ left: `${((i + 1) * 100) / gridDivisions}%` }}
+              />
+            ))}
             {/* Horizontal lines */}
-            <div className="absolute left-0 right-0 top-1/3 h-px bg-white/20" />
-            <div className="absolute left-0 right-0 top-2/3 h-px bg-white/20" />
-            {/* Margin zone */}
+            {Array.from({ length: gridDivisions - 1 }).map((_, i) => (
+              <div 
+                key={`h-${i}`}
+                className="absolute left-0 right-0 h-px bg-white/30" 
+                style={{ top: `${((i + 1) * 100) / gridDivisions}%` }}
+              />
+            ))}
+            {/* Safe margin zone */}
             <div 
-              className="absolute border border-dashed border-red-400/30"
+              className="absolute border border-dashed border-destructive/40 rounded"
               style={{
                 top: `${margin}%`,
                 left: `${margin}%`,
@@ -152,8 +179,8 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
         )}
 
         {/* Draggable Elements */}
-        {elements.filter(el => el.enabled).map((element) => {
-          const colorClass = ELEMENT_COLORS[element.id] || "bg-white/80 border-white";
+        {enabledElements.map((element) => {
+          const styles = ELEMENT_STYLES[element.id] || { bg: "bg-muted", border: "border-muted-foreground" };
           const isSelected = selectedElement === element.id;
           const isDragging = dragging === element.id;
           
@@ -161,57 +188,65 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
             <div
               key={element.id}
               className={cn(
-                "absolute flex items-center justify-center rounded-md border-2 transition-all cursor-grab active:cursor-grabbing select-none",
-                colorClass,
-                isSelected && "ring-2 ring-white ring-offset-1",
-                isDragging && "scale-110 shadow-xl z-50",
-                element.locked && "opacity-50 cursor-not-allowed"
+                "absolute flex items-center justify-center gap-1 rounded-lg border-2 transition-all",
+                "cursor-grab active:cursor-grabbing select-none",
+                styles.bg, styles.border,
+                isSelected && "ring-2 ring-white ring-offset-1 ring-offset-background",
+                isDragging && "scale-110 shadow-2xl z-50 opacity-90"
               )}
               style={{
                 left: `${element.x}%`,
                 top: `${element.y}%`,
                 transform: "translate(-50%, -50%)",
-                minWidth: "60px",
-                minHeight: "28px",
-                padding: "4px 8px",
+                padding: "6px 12px",
+                minWidth: "70px",
               }}
               onPointerDown={(e) => handlePointerDown(e, element.id)}
               onClick={() => setSelectedElement(element.id)}
             >
-              <span className="text-xs font-medium text-white drop-shadow-md whitespace-nowrap">
+              <GripVertical className="w-3 h-3 text-white/60" />
+              <span className="text-xs font-semibold text-white drop-shadow-sm whitespace-nowrap">
                 {element.label}
               </span>
-              {element.locked && (
-                <Lock className="w-3 h-3 ml-1 text-white/70" />
-              )}
             </div>
           );
         })}
       </div>
 
-      {/* Element List with Lock Toggle */}
+      {/* Legend */}
       <div className="flex flex-wrap gap-2 justify-center">
-        {elements.filter(el => el.enabled).map((element) => {
-          const isSelected = selectedElement === element.id;
+        {enabledElements.map((element) => {
+          const styles = ELEMENT_STYLES[element.id] || { bg: "bg-muted", border: "border-muted-foreground" };
           return (
-            <button
+            <div
               key={element.id}
-              onClick={() => {
-                if (onElementToggleLock) {
-                  onElementToggleLock(element.id);
-                }
-              }}
               className={cn(
-                "flex items-center gap-1 px-2 py-1 rounded text-xs transition-all",
-                isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"
+                "flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-medium",
+                styles.bg, "text-white"
               )}
             >
-              {element.locked ? <Lock className="w-3 h-3" /> : <Unlock className="w-3 h-3" />}
+              <span className="w-1.5 h-1.5 rounded-full bg-white/50" />
               {element.label}
-            </button>
+            </div>
           );
         })}
       </div>
     </div>
   );
+};
+
+// Helper to convert percentage to canvas pixel coordinates
+export const percentageToCanvas = (
+  percentX: number,
+  percentY: number,
+  canvasWidth: number,
+  canvasHeight: number,
+  elementWidth: number,
+  elementHeight: number
+): { x: number; y: number } => {
+  // Convert percentage to pixel position (centered on the element)
+  const x = (percentX / 100) * canvasWidth - elementWidth / 2;
+  const y = (percentY / 100) * canvasHeight - elementHeight / 2;
+  
+  return { x, y };
 };

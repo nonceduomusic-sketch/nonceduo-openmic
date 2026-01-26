@@ -37,8 +37,9 @@ import QRCode from 'qrcode';
 // Brand logo assets
 import brandLogoText from '@/assets/brand-logo-text.png';
 import brandLogoSplash from '@/assets/brand-logo-splash.png';
-import { PositionGrid, Position, getPositionCoordinates, MARGIN_PRESETS } from './PositionGrid';
+import { PositionGrid, Position, getPositionCoordinates, MARGIN_PRESETS, PercentPosition, positionToPercent, percentToCanvas } from './PositionGrid';
 import { Slider } from '@/components/ui/slider';
+import { DraggablePreview, DraggableElementConfig } from './DraggablePreview';
 
 type EventType = 'public' | 'private';
 type StylePreset = 'minimal' | 'gradient' | 'neon';
@@ -66,9 +67,10 @@ interface EventStoryConfig {
   additionalInfo: string;
   useBrandLogo: boolean;
   showSplash: boolean;
-  fotoPosition: Position;
-  logoPosition: Position;
-  qrGridPosition: Position;
+  // Percentage-based positions for drag & drop (0-100)
+  fotoPos: PercentPosition;
+  logoPos: PercentPosition;
+  qrPos: PercentPosition;
   elementMargin: number;
 }
 
@@ -91,9 +93,10 @@ const DEFAULT_CONFIG: EventStoryConfig = {
   additionalInfo: '',
   useBrandLogo: true,
   showSplash: false,
-  fotoPosition: 'middle-center',
-  logoPosition: 'top-center',
-  qrGridPosition: 'bottom-center',
+  // Default positions: logo top-center, foto center, qr bottom-center
+  fotoPos: { x: 50, y: 50 },
+  logoPos: { x: 50, y: 16.67 },
+  qrPos: { x: 50, y: 83.33 },
   elementMargin: MARGIN_PRESETS.standard,
 };
 
@@ -453,9 +456,10 @@ export const EventStoryGeneratorCard: React.FC = () => {
             }
           }
           
-          // Use position grid for placement with user-defined margin
-          const { x: fotoX, y: fotoY } = getPositionCoordinates(
-            config.fotoPosition,
+          // Use percentage-based positioning for drag & drop
+          const { x: fotoX, y: fotoY } = percentToCanvas(
+            config.fotoPos.x,
+            config.fotoPos.y,
             canvas.width,
             canvas.height,
             fotoWidth,
@@ -486,9 +490,10 @@ export const EventStoryGeneratorCard: React.FC = () => {
           const logoWidth = Math.min(logoMaxWidth, canvas.width - config.elementMargin * 2);
           const logoHeight = logoWidth / logoAspect;
           
-          // Use position grid for placement with user-defined margin
-          const { x: logoX, y: logoY } = getPositionCoordinates(
-            config.logoPosition,
+          // Use percentage-based positioning for drag & drop
+          const { x: logoX, y: logoY } = percentToCanvas(
+            config.logoPos.x,
+            config.logoPos.y,
             canvas.width,
             canvas.height,
             logoWidth,
@@ -673,9 +678,10 @@ export const EventStoryGeneratorCard: React.FC = () => {
             qrImg.src = qrDataUrl;
           });
           
-          // Use position grid for QR placement with user-defined margin
-          const { x: qrX, y: qrY } = getPositionCoordinates(
-            config.qrGridPosition,
+          // Use percentage-based positioning for drag & drop
+          const { x: qrX, y: qrY } = percentToCanvas(
+            config.qrPos.x,
+            config.qrPos.y,
             canvas.width,
             canvas.height,
             qrSize,
@@ -984,14 +990,61 @@ export const EventStoryGeneratorCard: React.FC = () => {
           </RadioGroup>
         </div>
 
-        {/* Brand Elements (Independent) with Position Controls */}
+        {/* Brand Elements with Drag & Drop Preview */}
         <div className="space-y-4 p-4 rounded-xl bg-muted/30 border border-border/50">
           <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Elementi Brand</p>
           
-          {/* Margin Slider - Professional spacing control */}
-          <div className="space-y-3 pb-3 border-b border-border/50">
+          {/* Element Toggles */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+              <Label htmlFor="use-brand-logo" className="flex items-center gap-2 cursor-pointer text-sm">
+                <ImagePlus className="w-4 h-4 text-primary" />
+                Logo
+              </Label>
+              <Switch
+                id="use-brand-logo"
+                checked={config.useBrandLogo}
+                onCheckedChange={(checked) => updateConfig('useBrandLogo', checked)}
+              />
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+              <Label htmlFor="show-splash" className="flex items-center gap-2 cursor-pointer text-sm">
+                <Sparkles className="w-4 h-4 text-secondary" />
+                Foto
+              </Label>
+              <Switch
+                id="show-splash"
+                checked={config.showSplash}
+                onCheckedChange={(checked) => updateConfig('showSplash', checked)}
+              />
+            </div>
+          </div>
+
+          {/* Draggable Preview */}
+          {(config.useBrandLogo || config.showSplash || config.showQrCode) && (
+            <DraggablePreview
+              width={IMAGE_FORMATS[config.imageFormat].width}
+              height={IMAGE_FORMATS[config.imageFormat].height}
+              backgroundImage={aiGeneratedBg || undefined}
+              backgroundColor="hsl(var(--muted))"
+              elements={[
+                { id: 'logo', label: 'Logo', x: config.logoPos.x, y: config.logoPos.y, enabled: config.useBrandLogo },
+                { id: 'foto', label: 'Foto', x: config.fotoPos.x, y: config.fotoPos.y, enabled: config.showSplash },
+                { id: 'qr', label: 'QR', x: config.qrPos.x, y: config.qrPos.y, enabled: config.showQrCode },
+              ]}
+              onElementMove={(id, x, y) => {
+                if (id === 'logo') updateConfig('logoPos', { x, y });
+                else if (id === 'foto') updateConfig('fotoPos', { x, y });
+                else if (id === 'qr') updateConfig('qrPos', { x, y });
+              }}
+              margin={8}
+            />
+          )}
+          
+          {/* Margin Slider */}
+          <div className="space-y-2 pt-3 border-t border-border/50">
             <div className="flex items-center justify-between">
-              <Label className="text-xs">Margini elementi</Label>
+              <Label className="text-xs">Margini</Label>
               <span className="text-xs font-medium text-muted-foreground">{config.elementMargin}px</span>
             </div>
             <Slider
@@ -1002,60 +1055,6 @@ export const EventStoryGeneratorCard: React.FC = () => {
               step={10}
               className="w-full"
             />
-            <div className="flex justify-between text-[10px] text-muted-foreground/60">
-              <span>Compatto</span>
-              <span>Standard</span>
-              <span>Spazioso</span>
-              <span>Ultra</span>
-            </div>
-          </div>
-          
-          {/* Logo Toggle + Position */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="use-brand-logo" className="flex items-center gap-2 cursor-pointer">
-                <ImagePlus className="w-4 h-4" />
-                <span>Logo Scritta</span>
-              </Label>
-              <Switch
-                id="use-brand-logo"
-                checked={config.useBrandLogo}
-                onCheckedChange={(checked) => updateConfig('useBrandLogo', checked)}
-              />
-            </div>
-            {config.useBrandLogo && (
-              <div className="flex items-start gap-4 pl-6">
-                <PositionGrid
-                  value={config.logoPosition}
-                  onChange={(pos) => updateConfig('logoPosition', pos)}
-                  label="Posizione Logo"
-                />
-              </div>
-            )}
-          </div>
-          
-          {/* Foto Toggle + Position */}
-          <div className="space-y-3 pt-3 border-t border-border/50">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="show-splash" className="flex items-center gap-2 cursor-pointer">
-                <Sparkles className="w-4 h-4" />
-                <span>Foto</span>
-              </Label>
-              <Switch
-                id="show-splash"
-                checked={config.showSplash}
-                onCheckedChange={(checked) => updateConfig('showSplash', checked)}
-              />
-            </div>
-            {config.showSplash && (
-              <div className="flex items-start gap-4 pl-6">
-                <PositionGrid
-                  value={config.fotoPosition}
-                  onChange={(pos) => updateConfig('fotoPosition', pos)}
-                  label="Posizione Foto"
-                />
-              </div>
-            )}
           </div>
         </div>
 
@@ -1320,15 +1319,10 @@ export const EventStoryGeneratorCard: React.FC = () => {
                 </RadioGroup>
               </div>
 
-              {/* QR Position Grid */}
-              <div className="space-y-2">
-                <Label className="text-xs text-muted-foreground">Posizione QR</Label>
-                <PositionGrid
-                  value={config.qrGridPosition}
-                  onChange={(pos) => updateConfig('qrGridPosition', pos)}
-                  label=""
-                />
-              </div>
+              {/* QR Position - now handled by drag preview above */}
+              <p className="text-xs text-muted-foreground/70 text-center">
+                Trascina il QR nell'anteprima sopra per posizionarlo
+              </p>
             </div>
           )}
         </div>

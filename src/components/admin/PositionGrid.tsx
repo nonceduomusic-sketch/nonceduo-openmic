@@ -6,6 +6,12 @@ export type Position =
   | 'middle-left' | 'middle-center' | 'middle-right'
   | 'bottom-left' | 'bottom-center' | 'bottom-right';
 
+// Percentage-based position for drag & drop
+export interface PercentPosition {
+  x: number; // 0-100
+  y: number; // 0-100
+}
+
 interface PositionGridProps {
   value: Position;
   onChange: (position: Position) => void;
@@ -19,6 +25,19 @@ const POSITIONS: Position[][] = [
   ['bottom-left', 'bottom-center', 'bottom-right'],
 ];
 
+// Mapping from grid position to percentage coordinates
+const POSITION_TO_PERCENT: Record<Position, PercentPosition> = {
+  'top-left': { x: 16.67, y: 16.67 },
+  'top-center': { x: 50, y: 16.67 },
+  'top-right': { x: 83.33, y: 16.67 },
+  'middle-left': { x: 16.67, y: 50 },
+  'middle-center': { x: 50, y: 50 },
+  'middle-right': { x: 83.33, y: 50 },
+  'bottom-left': { x: 16.67, y: 83.33 },
+  'bottom-center': { x: 50, y: 83.33 },
+  'bottom-right': { x: 83.33, y: 83.33 },
+};
+
 export const PositionGrid: React.FC<PositionGridProps> = ({
   value,
   onChange,
@@ -29,7 +48,7 @@ export const PositionGrid: React.FC<PositionGridProps> = ({
     <div className="space-y-1.5">
       <span className="text-xs font-medium text-muted-foreground">{label}</span>
       <div className="grid grid-cols-3 gap-1 w-fit">
-        {POSITIONS.map((row, rowIndex) => (
+        {POSITIONS.map((row) => (
           row.map((pos) => (
             <button
               key={pos}
@@ -56,6 +75,18 @@ export const PositionGrid: React.FC<PositionGridProps> = ({
       </div>
     </div>
   );
+};
+
+// Convert grid Position to percentage coordinates
+export const positionToPercent = (position: Position): PercentPosition => {
+  return POSITION_TO_PERCENT[position];
+};
+
+// Convert percentage to nearest grid Position
+export const percentToPosition = (x: number, y: number): Position => {
+  const col = x < 33.33 ? 'left' : x > 66.67 ? 'right' : 'center';
+  const row = y < 33.33 ? 'top' : y > 66.67 ? 'bottom' : 'middle';
+  return `${row}-${col}` as Position;
 };
 
 // Helper to convert Position to canvas coordinates with professional margins
@@ -92,6 +123,35 @@ export const getPositionCoordinates = (
   }
 
   return { x, y };
+};
+
+// Convert percentage coordinates directly to canvas pixels
+export const percentToCanvas = (
+  percentX: number,
+  percentY: number,
+  canvasWidth: number,
+  canvasHeight: number,
+  elementWidth: number,
+  elementHeight: number,
+  margin: number = 120
+): { x: number; y: number } => {
+  // Calculate safe margins
+  const horizontalMargin = Math.max(margin, canvasWidth * 0.08);
+  const verticalMargin = Math.max(margin, canvasHeight * 0.06);
+  
+  // Available area after margins
+  const availableWidth = canvasWidth - 2 * horizontalMargin;
+  const availableHeight = canvasHeight - 2 * verticalMargin;
+  
+  // Convert percentage to position within available area
+  const x = horizontalMargin + (percentX / 100) * availableWidth - elementWidth / 2;
+  const y = verticalMargin + (percentY / 100) * availableHeight - elementHeight / 2;
+  
+  // Clamp to stay within margins
+  const clampedX = Math.max(horizontalMargin, Math.min(canvasWidth - elementWidth - horizontalMargin, x));
+  const clampedY = Math.max(verticalMargin, Math.min(canvasHeight - elementHeight - verticalMargin, y));
+  
+  return { x: clampedX, y: clampedY };
 };
 
 // Margin presets for professional layouts
