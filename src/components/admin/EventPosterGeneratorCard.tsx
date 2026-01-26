@@ -37,7 +37,8 @@ import { useToast } from '@/hooks/use-toast';
 // Brand logo assets
 import brandLogoText from '@/assets/brand-logo-text.png';
 import brandLogoSplash from '@/assets/brand-logo-splash.png';
-import { PositionGrid, Position, getPositionCoordinates } from './PositionGrid';
+import { PositionGrid, Position, getPositionCoordinates, MARGIN_PRESETS } from './PositionGrid';
+import { Slider } from '@/components/ui/slider';
 
 type EventType = 'public' | 'private';
 type StylePreset = 'minimal' | 'gradient' | 'neon';
@@ -61,6 +62,7 @@ interface EventPosterConfig {
   showSplash: boolean;
   fotoPosition: Position;
   logoPosition: Position;
+  elementMargin: number;
 }
 
 const STORAGE_KEY = 'ncd_poster_generator_config';
@@ -81,6 +83,7 @@ const DEFAULT_CONFIG: EventPosterConfig = {
   showSplash: false,
   fotoPosition: 'middle-center',
   logoPosition: 'bottom-center',
+  elementMargin: MARGIN_PRESETS.standard,
 };
 
 const STYLE_PRESETS: Record<StylePreset, { label: string; accent: string }> = {
@@ -449,11 +452,11 @@ export const EventPosterGeneratorCard: React.FC = () => {
           
           // Calculate proportional size maintaining aspect ratio - MUCH BIGGER for wow effect
           const fotoAspect = fotoImg.width / fotoImg.height;
-          const margin = 80;
+          const elementMargin = config.elementMargin;
           const maxFotoHeight = config.imageFormat === 'story' 
             ? canvas.height * 0.65 
             : (config.imageFormat === 'portrait' ? canvas.height * 0.6 : canvas.height * 0.55);
-          const maxFotoWidth = canvas.width - margin * 2;
+          const maxFotoWidth = canvas.width - elementMargin * 2;
           
           let fotoWidth, fotoHeight;
           if (fotoAspect > 1) {
@@ -468,14 +471,14 @@ export const EventPosterGeneratorCard: React.FC = () => {
             }
           }
           
-          // Use position grid for placement
+          // Use position grid for placement with user-defined margin
           const { x: fotoX, y: fotoY } = getPositionCoordinates(
             config.fotoPosition,
             canvas.width,
             canvas.height,
             fotoWidth,
             fotoHeight,
-            80 // margin
+            elementMargin
           );
           
           ctx.globalAlpha = 0.7;
@@ -498,17 +501,17 @@ export const EventPosterGeneratorCard: React.FC = () => {
           
           const logoMaxWidth = 450;
           const logoAspect = logoImg.width / logoImg.height;
-          const logoWidth = Math.min(logoMaxWidth, canvas.width - 80);
+          const logoWidth = Math.min(logoMaxWidth, canvas.width - config.elementMargin * 2);
           const logoHeight = logoWidth / logoAspect;
           
-          // Use position grid for placement
+          // Use position grid for placement with user-defined margin
           const { x: logoX, y: logoY } = getPositionCoordinates(
             config.logoPosition,
             canvas.width,
             canvas.height,
             logoWidth,
             logoHeight,
-            60 // margin
+            config.elementMargin
           );
           
           ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight);
@@ -892,6 +895,28 @@ export const EventPosterGeneratorCard: React.FC = () => {
         {/* Brand Elements (Independent) with Position Controls */}
         <div className="space-y-4 p-4 rounded-xl bg-muted/30 border border-border/50">
           <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Elementi Brand</p>
+          
+          {/* Margin Slider - Professional spacing control */}
+          <div className="space-y-3 pb-3 border-b border-border/50">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Margini elementi</Label>
+              <span className="text-xs font-medium text-muted-foreground">{config.elementMargin}px</span>
+            </div>
+            <Slider
+              value={[config.elementMargin]}
+              onValueChange={(v) => updateConfig('elementMargin', v[0])}
+              min={MARGIN_PRESETS.compact}
+              max={MARGIN_PRESETS.ultra}
+              step={10}
+              className="w-full"
+            />
+            <div className="flex justify-between text-[10px] text-muted-foreground/60">
+              <span>Compatto</span>
+              <span>Standard</span>
+              <span>Spazioso</span>
+              <span>Ultra</span>
+            </div>
+          </div>
           
           {/* Logo Toggle + Position */}
           <div className="space-y-3">
