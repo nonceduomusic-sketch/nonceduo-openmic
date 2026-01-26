@@ -427,12 +427,12 @@ export const FreeModeFullPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* Countdown fine evento con banner animato */}
+        {/* Countdown fine evento con banner animato - sempre visibile per admin (null = sempre) */}
         {scheduler.isScheduledEnd && scheduler.scheduledEndTimeISO && (
           <EventCountdownBanner
             type="end"
             targetTime={scheduler.scheduledEndTimeISO}
-            showMinutesBefore={scheduler.countdownEndShowMinutes}
+            showMinutesBefore={null}
             label="Chiusura automatica tra"
             animated
           />
