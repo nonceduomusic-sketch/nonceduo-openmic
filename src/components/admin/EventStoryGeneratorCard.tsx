@@ -37,6 +37,7 @@ import QRCode from 'qrcode';
 // Brand logo assets
 import brandLogoText from '@/assets/brand-logo-text.png';
 import brandLogoSplash from '@/assets/brand-logo-splash.png';
+import { PositionGrid, Position, getPositionCoordinates } from './PositionGrid';
 
 type EventType = 'public' | 'private';
 type StylePreset = 'minimal' | 'gradient' | 'neon';
@@ -64,6 +65,9 @@ interface EventStoryConfig {
   additionalInfo: string;
   useBrandLogo: boolean;
   showSplash: boolean;
+  fotoPosition: Position;
+  logoPosition: Position;
+  qrGridPosition: Position;
 }
 
 const STORAGE_KEY = 'ncd_story_generator_config';
@@ -85,6 +89,9 @@ const DEFAULT_CONFIG: EventStoryConfig = {
   additionalInfo: '',
   useBrandLogo: true,
   showSplash: false,
+  fotoPosition: 'middle-center',
+  logoPosition: 'top-center',
+  qrGridPosition: 'bottom-center',
 };
 
 const QR_SIZES: Record<QrSize, { label: string; scale: number }> = {
@@ -412,7 +419,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
       // Draw brand title - logo, text, and/or splash (independent)
       let currentY = titleStartY;
       
-      // Draw "Foto" (duo photo) FIRST if enabled - centered and proportional - BIGGER for WOW effect
+      // Draw "Foto" (duo photo) FIRST if enabled - using position grid
       if (config.showSplash) {
         try {
           const fotoImg = new Image();
@@ -424,10 +431,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
           
           // Calculate proportional size maintaining aspect ratio - MUCH BIGGER for wow effect
           const fotoAspect = fotoImg.width / fotoImg.height;
-          // Use ~70-80% of available space for maximum impact
-          const margin = 60; // Horizontal margin
-          const topMargin = 100; // Top margin
-          const bottomMargin = 150; // Extra bottom margin for text/QR
+          const margin = 60;
           const maxFotoHeight = isCompact 
             ? canvas.height * 0.55 
             : canvas.height * 0.60;
@@ -435,11 +439,9 @@ export const EventStoryGeneratorCard: React.FC = () => {
           
           let fotoWidth, fotoHeight;
           if (fotoAspect > 1) {
-            // Wider than tall
             fotoWidth = Math.min(maxFotoWidth, maxFotoHeight * fotoAspect);
             fotoHeight = fotoWidth / fotoAspect;
           } else {
-            // Taller than wide
             fotoHeight = maxFotoHeight;
             fotoWidth = fotoHeight * fotoAspect;
             if (fotoWidth > maxFotoWidth) {
@@ -448,13 +450,16 @@ export const EventStoryGeneratorCard: React.FC = () => {
             }
           }
           
-          // Center horizontally, position vertically with proper margins
-          const fotoX = (canvas.width - fotoWidth) / 2;
-          // Center in the available space (accounting for top and bottom margins)
-          const availableHeight = canvas.height - topMargin - bottomMargin;
-          const fotoY = topMargin + (availableHeight - fotoHeight) / 2;
+          // Use position grid for placement
+          const { x: fotoX, y: fotoY } = getPositionCoordinates(
+            config.fotoPosition,
+            canvas.width,
+            canvas.height,
+            fotoWidth,
+            fotoHeight,
+            80 // margin
+          );
           
-          // Draw with slight opacity for blending
           ctx.globalAlpha = 0.7;
           ctx.drawImage(fotoImg, fotoX, fotoY, fotoWidth, fotoHeight);
           ctx.globalAlpha = 1;
@@ -463,9 +468,8 @@ export const EventStoryGeneratorCard: React.FC = () => {
         }
       }
       
-      // Draw logo OR text based on useBrandLogo
+      // Draw logo OR text based on useBrandLogo - using position grid
       if (config.useBrandLogo) {
-        // Load and draw brand logo (transparent bg)
         try {
           const logoImg = new Image();
           await new Promise<void>((resolve, reject) => {
@@ -474,19 +478,25 @@ export const EventStoryGeneratorCard: React.FC = () => {
             logoImg.src = brandLogoText;
           });
           
-          // Calculate logo size maintaining aspect ratio
           const logoMaxWidth = isCompact ? 500 : 700;
           const logoAspect = logoImg.width / logoImg.height;
           const logoWidth = Math.min(logoMaxWidth, canvas.width - 100);
           const logoHeight = logoWidth / logoAspect;
-          const logoX = (canvas.width - logoWidth) / 2;
-          const logoY = currentY - logoHeight / 2;
+          
+          // Use position grid for placement
+          const { x: logoX, y: logoY } = getPositionCoordinates(
+            config.logoPosition,
+            canvas.width,
+            canvas.height,
+            logoWidth,
+            logoHeight,
+            60 // margin
+          );
           
           ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight);
-          currentY += logoHeight / 2 + (isCompact ? 30 : 50);
+          currentY = logoY + logoHeight + (isCompact ? 30 : 50);
         } catch (e) {
           console.error('Failed to load logo:', e);
-          // Fallback to text
           ctx.fillStyle = '#ffffff';
           ctx.font = `bold ${titleSize}px "Orbitron", sans-serif`;
           ctx.fillText("NON C'È DUO", canvas.width / 2, currentY);
@@ -660,17 +670,15 @@ export const EventStoryGeneratorCard: React.FC = () => {
             qrImg.src = qrDataUrl;
           });
           
-          // Calculate QR X position based on config
-          let qrX: number;
-          const margin = 140;
-          if (config.qrPosition === 'left') {
-            qrX = margin;
-          } else if (config.qrPosition === 'right') {
-            qrX = canvas.width - qrSize - margin;
-          } else {
-            qrX = (canvas.width - qrSize) / 2;
-          }
-          const qrY = pinSectionY;
+          // Use position grid for QR placement
+          const { x: qrX, y: qrY } = getPositionCoordinates(
+            config.qrGridPosition,
+            canvas.width,
+            canvas.height,
+            qrSize,
+            qrSize,
+            80 // margin
+          );
           
           // QR background circle
           ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
@@ -680,8 +688,8 @@ export const EventStoryGeneratorCard: React.FC = () => {
           
           ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
           
-          // Text below QR - position dynamically based on QR size
-          const textX = config.qrPosition === 'center' ? canvas.width / 2 : qrX + qrSize / 2;
+          // Text below QR - position relative to QR
+          const textX = qrX + qrSize / 2;
           const textStartY = qrY + qrSize + 40;
           
           ctx.textAlign = 'center';
@@ -701,7 +709,6 @@ export const EventStoryGeneratorCard: React.FC = () => {
           ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
           ctx.fillText(`${destCta} (PIN richiesto)`, textX, textStartY + 35);
           
-          // Reset text alignment
           ctx.textAlign = 'center';
         } catch (qrError) {
           console.error('QR generation error:', qrError);
@@ -974,41 +981,57 @@ export const EventStoryGeneratorCard: React.FC = () => {
           </RadioGroup>
         </div>
 
-        {/* Brand Elements (Independent) */}
-        <div className="space-y-3 p-4 rounded-xl bg-muted/30 border border-border/50">
+        {/* Brand Elements (Independent) with Position Controls */}
+        <div className="space-y-4 p-4 rounded-xl bg-muted/30 border border-border/50">
           <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Elementi Brand</p>
           
-          {/* Logo Toggle */}
-          <div className="flex items-center justify-between">
-            <Label htmlFor="use-brand-logo" className="flex items-center gap-2 cursor-pointer">
-              <ImagePlus className="w-4 h-4" />
-              <span>Logo Scritta</span>
-            </Label>
-            <Switch
-              id="use-brand-logo"
-              checked={config.useBrandLogo}
-              onCheckedChange={(checked) => updateConfig('useBrandLogo', checked)}
-            />
+          {/* Logo Toggle + Position */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="use-brand-logo" className="flex items-center gap-2 cursor-pointer">
+                <ImagePlus className="w-4 h-4" />
+                <span>Logo Scritta</span>
+              </Label>
+              <Switch
+                id="use-brand-logo"
+                checked={config.useBrandLogo}
+                onCheckedChange={(checked) => updateConfig('useBrandLogo', checked)}
+              />
+            </div>
+            {config.useBrandLogo && (
+              <div className="flex items-start gap-4 pl-6">
+                <PositionGrid
+                  value={config.logoPosition}
+                  onChange={(pos) => updateConfig('logoPosition', pos)}
+                  label="Posizione Logo"
+                />
+              </div>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground -mt-1">
-            Logo "NON C'È DUO" colorato (sfondo trasparente)
-          </p>
           
-          {/* Foto Toggle - Independent */}
-          <div className="flex items-center justify-between pt-2 border-t border-border/50">
-            <Label htmlFor="show-splash" className="flex items-center gap-2 cursor-pointer">
-              <Sparkles className="w-4 h-4" />
-              <span>Foto</span>
-            </Label>
-            <Switch
-              id="show-splash"
-              checked={config.showSplash}
-              onCheckedChange={(checked) => updateConfig('showSplash', checked)}
-            />
+          {/* Foto Toggle + Position */}
+          <div className="space-y-3 pt-3 border-t border-border/50">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="show-splash" className="flex items-center gap-2 cursor-pointer">
+                <Sparkles className="w-4 h-4" />
+                <span>Foto</span>
+              </Label>
+              <Switch
+                id="show-splash"
+                checked={config.showSplash}
+                onCheckedChange={(checked) => updateConfig('showSplash', checked)}
+              />
+            </div>
+            {config.showSplash && (
+              <div className="flex items-start gap-4 pl-6">
+                <PositionGrid
+                  value={config.fotoPosition}
+                  onChange={(pos) => updateConfig('fotoPosition', pos)}
+                  label="Posizione Foto"
+                />
+              </div>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground -mt-1">
-            Foto del duo, centrata e proporzionata
-          </p>
         </div>
 
         {/* Venue Name - OPTIONAL (shown as subtitle under band name) */}
@@ -1272,30 +1295,14 @@ export const EventStoryGeneratorCard: React.FC = () => {
                 </RadioGroup>
               </div>
 
-              {/* QR Position */}
+              {/* QR Position Grid */}
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Posizione QR</Label>
-                <RadioGroup
-                  value={config.qrPosition}
-                  onValueChange={(value) => updateConfig('qrPosition', value as QrPosition)}
-                  className="grid grid-cols-3 gap-2"
-                >
-                  {(Object.keys(QR_POSITIONS) as QrPosition[]).map((pos) => (
-                    <div key={pos}>
-                      <RadioGroupItem value={pos} id={`qr-pos-${pos}`} className="peer sr-only" />
-                      <Label
-                        htmlFor={`qr-pos-${pos}`}
-                        className={cn(
-                          "flex items-center justify-center p-2 rounded-lg border-2 cursor-pointer transition-all text-xs",
-                          "border-muted hover:border-muted-foreground/50",
-                          config.qrPosition === pos && "border-accent bg-accent/10"
-                        )}
-                      >
-                        {QR_POSITIONS[pos].label}
-                      </Label>
-                    </div>
-                  ))}
-                </RadioGroup>
+                <PositionGrid
+                  value={config.qrGridPosition}
+                  onChange={(pos) => updateConfig('qrGridPosition', pos)}
+                  label=""
+                />
               </div>
             </div>
           )}
