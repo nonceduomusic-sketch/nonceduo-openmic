@@ -21,6 +21,9 @@ import {
   Sparkles,
   Wand2,
   RotateCcw,
+  MessageSquare,
+  Info,
+  AlignCenter,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -61,6 +64,12 @@ interface EventPosterConfig {
   aiTheme: string;
   useBrandLogo: boolean;
   showSplash: boolean;
+  showTitle: boolean;      // Independent flag for title text
+  showVenue: boolean;      // Independent flag for venue
+  showDatetime: boolean;   // Independent flag for datetime
+  showBadge: boolean;      // Independent flag for event badge
+  showInfo: boolean;       // Independent flag for additional info
+  showFooter: boolean;     // Independent flag for footer
   // Percentage-based positions for drag & drop (0-100)
   fotoPos: PercentPosition;
   logoPos: PercentPosition;
@@ -90,6 +99,12 @@ const DEFAULT_CONFIG: EventPosterConfig = {
   aiTheme: '',
   useBrandLogo: true,
   showSplash: false,
+  showTitle: true,
+  showVenue: true,
+  showDatetime: true,
+  showBadge: true,
+  showInfo: false,
+  showFooter: true,
   // Default positions for all draggable elements
   fotoPos: { x: 50, y: 40 },
   logoPos: { x: 50, y: 75 },
@@ -190,6 +205,13 @@ const deserializeConfig = (json: string): EventPosterConfig | null => {
       infoPos: parsed.infoPos ?? DEFAULT_CONFIG.infoPos,
       footerPos: parsed.footerPos ?? DEFAULT_CONFIG.footerPos,
       elementMargin: parsed.elementMargin ?? DEFAULT_CONFIG.elementMargin,
+      // Element visibility flags with defaults
+      showTitle: parsed.showTitle ?? DEFAULT_CONFIG.showTitle,
+      showVenue: parsed.showVenue ?? DEFAULT_CONFIG.showVenue,
+      showDatetime: parsed.showDatetime ?? DEFAULT_CONFIG.showDatetime,
+      showBadge: parsed.showBadge ?? DEFAULT_CONFIG.showBadge,
+      showInfo: parsed.showInfo ?? DEFAULT_CONFIG.showInfo,
+      showFooter: parsed.showFooter ?? DEFAULT_CONFIG.showFooter,
     };
   } catch {
     return null;
@@ -553,8 +575,8 @@ export const EventPosterGeneratorCard: React.FC = () => {
           ctx.fillText("NON C'È DUO", canvas.width / 2, currentY);
           currentY += lineHeight;
         }
-      } else {
-        // Draw text title using percentage position
+      } else if (config.showTitle) {
+        // Draw text title using percentage position (only if flag enabled)
         const titleY = (config.titlePos.y / 100) * canvas.height;
         ctx.font = `bold ${scaledTitleSize}px "Orbitron", sans-serif`;
         ctx.fillStyle = '#ffffff';
@@ -565,8 +587,8 @@ export const EventPosterGeneratorCard: React.FC = () => {
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
 
-      // Draw venue name as subtitle - using percentage position
-      if (config.venueName) {
+      // Draw venue name as subtitle - using percentage position (only if flags enabled)
+      if (config.showVenue && config.venueName) {
         const venueY = (config.venuePos.y / 100) * canvas.height;
         const venueSize = Math.round(scaledTitleSize * 0.5);
         ctx.font = `500 ${venueSize}px "Inter", sans-serif`;
@@ -596,8 +618,8 @@ export const EventPosterGeneratorCard: React.FC = () => {
         });
       }
 
-      // Draw date and time - using percentage position
-      if (config.eventDate || config.eventTime) {
+      // Draw date and time - using percentage position (only if flags enabled)
+      if (config.showDatetime && (config.eventDate || config.eventTime)) {
         const datetimeY = (config.datetimePos.y / 100) * canvas.height;
         let dateTimeText = '';
         
@@ -624,56 +646,58 @@ export const EventPosterGeneratorCard: React.FC = () => {
         ctx.shadowBlur = 0;
       }
 
-      // Draw event type badge - using percentage position
-      const badgeY = (config.badgePos.y / 100) * canvas.height;
-      if (config.eventType === 'private') {
-        const badgeText = 'EVENTO PRIVATO';
-        ctx.font = '500 24px "Inter", sans-serif';
-        const badgeWidth = ctx.measureText(badgeText).width + 60;
-        
-        ctx.fillStyle = 'rgba(255, 45, 146, 0.3)';
-        ctx.beginPath();
-        ctx.roundRect(
-          canvas.width / 2 - badgeWidth / 2 - 10,
-          badgeY - 20,
-          badgeWidth + 20,
-          45,
-          22
-        );
-        ctx.fill();
-        
-        ctx.strokeStyle = 'rgba(255, 45, 146, 0.6)';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        
-        ctx.fillStyle = style.accent;
-        ctx.fillText(`🔒 ${badgeText}`, canvas.width / 2, badgeY + 8);
-      } else {
-        const badgeText = 'EVENTO PUBBLICO';
-        ctx.font = '500 24px "Inter", sans-serif';
-        const badgeWidth = ctx.measureText(badgeText).width + 60;
-        
-        ctx.fillStyle = 'rgba(34, 197, 94, 0.3)';
-        ctx.beginPath();
-        ctx.roundRect(
-          canvas.width / 2 - badgeWidth / 2 - 10,
-          badgeY - 20,
-          badgeWidth + 20,
-          45,
-          22
-        );
-        ctx.fill();
-        
-        ctx.strokeStyle = 'rgba(34, 197, 94, 0.6)';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        
-        ctx.fillStyle = '#22c55e';
-        ctx.fillText(`🌐 ${badgeText}`, canvas.width / 2, badgeY + 8);
+      // Draw event type badge - using percentage position (only if flag enabled)
+      if (config.showBadge) {
+        const badgeY = (config.badgePos.y / 100) * canvas.height;
+        if (config.eventType === 'private') {
+          const badgeText = 'EVENTO PRIVATO';
+          ctx.font = '500 24px "Inter", sans-serif';
+          const badgeWidth = ctx.measureText(badgeText).width + 60;
+          
+          ctx.fillStyle = 'rgba(255, 45, 146, 0.3)';
+          ctx.beginPath();
+          ctx.roundRect(
+            canvas.width / 2 - badgeWidth / 2 - 10,
+            badgeY - 20,
+            badgeWidth + 20,
+            45,
+            22
+          );
+          ctx.fill();
+          
+          ctx.strokeStyle = 'rgba(255, 45, 146, 0.6)';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          
+          ctx.fillStyle = style.accent;
+          ctx.fillText(`🔒 ${badgeText}`, canvas.width / 2, badgeY + 8);
+        } else {
+          const badgeText = 'EVENTO PUBBLICO';
+          ctx.font = '500 24px "Inter", sans-serif';
+          const badgeWidth = ctx.measureText(badgeText).width + 60;
+          
+          ctx.fillStyle = 'rgba(34, 197, 94, 0.3)';
+          ctx.beginPath();
+          ctx.roundRect(
+            canvas.width / 2 - badgeWidth / 2 - 10,
+            badgeY - 20,
+            badgeWidth + 20,
+            45,
+            22
+          );
+          ctx.fill();
+          
+          ctx.strokeStyle = 'rgba(34, 197, 94, 0.6)';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+          
+          ctx.fillStyle = '#22c55e';
+          ctx.fillText(`🌐 ${badgeText}`, canvas.width / 2, badgeY + 8);
+        }
       }
 
-      // Draw additional info - using percentage position
-      if (config.additionalInfo) {
+      // Draw additional info - using percentage position (only if flags enabled)
+      if (config.showInfo && config.additionalInfo) {
         const infoY = (config.infoPos.y / 100) * canvas.height;
         ctx.font = '400 24px "Inter", sans-serif';
         ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
@@ -700,11 +724,13 @@ export const EventPosterGeneratorCard: React.FC = () => {
         });
       }
 
-      // Draw footer branding - using percentage position
-      const footerY = (config.footerPos.y / 100) * canvas.height;
-      ctx.font = '500 28px "Inter", sans-serif';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-      ctx.fillText("NON C'È DUO • LIVE", canvas.width / 2, footerY);
+      // Draw footer branding - using percentage position (only if flag enabled)
+      if (config.showFooter) {
+        const footerY = (config.footerPos.y / 100) * canvas.height;
+        ctx.font = '500 28px "Inter", sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.fillText("NON C'È DUO • LIVE", canvas.width / 2, footerY);
+      }
 
       // Generate preview URL
       const url = canvas.toDataURL('image/png');
@@ -943,11 +969,11 @@ export const EventPosterGeneratorCard: React.FC = () => {
         <div className="space-y-4 p-4 rounded-xl bg-muted/30 border border-border/50">
           <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Elementi Brand</p>
           
-          {/* Element Toggles */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Element Toggles - Grid of all draggable elements */}
+          <div className="grid grid-cols-3 gap-2">
             <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
-              <Label htmlFor="poster-use-brand-logo" className="flex items-center gap-2 cursor-pointer text-sm">
-                <ImagePlus className="w-4 h-4 text-primary" />
+              <Label htmlFor="poster-use-brand-logo" className="flex items-center gap-1.5 cursor-pointer text-xs">
+                <ImagePlus className="w-3.5 h-3.5 text-primary" />
                 Logo
               </Label>
               <Switch
@@ -957,8 +983,8 @@ export const EventPosterGeneratorCard: React.FC = () => {
               />
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
-              <Label htmlFor="poster-show-splash" className="flex items-center gap-2 cursor-pointer text-sm">
-                <Sparkles className="w-4 h-4 text-secondary" />
+              <Label htmlFor="poster-show-splash" className="flex items-center gap-1.5 cursor-pointer text-xs">
+                <Sparkles className="w-3.5 h-3.5 text-secondary" />
                 Foto
               </Label>
               <Switch
@@ -967,9 +993,75 @@ export const EventPosterGeneratorCard: React.FC = () => {
                 onCheckedChange={(checked) => updateConfig('showSplash', checked)}
               />
             </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+              <Label htmlFor="poster-show-title" className="flex items-center gap-1.5 cursor-pointer text-xs">
+                <Type className="w-3.5 h-3.5 text-amber-500" />
+                Titolo
+              </Label>
+              <Switch
+                id="poster-show-title"
+                checked={config.showTitle}
+                onCheckedChange={(checked) => updateConfig('showTitle', checked)}
+              />
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+              <Label htmlFor="poster-show-venue" className="flex items-center gap-1.5 cursor-pointer text-xs">
+                <MapPin className="w-3.5 h-3.5 text-sky-500" />
+                Locale
+              </Label>
+              <Switch
+                id="poster-show-venue"
+                checked={config.showVenue}
+                onCheckedChange={(checked) => updateConfig('showVenue', checked)}
+              />
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+              <Label htmlFor="poster-show-datetime" className="flex items-center gap-1.5 cursor-pointer text-xs">
+                <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                Data/Ora
+              </Label>
+              <Switch
+                id="poster-show-datetime"
+                checked={config.showDatetime}
+                onCheckedChange={(checked) => updateConfig('showDatetime', checked)}
+              />
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+              <Label htmlFor="poster-show-badge" className="flex items-center gap-1.5 cursor-pointer text-xs">
+                <MessageSquare className="w-3.5 h-3.5 text-fuchsia-500" />
+                Badge
+              </Label>
+              <Switch
+                id="poster-show-badge"
+                checked={config.showBadge}
+                onCheckedChange={(checked) => updateConfig('showBadge', checked)}
+              />
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+              <Label htmlFor="poster-show-info" className="flex items-center gap-1.5 cursor-pointer text-xs">
+                <Info className="w-3.5 h-3.5 text-teal-500" />
+                Info
+              </Label>
+              <Switch
+                id="poster-show-info"
+                checked={config.showInfo}
+                onCheckedChange={(checked) => updateConfig('showInfo', checked)}
+              />
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+              <Label htmlFor="poster-show-footer" className="flex items-center gap-1.5 cursor-pointer text-xs">
+                <AlignCenter className="w-3.5 h-3.5 text-slate-500" />
+                Footer
+              </Label>
+              <Switch
+                id="poster-show-footer"
+                checked={config.showFooter}
+                onCheckedChange={(checked) => updateConfig('showFooter', checked)}
+              />
+            </div>
           </div>
 
-          {/* Draggable Preview - ALL elements are draggable */}
+          {/* Draggable Preview - ONLY enabled elements are shown */}
           <DraggablePreview
             width={IMAGE_FORMATS[config.imageFormat].width}
             height={IMAGE_FORMATS[config.imageFormat].height}
@@ -978,12 +1070,12 @@ export const EventPosterGeneratorCard: React.FC = () => {
             elements={[
               { id: 'logo', label: 'Logo', x: config.logoPos.x, y: config.logoPos.y, enabled: config.useBrandLogo },
               { id: 'foto', label: 'Foto', x: config.fotoPos.x, y: config.fotoPos.y, enabled: config.showSplash },
-              { id: 'title', label: 'Titolo', x: config.titlePos.x, y: config.titlePos.y, enabled: !config.useBrandLogo },
-              { id: 'venue', label: 'Locale', x: config.venuePos.x, y: config.venuePos.y, enabled: !!config.venueName },
-              { id: 'datetime', label: 'Data/Ora', x: config.datetimePos.x, y: config.datetimePos.y, enabled: !!(config.eventDate || config.eventTime) },
-              { id: 'cta', label: 'Badge', x: config.badgePos.x, y: config.badgePos.y, enabled: true },
-              { id: 'info', label: 'Info', x: config.infoPos.x, y: config.infoPos.y, enabled: !!config.additionalInfo },
-              { id: 'footer', label: 'Footer', x: config.footerPos.x, y: config.footerPos.y, enabled: true },
+              { id: 'title', label: 'Titolo', x: config.titlePos.x, y: config.titlePos.y, enabled: config.showTitle && !config.useBrandLogo },
+              { id: 'venue', label: 'Locale', x: config.venuePos.x, y: config.venuePos.y, enabled: config.showVenue && !!config.venueName },
+              { id: 'datetime', label: 'Data/Ora', x: config.datetimePos.x, y: config.datetimePos.y, enabled: config.showDatetime && !!(config.eventDate || config.eventTime) },
+              { id: 'cta', label: 'Badge', x: config.badgePos.x, y: config.badgePos.y, enabled: config.showBadge },
+              { id: 'info', label: 'Info', x: config.infoPos.x, y: config.infoPos.y, enabled: config.showInfo && !!config.additionalInfo },
+              { id: 'footer', label: 'Footer', x: config.footerPos.x, y: config.footerPos.y, enabled: config.showFooter },
             ]}
             onElementMove={(id, x, y) => {
               if (id === 'logo') updateConfig('logoPos', { x, y });

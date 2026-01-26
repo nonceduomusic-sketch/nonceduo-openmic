@@ -20,6 +20,9 @@ import {
   Type,
   QrCode,
   ImagePlus,
+  MessageSquare,
+  Info,
+  AlignCenter,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -67,6 +70,12 @@ interface EventStoryConfig {
   additionalInfo: string;
   useBrandLogo: boolean;
   showSplash: boolean;
+  showTitle: boolean;      // Independent flag for title text
+  showVenue: boolean;      // Independent flag for venue
+  showDatetime: boolean;   // Independent flag for datetime
+  showBadge: boolean;      // Independent flag for event badge
+  showInfo: boolean;       // Independent flag for additional info
+  showFooter: boolean;     // Independent flag for footer
   // Percentage-based positions for drag & drop (0-100)
   fotoPos: PercentPosition;
   logoPos: PercentPosition;
@@ -100,6 +109,12 @@ const DEFAULT_CONFIG: EventStoryConfig = {
   additionalInfo: '',
   useBrandLogo: true,
   showSplash: false,
+  showTitle: true,
+  showVenue: true,
+  showDatetime: true,
+  showBadge: true,
+  showInfo: false,
+  showFooter: true,
   // Default positions for all draggable elements
   fotoPos: { x: 50, y: 45 },
   logoPos: { x: 50, y: 12 },
@@ -223,6 +238,13 @@ const deserializeConfig = (json: string): EventStoryConfig | null => {
       infoPos: parsed.infoPos ?? DEFAULT_CONFIG.infoPos,
       footerPos: parsed.footerPos ?? DEFAULT_CONFIG.footerPos,
       elementMargin: parsed.elementMargin ?? DEFAULT_CONFIG.elementMargin,
+      // Element visibility flags with defaults
+      showTitle: parsed.showTitle ?? DEFAULT_CONFIG.showTitle,
+      showVenue: parsed.showVenue ?? DEFAULT_CONFIG.showVenue,
+      showDatetime: parsed.showDatetime ?? DEFAULT_CONFIG.showDatetime,
+      showBadge: parsed.showBadge ?? DEFAULT_CONFIG.showBadge,
+      showInfo: parsed.showInfo ?? DEFAULT_CONFIG.showInfo,
+      showFooter: parsed.showFooter ?? DEFAULT_CONFIG.showFooter,
     };
   } catch {
     return null;
@@ -536,8 +558,8 @@ export const EventStoryGeneratorCard: React.FC = () => {
           ctx.fillText("NON C'È DUO", canvas.width / 2, currentY);
           currentY += lineHeight;
         }
-      } else {
-        // Draw text title using percentage position
+      } else if (config.showTitle) {
+        // Draw text title using percentage position (only if flag enabled)
         const titleY = (config.titlePos.y / 100) * canvas.height;
         
         ctx.fillStyle = '#ffffff';
@@ -557,8 +579,8 @@ export const EventStoryGeneratorCard: React.FC = () => {
         ctx.shadowBlur = 0;
       }
 
-      // Draw venue name as subtitle - using percentage position
-      if (config.venueName) {
+      // Draw venue name as subtitle - using percentage position (only if flags enabled)
+      if (config.showVenue && config.venueName) {
         const venueY = (config.venuePos.y / 100) * canvas.height;
         const venueSize = Math.round(titleSize * 0.55);
         ctx.font = `500 ${venueSize}px "Inter", sans-serif`;
@@ -588,8 +610,8 @@ export const EventStoryGeneratorCard: React.FC = () => {
         });
       }
 
-      // Draw decorative line below venue (if venue exists, otherwise skip)
-      if (config.venueName) {
+      // Draw decorative line below venue (if venue is shown)
+      if (config.showVenue && config.venueName) {
         const venueY = (config.venuePos.y / 100) * canvas.height;
         const lineY = venueY + (isCompact ? 50 : 70);
         const lineGradient = ctx.createLinearGradient(200, lineY, canvas.width - 200, lineY);
@@ -605,62 +627,66 @@ export const EventStoryGeneratorCard: React.FC = () => {
         ctx.stroke();
       }
 
-      // Draw date/time block - using percentage position
-      const datetimeY = (config.datetimePos.y / 100) * canvas.height;
-      let dtCurrentY = datetimeY;
-      
-      if (config.eventDate) {
-        const formattedDate = format(config.eventDate, "EEEE d MMMM", { locale: it });
-        const formattedDateUpper = formattedDate.toUpperCase();
+      // Draw date/time block - using percentage position (only if flag enabled)
+      if (config.showDatetime && (config.eventDate || config.eventTime)) {
+        const datetimeY = (config.datetimePos.y / 100) * canvas.height;
+        let dtCurrentY = datetimeY;
         
-        ctx.font = `600 ${dateSize}px "Orbitron", sans-serif`;
-        ctx.fillStyle = style.accent;
-        if (config.stylePreset === 'neon' && !aiGeneratedBg) {
-          ctx.shadowColor = style.accent;
-          ctx.shadowBlur = 20;
+        if (config.eventDate) {
+          const formattedDate = format(config.eventDate, "EEEE d MMMM", { locale: it });
+          const formattedDateUpper = formattedDate.toUpperCase();
+          
+          ctx.font = `600 ${dateSize}px "Orbitron", sans-serif`;
+          ctx.fillStyle = style.accent;
+          if (config.stylePreset === 'neon' && !aiGeneratedBg) {
+            ctx.shadowColor = style.accent;
+            ctx.shadowBlur = 20;
+          }
+          ctx.fillText(formattedDateUpper, canvas.width / 2, dtCurrentY);
+          dtCurrentY += isCompact ? 45 : 60;
+          
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
         }
-        ctx.fillText(formattedDateUpper, canvas.width / 2, dtCurrentY);
-        dtCurrentY += isCompact ? 45 : 60;
         
-        ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
-      }
-      
-      if (config.eventTime) {
-        ctx.font = `500 ${timeSize}px "Inter", sans-serif`;
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.fillText(`ORE ${config.eventTime}`, canvas.width / 2, dtCurrentY);
+        if (config.eventTime) {
+          ctx.font = `500 ${timeSize}px "Inter", sans-serif`;
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.fillText(`ORE ${config.eventTime}`, canvas.width / 2, dtCurrentY);
+        }
       }
 
-      // Draw event type badge - using percentage position
-      const badgeY = (config.badgePos.y / 100) * canvas.height;
-      const badgeText = config.eventType === 'public' ? 'EVENTO PUBBLICO' : 'EVENTO PRIVATO';
-      const badgeIcon = config.eventType === 'public' ? '🌐' : '🔒';
-      
-      ctx.font = `600 ${badgeSize}px "Inter", sans-serif`;
-      const badgeWidth = ctx.measureText(badgeText).width + 100;
-      
-      ctx.fillStyle = config.eventType === 'public' 
-        ? 'rgba(34, 197, 94, 0.2)' 
-        : 'rgba(255, 45, 146, 0.2)';
-      ctx.beginPath();
-      ctx.roundRect(
-        canvas.width / 2 - badgeWidth / 2 - 20,
-        badgeY - 35,
-        badgeWidth + 40,
-        70,
-        35
-      );
-      ctx.fill();
-      
-      ctx.strokeStyle = config.eventType === 'public' 
-        ? 'rgba(34, 197, 94, 0.5)' 
-        : 'rgba(255, 45, 146, 0.5)';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      
-      ctx.fillStyle = config.eventType === 'public' ? '#22c55e' : style.accent;
-      ctx.fillText(`${badgeIcon}  ${badgeText}`, canvas.width / 2, badgeY + 12);
+      // Draw event type badge - using percentage position (only if flag enabled)
+      if (config.showBadge) {
+        const badgeY = (config.badgePos.y / 100) * canvas.height;
+        const badgeText = config.eventType === 'public' ? 'EVENTO PUBBLICO' : 'EVENTO PRIVATO';
+        const badgeIcon = config.eventType === 'public' ? '🌐' : '🔒';
+        
+        ctx.font = `600 ${badgeSize}px "Inter", sans-serif`;
+        const badgeWidth = ctx.measureText(badgeText).width + 100;
+        
+        ctx.fillStyle = config.eventType === 'public' 
+          ? 'rgba(34, 197, 94, 0.2)' 
+          : 'rgba(255, 45, 146, 0.2)';
+        ctx.beginPath();
+        ctx.roundRect(
+          canvas.width / 2 - badgeWidth / 2 - 20,
+          badgeY - 35,
+          badgeWidth + 40,
+          70,
+          35
+        );
+        ctx.fill();
+        
+        ctx.strokeStyle = config.eventType === 'public' 
+          ? 'rgba(34, 197, 94, 0.5)' 
+          : 'rgba(255, 45, 146, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        ctx.fillStyle = config.eventType === 'public' ? '#22c55e' : style.accent;
+        ctx.fillText(`${badgeIcon}  ${badgeText}`, canvas.width / 2, badgeY + 12);
+      }
 
       // Draw secret PIN teaser OR QR code section
       // Calculate QR size first to determine section height
@@ -791,9 +817,8 @@ export const EventStoryGeneratorCard: React.FC = () => {
         ctx.shadowBlur = 0;
       }
 
-      // Draw additional info - using percentage position
-      const additionalInfoText = config.additionalInfo || '';
-      if (additionalInfoText.trim()) {
+      // Draw additional info - using percentage position (only if flag enabled)
+      if (config.showInfo && config.additionalInfo?.trim()) {
         const infoY = (config.infoPos.y / 100) * canvas.height;
         ctx.font = `500 ${subtitleSize}px "Inter", sans-serif`;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
@@ -801,7 +826,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
         
         // Word wrap additional info
         const maxInfoWidth = canvas.width - 160;
-        const infoWords = additionalInfoText.split(' ');
+        const infoWords = config.additionalInfo.split(' ');
         let infoLines: string[] = [];
         let currentInfoLine = '';
         
@@ -824,12 +849,14 @@ export const EventStoryGeneratorCard: React.FC = () => {
         });
       }
 
-      // Draw footer branding - using percentage position
-      const footerY = (config.footerPos.y / 100) * canvas.height;
-      const brandingSize = isCompact ? 28 : 36;
-      ctx.font = `500 ${brandingSize}px "Inter", sans-serif`;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-      ctx.fillText("NON C'È DUO • LIVE", canvas.width / 2, footerY);
+      // Draw footer branding - using percentage position (only if flag enabled)
+      if (config.showFooter) {
+        const footerY = (config.footerPos.y / 100) * canvas.height;
+        const brandingSize = isCompact ? 28 : 36;
+        ctx.font = `500 ${brandingSize}px "Inter", sans-serif`;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.fillText("NON C'È DUO • LIVE", canvas.width / 2, footerY);
+      }
 
       const url = canvas.toDataURL('image/png');
       setPreviewUrl(url);
@@ -1019,11 +1046,11 @@ export const EventStoryGeneratorCard: React.FC = () => {
         <div className="space-y-4 p-4 rounded-xl bg-muted/30 border border-border/50">
           <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Elementi Brand</p>
           
-          {/* Element Toggles */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Element Toggles - Grid of all draggable elements */}
+          <div className="grid grid-cols-3 gap-2">
             <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
-              <Label htmlFor="use-brand-logo" className="flex items-center gap-2 cursor-pointer text-sm">
-                <ImagePlus className="w-4 h-4 text-primary" />
+              <Label htmlFor="use-brand-logo" className="flex items-center gap-1.5 cursor-pointer text-xs">
+                <ImagePlus className="w-3.5 h-3.5 text-primary" />
                 Logo
               </Label>
               <Switch
@@ -1033,8 +1060,8 @@ export const EventStoryGeneratorCard: React.FC = () => {
               />
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
-              <Label htmlFor="show-splash" className="flex items-center gap-2 cursor-pointer text-sm">
-                <Sparkles className="w-4 h-4 text-secondary" />
+              <Label htmlFor="show-splash" className="flex items-center gap-1.5 cursor-pointer text-xs">
+                <Sparkles className="w-3.5 h-3.5 text-secondary" />
                 Foto
               </Label>
               <Switch
@@ -1043,9 +1070,75 @@ export const EventStoryGeneratorCard: React.FC = () => {
                 onCheckedChange={(checked) => updateConfig('showSplash', checked)}
               />
             </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+              <Label htmlFor="show-title" className="flex items-center gap-1.5 cursor-pointer text-xs">
+                <Type className="w-3.5 h-3.5 text-amber-500" />
+                Titolo
+              </Label>
+              <Switch
+                id="show-title"
+                checked={config.showTitle}
+                onCheckedChange={(checked) => updateConfig('showTitle', checked)}
+              />
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+              <Label htmlFor="show-venue" className="flex items-center gap-1.5 cursor-pointer text-xs">
+                <MapPin className="w-3.5 h-3.5 text-sky-500" />
+                Locale
+              </Label>
+              <Switch
+                id="show-venue"
+                checked={config.showVenue}
+                onCheckedChange={(checked) => updateConfig('showVenue', checked)}
+              />
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+              <Label htmlFor="show-datetime" className="flex items-center gap-1.5 cursor-pointer text-xs">
+                <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                Data/Ora
+              </Label>
+              <Switch
+                id="show-datetime"
+                checked={config.showDatetime}
+                onCheckedChange={(checked) => updateConfig('showDatetime', checked)}
+              />
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+              <Label htmlFor="show-badge" className="flex items-center gap-1.5 cursor-pointer text-xs">
+                <MessageSquare className="w-3.5 h-3.5 text-fuchsia-500" />
+                Badge
+              </Label>
+              <Switch
+                id="show-badge"
+                checked={config.showBadge}
+                onCheckedChange={(checked) => updateConfig('showBadge', checked)}
+              />
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+              <Label htmlFor="show-info" className="flex items-center gap-1.5 cursor-pointer text-xs">
+                <Info className="w-3.5 h-3.5 text-teal-500" />
+                Info
+              </Label>
+              <Switch
+                id="show-info"
+                checked={config.showInfo}
+                onCheckedChange={(checked) => updateConfig('showInfo', checked)}
+              />
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+              <Label htmlFor="show-footer" className="flex items-center gap-1.5 cursor-pointer text-xs">
+                <AlignCenter className="w-3.5 h-3.5 text-slate-500" />
+                Footer
+              </Label>
+              <Switch
+                id="show-footer"
+                checked={config.showFooter}
+                onCheckedChange={(checked) => updateConfig('showFooter', checked)}
+              />
+            </div>
           </div>
 
-          {/* Draggable Preview - ALL elements are draggable */}
+          {/* Draggable Preview - ONLY enabled elements are shown */}
           <DraggablePreview
             width={IMAGE_FORMATS[config.imageFormat].width}
             height={IMAGE_FORMATS[config.imageFormat].height}
@@ -1054,13 +1147,13 @@ export const EventStoryGeneratorCard: React.FC = () => {
             elements={[
               { id: 'logo', label: 'Logo', x: config.logoPos.x, y: config.logoPos.y, enabled: config.useBrandLogo },
               { id: 'foto', label: 'Foto', x: config.fotoPos.x, y: config.fotoPos.y, enabled: config.showSplash },
-              { id: 'title', label: 'Titolo', x: config.titlePos.x, y: config.titlePos.y, enabled: !config.useBrandLogo },
-              { id: 'venue', label: 'Locale', x: config.venuePos.x, y: config.venuePos.y, enabled: !!config.venueName },
-              { id: 'datetime', label: 'Data/Ora', x: config.datetimePos.x, y: config.datetimePos.y, enabled: !!(config.eventDate || config.eventTime) },
+              { id: 'title', label: 'Titolo', x: config.titlePos.x, y: config.titlePos.y, enabled: config.showTitle && !config.useBrandLogo },
+              { id: 'venue', label: 'Locale', x: config.venuePos.x, y: config.venuePos.y, enabled: config.showVenue && !!config.venueName },
+              { id: 'datetime', label: 'Data/Ora', x: config.datetimePos.x, y: config.datetimePos.y, enabled: config.showDatetime && !!(config.eventDate || config.eventTime) },
               { id: 'qr', label: 'QR', x: config.qrPos.x, y: config.qrPos.y, enabled: config.showQrCode },
-              { id: 'cta', label: 'Badge', x: config.badgePos.x, y: config.badgePos.y, enabled: true },
-              { id: 'info', label: 'Info', x: config.infoPos.x, y: config.infoPos.y, enabled: !!config.additionalInfo },
-              { id: 'footer', label: 'Footer', x: config.footerPos.x, y: config.footerPos.y, enabled: true },
+              { id: 'cta', label: 'Badge', x: config.badgePos.x, y: config.badgePos.y, enabled: config.showBadge },
+              { id: 'info', label: 'Info', x: config.infoPos.x, y: config.infoPos.y, enabled: config.showInfo && !!config.additionalInfo },
+              { id: 'footer', label: 'Footer', x: config.footerPos.x, y: config.footerPos.y, enabled: config.showFooter },
             ]}
             onElementMove={(id, x, y) => {
               if (id === 'logo') updateConfig('logoPos', { x, y });
