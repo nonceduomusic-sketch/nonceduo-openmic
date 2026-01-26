@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Calendar, 
   Zap,
@@ -15,12 +15,16 @@ import {
   MessageSquare,
   Sparkles,
   RotateCcw,
+  Trophy,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,6 +54,8 @@ import { EventClosureConfig } from './EventClosureConfig';
 import { EventStatusControl } from './EventStatusControl';
 import { EventPinConfig } from './EventPinConfig';
 import { EventTypeSelector } from './EventTypeSelector';
+import { EventTimingConfig } from './EventTimingConfig';
+import { UserLimitsConfig } from './UserLimitsConfig';
 import { FreeModeFullPanel } from './FreeModeFullPanel';
 
 /**
@@ -81,9 +87,39 @@ export const AdminEventiTab: React.FC = () => {
   // Hook per eventi liberi
   const { isActive: isFreeModeActive } = useFreeModeActive();
 
-  const [activeSection, setActiveSection] = useState<'status' | 'window' | 'limits' | 'reopen' | 'closure'>('status');
+  const [activeSection, setActiveSection] = useState<'general' | 'timing' | 'limits' | 'user' | 'pin' | 'reopen' | 'closure'>('general');
   const [isSaving, setIsSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [tempName, setTempName] = useState(rules?.event_name || 'Nuovo Evento');
+
+  // Sync tempName when rules load or change
+  useEffect(() => {
+    if (rules?.event_name) {
+      setTempName(rules.event_name);
+    }
+  }, [rules?.event_name]);
+
+  // Timing settings adapter for EventTimingConfig (used in scheduled events)
+  const timingSettings = useMemo(() => ({
+    start_mode: 'scheduled' as const,
+    end_mode: rules?.event_end_time ? 'scheduled' as const : 'manual' as const,
+    event_date: rules?.event_date || null,
+    event_start_time: rules?.event_start_time || null,
+    event_end_time: rules?.event_end_time || null,
+    duration_minutes: null,
+    expires_at: null,
+    countdown_start_show_minutes: (rules as any)?.countdown_start_show_minutes ?? null,
+    countdown_end_show_minutes: (rules as any)?.countdown_end_show_minutes ?? null,
+  }), [rules]);
+
+  // Handler for timing updates
+  const handleTimingUpdate = async (updates: any): Promise<boolean> => {
+    return await updateRules({
+      event_date: updates.event_date,
+      event_start_time: updates.event_start_time,
+      event_end_time: updates.event_end_time,
+    } as any);
+  };
 
   const loading = loadingScheduled;
 
@@ -447,31 +483,41 @@ export const AdminEventiTab: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {/* Tabs di configurazione */}
+              {/* Tabs di configurazione - IDENTICI a Evento Libero */}
               <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as typeof activeSection)}>
-                <TabsList className="grid w-full grid-cols-5">
-                  <TabsTrigger value="status" className="text-xs sm:text-sm">
-                    Stato
-                  </TabsTrigger>
-                  <TabsTrigger value="window" className="text-xs sm:text-sm">
-                    Finestra
-                  </TabsTrigger>
-                  <TabsTrigger value="limits" className="text-xs sm:text-sm">
-                    Limiti
-                  </TabsTrigger>
-                  <TabsTrigger value="reopen" className="text-xs sm:text-sm">
-                    Riapertura
-                  </TabsTrigger>
-                  <TabsTrigger value="closure" className="text-xs sm:text-sm">
-                    Chiusura
-                  </TabsTrigger>
+                <TabsList className="grid w-full grid-cols-3 sm:grid-cols-7 gap-1 h-auto p-1">
+                  <TabsTrigger value="general" className="text-xs py-2">Generale</TabsTrigger>
+                  <TabsTrigger value="timing" className="text-xs py-2">Tempi</TabsTrigger>
+                  <TabsTrigger value="limits" className="text-xs py-2">Limiti</TabsTrigger>
+                  <TabsTrigger value="user" className="text-xs py-2">Utente</TabsTrigger>
+                  <TabsTrigger value="pin" className="text-xs py-2">PIN</TabsTrigger>
+                  <TabsTrigger value="reopen" className="text-xs py-2">Riapri</TabsTrigger>
+                  <TabsTrigger value="closure" className="text-xs py-2">Chiusura</TabsTrigger>
                 </TabsList>
 
-                <TabsContent value="status" className="mt-4 space-y-4">
+                {/* GENERALE TAB - Nome, Stato, Formati */}
+                <TabsContent value="general" className="mt-4 space-y-4">
+                  {/* Event Name */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Nome Evento</Label>
+                    <Input
+                      value={tempName}
+                      onChange={(e) => setTempName(e.target.value)}
+                      onBlur={() => {
+                        if (tempName !== rules.event_name) {
+                          updateRules({ event_name: tempName });
+                        }
+                      }}
+                      placeholder="Es: Serata Karaoke"
+                      className="h-10"
+                    />
+                  </div>
+
+                  {/* Event Status Control */}
                   <Card>
                     <CardHeader className="pb-3">
-                      <CardTitle>Stato Evento</CardTitle>
-                      <CardDescription>
+                      <CardTitle className="text-base">Stato Evento</CardTitle>
+                      <CardDescription className="text-xs">
                         Gestisci il ciclo di vita: Bozza → Pronto → LIVE → Chiuso
                       </CardDescription>
                     </CardHeader>
@@ -483,7 +529,87 @@ export const AdminEventiTab: React.FC = () => {
                       />
                     </CardContent>
                   </Card>
+
+                  {/* Format Toggles + Type selector */}
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Formati Attivi</Label>
+                    <div className="grid grid-cols-1 gap-2">
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border">
+                        <div className="flex items-center gap-2">
+                          <Music className="w-4 h-4 text-primary" />
+                          <span className="text-sm">Open Mic</span>
+                        </div>
+                        <Switch
+                          checked={rules.openmic_enabled ?? true}
+                          onCheckedChange={(checked) => updateRules({ openmic_enabled: checked })}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border">
+                        <div className="flex items-center gap-2">
+                          <MessageSquare className="w-4 h-4 text-secondary" />
+                          <span className="text-sm">Dediche</span>
+                        </div>
+                        <Switch
+                          checked={rules.dediche_enabled ?? true}
+                          onCheckedChange={(checked) => updateRules({ dediche_enabled: checked })}
+                        />
+                      </div>
+                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border">
+                        <div className="flex items-center gap-2">
+                          <Trophy className="w-4 h-4 text-warning" />
+                          <span className="text-sm">Votazioni Pubblico</span>
+                        </div>
+                        <Switch
+                          checked={rules.voting_enabled ?? true}
+                          onCheckedChange={(checked) => updateRules({ voting_enabled: checked })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Event Type Selector (per event specifico) */}
                   <EventTypeSelector rules={rules} onUpdate={updateRules} />
+                </TabsContent>
+
+                {/* TEMPI TAB */}
+                <TabsContent value="timing" className="mt-4 space-y-4">
+                  <EventTimingConfig 
+                    settings={timingSettings} 
+                    isActive={rules.event_status === 'live'}
+                    onUpdate={handleTimingUpdate}
+                  />
+                  {/* Finestra prenotazioni (opzionale, come in Evento Libero) */}
+                  <EventBookingWindowConfig rules={rules} onUpdate={updateRules} />
+                </TabsContent>
+
+                {/* LIMITI TAB */}
+                <TabsContent value="limits" className="mt-4">
+                  <EventLimitsConfig rules={rules} onUpdate={updateRules} />
+                </TabsContent>
+
+                {/* UTENTE TAB */}
+                <TabsContent value="user" className="mt-4">
+                  <UserLimitsConfig 
+                    settings={{
+                      user_limit_enabled: (rules as any)?.user_limit_enabled ?? false,
+                      user_limit_mode: ((rules as any)?.user_limit_mode as 'session' | 'session_name') ?? 'session',
+                      user_limit_songs_total: (rules as any)?.user_limit_songs_total ?? null,
+                      user_limit_dediche_total: (rules as any)?.user_limit_dediche_total ?? null,
+                      user_limit_songs_interval: (rules as any)?.user_limit_songs_interval ?? null,
+                      user_limit_interval_minutes: (rules as any)?.user_limit_interval_minutes ?? null,
+                      user_limit_consecutive_songs: (rules as any)?.user_limit_consecutive_songs ?? null,
+                      user_limit_cooldown_message: (rules as any)?.user_limit_cooldown_message ?? 'Hai superato il limite di prenotazioni.',
+                    }}
+                    onUpdate={async (updates) => {
+                      const success = await updateRules(updates as any);
+                      return success;
+                    }}
+                    entityId={rules.id}
+                  />
+                </TabsContent>
+
+                {/* PIN TAB */}
+                <TabsContent value="pin" className="mt-4">
                   <EventPinConfig 
                     rules={rules} 
                     onUpdate={updateRules}
@@ -491,18 +617,12 @@ export const AdminEventiTab: React.FC = () => {
                   />
                 </TabsContent>
 
-                <TabsContent value="window" className="mt-4">
-                  <EventBookingWindowConfig rules={rules} onUpdate={updateRules} />
-                </TabsContent>
-
-                <TabsContent value="limits" className="mt-4">
-                  <EventLimitsConfig rules={rules} onUpdate={updateRules} />
-                </TabsContent>
-
+                {/* RIAPRI TAB */}
                 <TabsContent value="reopen" className="mt-4">
                   <EventReopenControl rules={rules} onUpdate={updateRules} />
                 </TabsContent>
 
+                {/* CHIUSURA TAB */}
                 <TabsContent value="closure" className="mt-4">
                   <EventClosureConfig rules={rules} onUpdate={updateRules} />
                 </TabsContent>
