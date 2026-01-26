@@ -538,13 +538,13 @@ export const EventPosterGeneratorCard: React.FC = () => {
 
       // Draw branding at bottom (only for bottom/center positions)
       if (config.overlayPosition !== 'top') {
-        ctx.font = '400 20px "Inter", sans-serif';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.fillText('NONCE DUO • LIVE MUSIC', canvas.width / 2, canvas.height - 30);
+        ctx.font = '500 28px "Inter", sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.fillText("NON C'È DUO • LIVE", canvas.width / 2, canvas.height - 35);
       } else {
-        ctx.font = '400 20px "Inter", sans-serif';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.fillText('NONCE DUO • LIVE MUSIC', canvas.width / 2, 40);
+        ctx.font = '500 28px "Inter", sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.fillText("NON C'È DUO • LIVE", canvas.width / 2, 50);
       }
 
       // Generate preview URL
