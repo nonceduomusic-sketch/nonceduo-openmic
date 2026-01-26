@@ -152,6 +152,10 @@ export const useFreeModeSettings = () => {
         .eq('id', settings.id);
 
       if (updateError) throw updateError;
+      
+      // Aggiorna lo stato locale immediatamente per una UI reattiva
+      setSettings(prev => prev ? { ...prev, ...finalUpdates } : prev);
+      
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Errore aggiornamento');
