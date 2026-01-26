@@ -432,26 +432,45 @@ export const EventPosterGeneratorCard: React.FC = () => {
       // Draw brand title - logo, text, and/or splash (independent)
       let currentY = textCenterY - 80;
       
-      // Draw splash paint FIRST if enabled (behind everything, independent of logo)
+      // Draw "Foto" (duo photo) FIRST if enabled - centered and proportional
       if (config.showSplash) {
         try {
-          const splashImg = new Image();
+          const fotoImg = new Image();
           await new Promise<void>((resolve, reject) => {
-            splashImg.onload = () => resolve();
-            splashImg.onerror = reject;
-            splashImg.src = brandLogoSplash;
+            fotoImg.onload = () => resolve();
+            fotoImg.onerror = reject;
+            fotoImg.src = brandLogoSplash;
           });
           
-          const splashSize = 280;
-          const splashX = (canvas.width - splashSize) / 2;
-          const splashY = currentY - splashSize / 2 - 10;
+          // Calculate proportional size maintaining aspect ratio
+          const fotoAspect = fotoImg.width / fotoImg.height;
+          const maxFotoHeight = config.imageFormat === 'story' ? 400 : (config.imageFormat === 'portrait' ? 350 : 300);
+          const maxFotoWidth = canvas.width - 120;
           
-          // Splash has transparent bg, just draw with slight opacity
-          ctx.globalAlpha = 0.5;
-          ctx.drawImage(splashImg, splashX, splashY, splashSize, splashSize);
+          let fotoWidth, fotoHeight;
+          if (fotoAspect > 1) {
+            // Wider than tall
+            fotoWidth = Math.min(maxFotoWidth, maxFotoHeight * fotoAspect);
+            fotoHeight = fotoWidth / fotoAspect;
+          } else {
+            // Taller than wide
+            fotoHeight = maxFotoHeight;
+            fotoWidth = fotoHeight * fotoAspect;
+            if (fotoWidth > maxFotoWidth) {
+              fotoWidth = maxFotoWidth;
+              fotoHeight = fotoWidth / fotoAspect;
+            }
+          }
+          
+          const fotoX = (canvas.width - fotoWidth) / 2;
+          const fotoY = currentY - fotoHeight / 2;
+          
+          // Draw with slight opacity for blending
+          ctx.globalAlpha = 0.65;
+          ctx.drawImage(fotoImg, fotoX, fotoY, fotoWidth, fotoHeight);
           ctx.globalAlpha = 1;
         } catch (e) {
-          console.error('Failed to load splash:', e);
+          console.error('Failed to load foto:', e);
         }
       }
       
@@ -640,22 +659,44 @@ export const EventPosterGeneratorCard: React.FC = () => {
     }
   }, [config, aiGeneratedBg, toast, generateAIBackground]);
 
-  const downloadImage = useCallback(() => {
+  const downloadImage = useCallback(async () => {
     if (!previewUrl) return;
 
     const formatConfig = IMAGE_FORMATS[config.imageFormat];
     const dateStr = config.eventDate ? format(config.eventDate, 'yyyy-MM-dd') : 'evento';
     const nameStr = config.venueName ? config.venueName.toLowerCase().replace(/\s+/g, '-') : 'locandina';
+    const fileName = `poster-${nameStr}-${dateStr}-${formatConfig.width}x${formatConfig.height}.png`;
     
-    const link = document.createElement('a');
-    link.download = `poster-${nameStr}-${dateStr}-${formatConfig.width}x${formatConfig.height}.png`;
-    link.href = previewUrl;
-    link.click();
+    try {
+      // Convert base64 to blob for better mobile compatibility
+      const response = await fetch(previewUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.download = fileName;
+      link.href = blobUrl;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Cleanup blob URL after a delay
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
 
-    toast({
-      title: 'Download avviato',
-      description: 'La locandina è stata scaricata.',
-    });
+      toast({
+        title: 'Download avviato',
+        description: 'La locandina è stata scaricata.',
+      });
+    } catch (error) {
+      console.error('Download error:', error);
+      // Fallback: open in new tab for manual save
+      window.open(previewUrl, '_blank');
+      toast({
+        title: 'Aperto in nuova scheda',
+        description: 'Tieni premuto sull\'immagine per salvarla.',
+      });
+    }
   }, [previewUrl, config, toast]);
 
   const hasBackground = config.uploadedImage || aiGeneratedBg;
@@ -851,11 +892,11 @@ export const EventPosterGeneratorCard: React.FC = () => {
             Logo "NON C'È DUO" colorato (sfondo trasparente)
           </p>
           
-          {/* Splash Toggle - Independent */}
+          {/* Foto Toggle - Independent */}
           <div className="flex items-center justify-between pt-2 border-t border-border/50">
             <Label htmlFor="poster-show-splash" className="flex items-center gap-2 cursor-pointer">
               <Sparkles className="w-4 h-4" />
-              <span>Splash Paint</span>
+              <span>Foto</span>
             </Label>
             <Switch
               id="poster-show-splash"
@@ -864,7 +905,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
             />
           </div>
           <p className="text-xs text-muted-foreground -mt-1">
-            Effetto paint decorativo (sfondo trasparente)
+            Foto del duo, centrata e proporzionata
           </p>
         </div>
 
