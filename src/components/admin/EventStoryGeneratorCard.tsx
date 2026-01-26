@@ -79,9 +79,9 @@ const DEFAULT_CONFIG: EventStoryConfig = {
 };
 
 const QR_SIZES: Record<QrSize, { label: string; scale: number }> = {
-  small: { label: 'Piccolo', scale: 0.7 },
+  small: { label: 'Piccolo', scale: 0.6 },
   medium: { label: 'Medio', scale: 1 },
-  large: { label: 'Grande', scale: 1.4 },
+  large: { label: 'Grande', scale: 1.6 },
 };
 
 const QR_POSITIONS: Record<QrPosition, { label: string }> = {
@@ -526,12 +526,17 @@ export const EventStoryGeneratorCard: React.FC = () => {
         // Generate and draw QR code
         const baseUrl = 'https://nonceduo-openmic.lovable.app';
         const appUrl = baseUrl + QR_DESTINATIONS[config.qrDestination].path;
-        const baseQrSize = isCompact ? 120 : 160;
-        const qrSize = Math.round(baseQrSize * QR_SIZES[config.qrSize].scale);
+        // Base sizes more differentiated for visible impact
+        const baseQrSize = isCompact ? 100 : 140;
+        const sizeScale = QR_SIZES[config.qrSize].scale;
+        const qrSize = Math.round(baseQrSize * sizeScale);
+        
+        console.log(`[QR] Size: ${config.qrSize}, Scale: ${sizeScale}, Final: ${qrSize}px`);
         
         try {
+          // Generate QR at higher resolution for quality, then draw scaled
           const qrDataUrl = await QRCode.toDataURL(appUrl, {
-            width: qrSize,
+            width: 256, // High res source
             margin: 1,
             color: {
               dark: '#ffffff',
