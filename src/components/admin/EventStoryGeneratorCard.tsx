@@ -412,26 +412,45 @@ export const EventStoryGeneratorCard: React.FC = () => {
       // Draw brand title - logo, text, and/or splash (independent)
       let currentY = titleStartY;
       
-      // Draw splash paint FIRST if enabled (behind everything, independent of logo)
+      // Draw "Foto" (duo photo) FIRST if enabled - centered and proportional
       if (config.showSplash) {
         try {
-          const splashImg = new Image();
+          const fotoImg = new Image();
           await new Promise<void>((resolve, reject) => {
-            splashImg.onload = () => resolve();
-            splashImg.onerror = reject;
-            splashImg.src = brandLogoSplash;
+            fotoImg.onload = () => resolve();
+            fotoImg.onerror = reject;
+            fotoImg.src = brandLogoSplash;
           });
           
-          const splashSize = isCompact ? 320 : 450;
-          const splashX = (canvas.width - splashSize) / 2;
-          const splashY = currentY - splashSize / 2 - 20;
+          // Calculate proportional size maintaining aspect ratio
+          const fotoAspect = fotoImg.width / fotoImg.height;
+          const maxFotoHeight = isCompact ? 380 : 520;
+          const maxFotoWidth = canvas.width - 100;
           
-          // Splash has transparent bg, just draw it with slight opacity
-          ctx.globalAlpha = 0.5;
-          ctx.drawImage(splashImg, splashX, splashY, splashSize, splashSize);
+          let fotoWidth, fotoHeight;
+          if (fotoAspect > 1) {
+            // Wider than tall
+            fotoWidth = Math.min(maxFotoWidth, maxFotoHeight * fotoAspect);
+            fotoHeight = fotoWidth / fotoAspect;
+          } else {
+            // Taller than wide
+            fotoHeight = maxFotoHeight;
+            fotoWidth = fotoHeight * fotoAspect;
+            if (fotoWidth > maxFotoWidth) {
+              fotoWidth = maxFotoWidth;
+              fotoHeight = fotoWidth / fotoAspect;
+            }
+          }
+          
+          const fotoX = (canvas.width - fotoWidth) / 2;
+          const fotoY = currentY - fotoHeight / 2;
+          
+          // Draw with slight opacity for blending
+          ctx.globalAlpha = 0.65;
+          ctx.drawImage(fotoImg, fotoX, fotoY, fotoWidth, fotoHeight);
           ctx.globalAlpha = 1;
         } catch (e) {
-          console.error('Failed to load splash:', e);
+          console.error('Failed to load foto:', e);
         }
       }
       
@@ -588,26 +607,31 @@ export const EventStoryGeneratorCard: React.FC = () => {
       ctx.fillText(`${badgeIcon}  ${badgeText}`, canvas.width / 2, badgeY + 12);
 
       // Draw secret PIN teaser OR QR code section
-      const pinSectionY = isCompact 
-        ? canvas.height - (config.imageFormat === 'square' ? 320 : 380)
-        : canvas.height - 650;
+      // Calculate QR size first to determine section height
+      const baseQrSize = isCompact ? 100 : 140;
+      const sizeScale = config.showQrCode ? QR_SIZES[config.qrSize].scale : 1;
+      const qrSize = Math.round(baseQrSize * sizeScale);
       
+      // Dynamic section height based on QR size
+      const sectionHeight = config.showQrCode 
+        ? qrSize + (isCompact ? 120 : 140) // QR + text below
+        : (isCompact ? 200 : 280);
+      
+      // Position section from bottom, accounting for footer and additional info
+      const footerSpace = isCompact ? 100 : 180;
+      const pinSectionY = canvas.height - footerSpace - sectionHeight;
+      
+      // Draw section border
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
       ctx.lineWidth = 1;
       ctx.beginPath();
-      ctx.roundRect(100, pinSectionY - 40, canvas.width - 200, isCompact ? 200 : 280, 20);
+      ctx.roundRect(100, pinSectionY - 20, canvas.width - 200, sectionHeight + 40, 20);
       ctx.stroke();
 
       if (config.showQrCode) {
         // Generate and draw QR code
         const baseUrl = 'https://nonceduo-openmic.lovable.app';
         const appUrl = baseUrl + QR_DESTINATIONS[config.qrDestination].path;
-        // Base sizes more differentiated for visible impact
-        const baseQrSize = isCompact ? 100 : 140;
-        const sizeScale = QR_SIZES[config.qrSize].scale;
-        const qrSize = Math.round(baseQrSize * sizeScale);
-        
-        console.log(`[QR] Size: ${config.qrSize}, Scale: ${sizeScale}, Final: ${qrSize}px`);
         
         try {
           // Generate QR at higher resolution for quality, then draw scaled
@@ -637,7 +661,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
           } else {
             qrX = (canvas.width - qrSize) / 2;
           }
-          const qrY = pinSectionY - 10;
+          const qrY = pinSectionY;
           
           // QR background circle
           ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
@@ -647,8 +671,10 @@ export const EventStoryGeneratorCard: React.FC = () => {
           
           ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
           
-          // Text below QR (centered if QR is centered, otherwise aligned with QR)
+          // Text below QR - position dynamically based on QR size
           const textX = config.qrPosition === 'center' ? canvas.width / 2 : qrX + qrSize / 2;
+          const textStartY = qrY + qrSize + 40;
+          
           ctx.textAlign = 'center';
           
           ctx.font = `600 ${pinTitleSize}px "Orbitron", sans-serif`;
@@ -657,14 +683,14 @@ export const EventStoryGeneratorCard: React.FC = () => {
             ctx.shadowColor = style.accent;
             ctx.shadowBlur = 15;
           }
-          ctx.fillText('📱 SCANSIONA IL QR', textX, qrY + qrSize + 50);
+          ctx.fillText('📱 SCANSIONA IL QR', textX, textStartY);
           ctx.shadowColor = 'transparent';
           ctx.shadowBlur = 0;
           
           const destCta = QR_DESTINATIONS[config.qrDestination].cta;
           ctx.font = `400 ${subtitleSize}px "Inter", sans-serif`;
           ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-          ctx.fillText(`${destCta} (PIN richiesto)`, textX, qrY + qrSize + (isCompact ? 80 : 90));
+          ctx.fillText(`${destCta} (PIN richiesto)`, textX, textStartY + 35);
           
           // Reset text alignment
           ctx.textAlign = 'center';
@@ -774,22 +800,44 @@ export const EventStoryGeneratorCard: React.FC = () => {
     }
   }, [config, aiGeneratedBg, toast]);
 
-  const downloadImage = useCallback(() => {
+  const downloadImage = useCallback(async () => {
     if (!previewUrl) return;
 
     const formatConfig = IMAGE_FORMATS[config.imageFormat];
     const nameStr = config.venueName ? config.venueName.toLowerCase().replace(/\s+/g, '-') : 'grafica';
     const dateStr = config.eventDate ? format(config.eventDate, 'yyyy-MM-dd') : 'evento';
+    const fileName = `story-${nameStr}-${dateStr}-${formatConfig.width}x${formatConfig.height}.png`;
     
-    const link = document.createElement('a');
-    link.download = `story-${nameStr}-${dateStr}-${formatConfig.width}x${formatConfig.height}.png`;
-    link.href = previewUrl;
-    link.click();
+    try {
+      // Convert base64 to blob for better mobile compatibility
+      const response = await fetch(previewUrl);
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.download = fileName;
+      link.href = blobUrl;
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Cleanup blob URL after a delay
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
 
-    toast({
-      title: 'Download avviato',
-      description: 'La grafica è stata scaricata.',
-    });
+      toast({
+        title: 'Download avviato',
+        description: 'La grafica è stata scaricata.',
+      });
+    } catch (error) {
+      console.error('Download error:', error);
+      // Fallback: open in new tab for manual save
+      window.open(previewUrl, '_blank');
+      toast({
+        title: 'Aperto in nuova scheda',
+        description: 'Tieni premuto sull\'immagine per salvarla.',
+      });
+    }
   }, [previewUrl, config, toast]);
 
   return (
@@ -937,11 +985,11 @@ export const EventStoryGeneratorCard: React.FC = () => {
             Logo "NON C'È DUO" colorato (sfondo trasparente)
           </p>
           
-          {/* Splash Toggle - Independent */}
+          {/* Foto Toggle - Independent */}
           <div className="flex items-center justify-between pt-2 border-t border-border/50">
             <Label htmlFor="show-splash" className="flex items-center gap-2 cursor-pointer">
               <Sparkles className="w-4 h-4" />
-              <span>Splash Paint</span>
+              <span>Foto</span>
             </Label>
             <Switch
               id="show-splash"
@@ -950,7 +998,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
             />
           </div>
           <p className="text-xs text-muted-foreground -mt-1">
-            Effetto paint decorativo (sfondo trasparente)
+            Foto del duo, centrata e proporzionata
           </p>
         </div>
 
