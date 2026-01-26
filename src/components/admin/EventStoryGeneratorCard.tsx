@@ -23,6 +23,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
@@ -39,7 +40,7 @@ type OverlayPosition = 'bottom' | 'top' | 'center';
 type TextSize = 'small' | 'medium' | 'large';
 type QrSize = 'small' | 'medium' | 'large';
 type QrPosition = 'left' | 'center' | 'right';
-type QrDestination = 'openmic' | 'dediche';
+type QrDestination = 'app' | 'openmic' | 'dediche';
 
 interface EventStoryConfig {
   venueName: string;
@@ -55,6 +56,7 @@ interface EventStoryConfig {
   qrSize: QrSize;
   qrPosition: QrPosition;
   qrDestination: QrDestination;
+  additionalInfo: string;
 }
 
 const STORAGE_KEY = 'ncd_story_generator_config';
@@ -72,7 +74,8 @@ const DEFAULT_CONFIG: EventStoryConfig = {
   showQrCode: false,
   qrSize: 'medium',
   qrPosition: 'center',
-  qrDestination: 'openmic',
+  qrDestination: 'app',
+  additionalInfo: '',
 };
 
 const QR_SIZES: Record<QrSize, { label: string; scale: number }> = {
@@ -87,9 +90,10 @@ const QR_POSITIONS: Record<QrPosition, { label: string }> = {
   right: { label: 'Destra' },
 };
 
-const QR_DESTINATIONS: Record<QrDestination, { label: string; path: string }> = {
-  openmic: { label: 'Open Mic', path: '/app/openmic' },
-  dediche: { label: 'Dediche', path: '/app/dediche' },
+const QR_DESTINATIONS: Record<QrDestination, { label: string; path: string; cta: string }> = {
+  app: { label: 'App (Hub)', path: '/app', cta: 'Scegli il formato!' },
+  openmic: { label: 'Open Mic', path: '/app/openmic', cta: 'Prenota la tua canzone!' },
+  dediche: { label: 'Dediche', path: '/app/dediche', cta: 'Invia una dedica!' },
 };
 
 const STYLE_PRESETS: Record<StylePreset, { label: string; description: string; bg: string; accent: string }> = {
@@ -576,10 +580,10 @@ export const EventStoryGeneratorCard: React.FC = () => {
           ctx.shadowColor = 'transparent';
           ctx.shadowBlur = 0;
           
-          const destLabel = config.qrDestination === 'openmic' ? 'Prenota la tua canzone!' : 'Invia una dedica!';
+          const destCta = QR_DESTINATIONS[config.qrDestination].cta;
           ctx.font = `400 ${subtitleSize}px "Inter", sans-serif`;
           ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-          ctx.fillText(`${destLabel} (PIN richiesto)`, textX, qrY + qrSize + (isCompact ? 80 : 90));
+          ctx.fillText(`${destCta} (PIN richiesto)`, textX, qrY + qrSize + (isCompact ? 80 : 90));
           
           // Reset text alignment
           ctx.textAlign = 'center';
@@ -629,6 +633,38 @@ export const EventStoryGeneratorCard: React.FC = () => {
         ctx.fillText('Scrivici su Instagram 📩', canvas.width / 2, ctaY + 60);
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
+      }
+
+      // Draw additional info if provided (above footer)
+      if (config.additionalInfo.trim()) {
+        const infoY = canvas.height - (isCompact ? 80 : 160);
+        ctx.font = `500 ${subtitleSize}px "Inter", sans-serif`;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.textAlign = 'center';
+        
+        // Word wrap additional info
+        const maxInfoWidth = canvas.width - 160;
+        const infoWords = config.additionalInfo.split(' ');
+        let infoLines: string[] = [];
+        let currentInfoLine = '';
+        
+        for (const word of infoWords) {
+          const testLine = currentInfoLine ? `${currentInfoLine} ${word}` : word;
+          const metrics = ctx.measureText(testLine);
+          if (metrics.width > maxInfoWidth && currentInfoLine) {
+            infoLines.push(currentInfoLine);
+            currentInfoLine = word;
+          } else {
+            currentInfoLine = testLine;
+          }
+        }
+        if (currentInfoLine) infoLines.push(currentInfoLine);
+        
+        // Draw max 2 lines
+        const linesToDraw = infoLines.slice(0, 2);
+        linesToDraw.forEach((line, i) => {
+          ctx.fillText(line, canvas.width / 2, infoY - (linesToDraw.length - 1 - i) * 35);
+        });
       }
 
       // Draw footer branding
@@ -918,6 +954,26 @@ export const EventStoryGeneratorCard: React.FC = () => {
           </RadioGroup>
         </div>
 
+        {/* Additional Info - Optional */}
+        <div className="space-y-2">
+          <Label htmlFor="additional-info" className="flex items-center gap-2">
+            <Type className="w-4 h-4" />
+            Info Aggiuntive
+            <span className="text-xs text-muted-foreground">(opzionale)</span>
+          </Label>
+          <Textarea
+            id="additional-info"
+            placeholder="Es. Ingresso gratuito, Aperitivo incluso, Solo su prenotazione..."
+            value={config.additionalInfo}
+            onChange={(e) => updateConfig('additionalInfo', e.target.value)}
+            className="bg-muted/50 min-h-[60px] resize-none"
+            rows={2}
+          />
+          <p className="text-xs text-muted-foreground">
+            Appare in basso sulla grafica (max 2 righe)
+          </p>
+        </div>
+
         {/* Style Preset - Only shown if NO AI background */}
         {!aiGeneratedBg && (
           <div className="space-y-3">
@@ -990,7 +1046,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
                 <RadioGroup
                   value={config.qrDestination}
                   onValueChange={(value) => updateConfig('qrDestination', value as QrDestination)}
-                  className="grid grid-cols-2 gap-2"
+                  className="grid grid-cols-3 gap-2"
                 >
                   {(Object.keys(QR_DESTINATIONS) as QrDestination[]).map((dest) => (
                     <div key={dest}>
@@ -998,12 +1054,12 @@ export const EventStoryGeneratorCard: React.FC = () => {
                       <Label
                         htmlFor={`qr-dest-${dest}`}
                         className={cn(
-                          "flex items-center justify-center gap-2 p-2.5 rounded-lg border-2 cursor-pointer transition-all text-xs",
+                          "flex items-center justify-center gap-1.5 p-2.5 rounded-lg border-2 cursor-pointer transition-all text-xs font-medium",
                           "border-muted hover:border-muted-foreground/50",
                           config.qrDestination === dest && "border-accent bg-accent/10"
                         )}
                       >
-                        {dest === 'openmic' ? '🎤' : '💌'} {QR_DESTINATIONS[dest].label}
+                        {QR_DESTINATIONS[dest].label}
                       </Label>
                     </div>
                   ))}
