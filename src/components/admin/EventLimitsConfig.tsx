@@ -18,15 +18,15 @@ export const EventLimitsConfig: React.FC<Props> = ({ rules, onUpdate }) => {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
 
-  // Open Mic limits
-  const [openmicEnabled, setOpenmicEnabled] = useState(rules.openmic_enabled);
+  // Open Mic limits - toggle indica se c'è un limite numerico, NON se il format è abilitato
+  const [openmicMaxEnabled, setOpenmicMaxEnabled] = useState(rules.openmic_max_songs !== null && rules.openmic_max_songs > 0);
   const [openmicMaxSongs, setOpenmicMaxSongs] = useState(rules.openmic_max_songs?.toString() || '');
   const [openmicFinalLimitEnabled, setOpenmicFinalLimitEnabled] = useState(rules.openmic_final_limit_enabled);
   const [openmicFinalLimitSongs, setOpenmicFinalLimitSongs] = useState(rules.openmic_final_limit_songs?.toString() || '2');
   const [openmicFinalLimitMinutes, setOpenmicFinalLimitMinutes] = useState(rules.openmic_final_limit_minutes?.toString() || '10');
 
-  // Dediche limits
-  const [dedicheEnabled, setDedicheEnabled] = useState(rules.dediche_enabled);
+  // Dediche limits - toggle indica se c'è un limite numerico, NON se il format è abilitato
+  const [dedicheMaxEnabled, setDedicheMaxEnabled] = useState(rules.dediche_max_total !== null && rules.dediche_max_total > 0);
   const [dedicheMaxTotal, setDedicheMaxTotal] = useState(rules.dediche_max_total?.toString() || '');
   const [dedicheFinalLimitEnabled, setDedicheFinalLimitEnabled] = useState(rules.dediche_final_limit_enabled ?? false);
   const [dedicheFinalLimitTotal, setDedicheFinalLimitTotal] = useState(rules.dediche_final_limit_total?.toString() || '2');
@@ -35,14 +35,16 @@ export const EventLimitsConfig: React.FC<Props> = ({ rules, onUpdate }) => {
   const handleSave = async () => {
     setIsSaving(true);
 
+    // NON modifichiamo openmic_enabled/dediche_enabled - quelli controllano il format
+    // Qui controlliamo SOLO i limiti numerici
     const updates: Partial<EventBookingRules> = {
-      openmic_enabled: openmicEnabled,
-      openmic_max_songs: openmicMaxSongs ? parseInt(openmicMaxSongs) : null,
+      // Limite max canzoni: se il toggle è attivo E c'è un valore, usalo; altrimenti null (illimitato)
+      openmic_max_songs: openmicMaxEnabled && openmicMaxSongs ? parseInt(openmicMaxSongs) : null,
       openmic_final_limit_enabled: openmicFinalLimitEnabled,
       openmic_final_limit_songs: openmicFinalLimitEnabled && openmicFinalLimitSongs ? parseInt(openmicFinalLimitSongs) : null,
       openmic_final_limit_minutes: openmicFinalLimitEnabled && openmicFinalLimitMinutes ? parseInt(openmicFinalLimitMinutes) : null,
-      dediche_enabled: dedicheEnabled,
-      dediche_max_total: dedicheMaxTotal ? parseInt(dedicheMaxTotal) : null,
+      // Limite max dediche: se il toggle è attivo E c'è un valore, usalo; altrimenti null (illimitato)
+      dediche_max_total: dedicheMaxEnabled && dedicheMaxTotal ? parseInt(dedicheMaxTotal) : null,
       dediche_final_limit_enabled: dedicheFinalLimitEnabled,
       dediche_final_limit_total: dedicheFinalLimitEnabled && dedicheFinalLimitTotal ? parseInt(dedicheFinalLimitTotal) : null,
       dediche_final_limit_minutes: dedicheFinalLimitEnabled && dedicheFinalLimitMinutes ? parseInt(dedicheFinalLimitMinutes) : null,
@@ -60,8 +62,8 @@ export const EventLimitsConfig: React.FC<Props> = ({ rules, onUpdate }) => {
         entity: 'event_booking_rules',
         entity_id: rules.id,
         metadata: { 
-          openmic_max: openmicMaxSongs || 'illimitato',
-          dediche_max: dedicheMaxTotal || 'illimitato',
+          openmic_max: openmicMaxEnabled && openmicMaxSongs ? openmicMaxSongs : 'illimitato',
+          dediche_max: dedicheMaxEnabled && dedicheMaxTotal ? dedicheMaxTotal : 'illimitato',
         },
       });
     } else {
@@ -104,15 +106,15 @@ export const EventLimitsConfig: React.FC<Props> = ({ rules, onUpdate }) => {
                 <Label className="font-medium">Max canzoni per tutta la sera</Label>
               </div>
               <Switch
-                checked={openmicEnabled}
-                onCheckedChange={setOpenmicEnabled}
+                checked={openmicMaxEnabled}
+                onCheckedChange={setOpenmicMaxEnabled}
               />
             </div>
             <p className="text-xs text-muted-foreground">
               Limite massimo di canzoni prenotabili durante l'intero evento
             </p>
             
-            {openmicEnabled && (
+            {openmicMaxEnabled && (
               <div className="flex items-center gap-2 pt-2">
                 <Input
                   id="openmicMaxSongs"
@@ -187,15 +189,15 @@ export const EventLimitsConfig: React.FC<Props> = ({ rules, onUpdate }) => {
                 <Label className="font-medium">Max dediche per tutta la sera</Label>
               </div>
               <Switch
-                checked={dedicheEnabled}
-                onCheckedChange={setDedicheEnabled}
+                checked={dedicheMaxEnabled}
+                onCheckedChange={setDedicheMaxEnabled}
               />
             </div>
             <p className="text-xs text-muted-foreground">
               Limite massimo di dediche inviabili durante l'intero evento
             </p>
             
-            {dedicheEnabled && (
+            {dedicheMaxEnabled && (
               <div className="flex items-center gap-2 pt-2">
                 <Input
                   id="dedicheMaxTotal"
