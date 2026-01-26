@@ -965,100 +965,42 @@ export const EventPosterGeneratorCard: React.FC = () => {
           </RadioGroup>
         </div>
 
-        {/* Brand Elements with Drag & Drop Preview */}
-        <div className="space-y-4 p-4 rounded-xl bg-muted/30 border border-border/50">
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Elementi Brand</p>
+        {/* Brand Elements with Drag & Drop Preview - Mobile-optimized */}
+        <div className="space-y-3 p-3 rounded-xl bg-muted/30 border border-border/50">
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Elementi Visibili</p>
           
-          {/* Element Toggles - Grid of all draggable elements */}
-          <div className="grid grid-cols-3 gap-2">
-            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
-              <Label htmlFor="poster-use-brand-logo" className="flex items-center gap-1.5 cursor-pointer text-xs">
-                <ImagePlus className="w-3.5 h-3.5 text-primary" />
-                Logo
-              </Label>
-              <Switch
-                id="poster-use-brand-logo"
-                checked={config.useBrandLogo}
-                onCheckedChange={(checked) => updateConfig('useBrandLogo', checked)}
-              />
-            </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
-              <Label htmlFor="poster-show-splash" className="flex items-center gap-1.5 cursor-pointer text-xs">
-                <Sparkles className="w-3.5 h-3.5 text-secondary" />
-                Foto
-              </Label>
-              <Switch
-                id="poster-show-splash"
-                checked={config.showSplash}
-                onCheckedChange={(checked) => updateConfig('showSplash', checked)}
-              />
-            </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
-              <Label htmlFor="poster-show-title" className="flex items-center gap-1.5 cursor-pointer text-xs">
-                <Type className="w-3.5 h-3.5 text-amber-500" />
-                Titolo
-              </Label>
-              <Switch
-                id="poster-show-title"
-                checked={config.showTitle}
-                onCheckedChange={(checked) => updateConfig('showTitle', checked)}
-              />
-            </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
-              <Label htmlFor="poster-show-venue" className="flex items-center gap-1.5 cursor-pointer text-xs">
-                <MapPin className="w-3.5 h-3.5 text-sky-500" />
-                Locale
-              </Label>
-              <Switch
-                id="poster-show-venue"
-                checked={config.showVenue}
-                onCheckedChange={(checked) => updateConfig('showVenue', checked)}
-              />
-            </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
-              <Label htmlFor="poster-show-datetime" className="flex items-center gap-1.5 cursor-pointer text-xs">
-                <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-                Data/Ora
-              </Label>
-              <Switch
-                id="poster-show-datetime"
-                checked={config.showDatetime}
-                onCheckedChange={(checked) => updateConfig('showDatetime', checked)}
-              />
-            </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
-              <Label htmlFor="poster-show-badge" className="flex items-center gap-1.5 cursor-pointer text-xs">
-                <MessageSquare className="w-3.5 h-3.5 text-fuchsia-500" />
-                Badge
-              </Label>
-              <Switch
-                id="poster-show-badge"
-                checked={config.showBadge}
-                onCheckedChange={(checked) => updateConfig('showBadge', checked)}
-              />
-            </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
-              <Label htmlFor="poster-show-info" className="flex items-center gap-1.5 cursor-pointer text-xs">
-                <Info className="w-3.5 h-3.5 text-teal-500" />
-                Info
-              </Label>
-              <Switch
-                id="poster-show-info"
-                checked={config.showInfo}
-                onCheckedChange={(checked) => updateConfig('showInfo', checked)}
-              />
-            </div>
-            <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
-              <Label htmlFor="poster-show-footer" className="flex items-center gap-1.5 cursor-pointer text-xs">
-                <AlignCenter className="w-3.5 h-3.5 text-slate-500" />
-                Footer
-              </Label>
-              <Switch
-                id="poster-show-footer"
-                checked={config.showFooter}
-                onCheckedChange={(checked) => updateConfig('showFooter', checked)}
-              />
-            </div>
+          {/* Instagram-style horizontal scrollable pills */}
+          <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
+            {[
+              { id: 'logo', label: 'Logo', checked: config.useBrandLogo, onChange: (v: boolean) => updateConfig('useBrandLogo', v) },
+              { id: 'foto', label: 'Foto', checked: config.showSplash, onChange: (v: boolean) => updateConfig('showSplash', v) },
+              { id: 'title', label: 'Titolo', checked: config.showTitle, onChange: (v: boolean) => updateConfig('showTitle', v) },
+              { id: 'venue', label: 'Locale', checked: config.showVenue, onChange: (v: boolean) => updateConfig('showVenue', v) },
+              { id: 'datetime', label: 'Data', checked: config.showDatetime, onChange: (v: boolean) => updateConfig('showDatetime', v) },
+              { id: 'badge', label: 'Badge', checked: config.showBadge, onChange: (v: boolean) => updateConfig('showBadge', v) },
+              { id: 'info', label: 'Info', checked: config.showInfo, onChange: (v: boolean) => updateConfig('showInfo', v) },
+              { id: 'footer', label: 'Footer', checked: config.showFooter, onChange: (v: boolean) => updateConfig('showFooter', v) },
+            ].map((el) => (
+              <button
+                key={el.id}
+                type="button"
+                onClick={() => el.onChange(!el.checked)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap",
+                  "transition-all duration-200 border shrink-0",
+                  "touch-manipulation active:scale-95",
+                  el.checked 
+                    ? "bg-primary/15 border-primary/40 text-foreground shadow-sm"
+                    : "bg-muted/30 border-border/50 text-muted-foreground"
+                )}
+              >
+                <span className={cn(
+                  "w-2 h-2 rounded-full transition-colors",
+                  el.checked ? "bg-emerald-500" : "bg-muted-foreground/30"
+                )} />
+                <span>{el.label}</span>
+              </button>
+            ))}
           </div>
 
           {/* Draggable Preview - ONLY enabled elements are shown */}
