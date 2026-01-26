@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getSessionFingerprint } from './useUserBookingLimits';
 
 export interface Reservation {
   id: string;
@@ -120,24 +121,34 @@ export const useReservations = () => {
     dedicationMessage?: string
   ) => {
     try {
-      const { error } = await supabase.functions.invoke('push-notifications', {
+      const sessionFingerprint = getSessionFingerprint();
+      
+      const { data, error } = await supabase.functions.invoke('push-notifications', {
         body: {
           action: 'create-reservation',
           customer_name: customerName,
           song_title: songTitle,
           song_artist: songArtist,
           dedication_message: dedicationMessage?.trim() || null,
+          session_fingerprint: sessionFingerprint,
         },
       });
 
       if (error) {
         throw error;
       }
-    } catch (error) {
+      
+      // Check if backend returned an error message
+      if (data?.error) {
+        toast.error(data.error);
+        return false;
+      }
+    } catch (error: any) {
       if (import.meta.env.DEV) {
         console.error('Error creating reservation:', error);
       }
-      toast.error('Errore nella prenotazione');
+      const errorMessage = error?.message || 'Errore nella prenotazione';
+      toast.error(errorMessage);
       return false;
     }
 
