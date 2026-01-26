@@ -112,4 +112,4 @@ export const FreeModeClosureBanner = forwardRef<HTMLDivElement, FreeModeClosureO
 
 FreeModeClosureBanner.displayName = 'FreeModeClosureBanner';
 
-export default FreeModeClosureOverlay;
+// Named exports only - import as { FreeModeClosureOverlay } or { FreeModeClosureBanner }
