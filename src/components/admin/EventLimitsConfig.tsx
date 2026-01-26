@@ -178,76 +178,85 @@ export const EventLimitsConfig: React.FC<Props> = ({ rules, onUpdate }) => {
 
         {/* Dediche Limits */}
         <div className="space-y-4 p-4 rounded-lg border border-border bg-muted/30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-secondary" />
-              <h4 className="font-medium">Dediche</h4>
-            </div>
-            <Switch
-              checked={dedicheEnabled}
-              onCheckedChange={setDedicheEnabled}
-            />
+          <div className="flex items-center gap-2 pb-2 border-b border-border">
+            <MessageSquare className="w-5 h-5 text-secondary" />
+            <h4 className="font-medium">Dediche</h4>
           </div>
 
-          {dedicheEnabled && (
-            <div className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <Label htmlFor="dedicheMaxTotal">Numero massimo dediche</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="dedicheMaxTotal"
-                    type="number"
-                    min="0"
-                    value={dedicheMaxTotal}
-                    onChange={(e) => setDedicheMaxTotal(e.target.value)}
-                    placeholder="Illimitato"
-                    className="w-32"
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    {dedicheMaxTotal ? `max ${dedicheMaxTotal} dediche` : 'nessun limite'}
-                  </span>
-                </div>
+          {/* Limite 1: Max dediche per tutta la sera - INDIPENDENTE */}
+          <div className="space-y-3 p-3 rounded-lg bg-background border border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Hash className="w-4 h-4 text-pink-500" />
+                <Label className="font-medium">Max dediche per tutta la sera</Label>
               </div>
-
-              {/* Final limit for dediche (ultimi X minuti) */}
-              <div className="space-y-3 p-3 rounded-lg bg-background border border-border">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Timer className="w-4 h-4 text-amber-500" />
-                    <Label className="font-medium">Limite "ultimi minuti"</Label>
-                  </div>
-                  <Switch
-                    checked={dedicheFinalLimitEnabled}
-                    onCheckedChange={setDedicheFinalLimitEnabled}
-                  />
-                </div>
-                
-                {dedicheFinalLimitEnabled && (
-                  <div className="flex flex-wrap items-center gap-2 pt-2">
-                    <span className="text-sm">Max</span>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={dedicheFinalLimitTotal}
-                      onChange={(e) => setDedicheFinalLimitTotal(e.target.value)}
-                      className="w-16 h-8"
-                    />
-                    <span className="text-sm">dediche negli ultimi</span>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="120"
-                      value={dedicheFinalLimitMinutes}
-                      onChange={(e) => setDedicheFinalLimitMinutes(e.target.value)}
-                      className="w-16 h-8"
-                    />
-                    <span className="text-sm">minuti</span>
-                  </div>
-                )}
-              </div>
+              <Switch
+                checked={dedicheEnabled}
+                onCheckedChange={setDedicheEnabled}
+              />
             </div>
-          )}
+            <p className="text-xs text-muted-foreground">
+              Limite massimo di dediche inviabili durante l'intero evento
+            </p>
+            
+            {dedicheEnabled && (
+              <div className="flex items-center gap-2 pt-2">
+                <Input
+                  id="dedicheMaxTotal"
+                  type="number"
+                  min="1"
+                  value={dedicheMaxTotal}
+                  onChange={(e) => setDedicheMaxTotal(e.target.value)}
+                  placeholder="Es: 30"
+                  className="w-24"
+                />
+                <span className="text-sm text-muted-foreground">
+                  dediche totali
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Limite 2: Ultimi minuti - INDIPENDENTE */}
+          <div className="space-y-3 p-3 rounded-lg bg-background border border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Timer className="w-4 h-4 text-amber-500" />
+                <Label className="font-medium">Limite "ultimi minuti"</Label>
+              </div>
+              <Switch
+                checked={dedicheFinalLimitEnabled}
+                onCheckedChange={setDedicheFinalLimitEnabled}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Riduce il numero di dediche inviabili negli ultimi minuti dell'evento
+            </p>
+            
+            {dedicheFinalLimitEnabled && (
+              <div className="flex flex-wrap items-center gap-2 pt-2">
+                <span className="text-sm">Max</span>
+                <Input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={dedicheFinalLimitTotal}
+                  onChange={(e) => setDedicheFinalLimitTotal(e.target.value)}
+                  className="w-16 h-8"
+                />
+                <span className="text-sm">dediche negli ultimi</span>
+                <Input
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={dedicheFinalLimitMinutes}
+                  onChange={(e) => setDedicheFinalLimitMinutes(e.target.value)}
+                  className="w-16 h-8"
+                />
+                <span className="text-sm">minuti</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Save Button */}
