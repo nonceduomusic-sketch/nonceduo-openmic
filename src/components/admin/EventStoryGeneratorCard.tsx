@@ -71,6 +71,13 @@ interface EventStoryConfig {
   fotoPos: PercentPosition;
   logoPos: PercentPosition;
   qrPos: PercentPosition;
+  // Text element positions
+  titlePos: PercentPosition;    // "NON C'È DUO" title
+  venuePos: PercentPosition;    // @VENUE subtitle
+  datetimePos: PercentPosition; // Date + time block
+  badgePos: PercentPosition;    // Event type badge
+  infoPos: PercentPosition;     // Additional info
+  footerPos: PercentPosition;   // Footer branding
   elementMargin: number;
 }
 
@@ -93,10 +100,16 @@ const DEFAULT_CONFIG: EventStoryConfig = {
   additionalInfo: '',
   useBrandLogo: true,
   showSplash: false,
-  // Default positions: logo top-center, foto center, qr bottom-center
-  fotoPos: { x: 50, y: 50 },
-  logoPos: { x: 50, y: 16.67 },
-  qrPos: { x: 50, y: 83.33 },
+  // Default positions for all draggable elements
+  fotoPos: { x: 50, y: 45 },
+  logoPos: { x: 50, y: 12 },
+  qrPos: { x: 50, y: 75 },
+  titlePos: { x: 50, y: 22 },
+  venuePos: { x: 50, y: 30 },
+  datetimePos: { x: 50, y: 55 },
+  badgePos: { x: 50, y: 65 },
+  infoPos: { x: 50, y: 85 },
+  footerPos: { x: 50, y: 95 },
   elementMargin: MARGIN_PRESETS.standard,
 };
 
@@ -203,6 +216,12 @@ const deserializeConfig = (json: string): EventStoryConfig | null => {
       fotoPos: parsed.fotoPos ?? DEFAULT_CONFIG.fotoPos,
       logoPos: parsed.logoPos ?? DEFAULT_CONFIG.logoPos,
       qrPos: parsed.qrPos ?? DEFAULT_CONFIG.qrPos,
+      titlePos: parsed.titlePos ?? DEFAULT_CONFIG.titlePos,
+      venuePos: parsed.venuePos ?? DEFAULT_CONFIG.venuePos,
+      datetimePos: parsed.datetimePos ?? DEFAULT_CONFIG.datetimePos,
+      badgePos: parsed.badgePos ?? DEFAULT_CONFIG.badgePos,
+      infoPos: parsed.infoPos ?? DEFAULT_CONFIG.infoPos,
+      footerPos: parsed.footerPos ?? DEFAULT_CONFIG.footerPos,
       elementMargin: parsed.elementMargin ?? DEFAULT_CONFIG.elementMargin,
     };
   } catch {
@@ -518,7 +537,9 @@ export const EventStoryGeneratorCard: React.FC = () => {
           currentY += lineHeight;
         }
       } else {
-        // Draw text title
+        // Draw text title using percentage position
+        const titleY = (config.titlePos.y / 100) * canvas.height;
+        
         ctx.fillStyle = '#ffffff';
         ctx.font = `bold ${titleSize}px "Orbitron", sans-serif`;
         
@@ -529,15 +550,16 @@ export const EventStoryGeneratorCard: React.FC = () => {
           ctx.shadowOffsetY = 0;
         }
         
-        ctx.fillText("NON C'È DUO", canvas.width / 2, currentY);
-        currentY += lineHeight;
+        ctx.fillText("NON C'È DUO", canvas.width / 2, titleY);
+        currentY = titleY + lineHeight;
         
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
       }
 
-      // Draw venue name as subtitle - OPTIONAL
+      // Draw venue name as subtitle - using percentage position
       if (config.venueName) {
+        const venueY = (config.venuePos.y / 100) * canvas.height;
         const venueSize = Math.round(titleSize * 0.55);
         ctx.font = `500 ${venueSize}px "Inter", sans-serif`;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
@@ -562,29 +584,31 @@ export const EventStoryGeneratorCard: React.FC = () => {
 
         const venueLineHeight = Math.round(lineHeight * 0.6);
         lines.forEach((line, i) => {
-          ctx.fillText(`@ ${line}`, canvas.width / 2, currentY + i * venueLineHeight);
+          ctx.fillText(`@ ${line}`, canvas.width / 2, venueY + i * venueLineHeight);
         });
-
-        currentY += lines.length * venueLineHeight + (isCompact ? 20 : 30);
       }
 
-      // Draw decorative line
-      const lineY = currentY + (isCompact ? 20 : 30);
-      const lineGradient = ctx.createLinearGradient(200, lineY, canvas.width - 200, lineY);
-      lineGradient.addColorStop(0, 'transparent');
-      lineGradient.addColorStop(0.3, style.accent);
-      lineGradient.addColorStop(0.7, style.accent);
-      lineGradient.addColorStop(1, 'transparent');
-      ctx.strokeStyle = lineGradient;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(200, lineY);
-      ctx.lineTo(canvas.width - 200, lineY);
-      ctx.stroke();
-      
-      currentY = lineY + (isCompact ? 50 : 80);
+      // Draw decorative line below venue (if venue exists, otherwise skip)
+      if (config.venueName) {
+        const venueY = (config.venuePos.y / 100) * canvas.height;
+        const lineY = venueY + (isCompact ? 50 : 70);
+        const lineGradient = ctx.createLinearGradient(200, lineY, canvas.width - 200, lineY);
+        lineGradient.addColorStop(0, 'transparent');
+        lineGradient.addColorStop(0.3, style.accent);
+        lineGradient.addColorStop(0.7, style.accent);
+        lineGradient.addColorStop(1, 'transparent');
+        ctx.strokeStyle = lineGradient;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(200, lineY);
+        ctx.lineTo(canvas.width - 200, lineY);
+        ctx.stroke();
+      }
 
-      // Draw date - OPTIONAL
+      // Draw date/time block - using percentage position
+      const datetimeY = (config.datetimePos.y / 100) * canvas.height;
+      let dtCurrentY = datetimeY;
+      
       if (config.eventDate) {
         const formattedDate = format(config.eventDate, "EEEE d MMMM", { locale: it });
         const formattedDateUpper = formattedDate.toUpperCase();
@@ -595,23 +619,21 @@ export const EventStoryGeneratorCard: React.FC = () => {
           ctx.shadowColor = style.accent;
           ctx.shadowBlur = 20;
         }
-        ctx.fillText(formattedDateUpper, canvas.width / 2, currentY);
-        currentY += isCompact ? 50 : 70;
+        ctx.fillText(formattedDateUpper, canvas.width / 2, dtCurrentY);
+        dtCurrentY += isCompact ? 45 : 60;
         
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
       }
       
-      // Draw time - OPTIONAL
       if (config.eventTime) {
         ctx.font = `500 ${timeSize}px "Inter", sans-serif`;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.fillText(`ORE ${config.eventTime}`, canvas.width / 2, currentY);
-        currentY += isCompact ? 80 : 110;
+        ctx.fillText(`ORE ${config.eventTime}`, canvas.width / 2, dtCurrentY);
       }
 
-      // Draw event type badge
-      const badgeY = currentY + (isCompact ? 30 : 50);
+      // Draw event type badge - using percentage position
+      const badgeY = (config.badgePos.y / 100) * canvas.height;
       const badgeText = config.eventType === 'public' ? 'EVENTO PUBBLICO' : 'EVENTO PRIVATO';
       const badgeIcon = config.eventType === 'public' ? '🌐' : '🔒';
       
@@ -769,10 +791,10 @@ export const EventStoryGeneratorCard: React.FC = () => {
         ctx.shadowBlur = 0;
       }
 
-      // Draw additional info if provided (above footer)
+      // Draw additional info - using percentage position
       const additionalInfoText = config.additionalInfo || '';
       if (additionalInfoText.trim()) {
-        const infoY = canvas.height - (isCompact ? 80 : 160);
+        const infoY = (config.infoPos.y / 100) * canvas.height;
         ctx.font = `500 ${subtitleSize}px "Inter", sans-serif`;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
         ctx.textAlign = 'center';
@@ -798,15 +820,16 @@ export const EventStoryGeneratorCard: React.FC = () => {
         // Draw max 2 lines
         const linesToDraw = infoLines.slice(0, 2);
         linesToDraw.forEach((line, i) => {
-          ctx.fillText(line, canvas.width / 2, infoY - (linesToDraw.length - 1 - i) * 35);
+          ctx.fillText(line, canvas.width / 2, infoY + i * 35);
         });
       }
 
-      // Draw footer branding
+      // Draw footer branding - using percentage position
+      const footerY = (config.footerPos.y / 100) * canvas.height;
       const brandingSize = isCompact ? 28 : 36;
       ctx.font = `500 ${brandingSize}px "Inter", sans-serif`;
       ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-      ctx.fillText("NON C'È DUO • LIVE", canvas.width / 2, canvas.height - (isCompact ? 40 : 100));
+      ctx.fillText("NON C'È DUO • LIVE", canvas.width / 2, footerY);
 
       const url = canvas.toDataURL('image/png');
       setPreviewUrl(url);
@@ -1022,7 +1045,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
             </div>
           </div>
 
-          {/* Draggable Preview - ALWAYS visible to allow positioning all elements */}
+          {/* Draggable Preview - ALL elements are draggable */}
           <DraggablePreview
             width={IMAGE_FORMATS[config.imageFormat].width}
             height={IMAGE_FORMATS[config.imageFormat].height}
@@ -1031,12 +1054,24 @@ export const EventStoryGeneratorCard: React.FC = () => {
             elements={[
               { id: 'logo', label: 'Logo', x: config.logoPos.x, y: config.logoPos.y, enabled: config.useBrandLogo },
               { id: 'foto', label: 'Foto', x: config.fotoPos.x, y: config.fotoPos.y, enabled: config.showSplash },
+              { id: 'title', label: 'Titolo', x: config.titlePos.x, y: config.titlePos.y, enabled: !config.useBrandLogo },
+              { id: 'venue', label: 'Locale', x: config.venuePos.x, y: config.venuePos.y, enabled: !!config.venueName },
+              { id: 'datetime', label: 'Data/Ora', x: config.datetimePos.x, y: config.datetimePos.y, enabled: !!(config.eventDate || config.eventTime) },
               { id: 'qr', label: 'QR', x: config.qrPos.x, y: config.qrPos.y, enabled: config.showQrCode },
+              { id: 'cta', label: 'Badge', x: config.badgePos.x, y: config.badgePos.y, enabled: true },
+              { id: 'info', label: 'Info', x: config.infoPos.x, y: config.infoPos.y, enabled: !!config.additionalInfo },
+              { id: 'footer', label: 'Footer', x: config.footerPos.x, y: config.footerPos.y, enabled: true },
             ]}
             onElementMove={(id, x, y) => {
               if (id === 'logo') updateConfig('logoPos', { x, y });
               else if (id === 'foto') updateConfig('fotoPos', { x, y });
+              else if (id === 'title') updateConfig('titlePos', { x, y });
+              else if (id === 'venue') updateConfig('venuePos', { x, y });
+              else if (id === 'datetime') updateConfig('datetimePos', { x, y });
               else if (id === 'qr') updateConfig('qrPos', { x, y });
+              else if (id === 'cta') updateConfig('badgePos', { x, y });
+              else if (id === 'info') updateConfig('infoPos', { x, y });
+              else if (id === 'footer') updateConfig('footerPos', { x, y });
             }}
             margin={8}
             freePositioning={true}
