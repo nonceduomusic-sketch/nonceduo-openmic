@@ -64,6 +64,13 @@ interface EventPosterConfig {
   // Percentage-based positions for drag & drop (0-100)
   fotoPos: PercentPosition;
   logoPos: PercentPosition;
+  // Text element positions
+  titlePos: PercentPosition;
+  venuePos: PercentPosition;
+  datetimePos: PercentPosition;
+  badgePos: PercentPosition;
+  infoPos: PercentPosition;
+  footerPos: PercentPosition;
   elementMargin: number;
 }
 
@@ -83,9 +90,15 @@ const DEFAULT_CONFIG: EventPosterConfig = {
   aiTheme: '',
   useBrandLogo: true,
   showSplash: false,
-  // Default positions: logo bottom-center, foto center
-  fotoPos: { x: 50, y: 50 },
-  logoPos: { x: 50, y: 83.33 },
+  // Default positions for all draggable elements
+  fotoPos: { x: 50, y: 40 },
+  logoPos: { x: 50, y: 75 },
+  titlePos: { x: 50, y: 20 },
+  venuePos: { x: 50, y: 30 },
+  datetimePos: { x: 50, y: 55 },
+  badgePos: { x: 50, y: 68 },
+  infoPos: { x: 50, y: 85 },
+  footerPos: { x: 50, y: 95 },
   elementMargin: MARGIN_PRESETS.standard,
 };
 
@@ -170,6 +183,12 @@ const deserializeConfig = (json: string): EventPosterConfig | null => {
       // Ensure position objects exist with valid defaults
       fotoPos: parsed.fotoPos ?? DEFAULT_CONFIG.fotoPos,
       logoPos: parsed.logoPos ?? DEFAULT_CONFIG.logoPos,
+      titlePos: parsed.titlePos ?? DEFAULT_CONFIG.titlePos,
+      venuePos: parsed.venuePos ?? DEFAULT_CONFIG.venuePos,
+      datetimePos: parsed.datetimePos ?? DEFAULT_CONFIG.datetimePos,
+      badgePos: parsed.badgePos ?? DEFAULT_CONFIG.badgePos,
+      infoPos: parsed.infoPos ?? DEFAULT_CONFIG.infoPos,
+      footerPos: parsed.footerPos ?? DEFAULT_CONFIG.footerPos,
       elementMargin: parsed.elementMargin ?? DEFAULT_CONFIG.elementMargin,
     };
   } catch {
@@ -535,19 +554,20 @@ export const EventPosterGeneratorCard: React.FC = () => {
           currentY += lineHeight;
         }
       } else {
-        // Draw text title
+        // Draw text title using percentage position
+        const titleY = (config.titlePos.y / 100) * canvas.height;
         ctx.font = `bold ${scaledTitleSize}px "Orbitron", sans-serif`;
         ctx.fillStyle = '#ffffff';
-        
-        ctx.fillText("NON C'È DUO", canvas.width / 2, currentY);
-        currentY += lineHeight;
+        ctx.fillText("NON C'È DUO", canvas.width / 2, titleY);
+        currentY = titleY + lineHeight;
       }
 
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;
 
-      // Draw venue name as subtitle - OPTIONAL
+      // Draw venue name as subtitle - using percentage position
       if (config.venueName) {
+        const venueY = (config.venuePos.y / 100) * canvas.height;
         const venueSize = Math.round(scaledTitleSize * 0.5);
         ctx.font = `500 ${venueSize}px "Inter", sans-serif`;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
@@ -572,14 +592,13 @@ export const EventPosterGeneratorCard: React.FC = () => {
         
         const venueLineHeight = Math.round(lineHeight * 0.55);
         lines.forEach((line, i) => {
-          ctx.fillText(`@ ${line}`, canvas.width / 2, currentY + i * venueLineHeight);
+          ctx.fillText(`@ ${line}`, canvas.width / 2, venueY + i * venueLineHeight);
         });
-        
-        currentY += lines.length * venueLineHeight + 15;
       }
 
-      // Draw date and time if provided - OPTIONAL
+      // Draw date and time - using percentage position
       if (config.eventDate || config.eventTime) {
+        const datetimeY = (config.datetimePos.y / 100) * canvas.height;
         let dateTimeText = '';
         
         if (config.eventDate) {
@@ -599,14 +618,14 @@ export const EventPosterGeneratorCard: React.FC = () => {
           ctx.shadowBlur = 15;
         }
         
-        ctx.fillText(dateTimeText, canvas.width / 2, currentY);
-        currentY += 50;
+        ctx.fillText(dateTimeText, canvas.width / 2, datetimeY);
         
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
       }
 
-      // Draw event type badge if private - OPTIONAL
+      // Draw event type badge - using percentage position
+      const badgeY = (config.badgePos.y / 100) * canvas.height;
       if (config.eventType === 'private') {
         const badgeText = 'EVENTO PRIVATO';
         ctx.font = '500 24px "Inter", sans-serif';
@@ -616,7 +635,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
         ctx.beginPath();
         ctx.roundRect(
           canvas.width / 2 - badgeWidth / 2 - 10,
-          currentY - 20,
+          badgeY - 20,
           badgeWidth + 20,
           45,
           22
@@ -628,12 +647,34 @@ export const EventPosterGeneratorCard: React.FC = () => {
         ctx.stroke();
         
         ctx.fillStyle = style.accent;
-        ctx.fillText(`🔒 ${badgeText}`, canvas.width / 2, currentY + 8);
-        currentY += 55;
+        ctx.fillText(`🔒 ${badgeText}`, canvas.width / 2, badgeY + 8);
+      } else {
+        const badgeText = 'EVENTO PUBBLICO';
+        ctx.font = '500 24px "Inter", sans-serif';
+        const badgeWidth = ctx.measureText(badgeText).width + 60;
+        
+        ctx.fillStyle = 'rgba(34, 197, 94, 0.3)';
+        ctx.beginPath();
+        ctx.roundRect(
+          canvas.width / 2 - badgeWidth / 2 - 10,
+          badgeY - 20,
+          badgeWidth + 20,
+          45,
+          22
+        );
+        ctx.fill();
+        
+        ctx.strokeStyle = 'rgba(34, 197, 94, 0.6)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        
+        ctx.fillStyle = '#22c55e';
+        ctx.fillText(`🌐 ${badgeText}`, canvas.width / 2, badgeY + 8);
       }
 
-      // Draw additional info if provided - OPTIONAL
+      // Draw additional info - using percentage position
       if (config.additionalInfo) {
+        const infoY = (config.infoPos.y / 100) * canvas.height;
         ctx.font = '400 24px "Inter", sans-serif';
         ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
         
@@ -655,20 +696,15 @@ export const EventPosterGeneratorCard: React.FC = () => {
         if (currentLine) lines.push(currentLine);
         
         lines.slice(0, 3).forEach((line, i) => {
-          ctx.fillText(line, canvas.width / 2, currentY + 15 + i * 32);
+          ctx.fillText(line, canvas.width / 2, infoY + i * 32);
         });
       }
 
-      // Draw branding at bottom (only for bottom/center positions)
-      if (config.overlayPosition !== 'top') {
-        ctx.font = '500 28px "Inter", sans-serif';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.fillText("NON C'È DUO • LIVE", canvas.width / 2, canvas.height - 35);
-      } else {
-        ctx.font = '500 28px "Inter", sans-serif';
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-        ctx.fillText("NON C'È DUO • LIVE", canvas.width / 2, 50);
-      }
+      // Draw footer branding - using percentage position
+      const footerY = (config.footerPos.y / 100) * canvas.height;
+      ctx.font = '500 28px "Inter", sans-serif';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.fillText("NON C'È DUO • LIVE", canvas.width / 2, footerY);
 
       // Generate preview URL
       const url = canvas.toDataURL('image/png');
@@ -933,7 +969,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
             </div>
           </div>
 
-          {/* Draggable Preview - ALWAYS visible to allow positioning all elements */}
+          {/* Draggable Preview - ALL elements are draggable */}
           <DraggablePreview
             width={IMAGE_FORMATS[config.imageFormat].width}
             height={IMAGE_FORMATS[config.imageFormat].height}
@@ -942,10 +978,22 @@ export const EventPosterGeneratorCard: React.FC = () => {
             elements={[
               { id: 'logo', label: 'Logo', x: config.logoPos.x, y: config.logoPos.y, enabled: config.useBrandLogo },
               { id: 'foto', label: 'Foto', x: config.fotoPos.x, y: config.fotoPos.y, enabled: config.showSplash },
+              { id: 'title', label: 'Titolo', x: config.titlePos.x, y: config.titlePos.y, enabled: !config.useBrandLogo },
+              { id: 'venue', label: 'Locale', x: config.venuePos.x, y: config.venuePos.y, enabled: !!config.venueName },
+              { id: 'datetime', label: 'Data/Ora', x: config.datetimePos.x, y: config.datetimePos.y, enabled: !!(config.eventDate || config.eventTime) },
+              { id: 'cta', label: 'Badge', x: config.badgePos.x, y: config.badgePos.y, enabled: true },
+              { id: 'info', label: 'Info', x: config.infoPos.x, y: config.infoPos.y, enabled: !!config.additionalInfo },
+              { id: 'footer', label: 'Footer', x: config.footerPos.x, y: config.footerPos.y, enabled: true },
             ]}
             onElementMove={(id, x, y) => {
               if (id === 'logo') updateConfig('logoPos', { x, y });
               else if (id === 'foto') updateConfig('fotoPos', { x, y });
+              else if (id === 'title') updateConfig('titlePos', { x, y });
+              else if (id === 'venue') updateConfig('venuePos', { x, y });
+              else if (id === 'datetime') updateConfig('datetimePos', { x, y });
+              else if (id === 'cta') updateConfig('badgePos', { x, y });
+              else if (id === 'info') updateConfig('infoPos', { x, y });
+              else if (id === 'footer') updateConfig('footerPos', { x, y });
             }}
             margin={8}
             freePositioning={true}
