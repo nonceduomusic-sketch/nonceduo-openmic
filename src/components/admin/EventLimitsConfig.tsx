@@ -95,83 +95,85 @@ export const EventLimitsConfig: React.FC<Props> = ({ rules, onUpdate }) => {
       <CardContent className="space-y-6">
         {/* Open Mic Limits */}
         <div className="space-y-4 p-4 rounded-lg border border-border bg-muted/30">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Music className="w-5 h-5 text-primary" />
-              <h4 className="font-medium">Open Mic (Karaoke)</h4>
-            </div>
-            <Switch
-              checked={openmicEnabled}
-              onCheckedChange={setOpenmicEnabled}
-            />
+          <div className="flex items-center gap-2 pb-2 border-b border-border">
+            <Music className="w-5 h-5 text-primary" />
+            <h4 className="font-medium">Open Mic (Karaoke)</h4>
           </div>
 
-          {openmicEnabled && (
-            <div className="space-y-4 pt-2">
-              {/* Max totale per la sera - sempre visibile */}
-              <div className="space-y-2">
-                <Label htmlFor="openmicMaxSongs">Max canzoni per tutta la sera</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    id="openmicMaxSongs"
-                    type="number"
-                    min="0"
-                    value={openmicMaxSongs}
-                    onChange={(e) => setOpenmicMaxSongs(e.target.value)}
-                    placeholder="Illimitato"
-                    className="w-32"
-                  />
-                  <span className="text-sm text-muted-foreground">
-                    {openmicMaxSongs ? `max ${openmicMaxSongs} canzoni` : 'nessun limite'}
-                  </span>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Limite totale per l'evento, indipendente dai limiti "ultimi minuti"
-                </p>
+          {/* Limite 1: Max canzoni per tutta la sera - INDIPENDENTE */}
+          <div className="space-y-3 p-3 rounded-lg bg-background border border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Hash className="w-4 h-4 text-blue-500" />
+                <Label className="font-medium">Max canzoni per tutta la sera</Label>
               </div>
-
-              {/* Limite ultimi minuti - toggle separato */}
-              <div className="space-y-3 p-3 rounded-lg bg-background border border-border">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Timer className="w-4 h-4 text-amber-500" />
-                    <Label className="font-medium">Limite "ultimi minuti"</Label>
-                  </div>
-                  <Switch
-                    checked={openmicFinalLimitEnabled}
-                    onCheckedChange={setOpenmicFinalLimitEnabled}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Riduce il limite di canzoni prenotabili negli ultimi minuti dell'evento
-                </p>
-                
-                {openmicFinalLimitEnabled && (
-                  <div className="flex flex-wrap items-center gap-2 pt-2">
-                    <span className="text-sm">Max</span>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={openmicFinalLimitSongs}
-                      onChange={(e) => setOpenmicFinalLimitSongs(e.target.value)}
-                      className="w-16 h-8"
-                    />
-                    <span className="text-sm">canzoni negli ultimi</span>
-                    <Input
-                      type="number"
-                      min="1"
-                      max="120"
-                      value={openmicFinalLimitMinutes}
-                      onChange={(e) => setOpenmicFinalLimitMinutes(e.target.value)}
-                      className="w-16 h-8"
-                    />
-                    <span className="text-sm">minuti</span>
-                  </div>
-                )}
-              </div>
+              <Switch
+                checked={openmicEnabled}
+                onCheckedChange={setOpenmicEnabled}
+              />
             </div>
-          )}
+            <p className="text-xs text-muted-foreground">
+              Limite massimo di canzoni prenotabili durante l'intero evento
+            </p>
+            
+            {openmicEnabled && (
+              <div className="flex items-center gap-2 pt-2">
+                <Input
+                  id="openmicMaxSongs"
+                  type="number"
+                  min="1"
+                  value={openmicMaxSongs}
+                  onChange={(e) => setOpenmicMaxSongs(e.target.value)}
+                  placeholder="Es: 50"
+                  className="w-24"
+                />
+                <span className="text-sm text-muted-foreground">
+                  canzoni totali
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Limite 2: Ultimi minuti - INDIPENDENTE */}
+          <div className="space-y-3 p-3 rounded-lg bg-background border border-border">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Timer className="w-4 h-4 text-amber-500" />
+                <Label className="font-medium">Limite "ultimi minuti"</Label>
+              </div>
+              <Switch
+                checked={openmicFinalLimitEnabled}
+                onCheckedChange={setOpenmicFinalLimitEnabled}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Riduce il numero di canzoni prenotabili negli ultimi minuti dell'evento
+            </p>
+            
+            {openmicFinalLimitEnabled && (
+              <div className="flex flex-wrap items-center gap-2 pt-2">
+                <span className="text-sm">Max</span>
+                <Input
+                  type="number"
+                  min="1"
+                  max="10"
+                  value={openmicFinalLimitSongs}
+                  onChange={(e) => setOpenmicFinalLimitSongs(e.target.value)}
+                  className="w-16 h-8"
+                />
+                <span className="text-sm">canzoni negli ultimi</span>
+                <Input
+                  type="number"
+                  min="1"
+                  max="120"
+                  value={openmicFinalLimitMinutes}
+                  onChange={(e) => setOpenmicFinalLimitMinutes(e.target.value)}
+                  className="w-16 h-8"
+                />
+                <span className="text-sm">minuti</span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Dediche Limits */}
