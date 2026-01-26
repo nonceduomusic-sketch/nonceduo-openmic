@@ -564,7 +564,85 @@ serve(async (req) => {
             }
           }
         }
-        // In Free Mode: no limits apply, proceed directly to insert
+
+        // === USER BOOKING LIMITS VALIDATION ===
+        const sessionFingerprint = asTrimmedString((data as any).session_fingerprint);
+        
+        // Check if user limits are enabled (works for both event and free mode)
+        const { data: freeModeSettings } = await supabase
+          .from('free_mode_settings')
+          .select('*')
+          .eq('is_active', true)
+          .maybeSingle();
+        
+        // Use liveEvent settings if available, fallback to freeModeSettings
+        const limitsSource = liveEvent || freeModeSettings;
+        
+        if (limitsSource?.user_limit_enabled && sessionFingerprint) {
+          const eventId = liveEvent?.id || freeModeSettings?.id || 'free_mode';
+          const limitMode = limitsSource.user_limit_mode || 'session';
+          
+          // Fetch or create user booking counts
+          const { data: userCounts } = await supabase
+            .from('user_booking_counts')
+            .select('*')
+            .eq('event_id', eventId)
+            .eq('session_fingerprint', sessionFingerprint)
+            .maybeSingle();
+          
+          const currentSongsCount = userCounts?.songs_count || 0;
+          const currentDedicheCount = userCounts?.dediche_count || 0;
+          const currentConsecutive = userCounts?.consecutive_songs || 0;
+          const lastBookingAt = userCounts?.last_booking_at;
+          
+          const isDedica = !!dedicationMessage;
+          
+          // Check total songs limit
+          if (!isDedica && limitsSource.user_limit_songs_total !== null) {
+            if (currentSongsCount >= limitsSource.user_limit_songs_total) {
+              const msg = `Hai raggiunto il limite di ${limitsSource.user_limit_songs_total} canzoni per questa serata`;
+              return json({ error: msg }, 400);
+            }
+          }
+          
+          // Check total dediche limit
+          if (isDedica && limitsSource.user_limit_dediche_total !== null) {
+            if (currentDedicheCount >= limitsSource.user_limit_dediche_total) {
+              const msg = `Hai raggiunto il limite di ${limitsSource.user_limit_dediche_total} dediche per questa serata`;
+              return json({ error: msg }, 400);
+            }
+          }
+          
+          // Check consecutive songs limit
+          if (!isDedica && limitsSource.user_limit_consecutive_songs !== null) {
+            if (currentConsecutive >= limitsSource.user_limit_consecutive_songs) {
+              const msg = `Hai prenotato ${limitsSource.user_limit_consecutive_songs} canzoni consecutive. Lascia spazio agli altri!`;
+              return json({ error: msg }, 400);
+            }
+          }
+          
+          // Check interval limit (max X songs every Y minutes)
+          if (!isDedica && limitsSource.user_limit_songs_interval !== null && limitsSource.user_limit_interval_minutes !== null && lastBookingAt) {
+            const lastBooking = new Date(lastBookingAt);
+            const intervalMs = limitsSource.user_limit_interval_minutes * 60 * 1000;
+            const windowStart = new Date(Date.now() - intervalMs);
+            
+            // Count songs in the last X minutes
+            const { count: recentCount } = await supabase
+              .from('reservations')
+              .select('*', { count: 'exact', head: true })
+              .eq('customer_name', customerName)
+              .gte('created_at', windowStart.toISOString())
+              .is('dedication_message', null);
+            
+            if ((recentCount || 0) >= limitsSource.user_limit_songs_interval) {
+              const cooldownMsg = limitsSource.user_limit_cooldown_message || 'Hai superato il limite di prenotazioni.';
+              const minutesRemaining = Math.ceil((lastBooking.getTime() + intervalMs - Date.now()) / 60000);
+              const msg = cooldownMsg.replace('{minutes}', String(minutesRemaining));
+              return json({ error: msg }, 400);
+            }
+          }
+        }
 
         // === INSERT RESERVATION ===
         const { data: reservation, error } = await supabase
@@ -589,6 +667,85 @@ serve(async (req) => {
           return json({ error: 'Errore creazione prenotazione' }, 500);
         }
 
+        // === UPDATE USER BOOKING COUNTS ===
+        if (limitsSource?.user_limit_enabled && sessionFingerprint) {
+          const eventId = liveEvent?.id || freeModeSettings?.id || 'free_mode';
+          const isDedica = !!dedicationMessage;
+          
+          // Check if this is a consecutive booking (no other user booked in between)
+          let newConsecutive = 1;
+          if (!isDedica) {
+            const { data: lastReservation } = await supabase
+              .from('reservations')
+              .select('customer_name')
+              .order('created_at', { ascending: false })
+              .limit(2);
+            
+            // If the second-to-last reservation was also by this user, increment consecutive
+            if (lastReservation && lastReservation.length === 2) {
+              if (lastReservation[1].customer_name === customerName) {
+                const { data: existingCounts } = await supabase
+                  .from('user_booking_counts')
+                  .select('consecutive_songs')
+                  .eq('event_id', eventId)
+                  .eq('session_fingerprint', sessionFingerprint)
+                  .maybeSingle();
+                
+                newConsecutive = (existingCounts?.consecutive_songs || 0) + 1;
+              }
+            }
+          }
+          
+          // Check if user counts exist
+          const { data: existingCounts } = await supabase
+            .from('user_booking_counts')
+            .select('*')
+            .eq('event_id', eventId)
+            .eq('session_fingerprint', sessionFingerprint)
+            .maybeSingle();
+          
+          if (existingCounts) {
+            // Update existing counts
+            await supabase
+              .from('user_booking_counts')
+              .update({
+                customer_name: customerName,
+                songs_count: (existingCounts.songs_count || 0) + (isDedica ? 0 : 1),
+                dediche_count: (existingCounts.dediche_count || 0) + (isDedica ? 1 : 0),
+                consecutive_songs: isDedica ? 0 : newConsecutive,
+                last_booking_at: new Date().toISOString(),
+                last_reservation_id: reservation.id,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('event_id', eventId)
+              .eq('session_fingerprint', sessionFingerprint);
+          } else {
+            // Insert new counts
+            await supabase
+              .from('user_booking_counts')
+              .insert({
+                event_id: eventId,
+                session_fingerprint: sessionFingerprint,
+                customer_name: customerName,
+                songs_count: isDedica ? 0 : 1,
+                dediche_count: isDedica ? 1 : 0,
+                consecutive_songs: isDedica ? 0 : 1,
+                first_booking_at: new Date().toISOString(),
+                last_booking_at: new Date().toISOString(),
+                last_reservation_id: reservation.id,
+              });
+          }
+          
+          // Reset consecutive count for other users who just had their streak broken
+          if (!isDedica) {
+            await supabase
+              .from('user_booking_counts')
+              .update({ consecutive_songs: 0 })
+              .eq('event_id', eventId)
+              .neq('session_fingerprint', sessionFingerprint);
+          }
+        }
+
         // === UPDATE EVENT COUNTERS (only if there's a live event) ===
         if (liveEvent) {
           const updateData: Record<string, unknown> = {
@@ -608,7 +765,6 @@ serve(async (req) => {
             .update(updateData)
             .eq('id', liveEvent.id);
         }
-        // In Free Mode: no event counters to update
 
         const pushPayload = {
           title: '🎤 Nuova prenotazione!',
