@@ -28,11 +28,7 @@ import { EventCountdownBanner } from '@/components/effects/EventCountdownBanner'
  * Adapter che converte FreeModeSettings nel formato EventBookingRules
  * per poter riutilizzare gli stessi componenti dell'evento programmato
  */
-const adaptToEventRules = (settings: FreeModeSettings | null): EventBookingRules & {
-  dediche_final_limit_enabled?: boolean;
-  dediche_final_limit_total?: number | null;
-  dediche_final_limit_minutes?: number | null;
-} => {
+const adaptToEventRules = (settings: FreeModeSettings | null): EventBookingRules => {
   if (!settings) {
     return {
       id: 'free-mode',
@@ -74,6 +70,18 @@ const adaptToEventRules = (settings: FreeModeSettings | null): EventBookingRules
       event_date: null,
       event_start_time: null,
       event_end_time: null,
+      // User limits defaults
+      user_limit_enabled: false,
+      user_limit_mode: 'session',
+      user_limit_songs_total: null,
+      user_limit_dediche_total: null,
+      user_limit_songs_interval: null,
+      user_limit_interval_minutes: null,
+      user_limit_consecutive_songs: null,
+      user_limit_cooldown_message: null,
+      // Countdown defaults
+      countdown_start_show_minutes: null,
+      countdown_end_show_minutes: null,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -119,6 +127,18 @@ const adaptToEventRules = (settings: FreeModeSettings | null): EventBookingRules
     event_date: settings.event_date ?? null,
     event_start_time: settings.event_start_time ?? null,
     event_end_time: settings.event_end_time ?? null,
+    // User limits
+    user_limit_enabled: settings.user_limit_enabled ?? false,
+    user_limit_mode: (settings.user_limit_mode as 'session' | 'session_name') || 'session',
+    user_limit_songs_total: settings.user_limit_songs_total ?? null,
+    user_limit_dediche_total: settings.user_limit_dediche_total ?? null,
+    user_limit_songs_interval: settings.user_limit_songs_interval ?? null,
+    user_limit_interval_minutes: settings.user_limit_interval_minutes ?? null,
+    user_limit_consecutive_songs: settings.user_limit_consecutive_songs ?? null,
+    user_limit_cooldown_message: settings.user_limit_cooldown_message ?? null,
+    // Countdown
+    countdown_start_show_minutes: settings.countdown_start_show_minutes ?? null,
+    countdown_end_show_minutes: settings.countdown_end_show_minutes ?? null,
     created_at: settings.created_at || new Date().toISOString(),
     updated_at: settings.updated_at || new Date().toISOString(),
   };
@@ -167,16 +187,12 @@ export const FreeModeFullPanel: React.FC = () => {
   }), [settings]);
 
   // Handler per timing settings
-  const handleTimingUpdate = async (updates: any): Promise<boolean> => {
+  const handleTimingUpdate = async (updates: Partial<FreeModeSettings>): Promise<boolean> => {
     return await updateSettings(updates);
   };
 
   // Handler che converte gli aggiornamenti EventBookingRules -> FreeModeSettings
-  const handleUpdate = async (updates: Partial<EventBookingRules> & {
-    dediche_final_limit_enabled?: boolean;
-    dediche_final_limit_total?: number | null;
-    dediche_final_limit_minutes?: number | null;
-  }): Promise<boolean> => {
+  const handleUpdate = async (updates: Partial<EventBookingRules>): Promise<boolean> => {
     const freeModeUpdates: Partial<FreeModeSettings> = {};
 
     if (updates.event_name !== undefined) freeModeUpdates.event_name = updates.event_name;
@@ -209,7 +225,7 @@ export const FreeModeFullPanel: React.FC = () => {
     if (updates.closure_title !== undefined) freeModeUpdates.closure_title = updates.closure_title;
     if (updates.closure_message !== undefined) freeModeUpdates.closure_message = updates.closure_message;
     if (updates.closure_redirect_url !== undefined) freeModeUpdates.closure_redirect_url = updates.closure_redirect_url;
-    if ((updates as any).closure_preview_enabled !== undefined) freeModeUpdates.closure_preview_enabled = (updates as any).closure_preview_enabled;
+    if (updates.closure_preview_enabled !== undefined) freeModeUpdates.closure_preview_enabled = updates.closure_preview_enabled;
     // Booking window
     if (updates.booking_opens_at !== undefined) freeModeUpdates.booking_opens_at = updates.booking_opens_at;
     if (updates.booking_closes_at !== undefined) freeModeUpdates.booking_closes_at = updates.booking_closes_at;
@@ -583,7 +599,7 @@ export const FreeModeFullPanel: React.FC = () => {
                 user_limit_cooldown_message: settings?.user_limit_cooldown_message ?? 'Hai superato il limite di prenotazioni.',
               }}
               onUpdate={async (updates) => {
-                const success = await updateSettings(updates as any);
+                const success = await updateSettings(updates);
                 return success;
               }}
               entityId={settings?.id}

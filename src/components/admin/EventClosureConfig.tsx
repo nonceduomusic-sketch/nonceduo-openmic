@@ -32,18 +32,18 @@ export const EventClosureConfig: React.FC<Props> = ({ rules, onUpdate }) => {
   );
   const [closureRedirectUrl, setClosureRedirectUrl] = useState(rules.closure_redirect_url || '');
   const [closurePreviewEnabled, setClosurePreviewEnabled] = useState(
-    (rules as any).closure_preview_enabled || false
+    rules.closure_preview_enabled || false
   );
 
   // Sync from props when they change
   useEffect(() => {
-    setClosurePreviewEnabled((rules as any).closure_preview_enabled || false);
-  }, [(rules as any).closure_preview_enabled]);
+    setClosurePreviewEnabled(rules.closure_preview_enabled || false);
+  }, [rules.closure_preview_enabled]);
 
   const handleSave = async () => {
     setIsSaving(true);
 
-    const updates: Partial<EventBookingRules> & { closure_preview_enabled?: boolean } = {
+    const updates: Partial<EventBookingRules> = {
       closure_mode: closureMode,
       closure_title: closureTitle || null,
       closure_message: closureMessage || null,
@@ -79,7 +79,7 @@ export const EventClosureConfig: React.FC<Props> = ({ rules, onUpdate }) => {
     setClosurePreviewEnabled(newValue);
     
     // Update immediately
-    const success = await onUpdate({ closure_preview_enabled: newValue } as any);
+    const success = await onUpdate({ closure_preview_enabled: newValue });
     
     if (success) {
       toast({

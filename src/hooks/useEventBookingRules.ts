@@ -24,6 +24,10 @@ export interface EventBookingRules {
   openmic_final_limit_minutes: number | null;
   dediche_enabled: boolean;
   dediche_max_total: number | null;
+  // Dediche final limit fields
+  dediche_final_limit_enabled: boolean;
+  dediche_final_limit_total: number | null;
+  dediche_final_limit_minutes: number | null;
   voting_enabled: boolean;
   openmic_current_count: number;
   dediche_current_count: number;
@@ -40,6 +44,18 @@ export interface EventBookingRules {
   closure_message: string | null;
   closure_redirect_url: string | null;
   closure_preview_enabled: boolean;
+  // User limits fields
+  user_limit_enabled: boolean;
+  user_limit_mode: 'session' | 'session_name';
+  user_limit_songs_total: number | null;
+  user_limit_dediche_total: number | null;
+  user_limit_songs_interval: number | null;
+  user_limit_interval_minutes: number | null;
+  user_limit_consecutive_songs: number | null;
+  user_limit_cooldown_message: string | null;
+  // Countdown thresholds
+  countdown_start_show_minutes: number | null;
+  countdown_end_show_minutes: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -61,6 +77,22 @@ const normalizeEventRules = (data: any): EventBookingRules => ({
   reopen_active: data.reopen_active ?? false,
   is_active: data.is_active ?? false,
   closure_preview_enabled: data.closure_preview_enabled ?? false,
+  // Dediche final limit
+  dediche_final_limit_enabled: data.dediche_final_limit_enabled ?? false,
+  dediche_final_limit_total: data.dediche_final_limit_total ?? null,
+  dediche_final_limit_minutes: data.dediche_final_limit_minutes ?? null,
+  // User limits
+  user_limit_enabled: data.user_limit_enabled ?? false,
+  user_limit_mode: data.user_limit_mode || 'session',
+  user_limit_songs_total: data.user_limit_songs_total ?? null,
+  user_limit_dediche_total: data.user_limit_dediche_total ?? null,
+  user_limit_songs_interval: data.user_limit_songs_interval ?? null,
+  user_limit_interval_minutes: data.user_limit_interval_minutes ?? null,
+  user_limit_consecutive_songs: data.user_limit_consecutive_songs ?? null,
+  user_limit_cooldown_message: data.user_limit_cooldown_message ?? null,
+  // Countdown
+  countdown_start_show_minutes: data.countdown_start_show_minutes ?? null,
+  countdown_end_show_minutes: data.countdown_end_show_minutes ?? null,
 });
 
 export const useEventBookingRules = () => {
