@@ -400,18 +400,29 @@ export const EventStoryGeneratorCard: React.FC = () => {
 
       ctx.textAlign = 'center';
 
-      // Draw venue name (main title) - OPTIONAL
+      // Draw band name as main title - ALWAYS VISIBLE
       let currentY = titleStartY;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${titleSize}px "Orbitron", sans-serif`;
+      
+      if (config.stylePreset === 'neon' && !aiGeneratedBg) {
+        ctx.shadowColor = style.accent;
+        ctx.shadowBlur = 30;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+      }
+      
+      ctx.fillText("NON C'È DUO", canvas.width / 2, currentY);
+      currentY += lineHeight;
+      
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+
+      // Draw venue name as subtitle - OPTIONAL
       if (config.venueName) {
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `bold ${titleSize}px "Orbitron", sans-serif`;
-        
-        if (config.stylePreset === 'neon' && !aiGeneratedBg) {
-          ctx.shadowColor = style.accent;
-          ctx.shadowBlur = 30;
-          ctx.shadowOffsetX = 0;
-          ctx.shadowOffsetY = 0;
-        }
+        const venueSize = Math.round(titleSize * 0.55);
+        ctx.font = `500 ${venueSize}px "Inter", sans-serif`;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
         
         // Word wrap venue name
         const maxWidth = canvas.width - 120;
@@ -431,29 +442,29 @@ export const EventStoryGeneratorCard: React.FC = () => {
         }
         if (currentLine) lines.push(currentLine);
 
+        const venueLineHeight = Math.round(lineHeight * 0.6);
         lines.forEach((line, i) => {
-          ctx.fillText(line, canvas.width / 2, currentY + i * lineHeight);
+          ctx.fillText(`@ ${line}`, canvas.width / 2, currentY + i * venueLineHeight);
         });
 
-        ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
-
-        // Draw decorative line
-        const lineY = currentY + lines.length * lineHeight + (isCompact ? 40 : 60);
-        const lineGradient = ctx.createLinearGradient(200, lineY, canvas.width - 200, lineY);
-        lineGradient.addColorStop(0, 'transparent');
-        lineGradient.addColorStop(0.3, style.accent);
-        lineGradient.addColorStop(0.7, style.accent);
-        lineGradient.addColorStop(1, 'transparent');
-        ctx.strokeStyle = lineGradient;
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(200, lineY);
-        ctx.lineTo(canvas.width - 200, lineY);
-        ctx.stroke();
-        
-        currentY = lineY + (isCompact ? 70 : 100);
+        currentY += lines.length * venueLineHeight + (isCompact ? 20 : 30);
       }
+
+      // Draw decorative line
+      const lineY = currentY + (isCompact ? 20 : 30);
+      const lineGradient = ctx.createLinearGradient(200, lineY, canvas.width - 200, lineY);
+      lineGradient.addColorStop(0, 'transparent');
+      lineGradient.addColorStop(0.3, style.accent);
+      lineGradient.addColorStop(0.7, style.accent);
+      lineGradient.addColorStop(1, 'transparent');
+      ctx.strokeStyle = lineGradient;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(200, lineY);
+      ctx.lineTo(canvas.width - 200, lineY);
+      ctx.stroke();
+      
+      currentY = lineY + (isCompact ? 50 : 80);
 
       // Draw date - OPTIONAL
       if (config.eventDate) {
@@ -841,20 +852,23 @@ export const EventStoryGeneratorCard: React.FC = () => {
           </RadioGroup>
         </div>
 
-        {/* Venue Name - OPTIONAL */}
+        {/* Venue Name - OPTIONAL (shown as subtitle under band name) */}
         <div className="space-y-2">
           <Label htmlFor="venue-name" className="flex items-center gap-2">
             <MapPin className="w-4 h-4" />
-            Nome del Locale
-            <span className="text-xs text-muted-foreground">(opzionale)</span>
+            Locale / Evento
+            <span className="text-xs text-muted-foreground">(sottotitolo)</span>
           </Label>
           <Input
             id="venue-name"
-            placeholder="Es. Bar Roma, Club XYZ..."
+            placeholder="Es. Bar Roma, Matrimonio Rossi..."
             value={config.venueName}
             onChange={(e) => updateConfig('venueName', e.target.value)}
             className="bg-muted/50"
           />
+          <p className="text-xs text-muted-foreground">
+            Apparirà sotto "NON C'È DUO" come @NOME LOCALE
+          </p>
         </div>
 
         {/* Date & Time Row - OPTIONAL */}
