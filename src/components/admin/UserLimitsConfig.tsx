@@ -130,8 +130,10 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
               <Label className="font-medium">Modalità identificazione</Label>
               <TooltipProvider>
                 <Tooltip>
-                  <TooltipTrigger>
-                    <Info className="w-4 h-4 text-muted-foreground" />
+                  <TooltipTrigger asChild>
+                    <span className="cursor-help">
+                      <Info className="w-4 h-4 text-muted-foreground" />
+                    </span>
                   </TooltipTrigger>
                   <TooltipContent className="max-w-xs">
                     <p><strong>Solo sessione:</strong> Traccia per dispositivo/browser. Più semplice ma aggirabile.</p>
