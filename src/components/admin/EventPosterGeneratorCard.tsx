@@ -429,33 +429,35 @@ export const EventPosterGeneratorCard: React.FC = () => {
       const scaledDateSize = Math.round(baseDateSize * textScale);
       const lineHeight = Math.round(65 * textScale);
 
-      // Draw brand title - either logo or text
+      // Draw brand title - logo, text, and/or splash (independent)
       let currentY = textCenterY - 80;
       
-      if (config.useBrandLogo) {
-        // Load and draw splash behind logo if enabled
-        if (config.showSplash) {
-          try {
-            const splashImg = new Image();
-            await new Promise<void>((resolve, reject) => {
-              splashImg.onload = () => resolve();
-              splashImg.onerror = reject;
-              splashImg.src = brandLogoSplash;
-            });
-            
-            const splashSize = 280;
-            const splashX = (canvas.width - splashSize) / 2;
-            const splashY = currentY - splashSize / 2 - 10;
-            
-            ctx.globalAlpha = 0.3;
-            ctx.drawImage(splashImg, splashX, splashY, splashSize, splashSize);
-            ctx.globalAlpha = 1;
-          } catch (e) {
-            console.error('Failed to load splash:', e);
-          }
+      // Draw splash paint FIRST if enabled (behind everything, independent of logo)
+      if (config.showSplash) {
+        try {
+          const splashImg = new Image();
+          await new Promise<void>((resolve, reject) => {
+            splashImg.onload = () => resolve();
+            splashImg.onerror = reject;
+            splashImg.src = brandLogoSplash;
+          });
+          
+          const splashSize = 280;
+          const splashX = (canvas.width - splashSize) / 2;
+          const splashY = currentY - splashSize / 2 - 10;
+          
+          // Splash has transparent bg, just draw with slight opacity
+          ctx.globalAlpha = 0.5;
+          ctx.drawImage(splashImg, splashX, splashY, splashSize, splashSize);
+          ctx.globalAlpha = 1;
+        } catch (e) {
+          console.error('Failed to load splash:', e);
         }
-        
-        // Load and draw brand logo
+      }
+      
+      // Draw logo OR text based on useBrandLogo
+      if (config.useBrandLogo) {
+        // Load and draw brand logo (transparent bg)
         try {
           const logoImg = new Image();
           await new Promise<void>((resolve, reject) => {
@@ -829,12 +831,15 @@ export const EventPosterGeneratorCard: React.FC = () => {
           </RadioGroup>
         </div>
 
-        {/* Brand Logo Toggle */}
+        {/* Brand Elements (Independent) */}
         <div className="space-y-3 p-4 rounded-xl bg-muted/30 border border-border/50">
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Elementi Brand</p>
+          
+          {/* Logo Toggle */}
           <div className="flex items-center justify-between">
             <Label htmlFor="poster-use-brand-logo" className="flex items-center gap-2 cursor-pointer">
               <ImagePlus className="w-4 h-4" />
-              <span>Usa Logo Colorato</span>
+              <span>Logo Scritta</span>
             </Label>
             <Switch
               id="poster-use-brand-logo"
@@ -842,23 +847,25 @@ export const EventPosterGeneratorCard: React.FC = () => {
               onCheckedChange={(checked) => updateConfig('useBrandLogo', checked)}
             />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Sostituisce il testo con il logo "NON C'È DUO" arcobaleno
+          <p className="text-xs text-muted-foreground -mt-1">
+            Logo "NON C'È DUO" colorato (sfondo trasparente)
           </p>
           
-          {config.useBrandLogo && (
-            <div className="flex items-center justify-between pt-2 border-t border-border/50">
-              <Label htmlFor="poster-show-splash" className="flex items-center gap-2 cursor-pointer">
-                <Sparkles className="w-4 h-4" />
-                <span>Aggiungi Splash Paint</span>
-              </Label>
-              <Switch
-                id="poster-show-splash"
-                checked={config.showSplash}
-                onCheckedChange={(checked) => updateConfig('showSplash', checked)}
-              />
-            </div>
-          )}
+          {/* Splash Toggle - Independent */}
+          <div className="flex items-center justify-between pt-2 border-t border-border/50">
+            <Label htmlFor="poster-show-splash" className="flex items-center gap-2 cursor-pointer">
+              <Sparkles className="w-4 h-4" />
+              <span>Splash Paint</span>
+            </Label>
+            <Switch
+              id="poster-show-splash"
+              checked={config.showSplash}
+              onCheckedChange={(checked) => updateConfig('showSplash', checked)}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground -mt-1">
+            Effetto paint decorativo (sfondo trasparente)
+          </p>
         </div>
 
         {/* Venue Name (Optional - shown as subtitle under band name) */}

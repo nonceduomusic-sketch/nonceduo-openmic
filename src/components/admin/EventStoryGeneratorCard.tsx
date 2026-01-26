@@ -409,33 +409,35 @@ export const EventStoryGeneratorCard: React.FC = () => {
 
       ctx.textAlign = 'center';
 
-      // Draw brand title - either logo or text
+      // Draw brand title - logo, text, and/or splash (independent)
       let currentY = titleStartY;
       
-      if (config.useBrandLogo) {
-        // Load and draw splash behind logo if enabled
-        if (config.showSplash) {
-          try {
-            const splashImg = new Image();
-            await new Promise<void>((resolve, reject) => {
-              splashImg.onload = () => resolve();
-              splashImg.onerror = reject;
-              splashImg.src = brandLogoSplash;
-            });
-            
-            const splashSize = isCompact ? 320 : 450;
-            const splashX = (canvas.width - splashSize) / 2;
-            const splashY = currentY - splashSize / 2 - 20;
-            
-            ctx.globalAlpha = 0.35;
-            ctx.drawImage(splashImg, splashX, splashY, splashSize, splashSize);
-            ctx.globalAlpha = 1;
-          } catch (e) {
-            console.error('Failed to load splash:', e);
-          }
+      // Draw splash paint FIRST if enabled (behind everything, independent of logo)
+      if (config.showSplash) {
+        try {
+          const splashImg = new Image();
+          await new Promise<void>((resolve, reject) => {
+            splashImg.onload = () => resolve();
+            splashImg.onerror = reject;
+            splashImg.src = brandLogoSplash;
+          });
+          
+          const splashSize = isCompact ? 320 : 450;
+          const splashX = (canvas.width - splashSize) / 2;
+          const splashY = currentY - splashSize / 2 - 20;
+          
+          // Splash has transparent bg, just draw it with slight opacity
+          ctx.globalAlpha = 0.5;
+          ctx.drawImage(splashImg, splashX, splashY, splashSize, splashSize);
+          ctx.globalAlpha = 1;
+        } catch (e) {
+          console.error('Failed to load splash:', e);
         }
-        
-        // Load and draw brand logo
+      }
+      
+      // Draw logo OR text based on useBrandLogo
+      if (config.useBrandLogo) {
+        // Load and draw brand logo (transparent bg)
         try {
           const logoImg = new Image();
           await new Promise<void>((resolve, reject) => {
@@ -915,12 +917,15 @@ export const EventStoryGeneratorCard: React.FC = () => {
           </RadioGroup>
         </div>
 
-        {/* Brand Logo Toggle */}
+        {/* Brand Elements (Independent) */}
         <div className="space-y-3 p-4 rounded-xl bg-muted/30 border border-border/50">
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Elementi Brand</p>
+          
+          {/* Logo Toggle */}
           <div className="flex items-center justify-between">
             <Label htmlFor="use-brand-logo" className="flex items-center gap-2 cursor-pointer">
               <ImagePlus className="w-4 h-4" />
-              <span>Usa Logo Colorato</span>
+              <span>Logo Scritta</span>
             </Label>
             <Switch
               id="use-brand-logo"
@@ -928,23 +933,25 @@ export const EventStoryGeneratorCard: React.FC = () => {
               onCheckedChange={(checked) => updateConfig('useBrandLogo', checked)}
             />
           </div>
-          <p className="text-xs text-muted-foreground">
-            Sostituisce il testo con il logo "NON C'È DUO" arcobaleno
+          <p className="text-xs text-muted-foreground -mt-1">
+            Logo "NON C'È DUO" colorato (sfondo trasparente)
           </p>
           
-          {config.useBrandLogo && (
-            <div className="flex items-center justify-between pt-2 border-t border-border/50">
-              <Label htmlFor="show-splash" className="flex items-center gap-2 cursor-pointer">
-                <Sparkles className="w-4 h-4" />
-                <span>Aggiungi Splash Paint</span>
-              </Label>
-              <Switch
-                id="show-splash"
-                checked={config.showSplash}
-                onCheckedChange={(checked) => updateConfig('showSplash', checked)}
-              />
-            </div>
-          )}
+          {/* Splash Toggle - Independent */}
+          <div className="flex items-center justify-between pt-2 border-t border-border/50">
+            <Label htmlFor="show-splash" className="flex items-center gap-2 cursor-pointer">
+              <Sparkles className="w-4 h-4" />
+              <span>Splash Paint</span>
+            </Label>
+            <Switch
+              id="show-splash"
+              checked={config.showSplash}
+              onCheckedChange={(checked) => updateConfig('showSplash', checked)}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground -mt-1">
+            Effetto paint decorativo (sfondo trasparente)
+          </p>
         </div>
 
         {/* Venue Name - OPTIONAL (shown as subtitle under band name) */}
