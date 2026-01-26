@@ -70,6 +70,7 @@ export interface FreeModeState {
   closurePreviewEnabled: boolean;
   // Countdown config
   countdownEndShowMinutes: number | null;
+  endMode: string | null;
 }
 
 export type EventState = 
@@ -114,6 +115,7 @@ export const useLiveEvent = () => {
     closureRedirectUrl: null,
     closurePreviewEnabled: false,
     countdownEndShowMinutes: 10,
+    endMode: 'manual',
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -183,6 +185,7 @@ export const useLiveEvent = () => {
           closureRedirectUrl: null,
           closurePreviewEnabled: false,
           countdownEndShowMinutes: 10,
+          endMode: 'manual',
         });
       } else {
         setLiveEvent(null);
@@ -223,6 +226,7 @@ export const useLiveEvent = () => {
           closureRedirectUrl: freeModeData?.closure_redirect_url ?? null,
           closurePreviewEnabled: freeModeData?.closure_preview_enabled ?? false,
           countdownEndShowMinutes: freeModeData?.countdown_end_show_minutes ?? 10,
+          endMode: freeModeData?.end_mode ?? 'manual',
         });
 
         // Only fetch upcoming events if not in free mode
