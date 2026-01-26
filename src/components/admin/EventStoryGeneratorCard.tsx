@@ -636,7 +636,8 @@ export const EventStoryGeneratorCard: React.FC = () => {
       }
 
       // Draw additional info if provided (above footer)
-      if (config.additionalInfo.trim()) {
+      const additionalInfoText = config.additionalInfo || '';
+      if (additionalInfoText.trim()) {
         const infoY = canvas.height - (isCompact ? 80 : 160);
         ctx.font = `500 ${subtitleSize}px "Inter", sans-serif`;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
@@ -644,7 +645,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
         
         // Word wrap additional info
         const maxInfoWidth = canvas.width - 160;
-        const infoWords = config.additionalInfo.split(' ');
+        const infoWords = additionalInfoText.split(' ');
         let infoLines: string[] = [];
         let currentInfoLine = '';
         
