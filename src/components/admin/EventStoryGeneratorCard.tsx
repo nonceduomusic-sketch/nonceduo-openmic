@@ -674,9 +674,10 @@ export const EventStoryGeneratorCard: React.FC = () => {
       }
 
       // Draw footer branding
-      ctx.font = `400 ${footerSize}px "Inter", sans-serif`;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-      ctx.fillText('NONCE DUO • LIVE MUSIC', canvas.width / 2, canvas.height - (isCompact ? 40 : 100));
+      const brandingSize = isCompact ? 28 : 36;
+      ctx.font = `500 ${brandingSize}px "Inter", sans-serif`;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+      ctx.fillText("NON C'È DUO • LIVE", canvas.width / 2, canvas.height - (isCompact ? 40 : 100));
 
       const url = canvas.toDataURL('image/png');
       setPreviewUrl(url);
