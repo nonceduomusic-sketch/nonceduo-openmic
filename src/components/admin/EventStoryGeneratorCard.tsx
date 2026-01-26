@@ -1044,6 +1044,8 @@ export const EventStoryGeneratorCard: React.FC = () => {
               else if (id === 'qr') updateConfig('qrPos', { x, y });
             }}
             margin={8}
+            freePositioning={true}
+            snapToGrid={false}
           />
           
           {/* Margin Slider */}
