@@ -933,24 +933,22 @@ export const EventPosterGeneratorCard: React.FC = () => {
             </div>
           </div>
 
-          {/* Draggable Preview */}
-          {(config.useBrandLogo || config.showSplash) && (
-            <DraggablePreview
-              width={IMAGE_FORMATS[config.imageFormat].width}
-              height={IMAGE_FORMATS[config.imageFormat].height}
-              backgroundImage={config.uploadedImage || aiGeneratedBg || undefined}
-              backgroundColor="hsl(var(--muted))"
-              elements={[
-                { id: 'logo', label: 'Logo', x: config.logoPos.x, y: config.logoPos.y, enabled: config.useBrandLogo },
-                { id: 'foto', label: 'Foto', x: config.fotoPos.x, y: config.fotoPos.y, enabled: config.showSplash },
-              ]}
-              onElementMove={(id, x, y) => {
-                if (id === 'logo') updateConfig('logoPos', { x, y });
-                else if (id === 'foto') updateConfig('fotoPos', { x, y });
-              }}
-              margin={8}
-            />
-          )}
+          {/* Draggable Preview - ALWAYS visible to allow positioning all elements */}
+          <DraggablePreview
+            width={IMAGE_FORMATS[config.imageFormat].width}
+            height={IMAGE_FORMATS[config.imageFormat].height}
+            backgroundImage={config.uploadedImage || aiGeneratedBg || undefined}
+            backgroundColor="hsl(var(--muted))"
+            elements={[
+              { id: 'logo', label: 'Logo', x: config.logoPos.x, y: config.logoPos.y, enabled: config.useBrandLogo },
+              { id: 'foto', label: 'Foto', x: config.fotoPos.x, y: config.fotoPos.y, enabled: config.showSplash },
+            ]}
+            onElementMove={(id, x, y) => {
+              if (id === 'logo') updateConfig('logoPos', { x, y });
+              else if (id === 'foto') updateConfig('fotoPos', { x, y });
+            }}
+            margin={8}
+          />
           
           {/* Margin Slider */}
           <div className="space-y-2 pt-3 border-t border-border/50">

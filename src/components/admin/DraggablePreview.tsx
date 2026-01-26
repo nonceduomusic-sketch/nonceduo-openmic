@@ -7,7 +7,7 @@ export interface DraggableElementConfig {
   label: string;
   x: number; // percentage 0-100
   y: number; // percentage 0-100
-  enabled: boolean;
+  enabled: boolean; // Whether element will be rendered in final image
 }
 
 interface DraggablePreviewProps {
@@ -58,16 +58,14 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
     return Math.max(margin, Math.min(100 - margin, value));
   }, [margin]);
 
+  // Allow dragging ALL elements (even disabled ones) - user decides which to enable later
   const handlePointerDown = useCallback((e: React.PointerEvent, elementId: string) => {
-    const element = elements.find(el => el.id === elementId);
-    if (!element?.enabled) return;
-    
     e.preventDefault();
     e.stopPropagation();
     setDragging(elementId);
     setSelectedElement(elementId);
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
-  }, [elements]);
+  }, []);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragging || !containerRef.current) return;
@@ -82,19 +80,34 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
     onElementMove(dragging, clampedX, clampedY);
   }, [dragging, clampValue, onElementMove]);
 
+  // Improved snap on release - snap to nearest grid intersection
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
-    if (!dragging) return;
+    if (!dragging || !containerRef.current) return;
     
-    const element = elements.find(el => el.id === dragging);
-    if (element && snapToGrid) {
-      const snappedX = snapValue(element.x);
-      const snappedY = snapValue(element.y);
-      onElementMove(dragging, snappedX, snappedY);
+    // Get final position from pointer
+    const rect = containerRef.current.getBoundingClientRect();
+    const rawX = ((e.clientX - rect.left) / rect.width) * 100;
+    const rawY = ((e.clientY - rect.top) / rect.height) * 100;
+    
+    // Snap to grid if enabled
+    let finalX = clampValue(rawX);
+    let finalY = clampValue(rawY);
+    
+    if (snapToGrid) {
+      finalX = snapValue(rawX);
+      finalY = snapValue(rawY);
     }
     
+    // Update with final snapped position
+    onElementMove(dragging, finalX, finalY);
+    
     setDragging(null);
-    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-  }, [dragging, elements, snapToGrid, snapValue, onElementMove]);
+    try {
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      // Pointer capture may already be released
+    }
+  }, [dragging, snapToGrid, snapValue, clampValue, onElementMove]);
 
   // Calculate preview dimensions maintaining aspect ratio
   const aspectRatio = width / height;
@@ -112,11 +125,8 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
     previewWidth = previewHeight * aspectRatio;
   }
 
-  const enabledElements = elements.filter(el => el.enabled);
-
-  if (enabledElements.length === 0) {
-    return null;
-  }
+  // Show ALL elements (not just enabled) - user can position everything
+  // Elements that are disabled will appear faded but still draggable
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -178,11 +188,12 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
           </div>
         )}
 
-        {/* Draggable Elements */}
-        {enabledElements.map((element) => {
+        {/* Draggable Elements - ALL elements shown, disabled ones appear faded */}
+        {elements.map((element) => {
           const styles = ELEMENT_STYLES[element.id] || { bg: "bg-muted", border: "border-muted-foreground" };
           const isSelected = selectedElement === element.id;
           const isDragging = dragging === element.id;
+          const isDisabled = !element.enabled;
           
           return (
             <div
@@ -192,7 +203,9 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
                 "cursor-grab active:cursor-grabbing select-none",
                 styles.bg, styles.border,
                 isSelected && "ring-2 ring-white ring-offset-1 ring-offset-background",
-                isDragging && "scale-110 shadow-2xl z-50 opacity-90"
+                isDragging && "scale-110 shadow-2xl z-50",
+                // Disabled elements are faded but still interactive
+                isDisabled && "opacity-40 border-dashed"
               )}
               style={{
                 left: `${element.x}%`,
@@ -208,25 +221,33 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
               <span className="text-xs font-semibold text-white drop-shadow-sm whitespace-nowrap">
                 {element.label}
               </span>
+              {isDisabled && (
+                <span className="text-[8px] text-white/50 ml-1">(off)</span>
+              )}
             </div>
           );
         })}
       </div>
 
-      {/* Legend */}
+      {/* Legend - show all elements with status */}
       <div className="flex flex-wrap gap-2 justify-center">
-        {enabledElements.map((element) => {
+        {elements.map((element) => {
           const styles = ELEMENT_STYLES[element.id] || { bg: "bg-muted", border: "border-muted-foreground" };
           return (
             <div
               key={element.id}
               className={cn(
                 "flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-medium",
-                styles.bg, "text-white"
+                styles.bg, "text-white",
+                !element.enabled && "opacity-40"
               )}
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-white/50" />
+              <span className={cn(
+                "w-1.5 h-1.5 rounded-full",
+                element.enabled ? "bg-white/80" : "bg-white/30"
+              )} />
               {element.label}
+              {!element.enabled && <span className="text-white/50">(off)</span>}
             </div>
           );
         })}
