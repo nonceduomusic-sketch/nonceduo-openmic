@@ -46,8 +46,7 @@ export const EventControlPanel: React.FC<EventControlPanelProps> = ({ onOpenEven
 
   const handleToggleVoting = async (enabled: boolean) => {
     if (liveEvent) {
-      // Use type assertion since we've added voting_enabled to the interface
-      await updateRules({ voting_enabled: enabled } as any);
+      await updateRules({ voting_enabled: enabled });
     }
   };
 
@@ -130,7 +129,7 @@ export const EventControlPanel: React.FC<EventControlPanelProps> = ({ onOpenEven
                   <span className="text-sm">Votazioni</span>
                 </div>
                 <Switch
-                  checked={(liveEvent as any).voting_enabled ?? true}
+                  checked={liveEvent.voting_enabled ?? true}
                   onCheckedChange={handleToggleVoting}
                 />
               </div>

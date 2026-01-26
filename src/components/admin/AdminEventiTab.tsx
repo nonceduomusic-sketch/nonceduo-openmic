@@ -42,7 +42,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { useEventBookingRules } from '@/hooks/useEventBookingRules';
+import { useEventBookingRules, EventBookingRules } from '@/hooks/useEventBookingRules';
 import { useFreeModeActive } from '@/hooks/useFreeModeSettings';
 import { useToast } from '@/hooks/use-toast';
 import { adminAuditLog } from '@/lib/adminAudit';
@@ -108,17 +108,17 @@ export const AdminEventiTab: React.FC = () => {
     event_end_time: rules?.event_end_time || null,
     duration_minutes: null,
     expires_at: null,
-    countdown_start_show_minutes: (rules as any)?.countdown_start_show_minutes ?? null,
-    countdown_end_show_minutes: (rules as any)?.countdown_end_show_minutes ?? null,
+    countdown_start_show_minutes: rules?.countdown_start_show_minutes ?? null,
+    countdown_end_show_minutes: rules?.countdown_end_show_minutes ?? null,
   }), [rules]);
 
   // Handler for timing updates
-  const handleTimingUpdate = async (updates: any): Promise<boolean> => {
+  const handleTimingUpdate = async (updates: Partial<EventBookingRules>): Promise<boolean> => {
     return await updateRules({
       event_date: updates.event_date,
       event_start_time: updates.event_start_time,
       event_end_time: updates.event_end_time,
-    } as any);
+    });
   };
 
   const loading = loadingScheduled;
@@ -591,17 +591,17 @@ export const AdminEventiTab: React.FC = () => {
                 <TabsContent value="user" className="mt-4">
                   <UserLimitsConfig 
                     settings={{
-                      user_limit_enabled: (rules as any)?.user_limit_enabled ?? false,
-                      user_limit_mode: ((rules as any)?.user_limit_mode as 'session' | 'session_name') ?? 'session',
-                      user_limit_songs_total: (rules as any)?.user_limit_songs_total ?? null,
-                      user_limit_dediche_total: (rules as any)?.user_limit_dediche_total ?? null,
-                      user_limit_songs_interval: (rules as any)?.user_limit_songs_interval ?? null,
-                      user_limit_interval_minutes: (rules as any)?.user_limit_interval_minutes ?? null,
-                      user_limit_consecutive_songs: (rules as any)?.user_limit_consecutive_songs ?? null,
-                      user_limit_cooldown_message: (rules as any)?.user_limit_cooldown_message ?? 'Hai superato il limite di prenotazioni.',
+                      user_limit_enabled: rules.user_limit_enabled ?? false,
+                      user_limit_mode: rules.user_limit_mode ?? 'session',
+                      user_limit_songs_total: rules.user_limit_songs_total ?? null,
+                      user_limit_dediche_total: rules.user_limit_dediche_total ?? null,
+                      user_limit_songs_interval: rules.user_limit_songs_interval ?? null,
+                      user_limit_interval_minutes: rules.user_limit_interval_minutes ?? null,
+                      user_limit_consecutive_songs: rules.user_limit_consecutive_songs ?? null,
+                      user_limit_cooldown_message: rules.user_limit_cooldown_message ?? 'Hai superato il limite di prenotazioni.',
                     }}
                     onUpdate={async (updates) => {
-                      const success = await updateRules(updates as any);
+                      const success = await updateRules(updates);
                       return success;
                     }}
                     entityId={rules.id}

@@ -28,18 +28,14 @@ export const EventLimitsConfig: React.FC<Props> = ({ rules, onUpdate }) => {
   // Dediche limits
   const [dedicheEnabled, setDedicheEnabled] = useState(rules.dediche_enabled);
   const [dedicheMaxTotal, setDedicheMaxTotal] = useState(rules.dediche_max_total?.toString() || '');
-  const [dedicheFinalLimitEnabled, setDedicheFinalLimitEnabled] = useState((rules as any).dediche_final_limit_enabled ?? false);
-  const [dedicheFinalLimitTotal, setDedicheFinalLimitTotal] = useState((rules as any).dediche_final_limit_total?.toString() || '2');
-  const [dedicheFinalLimitMinutes, setDedicheFinalLimitMinutes] = useState((rules as any).dediche_final_limit_minutes?.toString() || '10');
+  const [dedicheFinalLimitEnabled, setDedicheFinalLimitEnabled] = useState(rules.dediche_final_limit_enabled ?? false);
+  const [dedicheFinalLimitTotal, setDedicheFinalLimitTotal] = useState(rules.dediche_final_limit_total?.toString() || '2');
+  const [dedicheFinalLimitMinutes, setDedicheFinalLimitMinutes] = useState(rules.dediche_final_limit_minutes?.toString() || '10');
 
   const handleSave = async () => {
     setIsSaving(true);
 
-    const updates: Partial<EventBookingRules> & {
-      dediche_final_limit_enabled?: boolean;
-      dediche_final_limit_total?: number | null;
-      dediche_final_limit_minutes?: number | null;
-    } = {
+    const updates: Partial<EventBookingRules> = {
       openmic_enabled: openmicEnabled,
       openmic_max_songs: openmicMaxSongs ? parseInt(openmicMaxSongs) : null,
       openmic_final_limit_enabled: openmicFinalLimitEnabled,
@@ -52,7 +48,7 @@ export const EventLimitsConfig: React.FC<Props> = ({ rules, onUpdate }) => {
       dediche_final_limit_minutes: dedicheFinalLimitEnabled && dedicheFinalLimitMinutes ? parseInt(dedicheFinalLimitMinutes) : null,
     };
 
-    const success = await onUpdate(updates as any);
+    const success = await onUpdate(updates);
 
     if (success) {
       toast({
