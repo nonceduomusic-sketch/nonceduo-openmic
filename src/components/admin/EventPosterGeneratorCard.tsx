@@ -37,6 +37,7 @@ import { useToast } from '@/hooks/use-toast';
 // Brand logo assets
 import brandLogoText from '@/assets/brand-logo-text.png';
 import brandLogoSplash from '@/assets/brand-logo-splash.png';
+import { PositionGrid, Position, getPositionCoordinates } from './PositionGrid';
 
 type EventType = 'public' | 'private';
 type StylePreset = 'minimal' | 'gradient' | 'neon';
@@ -58,6 +59,8 @@ interface EventPosterConfig {
   aiTheme: string;
   useBrandLogo: boolean;
   showSplash: boolean;
+  fotoPosition: Position;
+  logoPosition: Position;
 }
 
 const STORAGE_KEY = 'ncd_poster_generator_config';
@@ -76,6 +79,8 @@ const DEFAULT_CONFIG: EventPosterConfig = {
   aiTheme: '',
   useBrandLogo: true,
   showSplash: false,
+  fotoPosition: 'middle-center',
+  logoPosition: 'bottom-center',
 };
 
 const STYLE_PRESETS: Record<StylePreset, { label: string; accent: string }> = {
@@ -432,7 +437,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
       // Draw brand title - logo, text, and/or splash (independent)
       let currentY = textCenterY - 80;
       
-      // Draw "Foto" (duo photo) FIRST if enabled - centered and proportional - BIGGER for WOW effect
+      // Draw "Foto" (duo photo) FIRST if enabled - using position grid
       if (config.showSplash) {
         try {
           const fotoImg = new Image();
@@ -444,9 +449,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
           
           // Calculate proportional size maintaining aspect ratio - MUCH BIGGER for wow effect
           const fotoAspect = fotoImg.width / fotoImg.height;
-          // Use ~75-85% of available space for maximum impact
-          const margin = 80; // Increased margin
-          const bottomMargin = 120; // Extra bottom margin
+          const margin = 80;
           const maxFotoHeight = config.imageFormat === 'story' 
             ? canvas.height * 0.65 
             : (config.imageFormat === 'portrait' ? canvas.height * 0.6 : canvas.height * 0.55);
@@ -454,11 +457,9 @@ export const EventPosterGeneratorCard: React.FC = () => {
           
           let fotoWidth, fotoHeight;
           if (fotoAspect > 1) {
-            // Wider than tall
             fotoWidth = Math.min(maxFotoWidth, maxFotoHeight * fotoAspect);
             fotoHeight = fotoWidth / fotoAspect;
           } else {
-            // Taller than wide
             fotoHeight = maxFotoHeight;
             fotoWidth = fotoHeight * fotoAspect;
             if (fotoWidth > maxFotoWidth) {
@@ -467,13 +468,16 @@ export const EventPosterGeneratorCard: React.FC = () => {
             }
           }
           
-          // Center horizontally, position vertically with proper margins
-          const fotoX = (canvas.width - fotoWidth) / 2;
-          // Center in the available space (accounting for bottom margin)
-          const availableHeight = canvas.height - bottomMargin;
-          const fotoY = (availableHeight - fotoHeight) / 2;
+          // Use position grid for placement
+          const { x: fotoX, y: fotoY } = getPositionCoordinates(
+            config.fotoPosition,
+            canvas.width,
+            canvas.height,
+            fotoWidth,
+            fotoHeight,
+            80 // margin
+          );
           
-          // Draw with slight opacity for blending
           ctx.globalAlpha = 0.7;
           ctx.drawImage(fotoImg, fotoX, fotoY, fotoWidth, fotoHeight);
           ctx.globalAlpha = 1;
@@ -482,9 +486,8 @@ export const EventPosterGeneratorCard: React.FC = () => {
         }
       }
       
-      // Draw logo OR text based on useBrandLogo
+      // Draw logo OR text based on useBrandLogo - using position grid
       if (config.useBrandLogo) {
-        // Load and draw brand logo (transparent bg)
         try {
           const logoImg = new Image();
           await new Promise<void>((resolve, reject) => {
@@ -493,19 +496,25 @@ export const EventPosterGeneratorCard: React.FC = () => {
             logoImg.src = brandLogoText;
           });
           
-          // Calculate logo size maintaining aspect ratio
           const logoMaxWidth = 450;
           const logoAspect = logoImg.width / logoImg.height;
           const logoWidth = Math.min(logoMaxWidth, canvas.width - 80);
           const logoHeight = logoWidth / logoAspect;
-          const logoX = (canvas.width - logoWidth) / 2;
-          const logoY = currentY - logoHeight / 2;
+          
+          // Use position grid for placement
+          const { x: logoX, y: logoY } = getPositionCoordinates(
+            config.logoPosition,
+            canvas.width,
+            canvas.height,
+            logoWidth,
+            logoHeight,
+            60 // margin
+          );
           
           ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight);
-          currentY += logoHeight / 2 + 30;
+          currentY = logoY + logoHeight + 30;
         } catch (e) {
           console.error('Failed to load logo:', e);
-          // Fallback to text
           ctx.font = `bold ${scaledTitleSize}px "Orbitron", sans-serif`;
           ctx.fillStyle = '#ffffff';
           ctx.fillText("NON C'È DUO", canvas.width / 2, currentY);
@@ -880,41 +889,57 @@ export const EventPosterGeneratorCard: React.FC = () => {
           </RadioGroup>
         </div>
 
-        {/* Brand Elements (Independent) */}
-        <div className="space-y-3 p-4 rounded-xl bg-muted/30 border border-border/50">
+        {/* Brand Elements (Independent) with Position Controls */}
+        <div className="space-y-4 p-4 rounded-xl bg-muted/30 border border-border/50">
           <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Elementi Brand</p>
           
-          {/* Logo Toggle */}
-          <div className="flex items-center justify-between">
-            <Label htmlFor="poster-use-brand-logo" className="flex items-center gap-2 cursor-pointer">
-              <ImagePlus className="w-4 h-4" />
-              <span>Logo Scritta</span>
-            </Label>
-            <Switch
-              id="poster-use-brand-logo"
-              checked={config.useBrandLogo}
-              onCheckedChange={(checked) => updateConfig('useBrandLogo', checked)}
-            />
+          {/* Logo Toggle + Position */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="poster-use-brand-logo" className="flex items-center gap-2 cursor-pointer">
+                <ImagePlus className="w-4 h-4" />
+                <span>Logo Scritta</span>
+              </Label>
+              <Switch
+                id="poster-use-brand-logo"
+                checked={config.useBrandLogo}
+                onCheckedChange={(checked) => updateConfig('useBrandLogo', checked)}
+              />
+            </div>
+            {config.useBrandLogo && (
+              <div className="flex items-start gap-4 pl-6">
+                <PositionGrid
+                  value={config.logoPosition}
+                  onChange={(pos) => updateConfig('logoPosition', pos)}
+                  label="Posizione Logo"
+                />
+              </div>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground -mt-1">
-            Logo "NON C'È DUO" colorato (sfondo trasparente)
-          </p>
           
-          {/* Foto Toggle - Independent */}
-          <div className="flex items-center justify-between pt-2 border-t border-border/50">
-            <Label htmlFor="poster-show-splash" className="flex items-center gap-2 cursor-pointer">
-              <Sparkles className="w-4 h-4" />
-              <span>Foto</span>
-            </Label>
-            <Switch
-              id="poster-show-splash"
-              checked={config.showSplash}
-              onCheckedChange={(checked) => updateConfig('showSplash', checked)}
-            />
+          {/* Foto Toggle + Position */}
+          <div className="space-y-3 pt-3 border-t border-border/50">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="poster-show-splash" className="flex items-center gap-2 cursor-pointer">
+                <Sparkles className="w-4 h-4" />
+                <span>Foto</span>
+              </Label>
+              <Switch
+                id="poster-show-splash"
+                checked={config.showSplash}
+                onCheckedChange={(checked) => updateConfig('showSplash', checked)}
+              />
+            </div>
+            {config.showSplash && (
+              <div className="flex items-start gap-4 pl-6">
+                <PositionGrid
+                  value={config.fotoPosition}
+                  onChange={(pos) => updateConfig('fotoPosition', pos)}
+                  label="Posizione Foto"
+                />
+              </div>
+            )}
           </div>
-          <p className="text-xs text-muted-foreground -mt-1">
-            Foto del duo, centrata e proporzionata
-          </p>
         </div>
 
         {/* Venue Name (Optional - shown as subtitle under band name) */}
