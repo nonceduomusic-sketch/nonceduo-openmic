@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { 
-  Zap, Play, Square, Music, MessageSquare, Clock, RotateCcw, Edit3, Trophy
+  Zap, Play, Square, Music, MessageSquare, Clock, RotateCcw, Trophy, Calendar
 } from 'lucide-react';
 import { useFreeModeSettings, FreeModeSettings } from '@/hooks/useFreeModeSettings';
 import { cn } from '@/lib/utils';
@@ -19,12 +19,17 @@ import { EventLimitsConfig } from './EventLimitsConfig';
 import { EventReopenControl } from './EventReopenControl';
 import { EventClosureConfig } from './EventClosureConfig';
 import { EventPinConfig } from './EventPinConfig';
+import { EventTimingConfig } from './EventTimingConfig';
 
 /**
  * Adapter che converte FreeModeSettings nel formato EventBookingRules
  * per poter riutilizzare gli stessi componenti dell'evento programmato
  */
-const adaptToEventRules = (settings: FreeModeSettings | null): EventBookingRules => {
+const adaptToEventRules = (settings: FreeModeSettings | null): EventBookingRules & {
+  dediche_final_limit_enabled?: boolean;
+  dediche_final_limit_total?: number | null;
+  dediche_final_limit_minutes?: number | null;
+} => {
   if (!settings) {
     return {
       id: 'free-mode',
@@ -42,6 +47,9 @@ const adaptToEventRules = (settings: FreeModeSettings | null): EventBookingRules
       openmic_final_limit_enabled: false,
       openmic_final_limit_songs: null,
       openmic_final_limit_minutes: null,
+      dediche_final_limit_enabled: false,
+      dediche_final_limit_total: null,
+      dediche_final_limit_minutes: null,
       pin_required: false,
       pin_code: null,
       reopen_active: false,
@@ -84,6 +92,9 @@ const adaptToEventRules = (settings: FreeModeSettings | null): EventBookingRules
     openmic_final_limit_enabled: settings.openmic_final_limit_enabled ?? false,
     openmic_final_limit_songs: settings.openmic_final_limit_songs ?? null,
     openmic_final_limit_minutes: settings.openmic_final_limit_minutes ?? null,
+    dediche_final_limit_enabled: settings.dediche_final_limit_enabled ?? false,
+    dediche_final_limit_total: settings.dediche_final_limit_total ?? null,
+    dediche_final_limit_minutes: settings.dediche_final_limit_minutes ?? null,
     pin_required: settings.pin_enabled ?? false,
     pin_code: settings.pin_code ?? null,
     reopen_active: settings.reopen_active ?? false,
@@ -102,9 +113,9 @@ const adaptToEventRules = (settings: FreeModeSettings | null): EventBookingRules
     booking_opens_at: settings.booking_opens_at ?? null,
     booking_closes_at: settings.booking_closes_at ?? null,
     close_minutes_before_end: settings.close_minutes_before_end ?? null,
-    event_date: null,
-    event_start_time: null,
-    event_end_time: null,
+    event_date: settings.event_date ?? null,
+    event_start_time: settings.event_start_time ?? null,
+    event_end_time: settings.event_end_time ?? null,
     created_at: settings.created_at || new Date().toISOString(),
     updated_at: settings.updated_at || new Date().toISOString(),
   };
@@ -122,15 +133,42 @@ export const FreeModeFullPanel: React.FC = () => {
     getTimeRemaining,
   } = useFreeModeSettings();
 
-  const [activeSection, setActiveSection] = useState<'general' | 'limits' | 'pin' | 'reopen' | 'closure'>('general');
+  const [activeSection, setActiveSection] = useState<'general' | 'timing' | 'limits' | 'pin' | 'reopen' | 'closure'>('general');
   const [editingName, setEditingName] = useState(false);
   const [tempName, setTempName] = useState(settings?.event_name || 'Evento Libero');
+
+  // Sync tempName when settings load
+  useEffect(() => {
+    if (settings?.event_name) {
+      setTempName(settings.event_name);
+    }
+  }, [settings?.event_name]);
 
   // Convert settings to EventBookingRules format for shared components
   const rules = useMemo(() => adaptToEventRules(settings), [settings]);
 
+  // Timing settings for EventTimingConfig
+  const timingSettings = useMemo(() => ({
+    start_mode: settings?.start_mode || 'manual',
+    end_mode: settings?.end_mode || 'manual',
+    event_date: settings?.event_date || null,
+    event_start_time: settings?.event_start_time || null,
+    event_end_time: settings?.event_end_time || null,
+    duration_minutes: settings?.duration_minutes || null,
+    expires_at: settings?.expires_at || null,
+  }), [settings]);
+
+  // Handler per timing settings
+  const handleTimingUpdate = async (updates: any): Promise<boolean> => {
+    return await updateSettings(updates);
+  };
+
   // Handler che converte gli aggiornamenti EventBookingRules -> FreeModeSettings
-  const handleUpdate = async (updates: Partial<EventBookingRules>): Promise<boolean> => {
+  const handleUpdate = async (updates: Partial<EventBookingRules> & {
+    dediche_final_limit_enabled?: boolean;
+    dediche_final_limit_total?: number | null;
+    dediche_final_limit_minutes?: number | null;
+  }): Promise<boolean> => {
     const freeModeUpdates: Partial<FreeModeSettings> = {};
 
     if (updates.event_name !== undefined) freeModeUpdates.event_name = updates.event_name;
@@ -142,8 +180,14 @@ export const FreeModeFullPanel: React.FC = () => {
     if (updates.openmic_final_limit_enabled !== undefined) freeModeUpdates.openmic_final_limit_enabled = updates.openmic_final_limit_enabled;
     if (updates.openmic_final_limit_songs !== undefined) freeModeUpdates.openmic_final_limit_songs = updates.openmic_final_limit_songs;
     if (updates.openmic_final_limit_minutes !== undefined) freeModeUpdates.openmic_final_limit_minutes = updates.openmic_final_limit_minutes;
+    // Dediche final limit
+    if (updates.dediche_final_limit_enabled !== undefined) freeModeUpdates.dediche_final_limit_enabled = updates.dediche_final_limit_enabled;
+    if (updates.dediche_final_limit_total !== undefined) freeModeUpdates.dediche_final_limit_total = updates.dediche_final_limit_total;
+    if (updates.dediche_final_limit_minutes !== undefined) freeModeUpdates.dediche_final_limit_minutes = updates.dediche_final_limit_minutes;
+    // PIN
     if (updates.pin_required !== undefined) freeModeUpdates.pin_enabled = updates.pin_required;
     if (updates.pin_code !== undefined) freeModeUpdates.pin_code = updates.pin_code;
+    // Reopen
     if (updates.reopen_active !== undefined) freeModeUpdates.reopen_active = updates.reopen_active;
     if (updates.reopen_mode !== undefined) freeModeUpdates.reopen_mode = updates.reopen_mode;
     if (updates.reopen_until !== undefined) freeModeUpdates.reopen_until = updates.reopen_until;
@@ -152,11 +196,13 @@ export const FreeModeFullPanel: React.FC = () => {
     if (updates.reopen_songs_used !== undefined) freeModeUpdates.reopen_songs_used = updates.reopen_songs_used;
     if (updates.reopen_dediche_used !== undefined) freeModeUpdates.reopen_dediche_used = updates.reopen_dediche_used;
     if (updates.reopen_message !== undefined) freeModeUpdates.reopen_message = updates.reopen_message;
+    // Closure
     if (updates.closure_mode !== undefined) freeModeUpdates.closure_mode = updates.closure_mode;
     if (updates.closure_title !== undefined) freeModeUpdates.closure_title = updates.closure_title;
     if (updates.closure_message !== undefined) freeModeUpdates.closure_message = updates.closure_message;
     if (updates.closure_redirect_url !== undefined) freeModeUpdates.closure_redirect_url = updates.closure_redirect_url;
     if ((updates as any).closure_preview_enabled !== undefined) freeModeUpdates.closure_preview_enabled = (updates as any).closure_preview_enabled;
+    // Booking window
     if (updates.booking_opens_at !== undefined) freeModeUpdates.booking_opens_at = updates.booking_opens_at;
     if (updates.booking_closes_at !== undefined) freeModeUpdates.booking_closes_at = updates.booking_closes_at;
     if (updates.close_minutes_before_end !== undefined) freeModeUpdates.close_minutes_before_end = updates.close_minutes_before_end;
@@ -212,11 +258,12 @@ export const FreeModeFullPanel: React.FC = () => {
         
         <CardContent className="space-y-4">
           <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as typeof activeSection)}>
-            <TabsList className="grid w-full grid-cols-5">
+            <TabsList className="grid w-full grid-cols-6">
               <TabsTrigger value="general" className="text-xs">Generale</TabsTrigger>
+              <TabsTrigger value="timing" className="text-xs">Tempi</TabsTrigger>
               <TabsTrigger value="limits" className="text-xs">Limiti</TabsTrigger>
               <TabsTrigger value="pin" className="text-xs">PIN</TabsTrigger>
-              <TabsTrigger value="reopen" className="text-xs">Riapertura</TabsTrigger>
+              <TabsTrigger value="reopen" className="text-xs">Riapri</TabsTrigger>
               <TabsTrigger value="closure" className="text-xs">Chiusura</TabsTrigger>
             </TabsList>
 
@@ -274,6 +321,15 @@ export const FreeModeFullPanel: React.FC = () => {
                   </div>
                 </div>
               </div>
+            </TabsContent>
+
+            {/* TIMING TAB */}
+            <TabsContent value="timing" className="mt-4">
+              <EventTimingConfig 
+                settings={timingSettings} 
+                isActive={false}
+                onUpdate={handleTimingUpdate}
+              />
             </TabsContent>
 
             <TabsContent value="limits" className="mt-4">
@@ -393,11 +449,12 @@ export const FreeModeFullPanel: React.FC = () => {
 
         {/* Live Controls Tabs - using shared components */}
         <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as typeof activeSection)}>
-          <TabsList className="grid w-full grid-cols-5 h-9">
+          <TabsList className="grid w-full grid-cols-6 h-9">
             <TabsTrigger value="general" className="text-xs">Generale</TabsTrigger>
+            <TabsTrigger value="timing" className="text-xs">Tempi</TabsTrigger>
             <TabsTrigger value="limits" className="text-xs">Limiti</TabsTrigger>
             <TabsTrigger value="pin" className="text-xs">PIN</TabsTrigger>
-            <TabsTrigger value="reopen" className="text-xs">Riapertura</TabsTrigger>
+            <TabsTrigger value="reopen" className="text-xs">Riapri</TabsTrigger>
             <TabsTrigger value="closure" className="text-xs">Chiusura</TabsTrigger>
           </TabsList>
 
@@ -455,6 +512,15 @@ export const FreeModeFullPanel: React.FC = () => {
                 </div>
               </div>
             </div>
+          </TabsContent>
+
+          {/* TIMING TAB (read-only during live, but shown for info) */}
+          <TabsContent value="timing" className="mt-3">
+            <EventTimingConfig 
+              settings={timingSettings} 
+              isActive={true}
+              onUpdate={handleTimingUpdate}
+            />
           </TabsContent>
 
           <TabsContent value="limits" className="mt-3">
