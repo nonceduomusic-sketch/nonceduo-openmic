@@ -161,12 +161,23 @@ export const useEventBookingRules = () => {
     if (!rules?.id) return false;
 
     try {
+      const finalUpdates = { ...updates, updated_at: new Date().toISOString() };
+      
       const { error: updateError } = await supabase
         .from('event_booking_rules')
-        .update(updates)
+        .update(finalUpdates)
         .eq('id', rules.id);
 
       if (updateError) throw updateError;
+      
+      // Aggiorna lo stato locale immediatamente per una UI reattiva
+      setRules(prev => prev ? { ...prev, ...finalUpdates } : prev);
+      
+      // Aggiorna anche allRules se necessario
+      setAllRules(prev => prev.map(r => 
+        r.id === rules.id ? { ...r, ...finalUpdates } : r
+      ));
+      
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Errore nell\'aggiornamento');
