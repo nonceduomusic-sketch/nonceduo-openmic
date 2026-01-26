@@ -266,13 +266,13 @@ export const FreeModeFullPanel: React.FC = () => {
         
         <CardContent className="space-y-4">
           <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as typeof activeSection)}>
-            <TabsList className="grid w-full grid-cols-6">
-              <TabsTrigger value="general" className="text-xs">Generale</TabsTrigger>
-              <TabsTrigger value="timing" className="text-xs">Tempi</TabsTrigger>
-              <TabsTrigger value="limits" className="text-xs">Limiti</TabsTrigger>
-              <TabsTrigger value="pin" className="text-xs">PIN</TabsTrigger>
-              <TabsTrigger value="reopen" className="text-xs">Riapri</TabsTrigger>
-              <TabsTrigger value="closure" className="text-xs">Chiusura</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 gap-1 h-auto p-1">
+              <TabsTrigger value="general" className="text-xs py-2">Generale</TabsTrigger>
+              <TabsTrigger value="timing" className="text-xs py-2">Tempi</TabsTrigger>
+              <TabsTrigger value="limits" className="text-xs py-2">Limiti</TabsTrigger>
+              <TabsTrigger value="pin" className="text-xs py-2">PIN</TabsTrigger>
+              <TabsTrigger value="reopen" className="text-xs py-2">Riapri</TabsTrigger>
+              <TabsTrigger value="closure" className="text-xs py-2">Chiusura</TabsTrigger>
             </TabsList>
 
             {/* GENERAL TAB - Name, Voting, Formats */}
@@ -491,14 +491,14 @@ export const FreeModeFullPanel: React.FC = () => {
 
         {/* Live Controls Tabs - using shared components */}
         <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as typeof activeSection)}>
-          <TabsList className="grid w-full grid-cols-7 h-9">
-            <TabsTrigger value="general" className="text-xs">Generale</TabsTrigger>
-            <TabsTrigger value="timing" className="text-xs">Tempi</TabsTrigger>
-            <TabsTrigger value="limits" className="text-xs">Limiti</TabsTrigger>
-            <TabsTrigger value="user" className="text-xs">Utente</TabsTrigger>
-            <TabsTrigger value="pin" className="text-xs">PIN</TabsTrigger>
-            <TabsTrigger value="reopen" className="text-xs">Riapri</TabsTrigger>
-            <TabsTrigger value="closure" className="text-xs">Chiusura</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 gap-1 h-auto p-1">
+            <TabsTrigger value="general" className="text-xs py-2">Generale</TabsTrigger>
+            <TabsTrigger value="timing" className="text-xs py-2">Tempi</TabsTrigger>
+            <TabsTrigger value="limits" className="text-xs py-2">Limiti</TabsTrigger>
+            <TabsTrigger value="user" className="text-xs py-2">Utente</TabsTrigger>
+            <TabsTrigger value="pin" className="text-xs py-2">PIN</TabsTrigger>
+            <TabsTrigger value="reopen" className="text-xs py-2">Riapri</TabsTrigger>
+            <TabsTrigger value="closure" className="text-xs py-2">Chiusura</TabsTrigger>
           </TabsList>
 
           {/* GENERAL TAB - Name, Voting, Formats */}

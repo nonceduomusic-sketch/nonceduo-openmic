@@ -108,8 +108,9 @@ export const EventLimitsConfig: React.FC<Props> = ({ rules, onUpdate }) => {
 
           {openmicEnabled && (
             <div className="space-y-4 pt-2">
+              {/* Max totale per la sera - sempre visibile */}
               <div className="space-y-2">
-                <Label htmlFor="openmicMaxSongs">Numero massimo canzoni</Label>
+                <Label htmlFor="openmicMaxSongs">Max canzoni per tutta la sera</Label>
                 <div className="flex items-center gap-2">
                   <Input
                     id="openmicMaxSongs"
@@ -124,9 +125,12 @@ export const EventLimitsConfig: React.FC<Props> = ({ rules, onUpdate }) => {
                     {openmicMaxSongs ? `max ${openmicMaxSongs} canzoni` : 'nessun limite'}
                   </span>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Limite totale per l'evento, indipendente dai limiti "ultimi minuti"
+                </p>
               </div>
 
-              {/* Final limit (ultimi X minuti) */}
+              {/* Limite ultimi minuti - toggle separato */}
               <div className="space-y-3 p-3 rounded-lg bg-background border border-border">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -138,6 +142,9 @@ export const EventLimitsConfig: React.FC<Props> = ({ rules, onUpdate }) => {
                     onCheckedChange={setOpenmicFinalLimitEnabled}
                   />
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  Riduce il limite di canzoni prenotabili negli ultimi minuti dell'evento
+                </p>
                 
                 {openmicFinalLimitEnabled && (
                   <div className="flex flex-wrap items-center gap-2 pt-2">
