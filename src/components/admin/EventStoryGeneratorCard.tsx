@@ -655,12 +655,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
       const footerSpace = isCompact ? 100 : 180;
       const pinSectionY = canvas.height - footerSpace - sectionHeight;
       
-      // Draw section border
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.roundRect(100, pinSectionY - 20, canvas.width - 200, sectionHeight + 40, 20);
-      ctx.stroke();
+      // NOTE: Removed the old fixed border rectangle - elements are now positioned freely via drag & drop
 
       if (config.showQrCode) {
         // Generate and draw QR code
