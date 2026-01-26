@@ -1,5 +1,5 @@
-import React from 'react';
- import { Clock, Music2, Instagram, Heart, PartyPopper } from 'lucide-react';
+import React, { forwardRef } from 'react';
+import { Clock, Music2, Instagram, Heart, PartyPopper } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -14,17 +14,20 @@ interface FreeModeClosureOverlayProps {
  * Shows overlay when Free Mode bookings are closed (expired or limit reached)
  * NOT an error - just a friendly notification that booking time has ended
  */
-export const FreeModeClosureOverlay: React.FC<FreeModeClosureOverlayProps> = ({
+export const FreeModeClosureOverlay = forwardRef<HTMLDivElement, FreeModeClosureOverlayProps>(({
   closureTitle = 'Prenotazioni chiuse',
   closureMessage = 'Grazie per aver partecipato! Ci vediamo alla prossima serata.',
   className,
-}) => {
+}, ref) => {
   return (
-    <div className={cn(
-      "p-8 rounded-2xl bg-gradient-to-br from-primary/10 via-accent/5 to-secondary/10 border-2 border-primary/20 text-center",
-      "animate-in fade-in-0 slide-in-from-bottom-4 duration-500",
-      className
-    )}>
+    <div 
+      ref={ref}
+      className={cn(
+        "p-8 rounded-2xl bg-gradient-to-br from-primary/10 via-accent/5 to-secondary/10 border-2 border-primary/20 text-center",
+        "animate-in fade-in-0 slide-in-from-bottom-4 duration-500",
+        className
+      )}
+    >
       {/* Friendly icon - not warning/error */}
       <div className="relative mx-auto w-20 h-20 mb-4">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/30 to-secondary/30 rounded-full animate-pulse" />
@@ -53,37 +56,42 @@ export const FreeModeClosureOverlay: React.FC<FreeModeClosureOverlayProps> = ({
       <p className="text-xs text-muted-foreground mb-3">
         Seguici per i prossimi eventi:
       </p>
-       <div className="flex justify-center">
-         <Button variant="outline" size="sm" className="gap-2" asChild>
-           <a
-             href="https://www.instagram.com/nonceduo.music/"
-             target="_blank"
-             rel="noopener noreferrer"
-           >
-             <Instagram className="w-4 h-4" />
-             Instagram
-           </a>
-         </Button>
-       </div>
+      <div className="flex justify-center">
+        <Button variant="outline" size="sm" className="gap-2" asChild>
+          <a
+            href="https://www.instagram.com/nonceduo.music/"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Instagram className="w-4 h-4" />
+            Instagram
+          </a>
+        </Button>
+      </div>
     </div>
   );
-};
+});
+
+FreeModeClosureOverlay.displayName = 'FreeModeClosureOverlay';
 
 /**
  * FreeModeClosureBanner - Compact banner version for list headers
  * Friendly design, not alarming
  */
-export const FreeModeClosureBanner: React.FC<FreeModeClosureOverlayProps> = ({
+export const FreeModeClosureBanner = forwardRef<HTMLDivElement, FreeModeClosureOverlayProps>(({
   closureTitle = 'Prenotazioni chiuse',
   closureMessage = 'Grazie per aver partecipato!',
   className,
-}) => {
+}, ref) => {
   return (
-    <div className={cn(
-      "p-4 rounded-xl border-2 bg-primary/5 border-primary/30",
-      "animate-in fade-in-0 duration-300",
-      className
-    )}>
+    <div 
+      ref={ref}
+      className={cn(
+        "p-4 rounded-xl border-2 bg-primary/5 border-primary/30",
+        "animate-in fade-in-0 duration-300",
+        className
+      )}
+    >
       <div className="flex items-center gap-3">
         <div className="p-2.5 rounded-full bg-primary/20">
           <Clock className="w-5 h-5 text-primary" />
@@ -100,6 +108,8 @@ export const FreeModeClosureBanner: React.FC<FreeModeClosureOverlayProps> = ({
       </div>
     </div>
   );
-};
+});
+
+FreeModeClosureBanner.displayName = 'FreeModeClosureBanner';
 
 export default FreeModeClosureOverlay;
