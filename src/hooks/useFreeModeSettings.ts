@@ -110,9 +110,36 @@ export const useFreeModeSettings = () => {
     if (!settings?.id) return false;
 
     try {
+      const finalUpdates = { ...updates, updated_at: new Date().toISOString() };
+      
+      // Se cambiano i campi di timing durante un evento attivo, ricalcola expires_at
+      if (settings.is_active && (
+        updates.end_mode !== undefined || 
+        updates.duration_minutes !== undefined ||
+        updates.event_date !== undefined ||
+        updates.event_end_time !== undefined
+      )) {
+        const newEndMode = (updates.end_mode ?? settings.end_mode) as 'manual' | 'scheduled' | 'duration';
+        const newEventDate = updates.event_date ?? settings.event_date;
+        const newEventEndTime = updates.event_end_time ?? settings.event_end_time;
+        const newDurationMinutes = updates.duration_minutes ?? settings.duration_minutes;
+        const startedAt = settings.started_at ? new Date(settings.started_at) : new Date();
+        
+        // Ricalcola expires_at
+        if (newEndMode === 'manual') {
+          finalUpdates.expires_at = null;
+        } else if (newEndMode === 'scheduled' && newEventDate && newEventEndTime) {
+          finalUpdates.expires_at = `${newEventDate}T${newEventEndTime}:00`;
+        } else if (newEndMode === 'duration' && newDurationMinutes) {
+          finalUpdates.expires_at = new Date(startedAt.getTime() + newDurationMinutes * 60 * 1000).toISOString();
+        } else {
+          finalUpdates.expires_at = null;
+        }
+      }
+      
       const { error: updateError } = await supabase
         .from('free_mode_settings')
-        .update({ ...updates, updated_at: new Date().toISOString() })
+        .update(finalUpdates)
         .eq('id', settings.id);
 
       if (updateError) throw updateError;
