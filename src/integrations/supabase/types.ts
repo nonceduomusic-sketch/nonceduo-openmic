@@ -334,6 +334,9 @@ export type Database = {
           created_by: string | null
           dediche_current_count: number | null
           dediche_enabled: boolean | null
+          dediche_final_limit_enabled: boolean | null
+          dediche_final_limit_minutes: number | null
+          dediche_final_limit_total: number | null
           dediche_max_total: number | null
           event_date: string | null
           event_end_time: string | null
@@ -375,6 +378,9 @@ export type Database = {
           created_by?: string | null
           dediche_current_count?: number | null
           dediche_enabled?: boolean | null
+          dediche_final_limit_enabled?: boolean | null
+          dediche_final_limit_minutes?: number | null
+          dediche_final_limit_total?: number | null
           dediche_max_total?: number | null
           event_date?: string | null
           event_end_time?: string | null
@@ -416,6 +422,9 @@ export type Database = {
           created_by?: string | null
           dediche_current_count?: number | null
           dediche_enabled?: boolean | null
+          dediche_final_limit_enabled?: boolean | null
+          dediche_final_limit_minutes?: number | null
+          dediche_final_limit_total?: number | null
           dediche_max_total?: number | null
           event_date?: string | null
           event_end_time?: string | null
@@ -459,9 +468,16 @@ export type Database = {
           created_at: string | null
           dediche_current_count: number | null
           dediche_enabled: boolean | null
+          dediche_final_limit_enabled: boolean | null
+          dediche_final_limit_minutes: number | null
+          dediche_final_limit_total: number | null
           dediche_max_total: number | null
           duration_minutes: number | null
+          end_mode: string | null
+          event_date: string | null
+          event_end_time: string | null
           event_name: string | null
+          event_start_time: string | null
           event_status: string | null
           expires_at: string | null
           id: string
@@ -482,6 +498,7 @@ export type Database = {
           reopen_mode: string | null
           reopen_songs_used: number | null
           reopen_until: string | null
+          start_mode: string | null
           started_at: string | null
           updated_at: string | null
           updated_by: string | null
@@ -499,9 +516,16 @@ export type Database = {
           created_at?: string | null
           dediche_current_count?: number | null
           dediche_enabled?: boolean | null
+          dediche_final_limit_enabled?: boolean | null
+          dediche_final_limit_minutes?: number | null
+          dediche_final_limit_total?: number | null
           dediche_max_total?: number | null
           duration_minutes?: number | null
+          end_mode?: string | null
+          event_date?: string | null
+          event_end_time?: string | null
           event_name?: string | null
+          event_start_time?: string | null
           event_status?: string | null
           expires_at?: string | null
           id?: string
@@ -522,6 +546,7 @@ export type Database = {
           reopen_mode?: string | null
           reopen_songs_used?: number | null
           reopen_until?: string | null
+          start_mode?: string | null
           started_at?: string | null
           updated_at?: string | null
           updated_by?: string | null
@@ -539,9 +564,16 @@ export type Database = {
           created_at?: string | null
           dediche_current_count?: number | null
           dediche_enabled?: boolean | null
+          dediche_final_limit_enabled?: boolean | null
+          dediche_final_limit_minutes?: number | null
+          dediche_final_limit_total?: number | null
           dediche_max_total?: number | null
           duration_minutes?: number | null
+          end_mode?: string | null
+          event_date?: string | null
+          event_end_time?: string | null
           event_name?: string | null
+          event_start_time?: string | null
           event_status?: string | null
           expires_at?: string | null
           id?: string
@@ -562,6 +594,7 @@ export type Database = {
           reopen_mode?: string | null
           reopen_songs_used?: number | null
           reopen_until?: string | null
+          start_mode?: string | null
           started_at?: string | null
           updated_at?: string | null
           updated_by?: string | null

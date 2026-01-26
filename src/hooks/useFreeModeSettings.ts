@@ -21,14 +21,24 @@ export interface FreeModeSettings {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  // Event timing
+  event_date: string | null;
+  event_start_time: string | null;
+  event_end_time: string | null;
+  start_mode: 'manual' | 'scheduled';
+  end_mode: 'manual' | 'scheduled' | 'duration';
   // Booking window
   booking_opens_at: string | null;
   booking_closes_at: string | null;
   close_minutes_before_end: number | null;
-  // Final limit (urgency mode)
+  // Final limit (urgency mode) - Open Mic
   openmic_final_limit_enabled: boolean;
   openmic_final_limit_songs: number | null;
   openmic_final_limit_minutes: number | null;
+  // Final limit (urgency mode) - Dediche
+  dediche_final_limit_enabled: boolean;
+  dediche_final_limit_total: number | null;
+  dediche_final_limit_minutes: number | null;
   // Reopening
   reopen_active: boolean;
   reopen_until: string | null;

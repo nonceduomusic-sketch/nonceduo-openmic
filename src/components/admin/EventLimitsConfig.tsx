@@ -28,11 +28,18 @@ export const EventLimitsConfig: React.FC<Props> = ({ rules, onUpdate }) => {
   // Dediche limits
   const [dedicheEnabled, setDedicheEnabled] = useState(rules.dediche_enabled);
   const [dedicheMaxTotal, setDedicheMaxTotal] = useState(rules.dediche_max_total?.toString() || '');
+  const [dedicheFinalLimitEnabled, setDedicheFinalLimitEnabled] = useState((rules as any).dediche_final_limit_enabled ?? false);
+  const [dedicheFinalLimitTotal, setDedicheFinalLimitTotal] = useState((rules as any).dediche_final_limit_total?.toString() || '2');
+  const [dedicheFinalLimitMinutes, setDedicheFinalLimitMinutes] = useState((rules as any).dediche_final_limit_minutes?.toString() || '10');
 
   const handleSave = async () => {
     setIsSaving(true);
 
-    const updates: Partial<EventBookingRules> = {
+    const updates: Partial<EventBookingRules> & {
+      dediche_final_limit_enabled?: boolean;
+      dediche_final_limit_total?: number | null;
+      dediche_final_limit_minutes?: number | null;
+    } = {
       openmic_enabled: openmicEnabled,
       openmic_max_songs: openmicMaxSongs ? parseInt(openmicMaxSongs) : null,
       openmic_final_limit_enabled: openmicFinalLimitEnabled,
@@ -40,9 +47,12 @@ export const EventLimitsConfig: React.FC<Props> = ({ rules, onUpdate }) => {
       openmic_final_limit_minutes: openmicFinalLimitEnabled && openmicFinalLimitMinutes ? parseInt(openmicFinalLimitMinutes) : null,
       dediche_enabled: dedicheEnabled,
       dediche_max_total: dedicheMaxTotal ? parseInt(dedicheMaxTotal) : null,
+      dediche_final_limit_enabled: dedicheFinalLimitEnabled,
+      dediche_final_limit_total: dedicheFinalLimitEnabled && dedicheFinalLimitTotal ? parseInt(dedicheFinalLimitTotal) : null,
+      dediche_final_limit_minutes: dedicheFinalLimitEnabled && dedicheFinalLimitMinutes ? parseInt(dedicheFinalLimitMinutes) : null,
     };
 
-    const success = await onUpdate(updates);
+    const success = await onUpdate(updates as any);
 
     if (success) {
       toast({
@@ -121,7 +131,7 @@ export const EventLimitsConfig: React.FC<Props> = ({ rules, onUpdate }) => {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Timer className="w-4 h-4 text-amber-500" />
-                    <Label className="font-medium">Limite finale (ultimi minuti)</Label>
+                    <Label className="font-medium">Limite "ultimi minuti"</Label>
                   </div>
                   <Switch
                     checked={openmicFinalLimitEnabled}
@@ -138,16 +148,16 @@ export const EventLimitsConfig: React.FC<Props> = ({ rules, onUpdate }) => {
                       max="10"
                       value={openmicFinalLimitSongs}
                       onChange={(e) => setOpenmicFinalLimitSongs(e.target.value)}
-                      className="w-16"
+                      className="w-16 h-8"
                     />
                     <span className="text-sm">canzoni negli ultimi</span>
                     <Input
                       type="number"
                       min="1"
-                      max="60"
+                      max="120"
                       value={openmicFinalLimitMinutes}
                       onChange={(e) => setOpenmicFinalLimitMinutes(e.target.value)}
-                      className="w-16"
+                      className="w-16 h-8"
                     />
                     <span className="text-sm">minuti</span>
                   </div>
@@ -171,21 +181,61 @@ export const EventLimitsConfig: React.FC<Props> = ({ rules, onUpdate }) => {
           </div>
 
           {dedicheEnabled && (
-            <div className="space-y-2 pt-2">
-              <Label htmlFor="dedicheMaxTotal">Numero massimo dediche</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="dedicheMaxTotal"
-                  type="number"
-                  min="0"
-                  value={dedicheMaxTotal}
-                  onChange={(e) => setDedicheMaxTotal(e.target.value)}
-                  placeholder="Illimitato"
-                  className="w-32"
-                />
-                <span className="text-sm text-muted-foreground">
-                  {dedicheMaxTotal ? `max ${dedicheMaxTotal} dediche` : 'nessun limite'}
-                </span>
+            <div className="space-y-4 pt-2">
+              <div className="space-y-2">
+                <Label htmlFor="dedicheMaxTotal">Numero massimo dediche</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="dedicheMaxTotal"
+                    type="number"
+                    min="0"
+                    value={dedicheMaxTotal}
+                    onChange={(e) => setDedicheMaxTotal(e.target.value)}
+                    placeholder="Illimitato"
+                    className="w-32"
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    {dedicheMaxTotal ? `max ${dedicheMaxTotal} dediche` : 'nessun limite'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Final limit for dediche (ultimi X minuti) */}
+              <div className="space-y-3 p-3 rounded-lg bg-background border border-border">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Timer className="w-4 h-4 text-amber-500" />
+                    <Label className="font-medium">Limite "ultimi minuti"</Label>
+                  </div>
+                  <Switch
+                    checked={dedicheFinalLimitEnabled}
+                    onCheckedChange={setDedicheFinalLimitEnabled}
+                  />
+                </div>
+                
+                {dedicheFinalLimitEnabled && (
+                  <div className="flex flex-wrap items-center gap-2 pt-2">
+                    <span className="text-sm">Max</span>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={dedicheFinalLimitTotal}
+                      onChange={(e) => setDedicheFinalLimitTotal(e.target.value)}
+                      className="w-16 h-8"
+                    />
+                    <span className="text-sm">dediche negli ultimi</span>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="120"
+                      value={dedicheFinalLimitMinutes}
+                      onChange={(e) => setDedicheFinalLimitMinutes(e.target.value)}
+                      className="w-16 h-8"
+                    />
+                    <span className="text-sm">minuti</span>
+                  </div>
+                )}
               </div>
             </div>
           )}
