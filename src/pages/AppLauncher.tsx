@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ExternalLink, Mic2, MessageCircle, Loader2, Zap, Radio, Calendar } from "lucide-react";
+import { ExternalLink, Mic2, MessageCircle, Loader2, Zap, Radio, Calendar, Instagram, ArrowRight, Sparkles, Music } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,6 +13,9 @@ import { cn } from "@/lib/utils";
 const AppLauncher: React.FC = () => {
   const { eventState, liveEvent, isFreeMode, freeMode, isOpenmicVisible, isDedicheVisible, loading } = useLiveEvent();
 
+  // Check if everything is OFF (no live event, no freemode, nothing visible)
+  const isEverythingOff = !loading && eventState.type === 'none' && !isOpenmicVisible && !isDedicheVisible;
+
   return (
     <div className="min-h-screen bg-background">
       <SEO
@@ -24,21 +27,109 @@ const AppLauncher: React.FC = () => {
 
       <main className="container py-10">
         <div className="max-w-xl mx-auto">
-          <div className="text-center mb-8">
-            <h1 className="font-display text-3xl md:text-4xl font-black neon-text-pink">
-              App Non C&apos;è Duo
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Scegli il format e entra subito nel live.
-            </p>
-          </div>
-
           {loading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
+          ) : isEverythingOff ? (
+            // ========== EMPTY STATE - Everything OFF ==========
+            <div className="text-center space-y-8">
+              {/* Hero Section */}
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent rounded-3xl -z-10" />
+                
+                {/* Animated Icon */}
+                <div className="relative w-24 h-24 mx-auto mb-6">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/20 to-secondary/20 rounded-3xl animate-pulse" />
+                  <div className="absolute inset-2 bg-background rounded-2xl flex items-center justify-center">
+                    <Music className="w-10 h-10 text-primary" />
+                  </div>
+                  <Sparkles className="absolute -top-2 -right-2 w-6 h-6 text-secondary animate-pulse" />
+                </div>
+
+                <h1 className="font-display text-3xl md:text-4xl font-black text-foreground mb-3">
+                  Prossimamente
+                </h1>
+                <p className="text-lg text-muted-foreground max-w-sm mx-auto leading-relaxed">
+                  Non ci sono eventi live al momento.
+                  <br />
+                  <span className="text-foreground/80">Seguici per non perdere le prossime serate!</span>
+                </p>
+              </div>
+
+              {/* Feature Cards - What we offer */}
+              <div className="grid grid-cols-2 gap-4 pt-4">
+                <Card className="glass-card border-secondary/20 group hover:border-secondary/40 transition-all">
+                  <CardContent className="p-5 text-center">
+                    <div className="w-12 h-12 rounded-xl bg-secondary/10 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                      <Mic2 className="w-6 h-6 text-secondary" />
+                    </div>
+                    <h3 className="font-display font-bold text-foreground mb-1">Open Mic</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Sali sul palco e canta con noi
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card className="glass-card border-primary/20 group hover:border-primary/40 transition-all">
+                  <CardContent className="p-5 text-center">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-3 group-hover:scale-110 transition-transform">
+                      <MessageCircle className="w-6 h-6 text-primary" />
+                    </div>
+                    <h3 className="font-display font-bold text-foreground mb-1">Dediche</h3>
+                    <p className="text-xs text-muted-foreground">
+                      Invia un messaggio speciale
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* CTA Section */}
+              <div className="space-y-4 pt-4">
+                <a
+                  href="https://www.instagram.com/nonceduo.music/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <Button 
+                    size="lg" 
+                    className="w-full gap-3 bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] hover:opacity-90 text-white border-0 shadow-lg"
+                  >
+                    <Instagram className="w-5 h-5" />
+                    Seguici su Instagram
+                    <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </a>
+
+                <Link to="/">
+                  <Button variant="outline" size="lg" className="w-full">
+                    Torna al sito
+                  </Button>
+                </Link>
+              </div>
+
+              {/* Bottom accent */}
+              <div className="pt-6">
+                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <span className="w-8 h-px bg-border" />
+                  <span>Non C'è Duo Music</span>
+                  <span className="w-8 h-px bg-border" />
+                </div>
+              </div>
+            </div>
           ) : (
+            // ========== NORMAL STATE - Something is active ==========
             <>
+              <div className="text-center mb-8">
+                <h1 className="font-display text-3xl md:text-4xl font-black neon-text-pink">
+                  App Non C&apos;è Duo
+                </h1>
+                <p className="text-muted-foreground mt-2">
+                  Scegli il format e entra subito nel live.
+                </p>
+              </div>
+
               {/* Status Banner */}
               {eventState.type === 'live' && liveEvent && (
                 <div className={cn(
@@ -124,28 +215,6 @@ const AppLauncher: React.FC = () => {
                       </h2>
                       <p className="text-sm text-muted-foreground">
                         Ci sono eventi in programma. Resta sintonizzato!
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {eventState.type === 'none' && (
-                <div className={cn(
-                  "relative overflow-hidden rounded-xl p-4 mb-6",
-                  "bg-gradient-to-br from-muted via-muted/50 to-transparent",
-                  "border border-border",
-                )}>
-                  <div className="relative z-10 flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
-                      <Calendar className="w-6 h-6 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <h2 className="font-display text-lg font-bold text-foreground">
-                        Prossimamente
-                      </h2>
-                      <p className="text-sm text-muted-foreground">
-                        Stiamo preparando nuovi eventi. Seguici per le novità!
                       </p>
                     </div>
                   </div>
@@ -238,14 +307,26 @@ const AppLauncher: React.FC = () => {
                   </Card>
                 </Link>
               </div>
+
+              <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
+                <a
+                  href="https://www.instagram.com/nonceduo.music/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Button variant="outline" className="w-full sm:w-auto gap-2">
+                    <Instagram className="w-4 h-4" />
+                    Seguici
+                  </Button>
+                </a>
+                <Link to="/">
+                  <Button variant="ghost" className="w-full sm:w-auto">
+                    Torna al sito
+                  </Button>
+                </Link>
+              </div>
             </>
           )}
-
-          <div className="mt-8 text-center">
-            <Link to="/">
-              <Button variant="outline">Torna al sito</Button>
-            </Link>
-          </div>
         </div>
       </main>
     </div>
