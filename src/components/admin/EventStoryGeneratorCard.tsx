@@ -885,27 +885,52 @@ export const EventStoryGeneratorCard: React.FC = () => {
     const dateStr = config.eventDate ? format(config.eventDate, 'yyyy-MM-dd') : 'evento';
     const fileName = `story-${nameStr}-${dateStr}-${formatConfig.width}x${formatConfig.height}.png`;
     
+    // Detect iOS/Safari which doesn't support download attribute properly
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+    const isMobileOrSafari = isIOS || isSafari || /Android/i.test(navigator.userAgent);
+    
     try {
-      // Convert base64 to blob for better mobile compatibility
+      // Convert base64 to blob
       const response = await fetch(previewUrl);
       const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
       
-      const link = document.createElement('a');
-      link.download = fileName;
-      link.href = blobUrl;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      // Cleanup blob URL after a delay
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      if (isMobileOrSafari) {
+        // For iOS/Safari/Mobile: Open image in new tab with instructions
+        const blobUrl = URL.createObjectURL(blob);
+        const newWindow = window.open(blobUrl, '_blank');
+        
+        if (!newWindow) {
+          // If popup blocked, show the image inline
+          window.location.href = blobUrl;
+        }
+        
+        toast({
+          title: '📲 Immagine aperta',
+          description: 'Tieni premuto sull\'immagine e seleziona "Salva immagine"',
+          duration: 5000,
+        });
+        
+        // Cleanup after delay
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+      } else {
+        // Desktop: use standard download
+        const blobUrl = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = fileName;
+        link.href = blobUrl;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
 
-      toast({
-        title: 'Download avviato',
-        description: 'La grafica è stata scaricata.',
-      });
+        toast({
+          title: 'Download avviato',
+          description: 'La grafica è stata scaricata.',
+        });
+      }
     } catch (error) {
       console.error('Download error:', error);
       // Fallback: open in new tab for manual save
