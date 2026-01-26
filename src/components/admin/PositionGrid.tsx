@@ -58,34 +58,48 @@ export const PositionGrid: React.FC<PositionGridProps> = ({
   );
 };
 
-// Helper to convert Position to canvas coordinates
+// Helper to convert Position to canvas coordinates with professional margins
 export const getPositionCoordinates = (
   position: Position,
   canvasWidth: number,
   canvasHeight: number,
   elementWidth: number,
   elementHeight: number,
-  margin: number = 60
+  margin: number = 120 // Much larger default margin for professional look
 ): { x: number; y: number } => {
   let x: number, y: number;
 
+  // Calculate safe margins (proportional to canvas size for different formats)
+  const horizontalMargin = Math.max(margin, canvasWidth * 0.08);
+  const verticalMargin = Math.max(margin, canvasHeight * 0.06);
+
   // Horizontal position
   if (position.includes('left')) {
-    x = margin;
+    x = horizontalMargin;
   } else if (position.includes('right')) {
-    x = canvasWidth - elementWidth - margin;
+    x = canvasWidth - elementWidth - horizontalMargin;
   } else {
     x = (canvasWidth - elementWidth) / 2;
   }
 
   // Vertical position
   if (position.includes('top')) {
-    y = margin;
+    y = verticalMargin;
   } else if (position.includes('bottom')) {
-    y = canvasHeight - elementHeight - margin;
+    y = canvasHeight - elementHeight - verticalMargin;
   } else {
     y = (canvasHeight - elementHeight) / 2;
   }
 
   return { x, y };
 };
+
+// Margin presets for professional layouts
+export const MARGIN_PRESETS = {
+  compact: 80,
+  standard: 120,
+  spacious: 160,
+  ultra: 200,
+} as const;
+
+export type MarginPreset = keyof typeof MARGIN_PRESETS;
