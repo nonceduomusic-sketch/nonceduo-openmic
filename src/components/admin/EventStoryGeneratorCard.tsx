@@ -37,6 +37,9 @@ type StylePreset = 'minimal' | 'gradient' | 'neon';
 type ImageFormat = 'story' | 'square' | 'portrait';
 type OverlayPosition = 'bottom' | 'top' | 'center';
 type TextSize = 'small' | 'medium' | 'large';
+type QrSize = 'small' | 'medium' | 'large';
+type QrPosition = 'left' | 'center' | 'right';
+type QrDestination = 'openmic' | 'dediche';
 
 interface EventStoryConfig {
   venueName: string;
@@ -49,6 +52,9 @@ interface EventStoryConfig {
   textSize: TextSize;
   aiTheme: string;
   showQrCode: boolean;
+  qrSize: QrSize;
+  qrPosition: QrPosition;
+  qrDestination: QrDestination;
 }
 
 const STORAGE_KEY = 'ncd_story_generator_config';
@@ -64,6 +70,26 @@ const DEFAULT_CONFIG: EventStoryConfig = {
   textSize: 'medium',
   aiTheme: '',
   showQrCode: false,
+  qrSize: 'medium',
+  qrPosition: 'center',
+  qrDestination: 'openmic',
+};
+
+const QR_SIZES: Record<QrSize, { label: string; scale: number }> = {
+  small: { label: 'Piccolo', scale: 0.7 },
+  medium: { label: 'Medio', scale: 1 },
+  large: { label: 'Grande', scale: 1.4 },
+};
+
+const QR_POSITIONS: Record<QrPosition, { label: string }> = {
+  left: { label: 'Sinistra' },
+  center: { label: 'Centro' },
+  right: { label: 'Destra' },
+};
+
+const QR_DESTINATIONS: Record<QrDestination, { label: string; path: string }> = {
+  openmic: { label: 'Open Mic', path: '/app/openmic' },
+  dediche: { label: 'Dediche', path: '/app/dediche' },
 };
 
 const STYLE_PRESETS: Record<StylePreset, { label: string; description: string; bg: string; accent: string }> = {
@@ -494,8 +520,10 @@ export const EventStoryGeneratorCard: React.FC = () => {
 
       if (config.showQrCode) {
         // Generate and draw QR code
-        const appUrl = 'https://nonceduo-openmic.lovable.app/app/openmic';
-        const qrSize = isCompact ? 120 : 160;
+        const baseUrl = 'https://nonceduo-openmic.lovable.app';
+        const appUrl = baseUrl + QR_DESTINATIONS[config.qrDestination].path;
+        const baseQrSize = isCompact ? 120 : 160;
+        const qrSize = Math.round(baseQrSize * QR_SIZES[config.qrSize].scale);
         
         try {
           const qrDataUrl = await QRCode.toDataURL(appUrl, {
@@ -514,32 +542,47 @@ export const EventStoryGeneratorCard: React.FC = () => {
             qrImg.src = qrDataUrl;
           });
           
-          // Draw QR code centered
-          const qrX = (canvas.width - qrSize) / 2;
+          // Calculate QR X position based on config
+          let qrX: number;
+          const margin = 140;
+          if (config.qrPosition === 'left') {
+            qrX = margin;
+          } else if (config.qrPosition === 'right') {
+            qrX = canvas.width - qrSize - margin;
+          } else {
+            qrX = (canvas.width - qrSize) / 2;
+          }
           const qrY = pinSectionY - 10;
           
           // QR background circle
           ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
           ctx.beginPath();
-          ctx.arc(canvas.width / 2, qrY + qrSize / 2, qrSize / 2 + 20, 0, Math.PI * 2);
+          ctx.arc(qrX + qrSize / 2, qrY + qrSize / 2, qrSize / 2 + 20, 0, Math.PI * 2);
           ctx.fill();
           
           ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
           
-          // Text below QR
+          // Text below QR (centered if QR is centered, otherwise aligned with QR)
+          const textX = config.qrPosition === 'center' ? canvas.width / 2 : qrX + qrSize / 2;
+          ctx.textAlign = 'center';
+          
           ctx.font = `600 ${pinTitleSize}px "Orbitron", sans-serif`;
           ctx.fillStyle = style.accent;
           if (config.stylePreset === 'neon' && !aiGeneratedBg) {
             ctx.shadowColor = style.accent;
             ctx.shadowBlur = 15;
           }
-          ctx.fillText('📱 SCANSIONA IL QR', canvas.width / 2, qrY + qrSize + 50);
+          ctx.fillText('📱 SCANSIONA IL QR', textX, qrY + qrSize + 50);
           ctx.shadowColor = 'transparent';
           ctx.shadowBlur = 0;
           
+          const destLabel = config.qrDestination === 'openmic' ? 'Prenota la tua canzone!' : 'Invia una dedica!';
           ctx.font = `400 ${subtitleSize}px "Inter", sans-serif`;
           ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-          ctx.fillText('Prenota la tua canzone! (PIN richiesto)', canvas.width / 2, qrY + qrSize + (isCompact ? 80 : 90));
+          ctx.fillText(`${destLabel} (PIN richiesto)`, textX, qrY + qrSize + (isCompact ? 80 : 90));
+          
+          // Reset text alignment
+          ctx.textAlign = 'center';
         } catch (qrError) {
           console.error('QR generation error:', qrError);
           // Fallback to text if QR fails
@@ -921,20 +964,105 @@ export const EventStoryGeneratorCard: React.FC = () => {
         )}
 
         {/* QR Code Toggle */}
-        <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-accent/10 to-primary/10 border border-accent/20">
-          <div className="flex items-center gap-3">
-            <QrCode className="w-5 h-5 text-accent" />
-            <div>
-              <Label className="text-sm font-medium">Mostra QR Code</Label>
-              <p className="text-xs text-muted-foreground">
-                Link all'app senza mostrare il PIN
-              </p>
+        <div className="space-y-4 p-4 rounded-xl bg-gradient-to-r from-accent/10 to-primary/10 border border-accent/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <QrCode className="w-5 h-5 text-accent" />
+              <div>
+                <Label className="text-sm font-medium">Mostra QR Code</Label>
+                <p className="text-xs text-muted-foreground">
+                  Link all'app senza mostrare il PIN
+                </p>
+              </div>
             </div>
+            <Switch
+              checked={config.showQrCode}
+              onCheckedChange={(checked) => updateConfig('showQrCode', checked)}
+            />
           </div>
-          <Switch
-            checked={config.showQrCode}
-            onCheckedChange={(checked) => updateConfig('showQrCode', checked)}
-          />
+
+          {/* QR Options - only visible when showQrCode is enabled */}
+          {config.showQrCode && (
+            <div className="space-y-4 pt-3 border-t border-accent/20">
+              {/* QR Destination */}
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Destinazione QR</Label>
+                <RadioGroup
+                  value={config.qrDestination}
+                  onValueChange={(value) => updateConfig('qrDestination', value as QrDestination)}
+                  className="grid grid-cols-2 gap-2"
+                >
+                  {(Object.keys(QR_DESTINATIONS) as QrDestination[]).map((dest) => (
+                    <div key={dest}>
+                      <RadioGroupItem value={dest} id={`qr-dest-${dest}`} className="peer sr-only" />
+                      <Label
+                        htmlFor={`qr-dest-${dest}`}
+                        className={cn(
+                          "flex items-center justify-center gap-2 p-2.5 rounded-lg border-2 cursor-pointer transition-all text-xs",
+                          "border-muted hover:border-muted-foreground/50",
+                          config.qrDestination === dest && "border-accent bg-accent/10"
+                        )}
+                      >
+                        {dest === 'openmic' ? '🎤' : '💌'} {QR_DESTINATIONS[dest].label}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              {/* QR Size */}
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Dimensione QR</Label>
+                <RadioGroup
+                  value={config.qrSize}
+                  onValueChange={(value) => updateConfig('qrSize', value as QrSize)}
+                  className="grid grid-cols-3 gap-2"
+                >
+                  {(Object.keys(QR_SIZES) as QrSize[]).map((size) => (
+                    <div key={size}>
+                      <RadioGroupItem value={size} id={`qr-size-${size}`} className="peer sr-only" />
+                      <Label
+                        htmlFor={`qr-size-${size}`}
+                        className={cn(
+                          "flex items-center justify-center p-2 rounded-lg border-2 cursor-pointer transition-all text-xs",
+                          "border-muted hover:border-muted-foreground/50",
+                          config.qrSize === size && "border-accent bg-accent/10"
+                        )}
+                      >
+                        {QR_SIZES[size].label}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+
+              {/* QR Position */}
+              <div className="space-y-2">
+                <Label className="text-xs text-muted-foreground">Posizione QR</Label>
+                <RadioGroup
+                  value={config.qrPosition}
+                  onValueChange={(value) => updateConfig('qrPosition', value as QrPosition)}
+                  className="grid grid-cols-3 gap-2"
+                >
+                  {(Object.keys(QR_POSITIONS) as QrPosition[]).map((pos) => (
+                    <div key={pos}>
+                      <RadioGroupItem value={pos} id={`qr-pos-${pos}`} className="peer sr-only" />
+                      <Label
+                        htmlFor={`qr-pos-${pos}`}
+                        className={cn(
+                          "flex items-center justify-center p-2 rounded-lg border-2 cursor-pointer transition-all text-xs",
+                          "border-muted hover:border-muted-foreground/50",
+                          config.qrPosition === pos && "border-accent bg-accent/10"
+                        )}
+                      >
+                        {QR_POSITIONS[pos].label}
+                      </Label>
+                    </div>
+                  ))}
+                </RadioGroup>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Generate Button */}
