@@ -330,6 +330,8 @@ export type Database = {
           closure_preview_enabled: boolean | null
           closure_redirect_url: string | null
           closure_title: string | null
+          countdown_end_show_minutes: number | null
+          countdown_start_show_minutes: number | null
           created_at: string | null
           created_by: string | null
           dediche_current_count: number | null
@@ -381,6 +383,8 @@ export type Database = {
           closure_preview_enabled?: boolean | null
           closure_redirect_url?: string | null
           closure_title?: string | null
+          countdown_end_show_minutes?: number | null
+          countdown_start_show_minutes?: number | null
           created_at?: string | null
           created_by?: string | null
           dediche_current_count?: number | null
@@ -432,6 +436,8 @@ export type Database = {
           closure_preview_enabled?: boolean | null
           closure_redirect_url?: string | null
           closure_title?: string | null
+          countdown_end_show_minutes?: number | null
+          countdown_start_show_minutes?: number | null
           created_at?: string | null
           created_by?: string | null
           dediche_current_count?: number | null
@@ -486,6 +492,8 @@ export type Database = {
           closure_preview_enabled: boolean | null
           closure_redirect_url: string | null
           closure_title: string | null
+          countdown_end_show_minutes: number | null
+          countdown_start_show_minutes: number | null
           created_at: string | null
           dediche_current_count: number | null
           dediche_enabled: boolean | null
@@ -541,6 +549,8 @@ export type Database = {
           closure_preview_enabled?: boolean | null
           closure_redirect_url?: string | null
           closure_title?: string | null
+          countdown_end_show_minutes?: number | null
+          countdown_start_show_minutes?: number | null
           created_at?: string | null
           dediche_current_count?: number | null
           dediche_enabled?: boolean | null
@@ -596,6 +606,8 @@ export type Database = {
           closure_preview_enabled?: boolean | null
           closure_redirect_url?: string | null
           closure_title?: string | null
+          countdown_end_show_minutes?: number | null
+          countdown_start_show_minutes?: number | null
           created_at?: string | null
           dediche_current_count?: number | null
           dediche_enabled?: boolean | null

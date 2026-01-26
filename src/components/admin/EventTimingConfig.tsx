@@ -15,6 +15,9 @@ interface EventTimingSettings {
   event_end_time: string | null;
   duration_minutes: number | null;
   expires_at: string | null;
+  // Countdown visibility
+  countdown_start_show_minutes?: number | null;
+  countdown_end_show_minutes?: number | null;
 }
 
 interface Props {
@@ -40,6 +43,12 @@ export const EventTimingConfig = forwardRef<HTMLDivElement, Props>(({
   const [eventStartTime, setEventStartTime] = useState(settings.event_start_time || '');
   const [eventEndTime, setEventEndTime] = useState(settings.event_end_time || '');
   const [durationMinutes, setDurationMinutes] = useState(settings.duration_minutes?.toString() || '120');
+  const [countdownStartMinutes, setCountdownStartMinutes] = useState(
+    settings.countdown_start_show_minutes?.toString() || ''
+  );
+  const [countdownEndMinutes, setCountdownEndMinutes] = useState(
+    settings.countdown_end_show_minutes?.toString() || ''
+  );
 
   // Sync from props when settings change
   useEffect(() => {
@@ -49,6 +58,8 @@ export const EventTimingConfig = forwardRef<HTMLDivElement, Props>(({
     setEventStartTime(settings.event_start_time || '');
     setEventEndTime(settings.event_end_time || '');
     setDurationMinutes(settings.duration_minutes?.toString() || '120');
+    setCountdownStartMinutes(settings.countdown_start_show_minutes?.toString() || '');
+    setCountdownEndMinutes(settings.countdown_end_show_minutes?.toString() || '');
   }, [settings]);
 
   const handleSave = async () => {
@@ -80,6 +91,13 @@ export const EventTimingConfig = forwardRef<HTMLDivElement, Props>(({
       updates.duration_minutes = null;
     }
 
+    // Countdown visibility settings
+    updates.countdown_start_show_minutes = countdownStartMinutes 
+      ? parseInt(countdownStartMinutes) 
+      : null;
+    updates.countdown_end_show_minutes = countdownEndMinutes 
+      ? parseInt(countdownEndMinutes) 
+      : null;
     const success = await onUpdate(updates);
     
     if (success) {
@@ -280,11 +298,67 @@ export const EventTimingConfig = forwardRef<HTMLDivElement, Props>(({
 
         {/* Info about final limits */}
         {(endMode === 'scheduled' || endMode === 'duration') && (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-xs text-amber-600 dark:text-amber-400">
+          <div className="bg-warning/10 border border-warning/30 rounded-lg p-3 text-xs text-warning">
             <strong>Nota:</strong> Impostando un termine, potrai usare i limiti "ultimi minuti" 
             per Open Mic e Dediche (es. max 5 canzoni negli ultimi 30 minuti).
           </div>
         )}
+
+        {/* Countdown Visibility Config */}
+        <div className="space-y-4 pt-2 border-t">
+          <div className="flex items-center gap-2">
+            <Timer className="w-4 h-4 text-primary" />
+            <Label className="text-sm font-medium">Visibilità Countdown</Label>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Configura quando mostrare i countdown ad admin e utenti. Lascia vuoto per mostrarlo sempre.
+          </p>
+          
+          <div className="grid grid-cols-2 gap-4">
+            {startMode === 'scheduled' && (
+              <div className="space-y-2">
+                <Label htmlFor="countdown-start" className="text-xs">
+                  Countdown partenza
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="countdown-start"
+                    type="number"
+                    min="1"
+                    max="60"
+                    placeholder="Sempre"
+                    value={countdownStartMinutes}
+                    onChange={(e) => setCountdownStartMinutes(e.target.value)}
+                    className="h-8 w-20"
+                    disabled={isActive}
+                  />
+                  <span className="text-xs text-muted-foreground">min prima</span>
+                </div>
+              </div>
+            )}
+            
+            {(endMode === 'scheduled' || endMode === 'duration') && (
+              <div className="space-y-2">
+                <Label htmlFor="countdown-end" className="text-xs">
+                  Countdown chiusura
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="countdown-end"
+                    type="number"
+                    min="1"
+                    max="60"
+                    placeholder="Sempre"
+                    value={countdownEndMinutes}
+                    onChange={(e) => setCountdownEndMinutes(e.target.value)}
+                    className="h-8 w-20"
+                  />
+                  <span className="text-xs text-muted-foreground">min prima</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Save Button */}
         <div className="flex justify-end pt-2">

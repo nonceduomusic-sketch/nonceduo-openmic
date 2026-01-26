@@ -15,6 +15,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { cn } from "@/lib/utils";
 import { FreeModeState } from "@/hooks/useLiveEvent";
 import { FreeModeClosureOverlay, FreeModeClosureBanner } from "@/components/FreeModeClosureOverlay";
+import { EventCountdownBanner } from "@/components/effects/EventCountdownBanner";
 import { differenceInSeconds, parseISO } from "date-fns";
 
 interface FreeModeOpenMicProps {
@@ -54,6 +55,7 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
     closureMessage,
     closureRedirectUrl,
     closurePreviewEnabled,
+    countdownEndShowMinutes,
   } = freeModeState;
 
   // Update time every second
@@ -234,15 +236,21 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
                         {remaining} posti rimasti
                       </Badge>
                     )}
-                    {remainingTime && (
-                      <Badge variant={remainingTime.total <= 300 ? "destructive" : "outline"} className="text-xs flex items-center gap-1">
-                        <Timer className="w-3 h-3" />
-                        {remainingTime.minutes}m {remainingTime.seconds}s
-                      </Badge>
-                    )}
                   </div>
                 </div>
               </div>
+
+              {/* Countdown alla chiusura - Banner prominente */}
+              {expiresAt && !isClosed && (
+                <EventCountdownBanner
+                  type="end"
+                  targetTime={expiresAt}
+                  showMinutesBefore={countdownEndShowMinutes}
+                  label="Prenotazioni chiudono tra"
+                  animated
+                  className="mt-3"
+                />
+              )}
 
               {/* Reopen banner - VERY VISIBLE */}
               {isReopenValid && (

@@ -68,6 +68,8 @@ export interface FreeModeState {
   closureMessage: string;
   closureRedirectUrl: string | null;
   closurePreviewEnabled: boolean;
+  // Countdown config
+  countdownEndShowMinutes: number | null;
 }
 
 export type EventState = 
@@ -111,6 +113,7 @@ export const useLiveEvent = () => {
     closureMessage: 'Grazie per aver partecipato!',
     closureRedirectUrl: null,
     closurePreviewEnabled: false,
+    countdownEndShowMinutes: 10,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -179,6 +182,7 @@ export const useLiveEvent = () => {
           closureMessage: 'Grazie per aver partecipato!',
           closureRedirectUrl: null,
           closurePreviewEnabled: false,
+          countdownEndShowMinutes: 10,
         });
       } else {
         setLiveEvent(null);
@@ -218,6 +222,7 @@ export const useLiveEvent = () => {
           closureMessage: freeModeData?.closure_message ?? 'Grazie per aver partecipato!',
           closureRedirectUrl: freeModeData?.closure_redirect_url ?? null,
           closurePreviewEnabled: freeModeData?.closure_preview_enabled ?? false,
+          countdownEndShowMinutes: freeModeData?.countdown_end_show_minutes ?? 10,
         });
 
         // Only fetch upcoming events if not in free mode

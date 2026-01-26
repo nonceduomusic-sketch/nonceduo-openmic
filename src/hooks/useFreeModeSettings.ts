@@ -54,6 +54,9 @@ export interface FreeModeSettings {
   closure_message: string;
   closure_redirect_url: string | null;
   closure_preview_enabled: boolean;
+  // Countdown visibility config
+  countdown_start_show_minutes: number | null;
+  countdown_end_show_minutes: number | null;
 }
 
 export const useFreeModeSettings = () => {

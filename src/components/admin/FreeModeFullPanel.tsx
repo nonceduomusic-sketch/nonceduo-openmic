@@ -21,6 +21,7 @@ import { EventReopenControl } from './EventReopenControl';
 import { EventClosureConfig } from './EventClosureConfig';
 import { EventPinConfig } from './EventPinConfig';
 import { EventTimingConfig } from './EventTimingConfig';
+import { EventCountdownBanner } from '@/components/effects/EventCountdownBanner';
 
 /**
  * Adapter che converte FreeModeSettings nel formato EventBookingRules
@@ -160,6 +161,8 @@ export const FreeModeFullPanel: React.FC = () => {
     event_end_time: settings?.event_end_time || null,
     duration_minutes: settings?.duration_minutes || null,
     expires_at: settings?.expires_at || null,
+    countdown_start_show_minutes: settings?.countdown_start_show_minutes ?? null,
+    countdown_end_show_minutes: settings?.countdown_end_show_minutes ?? null,
   }), [settings]);
 
   // Handler per timing settings
@@ -355,14 +358,15 @@ export const FreeModeFullPanel: React.FC = () => {
 
           <Separator />
 
-          {/* Scheduled start indicator */}
-          {scheduler.isScheduledStart && scheduler.timeUntilStart !== null && scheduler.timeUntilStart > 0 && (
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 text-primary">
-              <Timer className="w-4 h-4" />
-              <span className="text-sm font-medium">
-                Partenza automatica tra {scheduler.timeUntilStart} min
-              </span>
-            </div>
+          {/* Countdown partenza automatica - visibile in base a config */}
+          {scheduler.isScheduledStart && scheduler.scheduledStartTimeISO && (
+            <EventCountdownBanner
+              type="start"
+              targetTime={scheduler.scheduledStartTimeISO}
+              showMinutesBefore={scheduler.countdownStartShowMinutes}
+              label="Partenza automatica tra"
+              animated
+            />
           )}
 
           <Button variant="default" className="w-full" onClick={handleActivate}>
@@ -423,21 +427,31 @@ export const FreeModeFullPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* Time remaining - show scheduled end or duration */}
-        {(timeRemaining !== null || scheduler.timeUntilEnd !== null) && (
+        {/* Countdown fine evento con banner animato */}
+        {scheduler.isScheduledEnd && scheduler.scheduledEndTimeISO && (
+          <EventCountdownBanner
+            type="end"
+            targetTime={scheduler.scheduledEndTimeISO}
+            showMinutesBefore={scheduler.countdownEndShowMinutes}
+            label="Chiusura automatica tra"
+            animated
+          />
+        )}
+
+        {/* Fallback: mostra tempo rimanente solo se countdown non visibile */}
+        {!scheduler.isScheduledEnd && timeRemaining !== null && (
           <div className={cn(
             "flex items-center justify-center gap-2 rounded-lg p-2",
-            (timeRemaining ?? scheduler.timeUntilEnd ?? 0) > 0 
+            timeRemaining > 0 
               ? "text-amber-600 dark:text-amber-400 bg-amber-500/10" 
               : "text-destructive bg-destructive/10"
           )}>
             <Clock className="w-4 h-4" />
             <span className="font-medium">
               {(() => {
-                const remaining = timeRemaining ?? scheduler.timeUntilEnd ?? 0;
-                if (remaining > 0) {
-                  const hours = Math.floor(remaining / 60);
-                  const mins = remaining % 60;
+                if (timeRemaining > 0) {
+                  const hours = Math.floor(timeRemaining / 60);
+                  const mins = timeRemaining % 60;
                   if (hours > 0) {
                     return `${hours}h ${mins}m rimanenti`;
                   }
@@ -446,11 +460,6 @@ export const FreeModeFullPanel: React.FC = () => {
                 return 'Tempo scaduto!';
               })()}
             </span>
-            {settings?.end_mode === 'scheduled' && (
-              <span className="text-xs text-muted-foreground ml-1">
-                (fine alle {settings?.event_end_time?.slice(0, 5)})
-              </span>
-            )}
           </div>
         )}
 
