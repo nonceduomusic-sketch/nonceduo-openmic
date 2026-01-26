@@ -56,6 +56,7 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
     closureRedirectUrl,
     closurePreviewEnabled,
     countdownEndShowMinutes,
+    endMode,
   } = freeModeState;
 
   // Update time every second
@@ -240,8 +241,8 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
                 </div>
               </div>
 
-              {/* Countdown alla chiusura - Banner prominente */}
-              {expiresAt && !isClosed && (
+              {/* Countdown alla chiusura - Banner prominente (solo se end_mode non è manual) */}
+              {expiresAt && !isClosed && endMode !== 'manual' && (
                 <EventCountdownBanner
                   type="end"
                   targetTime={expiresAt}
