@@ -363,6 +363,13 @@ export type Database = {
           reopen_songs_used: number | null
           reopen_until: string | null
           updated_at: string | null
+          user_limit_cooldown_message: string | null
+          user_limit_dediche_total: number | null
+          user_limit_enabled: boolean | null
+          user_limit_interval_minutes: number | null
+          user_limit_mode: string | null
+          user_limit_songs_interval: number | null
+          user_limit_songs_total: number | null
           voting_enabled: boolean | null
         }
         Insert: {
@@ -407,6 +414,13 @@ export type Database = {
           reopen_songs_used?: number | null
           reopen_until?: string | null
           updated_at?: string | null
+          user_limit_cooldown_message?: string | null
+          user_limit_dediche_total?: number | null
+          user_limit_enabled?: boolean | null
+          user_limit_interval_minutes?: number | null
+          user_limit_mode?: string | null
+          user_limit_songs_interval?: number | null
+          user_limit_songs_total?: number | null
           voting_enabled?: boolean | null
         }
         Update: {
@@ -451,6 +465,13 @@ export type Database = {
           reopen_songs_used?: number | null
           reopen_until?: string | null
           updated_at?: string | null
+          user_limit_cooldown_message?: string | null
+          user_limit_dediche_total?: number | null
+          user_limit_enabled?: boolean | null
+          user_limit_interval_minutes?: number | null
+          user_limit_mode?: string | null
+          user_limit_songs_interval?: number | null
+          user_limit_songs_total?: number | null
           voting_enabled?: boolean | null
         }
         Relationships: []
@@ -502,6 +523,13 @@ export type Database = {
           started_at: string | null
           updated_at: string | null
           updated_by: string | null
+          user_limit_cooldown_message: string | null
+          user_limit_dediche_total: number | null
+          user_limit_enabled: boolean | null
+          user_limit_interval_minutes: number | null
+          user_limit_mode: string | null
+          user_limit_songs_interval: number | null
+          user_limit_songs_total: number | null
           voting_enabled: boolean | null
         }
         Insert: {
@@ -550,6 +578,13 @@ export type Database = {
           started_at?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          user_limit_cooldown_message?: string | null
+          user_limit_dediche_total?: number | null
+          user_limit_enabled?: boolean | null
+          user_limit_interval_minutes?: number | null
+          user_limit_mode?: string | null
+          user_limit_songs_interval?: number | null
+          user_limit_songs_total?: number | null
           voting_enabled?: boolean | null
         }
         Update: {
@@ -598,6 +633,13 @@ export type Database = {
           started_at?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          user_limit_cooldown_message?: string | null
+          user_limit_dediche_total?: number | null
+          user_limit_enabled?: boolean | null
+          user_limit_interval_minutes?: number | null
+          user_limit_mode?: string | null
+          user_limit_songs_interval?: number | null
+          user_limit_songs_total?: number | null
           voting_enabled?: boolean | null
         }
         Relationships: []
@@ -1535,6 +1577,45 @@ export type Database = {
           participant_name?: string
           session_fingerprint?: string | null
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      user_booking_counts: {
+        Row: {
+          created_at: string | null
+          customer_name: string | null
+          dediche_count: number
+          event_id: string
+          first_booking_at: string | null
+          id: string
+          last_booking_at: string | null
+          session_fingerprint: string
+          songs_count: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          customer_name?: string | null
+          dediche_count?: number
+          event_id: string
+          first_booking_at?: string | null
+          id?: string
+          last_booking_at?: string | null
+          session_fingerprint: string
+          songs_count?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          customer_name?: string | null
+          dediche_count?: number
+          event_id?: string
+          first_booking_at?: string | null
+          id?: string
+          last_booking_at?: string | null
+          session_fingerprint?: string
+          songs_count?: number
+          updated_at?: string | null
         }
         Relationships: []
       }

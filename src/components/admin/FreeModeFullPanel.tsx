@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { 
-  Zap, Play, Square, Music, MessageSquare, Clock, RotateCcw, Trophy, Calendar
+  Zap, Play, Square, Music, MessageSquare, Clock, RotateCcw, Trophy, Calendar, Timer
 } from 'lucide-react';
 import { useFreeModeSettings, FreeModeSettings } from '@/hooks/useFreeModeSettings';
+import { useFreeModeScheduler } from '@/hooks/useFreeModeScheduler';
 import { cn } from '@/lib/utils';
 import type { EventBookingRules } from '@/hooks/useEventBookingRules';
 
@@ -132,6 +133,9 @@ export const FreeModeFullPanel: React.FC = () => {
     generatePin,
     getTimeRemaining,
   } = useFreeModeSettings();
+
+  // Scheduler per auto-start e auto-end
+  const scheduler = useFreeModeScheduler();
 
   const [activeSection, setActiveSection] = useState<'general' | 'timing' | 'limits' | 'pin' | 'reopen' | 'closure'>('general');
   const [editingName, setEditingName] = useState(false);
@@ -351,9 +355,19 @@ export const FreeModeFullPanel: React.FC = () => {
 
           <Separator />
 
+          {/* Scheduled start indicator */}
+          {scheduler.isScheduledStart && scheduler.timeUntilStart !== null && scheduler.timeUntilStart > 0 && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/10 text-primary">
+              <Timer className="w-4 h-4" />
+              <span className="text-sm font-medium">
+                Partenza automatica tra {scheduler.timeUntilStart} min
+              </span>
+            </div>
+          )}
+
           <Button variant="default" className="w-full" onClick={handleActivate}>
             <Play className="w-4 h-4 mr-2" />
-            Avvia Evento Libero
+            {scheduler.isScheduledStart ? 'Avvia Ora (Ignora Programmazione)' : 'Avvia Evento Libero'}
           </Button>
         </CardContent>
       </Card>
@@ -409,16 +423,34 @@ export const FreeModeFullPanel: React.FC = () => {
           </div>
         </div>
 
-        {/* Time remaining */}
-        {timeRemaining !== null && (
+        {/* Time remaining - show scheduled end or duration */}
+        {(timeRemaining !== null || scheduler.timeUntilEnd !== null) && (
           <div className={cn(
             "flex items-center justify-center gap-2 rounded-lg p-2",
-            timeRemaining > 0 ? "text-warning bg-warning/10" : "text-destructive bg-destructive/10"
+            (timeRemaining ?? scheduler.timeUntilEnd ?? 0) > 0 
+              ? "text-amber-600 dark:text-amber-400 bg-amber-500/10" 
+              : "text-destructive bg-destructive/10"
           )}>
             <Clock className="w-4 h-4" />
             <span className="font-medium">
-              {timeRemaining > 0 ? `${timeRemaining} min rimanenti` : 'Tempo scaduto!'}
+              {(() => {
+                const remaining = timeRemaining ?? scheduler.timeUntilEnd ?? 0;
+                if (remaining > 0) {
+                  const hours = Math.floor(remaining / 60);
+                  const mins = remaining % 60;
+                  if (hours > 0) {
+                    return `${hours}h ${mins}m rimanenti`;
+                  }
+                  return `${mins} min rimanenti`;
+                }
+                return 'Tempo scaduto!';
+              })()}
             </span>
+            {settings?.end_mode === 'scheduled' && (
+              <span className="text-xs text-muted-foreground ml-1">
+                (fine alle {settings?.event_end_time?.slice(0, 5)})
+              </span>
+            )}
           </div>
         )}
 
