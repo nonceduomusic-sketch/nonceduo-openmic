@@ -375,8 +375,8 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
             )}
           </AnimatePresence>
 
-          {/* Draggable Elements */}
-          {elements.map((element) => {
+          {/* Draggable Elements - ONLY render enabled elements */}
+          {enabledElements.map((element) => {
             const colors = ELEMENT_COLORS[element.id] || ELEMENT_COLORS.logo;
             const icon = ELEMENT_ICONS[element.id] || <Type className="w-3.5 h-3.5" />;
             const isSelected = selectedElement === element.id;
