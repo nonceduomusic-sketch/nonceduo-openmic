@@ -420,12 +420,23 @@ export const EventPosterGeneratorCard: React.FC = () => {
       const scaledDateSize = Math.round(baseDateSize * textScale);
       const lineHeight = Math.round(65 * textScale);
 
-      // Draw venue name if provided - OPTIONAL
-      let currentY = textCenterY - 60;
+      // Draw band name as main title - ALWAYS VISIBLE
+      let currentY = textCenterY - 80;
       
+      ctx.font = `bold ${scaledTitleSize}px "Orbitron", sans-serif`;
+      ctx.fillStyle = '#ffffff';
+      
+      ctx.fillText("NON C'È DUO", canvas.width / 2, currentY);
+      currentY += lineHeight;
+
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+
+      // Draw venue name as subtitle - OPTIONAL
       if (config.venueName) {
-        ctx.font = `bold ${scaledTitleSize}px "Orbitron", sans-serif`;
-        ctx.fillStyle = '#ffffff';
+        const venueSize = Math.round(scaledTitleSize * 0.5);
+        ctx.font = `500 ${venueSize}px "Inter", sans-serif`;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
         
         // Word wrap
         const maxWidth = canvas.width - padding * 2;
@@ -445,11 +456,12 @@ export const EventPosterGeneratorCard: React.FC = () => {
         }
         if (currentLine) lines.push(currentLine);
         
+        const venueLineHeight = Math.round(lineHeight * 0.55);
         lines.forEach((line, i) => {
-          ctx.fillText(line, canvas.width / 2, currentY + i * lineHeight);
+          ctx.fillText(`@ ${line}`, canvas.width / 2, currentY + i * venueLineHeight);
         });
         
-        currentY += lines.length * lineHeight + 20;
+        currentY += lines.length * venueLineHeight + 15;
       }
 
       ctx.shadowColor = 'transparent';
@@ -758,20 +770,23 @@ export const EventPosterGeneratorCard: React.FC = () => {
           </RadioGroup>
         </div>
 
-        {/* Venue Name (Optional) */}
+        {/* Venue Name (Optional - shown as subtitle under band name) */}
         <div className="space-y-2">
           <Label htmlFor="poster-venue" className="flex items-center gap-2">
             <MapPin className="w-4 h-4" />
-            Nome Locale
-            <span className="text-xs text-muted-foreground">(opzionale)</span>
+            Locale / Evento
+            <span className="text-xs text-muted-foreground">(sottotitolo)</span>
           </Label>
           <Input
             id="poster-venue"
-            placeholder="Es. Bar Roma, Club XYZ..."
+            placeholder="Es. Bar Roma, Matrimonio Rossi..."
             value={config.venueName}
             onChange={(e) => updateConfig('venueName', e.target.value)}
             className="bg-muted/50"
           />
+          <p className="text-xs text-muted-foreground">
+            Apparirà sotto "NON C'È DUO" come @NOME LOCALE
+          </p>
         </div>
 
         {/* Date & Time Row (Optional) */}
