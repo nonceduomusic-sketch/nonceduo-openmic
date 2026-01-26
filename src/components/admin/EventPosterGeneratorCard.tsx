@@ -948,6 +948,8 @@ export const EventPosterGeneratorCard: React.FC = () => {
               else if (id === 'foto') updateConfig('fotoPos', { x, y });
             }}
             margin={8}
+            freePositioning={true}
+            snapToGrid={false}
           />
           
           {/* Margin Slider */}

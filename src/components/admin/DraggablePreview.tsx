@@ -21,6 +21,7 @@ interface DraggablePreviewProps {
   snapToGrid?: boolean;
   gridDivisions?: number; // default 3 (thirds)
   margin?: number; // percentage from edges, default 8
+  freePositioning?: boolean; // When true, allows free positioning without snap
   className?: string;
 }
 
@@ -57,9 +58,10 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
   backgroundColor = "hsl(var(--muted))",
   elements,
   onElementMove,
-  snapToGrid = true,
+  snapToGrid = false, // Default to free positioning
   gridDivisions = 3,
   margin = 8,
+  freePositioning = true, // Default to free positioning
   className,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -69,12 +71,13 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
 
   const gridSize = 100 / gridDivisions;
 
-  // Snap to nearest grid intersection
+  // Snap to nearest grid intersection (only when snapToGrid is true and freePositioning is false)
   const snapValue = useCallback((value: number): number => {
-    if (!snapToGrid) return Math.max(margin, Math.min(100 - margin, value));
-    const snapped = Math.round(value / gridSize) * gridSize;
+    const clamped = Math.max(margin, Math.min(100 - margin, value));
+    if (freePositioning || !snapToGrid) return clamped;
+    const snapped = Math.round(clamped / gridSize) * gridSize;
     return Math.max(margin, Math.min(100 - margin, snapped));
-  }, [snapToGrid, gridSize, margin]);
+  }, [snapToGrid, gridSize, margin, freePositioning]);
 
   const clampValue = useCallback((value: number): number => {
     return Math.max(margin, Math.min(100 - margin, value));
@@ -151,7 +154,7 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
           <span className="font-medium">Trascina per posizionare</span>
         </div>
         <AnimatePresence>
-          {showGrid && (
+          {showGrid && !freePositioning && snapToGrid && (
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -193,9 +196,9 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
           {/* Gradient overlay for better visibility */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/40 pointer-events-none" />
 
-          {/* Grid overlay - visible during drag */}
+          {/* Grid overlay - visible during drag when snap is enabled */}
           <AnimatePresence>
-            {showGrid && snapToGrid && (
+            {showGrid && snapToGrid && !freePositioning && (
               <motion.div 
                 className="absolute inset-0 pointer-events-none z-10"
                 initial={{ opacity: 0 }}
@@ -246,9 +249,9 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
             )}
           </AnimatePresence>
 
-          {/* Snap intersection dots - show when dragging */}
+          {/* Snap intersection dots - show when dragging with snap enabled */}
           <AnimatePresence>
-            {showGrid && snapToGrid && (
+            {showGrid && snapToGrid && !freePositioning && (
               <motion.div 
                 className="absolute inset-0 pointer-events-none z-10"
                 initial={{ opacity: 0 }}
