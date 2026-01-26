@@ -412,7 +412,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
       // Draw brand title - logo, text, and/or splash (independent)
       let currentY = titleStartY;
       
-      // Draw "Foto" (duo photo) FIRST if enabled - centered and proportional
+      // Draw "Foto" (duo photo) FIRST if enabled - centered and proportional - BIGGER for WOW effect
       if (config.showSplash) {
         try {
           const fotoImg = new Image();
@@ -422,10 +422,16 @@ export const EventStoryGeneratorCard: React.FC = () => {
             fotoImg.src = brandLogoSplash;
           });
           
-          // Calculate proportional size maintaining aspect ratio
+          // Calculate proportional size maintaining aspect ratio - MUCH BIGGER for wow effect
           const fotoAspect = fotoImg.width / fotoImg.height;
-          const maxFotoHeight = isCompact ? 380 : 520;
-          const maxFotoWidth = canvas.width - 100;
+          // Use ~70-80% of available space for maximum impact
+          const margin = 60; // Horizontal margin
+          const topMargin = 100; // Top margin
+          const bottomMargin = 150; // Extra bottom margin for text/QR
+          const maxFotoHeight = isCompact 
+            ? canvas.height * 0.55 
+            : canvas.height * 0.60;
+          const maxFotoWidth = canvas.width - margin * 2;
           
           let fotoWidth, fotoHeight;
           if (fotoAspect > 1) {
@@ -442,11 +448,14 @@ export const EventStoryGeneratorCard: React.FC = () => {
             }
           }
           
+          // Center horizontally, position vertically with proper margins
           const fotoX = (canvas.width - fotoWidth) / 2;
-          const fotoY = currentY - fotoHeight / 2;
+          // Center in the available space (accounting for top and bottom margins)
+          const availableHeight = canvas.height - topMargin - bottomMargin;
+          const fotoY = topMargin + (availableHeight - fotoHeight) / 2;
           
           // Draw with slight opacity for blending
-          ctx.globalAlpha = 0.65;
+          ctx.globalAlpha = 0.7;
           ctx.drawImage(fotoImg, fotoX, fotoY, fotoWidth, fotoHeight);
           ctx.globalAlpha = 1;
         } catch (e) {
