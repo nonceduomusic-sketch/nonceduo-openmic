@@ -79,9 +79,9 @@ const DEFAULT_CONFIG: EventStoryConfig = {
 };
 
 const QR_SIZES: Record<QrSize, { label: string; scale: number }> = {
-  small: { label: 'Piccolo', scale: 0.6 },
-  medium: { label: 'Medio', scale: 1 },
-  large: { label: 'Grande', scale: 1.6 },
+  small: { label: 'Piccolo', scale: 1 },
+  medium: { label: 'Medio', scale: 1.6 },
+  large: { label: 'Grande', scale: 2.2 },
 };
 
 const QR_POSITIONS: Record<QrPosition, { label: string }> = {
