@@ -1,6 +1,6 @@
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
-import { Move, Check, Image, QrCode, Type } from "lucide-react";
+import { Move, Check, Image, QrCode, Type, AlignCenter, MapPin, Calendar, MessageSquare } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export interface DraggableElementConfig {
@@ -22,6 +22,7 @@ interface DraggablePreviewProps {
   gridDivisions?: number; // default 3 (thirds)
   margin?: number; // percentage from edges, default 8
   freePositioning?: boolean; // When true, allows free positioning without snap
+  centerSnapThreshold?: number; // percentage threshold for center snap, default 3
   className?: string;
 }
 
@@ -30,6 +31,11 @@ const ELEMENT_ICONS: Record<string, React.ReactNode> = {
   logo: <Type className="w-3.5 h-3.5" />,
   foto: <Image className="w-3.5 h-3.5" />,
   qr: <QrCode className="w-3.5 h-3.5" />,
+  title: <Type className="w-3.5 h-3.5" />,
+  venue: <MapPin className="w-3.5 h-3.5" />,
+  datetime: <Calendar className="w-3.5 h-3.5" />,
+  cta: <MessageSquare className="w-3.5 h-3.5" />,
+  footer: <AlignCenter className="w-3.5 h-3.5" />,
 };
 
 // Premium color scheme - subtle, professional
@@ -49,6 +55,31 @@ const ELEMENT_COLORS: Record<string, { bg: string; border: string; glow: string 
     border: "border-emerald-400/50",
     glow: "shadow-emerald-500/30"
   },
+  title: { 
+    bg: "from-amber-500/90 to-orange-600/90", 
+    border: "border-amber-400/50",
+    glow: "shadow-amber-500/30"
+  },
+  venue: { 
+    bg: "from-sky-500/90 to-blue-600/90", 
+    border: "border-sky-400/50",
+    glow: "shadow-sky-500/30"
+  },
+  datetime: { 
+    bg: "from-indigo-500/90 to-purple-600/90", 
+    border: "border-indigo-400/50",
+    glow: "shadow-indigo-500/30"
+  },
+  cta: { 
+    bg: "from-fuchsia-500/90 to-pink-600/90", 
+    border: "border-fuchsia-400/50",
+    glow: "shadow-fuchsia-500/30"
+  },
+  footer: { 
+    bg: "from-slate-500/90 to-gray-600/90", 
+    border: "border-slate-400/50",
+    glow: "shadow-slate-500/30"
+  },
 };
 
 export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
@@ -58,18 +89,28 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
   backgroundColor = "hsl(var(--muted))",
   elements,
   onElementMove,
-  snapToGrid = false, // Default to free positioning
+  snapToGrid = false,
   gridDivisions = 3,
   margin = 8,
-  freePositioning = true, // Default to free positioning
+  freePositioning = true,
+  centerSnapThreshold = 3, // 3% threshold for center detection
   className,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const [showGrid, setShowGrid] = useState(false);
+  
+  // Center alignment state
+  const [centeredH, setCenteredH] = useState(false);
+  const [centeredV, setCenteredV] = useState(false);
 
   const gridSize = 100 / gridDivisions;
+
+  // Check if value is near center (50%)
+  const isNearCenter = useCallback((value: number): boolean => {
+    return Math.abs(value - 50) <= centerSnapThreshold;
+  }, [centerSnapThreshold]);
 
   // Snap to nearest grid intersection (only when snapToGrid is true and freePositioning is false)
   const snapValue = useCallback((value: number): number => {
@@ -100,9 +141,22 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
     
-    // Live position update (clamped but not snapped during drag)
-    onElementMove(dragging, clampValue(x), clampValue(y));
-  }, [dragging, clampValue, onElementMove]);
+    const clampedX = clampValue(x);
+    const clampedY = clampValue(y);
+    
+    // Check for center alignment and provide haptic-like visual feedback
+    const nearCenterH = isNearCenter(clampedX);
+    const nearCenterV = isNearCenter(clampedY);
+    
+    setCenteredH(nearCenterH);
+    setCenteredV(nearCenterV);
+    
+    // Soft-snap to center if very close
+    const finalX = nearCenterH ? 50 : clampedX;
+    const finalY = nearCenterV ? 50 : clampedY;
+    
+    onElementMove(dragging, finalX, finalY);
+  }, [dragging, clampValue, isNearCenter, onElementMove]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
     if (!dragging || !containerRef.current) return;
@@ -112,20 +166,26 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
     const rawX = ((e.clientX - rect.left) / rect.width) * 100;
     const rawY = ((e.clientY - rect.top) / rect.height) * 100;
     
-    const finalX = snapValue(rawX);
-    const finalY = snapValue(rawY);
+    let finalX = snapValue(rawX);
+    let finalY = snapValue(rawY);
+    
+    // Keep center snap if near center
+    if (isNearCenter(finalX)) finalX = 50;
+    if (isNearCenter(finalY)) finalY = 50;
     
     onElementMove(dragging, finalX, finalY);
     
     setDragging(null);
     setShowGrid(false);
+    setCenteredH(false);
+    setCenteredV(false);
     
     try {
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     } catch {
       // Already released
     }
-  }, [dragging, snapValue, onElementMove]);
+  }, [dragging, snapValue, isNearCenter, onElementMove]);
 
   // Calculate preview dimensions maintaining aspect ratio
   const aspectRatio = width / height;
@@ -143,6 +203,10 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
     previewWidth = previewHeight * aspectRatio;
   }
 
+  // Categorize elements for legend display
+  const enabledElements = useMemo(() => elements.filter(el => el.enabled), [elements]);
+  const disabledElements = useMemo(() => elements.filter(el => !el.enabled), [elements]);
+
   return (
     <div className={cn("space-y-4", className)}>
       {/* Header */}
@@ -154,15 +218,15 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
           <span className="font-medium">Trascina per posizionare</span>
         </div>
         <AnimatePresence>
-          {showGrid && !freePositioning && snapToGrid && (
+          {(centeredH || centeredV) && (
             <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-medium"
+              initial={{ opacity: 0, scale: 0.9, x: 10 }}
+              animate={{ opacity: 1, scale: 1, x: 0 }}
+              exit={{ opacity: 0, scale: 0.9, x: 10 }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-semibold"
             >
-              <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-              Snap attivo
+              <AlignCenter className="w-3 h-3" />
+              {centeredH && centeredV ? 'Centro!' : centeredH ? 'Centrato H' : 'Centrato V'}
             </motion.div>
           )}
         </AnimatePresence>
@@ -195,6 +259,36 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
         >
           {/* Gradient overlay for better visibility */}
           <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/40 pointer-events-none" />
+
+          {/* CENTER GUIDES - Show when element is centered */}
+          <AnimatePresence>
+            {centeredH && (
+              <motion.div
+                className="absolute top-0 bottom-0 w-0.5 left-1/2 -translate-x-1/2 z-20 pointer-events-none"
+                style={{ 
+                  background: 'linear-gradient(to bottom, transparent 10%, #10b981 30%, #10b981 70%, transparent 90%)',
+                  boxShadow: '0 0 12px 2px rgba(16, 185, 129, 0.6)'
+                }}
+                initial={{ opacity: 0, scaleY: 0 }}
+                animate={{ opacity: 1, scaleY: 1 }}
+                exit={{ opacity: 0, scaleY: 0 }}
+                transition={{ duration: 0.15 }}
+              />
+            )}
+            {centeredV && (
+              <motion.div
+                className="absolute left-0 right-0 h-0.5 top-1/2 -translate-y-1/2 z-20 pointer-events-none"
+                style={{ 
+                  background: 'linear-gradient(to right, transparent 10%, #10b981 30%, #10b981 70%, transparent 90%)',
+                  boxShadow: '0 0 12px 2px rgba(16, 185, 129, 0.6)'
+                }}
+                initial={{ opacity: 0, scaleX: 0 }}
+                animate={{ opacity: 1, scaleX: 1 }}
+                exit={{ opacity: 0, scaleX: 0 }}
+                transition={{ duration: 0.15 }}
+              />
+            )}
+          </AnimatePresence>
 
           {/* Grid overlay - visible during drag when snap is enabled */}
           <AnimatePresence>
@@ -284,10 +378,14 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
           {/* Draggable Elements */}
           {elements.map((element) => {
             const colors = ELEMENT_COLORS[element.id] || ELEMENT_COLORS.logo;
-            const icon = ELEMENT_ICONS[element.id];
+            const icon = ELEMENT_ICONS[element.id] || <Type className="w-3.5 h-3.5" />;
             const isSelected = selectedElement === element.id;
             const isDragging = dragging === element.id;
             const isDisabled = !element.enabled;
+            
+            // Check if this element is centered
+            const elementCenteredH = Math.abs(element.x - 50) < 0.5;
+            const elementCenteredV = Math.abs(element.y - 50) < 0.5;
             
             return (
               <motion.div
@@ -331,6 +429,11 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
                   {element.label}
                 </span>
                 
+                {/* Centered indicator */}
+                {(elementCenteredH || elementCenteredV) && !isDisabled && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                )}
+                
                 {/* Status indicator */}
                 {isDisabled ? (
                   <span className="text-[9px] text-white/50 uppercase tracking-wider ml-0.5">off</span>
@@ -343,43 +446,64 @@ export const DraggablePreview: React.FC<DraggablePreviewProps> = ({
         </motion.div>
       </div>
 
-      {/* Element Legend - Apple-style pills */}
-      <div className="flex flex-wrap gap-2 justify-center px-2">
-        {elements.map((element) => {
-          const colors = ELEMENT_COLORS[element.id] || ELEMENT_COLORS.logo;
-          const icon = ELEMENT_ICONS[element.id];
-          const isSelected = selectedElement === element.id;
-          
-          return (
-            <motion.button
-              key={element.id}
-              type="button"
-              onClick={() => setSelectedElement(element.id)}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium",
-                "transition-all duration-200",
-                "border",
-                isSelected 
-                  ? `bg-gradient-to-r ${colors.bg} text-white border-transparent shadow-lg`
-                  : element.enabled
-                    ? "bg-background/80 text-foreground border-border hover:border-primary/50"
-                    : "bg-muted/30 text-muted-foreground border-border/50"
-              )}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <span className={cn(
-                isSelected ? "text-white/90" : element.enabled ? "text-primary" : "text-muted-foreground"
-              )}>
-                {icon}
-              </span>
-              <span>{element.label}</span>
-              {!element.enabled && (
-                <span className="text-[9px] opacity-50 uppercase">off</span>
-              )}
-            </motion.button>
-          );
-        })}
+      {/* Element Legend - Compact pills */}
+      <div className="space-y-2">
+        {/* Enabled elements */}
+        {enabledElements.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 justify-center">
+            {enabledElements.map((element) => {
+              const colors = ELEMENT_COLORS[element.id] || ELEMENT_COLORS.logo;
+              const icon = ELEMENT_ICONS[element.id] || <Type className="w-3 h-3" />;
+              const isSelected = selectedElement === element.id;
+              
+              return (
+                <motion.button
+                  key={element.id}
+                  type="button"
+                  onClick={() => setSelectedElement(element.id)}
+                  className={cn(
+                    "flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-medium",
+                    "transition-all duration-200 border",
+                    isSelected 
+                      ? `bg-gradient-to-r ${colors.bg} text-white border-transparent shadow-md`
+                      : "bg-background/80 text-foreground border-border hover:border-primary/50"
+                  )}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <span className={cn(isSelected ? "text-white/90" : "text-primary")}>
+                    {icon}
+                  </span>
+                  <span>{element.label}</span>
+                </motion.button>
+              );
+            })}
+          </div>
+        )}
+        
+        {/* Disabled elements - smaller, muted */}
+        {disabledElements.length > 0 && (
+          <div className="flex flex-wrap gap-1 justify-center opacity-50">
+            {disabledElements.map((element) => {
+              const icon = ELEMENT_ICONS[element.id] || <Type className="w-2.5 h-2.5" />;
+              
+              return (
+                <motion.button
+                  key={element.id}
+                  type="button"
+                  onClick={() => setSelectedElement(element.id)}
+                  className="flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] text-muted-foreground bg-muted/30 border border-border/30"
+                  whileHover={{ scale: 1.05, opacity: 0.8 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  {icon}
+                  <span>{element.label}</span>
+                  <span className="text-[8px]">off</span>
+                </motion.button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
