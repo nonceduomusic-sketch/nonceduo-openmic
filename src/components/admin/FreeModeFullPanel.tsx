@@ -21,6 +21,7 @@ import { EventReopenControl } from './EventReopenControl';
 import { EventClosureConfig } from './EventClosureConfig';
 import { EventPinConfig } from './EventPinConfig';
 import { EventTimingConfig } from './EventTimingConfig';
+import { UserLimitsConfig } from './UserLimitsConfig';
 import { EventCountdownBanner } from '@/components/effects/EventCountdownBanner';
 
 /**
@@ -138,7 +139,7 @@ export const FreeModeFullPanel: React.FC = () => {
   // Scheduler per auto-start e auto-end
   const scheduler = useFreeModeScheduler();
 
-  const [activeSection, setActiveSection] = useState<'general' | 'timing' | 'limits' | 'pin' | 'reopen' | 'closure'>('general');
+  const [activeSection, setActiveSection] = useState<'general' | 'timing' | 'limits' | 'user' | 'pin' | 'reopen' | 'closure'>('general');
   const [editingName, setEditingName] = useState(false);
   const [tempName, setTempName] = useState(settings?.event_name || 'Evento Libero');
 
@@ -490,10 +491,11 @@ export const FreeModeFullPanel: React.FC = () => {
 
         {/* Live Controls Tabs - using shared components */}
         <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as typeof activeSection)}>
-          <TabsList className="grid w-full grid-cols-6 h-9">
+          <TabsList className="grid w-full grid-cols-7 h-9">
             <TabsTrigger value="general" className="text-xs">Generale</TabsTrigger>
             <TabsTrigger value="timing" className="text-xs">Tempi</TabsTrigger>
             <TabsTrigger value="limits" className="text-xs">Limiti</TabsTrigger>
+            <TabsTrigger value="user" className="text-xs">Utente</TabsTrigger>
             <TabsTrigger value="pin" className="text-xs">PIN</TabsTrigger>
             <TabsTrigger value="reopen" className="text-xs">Riapri</TabsTrigger>
             <TabsTrigger value="closure" className="text-xs">Chiusura</TabsTrigger>
@@ -566,6 +568,26 @@ export const FreeModeFullPanel: React.FC = () => {
 
           <TabsContent value="limits" className="mt-3">
             <EventLimitsConfig rules={rules} onUpdate={handleUpdate} />
+          </TabsContent>
+
+          <TabsContent value="user" className="mt-3">
+            <UserLimitsConfig 
+              settings={{
+                user_limit_enabled: settings?.user_limit_enabled ?? false,
+                user_limit_mode: (settings?.user_limit_mode as 'session' | 'session_name') ?? 'session',
+                user_limit_songs_total: settings?.user_limit_songs_total ?? null,
+                user_limit_dediche_total: settings?.user_limit_dediche_total ?? null,
+                user_limit_songs_interval: settings?.user_limit_songs_interval ?? null,
+                user_limit_interval_minutes: settings?.user_limit_interval_minutes ?? null,
+                user_limit_consecutive_songs: settings?.user_limit_consecutive_songs ?? null,
+                user_limit_cooldown_message: settings?.user_limit_cooldown_message ?? 'Hai superato il limite di prenotazioni.',
+              }}
+              onUpdate={async (updates) => {
+                const success = await updateSettings(updates as any);
+                return success;
+              }}
+              entityId={settings?.id}
+            />
           </TabsContent>
 
           <TabsContent value="pin" className="mt-3">

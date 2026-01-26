@@ -57,6 +57,15 @@ export interface FreeModeSettings {
   // Countdown visibility config
   countdown_start_show_minutes: number | null;
   countdown_end_show_minutes: number | null;
+  // User booking limits
+  user_limit_enabled: boolean;
+  user_limit_mode: 'session' | 'session_name';
+  user_limit_songs_total: number | null;
+  user_limit_dediche_total: number | null;
+  user_limit_songs_interval: number | null;
+  user_limit_interval_minutes: number | null;
+  user_limit_consecutive_songs: number | null;
+  user_limit_cooldown_message: string;
 }
 
 export const useFreeModeSettings = () => {
