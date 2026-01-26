@@ -120,6 +120,25 @@ export const useFreeModeSettings = () => {
     }
   };
 
+  // Calcola expires_at in base a end_mode
+  const calculateExpiresAt = (
+    endMode: 'manual' | 'scheduled' | 'duration',
+    eventDate: string | null,
+    eventEndTime: string | null,
+    durationMinutes: number | null,
+    startedAt: Date = new Date()
+  ): string | null => {
+    if (endMode === 'scheduled' && eventDate && eventEndTime) {
+      // Termine a orario specifico
+      return `${eventDate}T${eventEndTime}:00`;
+    } else if (endMode === 'duration' && durationMinutes) {
+      // Termine dopo X minuti dalla partenza
+      return new Date(startedAt.getTime() + durationMinutes * 60 * 1000).toISOString();
+    }
+    // Manual: nessuna scadenza automatica
+    return null;
+  };
+
   // Attiva Free Mode
   const activateFreeMode = async (config?: {
     eventName?: string;
@@ -137,10 +156,17 @@ export const useFreeModeSettings = () => {
     closureMessage?: string;
     closureRedirectUrl?: string;
   }): Promise<boolean> => {
+    const now = new Date();
+    
+    // Recupera le impostazioni di timing correnti
+    const endMode = settings?.end_mode || 'manual';
+    const eventDate = settings?.event_date || null;
+    const eventEndTime = settings?.event_end_time || null;
+    
     const updates: Partial<FreeModeSettings> = {
       is_active: true,
       event_status: 'live',
-      started_at: new Date().toISOString(),
+      started_at: now.toISOString(),
       openmic_current_count: 0,
       dediche_current_count: 0,
       reopen_active: false,
@@ -155,17 +181,16 @@ export const useFreeModeSettings = () => {
     if (config?.maxSongs !== undefined) updates.openmic_max_songs = config.maxSongs || null;
     if (config?.maxDediche !== undefined) updates.dediche_max_total = config.maxDediche || null;
     
-    if (config?.durationMinutes) {
-      updates.duration_minutes = config.durationMinutes;
-      updates.expires_at = new Date(Date.now() + config.durationMinutes * 60 * 1000).toISOString();
-    } else {
-      updates.duration_minutes = null;
-      updates.expires_at = null;
-    }
+    // Calcola expires_at in base a end_mode
+    const durationMins = config?.durationMinutes ?? settings?.duration_minutes ?? null;
+    updates.expires_at = calculateExpiresAt(endMode, eventDate, eventEndTime, durationMins, now);
+    updates.duration_minutes = durationMins;
 
     if (config?.pinCode) {
       updates.pin_enabled = true;
       updates.pin_code = config.pinCode;
+    } else if (config?.pinCode === undefined && settings?.pin_enabled) {
+      // Mantieni il PIN se già configurato
     } else {
       updates.pin_enabled = false;
       updates.pin_code = null;

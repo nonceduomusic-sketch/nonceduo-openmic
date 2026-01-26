@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, forwardRef } from 'react';
 import { Calendar, Clock, Play, Timer, Zap } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,12 +24,12 @@ interface Props {
   onActivate?: () => void;
 }
 
-export const EventTimingConfig: React.FC<Props> = ({ 
+export const EventTimingConfig = forwardRef<HTMLDivElement, Props>(({ 
   settings, 
   isActive,
   onUpdate,
   onActivate 
-}) => {
+}, ref) => {
   const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -112,7 +112,7 @@ export const EventTimingConfig: React.FC<Props> = ({
   };
 
   return (
-    <Card>
+    <Card ref={ref}>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Clock className="w-5 h-5" />
@@ -295,4 +295,6 @@ export const EventTimingConfig: React.FC<Props> = ({
       </CardContent>
     </Card>
   );
-};
+});
+
+EventTimingConfig.displayName = 'EventTimingConfig';
