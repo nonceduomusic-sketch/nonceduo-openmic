@@ -161,10 +161,16 @@ const serializeConfig = (config: EventPosterConfig): string => {
 const deserializeConfig = (json: string): EventPosterConfig | null => {
   try {
     const parsed = JSON.parse(json);
+    // Merge with DEFAULT_CONFIG to ensure new fields have fallback values
     return {
+      ...DEFAULT_CONFIG,
       ...parsed,
       eventDate: parsed.eventDate ? new Date(parsed.eventDate) : undefined,
       uploadedImage: null, // Never restore image from localStorage
+      // Ensure position objects exist with valid defaults
+      fotoPos: parsed.fotoPos ?? DEFAULT_CONFIG.fotoPos,
+      logoPos: parsed.logoPos ?? DEFAULT_CONFIG.logoPos,
+      elementMargin: parsed.elementMargin ?? DEFAULT_CONFIG.elementMargin,
     };
   } catch {
     return null;

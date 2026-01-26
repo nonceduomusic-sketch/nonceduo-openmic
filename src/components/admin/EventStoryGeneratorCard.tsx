@@ -194,9 +194,16 @@ const serializeConfig = (config: EventStoryConfig): string => {
 const deserializeConfig = (json: string): EventStoryConfig | null => {
   try {
     const parsed = JSON.parse(json);
+    // Merge with DEFAULT_CONFIG to ensure new fields have fallback values
     return {
+      ...DEFAULT_CONFIG,
       ...parsed,
       eventDate: parsed.eventDate ? new Date(parsed.eventDate) : undefined,
+      // Ensure position objects exist with valid defaults
+      fotoPos: parsed.fotoPos ?? DEFAULT_CONFIG.fotoPos,
+      logoPos: parsed.logoPos ?? DEFAULT_CONFIG.logoPos,
+      qrPos: parsed.qrPos ?? DEFAULT_CONFIG.qrPos,
+      elementMargin: parsed.elementMargin ?? DEFAULT_CONFIG.elementMargin,
     };
   } catch {
     return null;
