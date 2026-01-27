@@ -81,6 +81,7 @@ export const AdminEventiTab: React.FC = () => {
     duplicateEvent,
     deleteEvent,
     resetCounters: resetScheduledCounters,
+    syncCounters: syncScheduledCounters,
     generatePin,
   } = useEventBookingRules();
 
@@ -468,13 +469,24 @@ export const AdminEventiTab: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Reset contatori */}
-                  <div className="flex justify-end mt-4">
+                  {/* Reset/Sync contatori */}
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={syncScheduledCounters}
+                      disabled={isSaving}
+                      title="Sincronizza contatori con prenotazioni reali"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Sincronizza
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={resetScheduledCounters}
                       disabled={isSaving || (rules.openmic_current_count === 0 && rules.dediche_current_count === 0)}
+                      title="Azzera tutti i contatori"
                     >
                       <RotateCcw className="w-4 h-4 mr-2" />
                       Azzera contatori

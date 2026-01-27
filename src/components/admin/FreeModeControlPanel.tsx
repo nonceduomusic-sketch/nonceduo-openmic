@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { 
   Zap, Music, MessageSquare, ThumbsUp, Clock, Hash, 
-  Lock, Play, Square, Settings2, RefreshCw 
+  Lock, Play, Square, Settings2, RefreshCw, RotateCcw 
 } from 'lucide-react';
 import { useFreeModeSettings } from '@/hooks/useFreeModeSettings';
 import { cn } from '@/lib/utils';
@@ -21,6 +21,7 @@ export const FreeModeControlPanel: React.FC = () => {
     deactivateFreeMode,
     updateLiveSettings,
     resetCounters,
+    syncCounters,
     generatePin,
     getTimeRemaining,
   } = useFreeModeSettings();
@@ -176,15 +177,28 @@ export const FreeModeControlPanel: React.FC = () => {
                 </div>
               </div>
 
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full"
-                onClick={resetCounters}
-              >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Reset Contatori
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={syncCounters}
+                  title="Sincronizza contatori con prenotazioni reali"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Sincronizza
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={resetCounters}
+                  title="Azzera tutti i contatori"
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Azzera
+                </Button>
+              </div>
             </div>
 
             <Separator />

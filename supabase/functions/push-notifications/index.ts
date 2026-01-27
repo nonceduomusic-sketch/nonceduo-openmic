@@ -547,8 +547,11 @@ serve(async (req) => {
             }
           }
 
-          // Check max songs limit
-          if (liveEvent.openmic_max_songs !== null) {
+          // Determine if this is a dedication
+          const isDedicaCheck = !!(dedicationMessage && dedicationMessage.length > 0);
+
+          // Check max songs limit (only for non-dedications)
+          if (!isDedicaCheck && liveEvent.openmic_max_songs !== null) {
             const currentCount = liveEvent.openmic_current_count || 0;
             const maxAllowed = liveEvent.openmic_max_songs;
 
@@ -557,23 +560,89 @@ serve(async (req) => {
               const reopenUsed = liveEvent.reopen_songs_used || 0;
               const extraAvailable = liveEvent.reopen_extra_songs - reopenUsed;
               if (currentCount >= maxAllowed && extraAvailable <= 0) {
-                return json({ error: 'Limite prenotazioni raggiunto' }, 400);
+                return json({ error: 'Limite canzoni raggiunto' }, 400);
               }
             } else if (currentCount >= maxAllowed) {
-              return json({ error: 'Limite prenotazioni raggiunto' }, 400);
+              return json({ error: 'Limite canzoni raggiunto' }, 400);
+            }
+          }
+          
+          // Check max dediche limit (only for dedications)
+          if (isDedicaCheck && liveEvent.dediche_max_total !== null) {
+            const currentCount = liveEvent.dediche_current_count || 0;
+            const maxAllowed = liveEvent.dediche_max_total;
+
+            // Add extra slots if in reopen mode
+            if (isInReopenMode && liveEvent.reopen_extra_dediche) {
+              const reopenUsed = liveEvent.reopen_dediche_used || 0;
+              const extraAvailable = liveEvent.reopen_extra_dediche - reopenUsed;
+              if (currentCount >= maxAllowed && extraAvailable <= 0) {
+                return json({ error: 'Limite dediche raggiunto' }, 400);
+              }
+            } else if (currentCount >= maxAllowed) {
+              return json({ error: 'Limite dediche raggiunto' }, 400);
+            }
+          }
+        }
+        
+        // === FREE MODE GLOBAL LIMITS VALIDATION ===
+        // Fetch free mode settings early for validation
+        const { data: freeModeSettings } = await supabase
+          .from('free_mode_settings')
+          .select('*')
+          .eq('is_active', true)
+          .maybeSingle();
+        
+        if (!liveEvent && freeModeSettings) {
+          // Determine if this is a dedication for free mode validation
+          const isDedicaFreeMode = !!(dedicationMessage && dedicationMessage.length > 0);
+          
+          // Check Free Mode reopen status
+          let isFreeModeReopenActive = false;
+          if (freeModeSettings.reopen_active && freeModeSettings.reopen_until) {
+            const reopenUntil = new Date(freeModeSettings.reopen_until);
+            if (new Date() <= reopenUntil) {
+              isFreeModeReopenActive = true;
+            }
+          }
+          
+          // Check max songs limit for Free Mode (only for non-dedications)
+          if (!isDedicaFreeMode && freeModeSettings.openmic_max_songs !== null) {
+            const currentCount = freeModeSettings.openmic_current_count || 0;
+            const maxAllowed = freeModeSettings.openmic_max_songs;
+
+            // Add extra slots if in reopen mode
+            if (isFreeModeReopenActive && freeModeSettings.reopen_extra_songs) {
+              const reopenUsed = freeModeSettings.reopen_songs_used || 0;
+              const extraAvailable = freeModeSettings.reopen_extra_songs - reopenUsed;
+              if (currentCount >= maxAllowed && extraAvailable <= 0) {
+                return json({ error: 'Limite canzoni raggiunto' }, 400);
+              }
+            } else if (currentCount >= maxAllowed) {
+              return json({ error: 'Limite canzoni raggiunto' }, 400);
+            }
+          }
+          
+          // Check max dediche limit for Free Mode (only for dedications)
+          if (isDedicaFreeMode && freeModeSettings.dediche_max_total !== null) {
+            const currentCount = freeModeSettings.dediche_current_count || 0;
+            const maxAllowed = freeModeSettings.dediche_max_total;
+
+            // Add extra slots if in reopen mode
+            if (isFreeModeReopenActive && freeModeSettings.reopen_extra_dediche) {
+              const reopenUsed = freeModeSettings.reopen_dediche_used || 0;
+              const extraAvailable = freeModeSettings.reopen_extra_dediche - reopenUsed;
+              if (currentCount >= maxAllowed && extraAvailable <= 0) {
+                return json({ error: 'Limite dediche raggiunto' }, 400);
+              }
+            } else if (currentCount >= maxAllowed) {
+              return json({ error: 'Limite dediche raggiunto' }, 400);
             }
           }
         }
 
         // === USER BOOKING LIMITS VALIDATION ===
         const sessionFingerprint = asTrimmedString((data as any).session_fingerprint);
-        
-        // Check if user limits are enabled (works for both event and free mode)
-        const { data: freeModeSettings } = await supabase
-          .from('free_mode_settings')
-          .select('*')
-          .eq('is_active', true)
-          .maybeSingle();
         
         // Use liveEvent settings if available, fallback to freeModeSettings
         const limitsSource = liveEvent || freeModeSettings;
@@ -746,17 +815,34 @@ serve(async (req) => {
           }
         }
 
-        // === UPDATE EVENT COUNTERS (only if there's a live event) ===
+        // === UPDATE EVENT COUNTERS ===
+        const isDedica = !!dedicationMessage;
+        
         if (liveEvent) {
-          const updateData: Record<string, unknown> = {
-            openmic_current_count: (liveEvent.openmic_current_count || 0) + 1,
-          };
-
-          // Track reopen usage if applicable
-          if (isInReopenMode && liveEvent.openmic_max_songs !== null) {
-            const currentCount = liveEvent.openmic_current_count || 0;
-            if (currentCount >= liveEvent.openmic_max_songs) {
-              updateData.reopen_songs_used = (liveEvent.reopen_songs_used || 0) + 1;
+          // Update counters for scheduled live events
+          const updateData: Record<string, unknown> = {};
+          
+          if (isDedica) {
+            // Increment dediche counter
+            updateData.dediche_current_count = (liveEvent.dediche_current_count || 0) + 1;
+            
+            // Track reopen usage for dediche if applicable
+            if (isInReopenMode && liveEvent.dediche_max_total !== null) {
+              const currentCount = liveEvent.dediche_current_count || 0;
+              if (currentCount >= liveEvent.dediche_max_total) {
+                updateData.reopen_dediche_used = (liveEvent.reopen_dediche_used || 0) + 1;
+              }
+            }
+          } else {
+            // Increment openmic counter
+            updateData.openmic_current_count = (liveEvent.openmic_current_count || 0) + 1;
+            
+            // Track reopen usage for songs if applicable
+            if (isInReopenMode && liveEvent.openmic_max_songs !== null) {
+              const currentCount = liveEvent.openmic_current_count || 0;
+              if (currentCount >= liveEvent.openmic_max_songs) {
+                updateData.reopen_songs_used = (liveEvent.reopen_songs_used || 0) + 1;
+              }
             }
           }
 
@@ -764,6 +850,42 @@ serve(async (req) => {
             .from('event_booking_rules')
             .update(updateData)
             .eq('id', liveEvent.id);
+            
+          console.log(`[push] Updated event_booking_rules counters:`, updateData);
+        } else if (freeModeSettings?.is_active) {
+          // Update counters for Free Mode
+          const updateData: Record<string, unknown> = {};
+          
+          if (isDedica) {
+            // Increment dediche counter for free mode
+            updateData.dediche_current_count = (freeModeSettings.dediche_current_count || 0) + 1;
+            
+            // Track reopen usage for dediche if applicable
+            if (freeModeSettings.reopen_active && freeModeSettings.dediche_max_total !== null) {
+              const currentCount = freeModeSettings.dediche_current_count || 0;
+              if (currentCount >= freeModeSettings.dediche_max_total) {
+                updateData.reopen_dediche_used = (freeModeSettings.reopen_dediche_used || 0) + 1;
+              }
+            }
+          } else {
+            // Increment openmic counter for free mode
+            updateData.openmic_current_count = (freeModeSettings.openmic_current_count || 0) + 1;
+            
+            // Track reopen usage for songs if applicable
+            if (freeModeSettings.reopen_active && freeModeSettings.openmic_max_songs !== null) {
+              const currentCount = freeModeSettings.openmic_current_count || 0;
+              if (currentCount >= freeModeSettings.openmic_max_songs) {
+                updateData.reopen_songs_used = (freeModeSettings.reopen_songs_used || 0) + 1;
+              }
+            }
+          }
+
+          await supabase
+            .from('free_mode_settings')
+            .update(updateData)
+            .eq('id', freeModeSettings.id);
+            
+          console.log(`[push] Updated free_mode_settings counters:`, updateData);
         }
 
         const pushPayload = {
