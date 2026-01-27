@@ -13,7 +13,8 @@ import { cn } from '@/lib/utils';
 import { fireCelebration, fireHearts } from '@/lib/confetti';
 import { SuccessAnimation } from '@/components/effects/SuccessAnimation';
 import { UserLimitWarningDialog } from '@/components/UserLimitWarningDialog';
-import { useConsecutiveUnlockNotification } from '@/hooks/useConsecutiveUnlockNotification';
+
+const CONSECUTIVE_BLOCKED_KEY = 'consecutive_limit_blocked';
 
 const reservationSchema = z.object({
   customer_name: z.string().trim()
@@ -60,10 +61,6 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
   
   const { createReservation } = useReservations();
   
-  // Hook per notifica sblocco consecutive limit
-  // Usiamo 'active' come eventId placeholder - il hook reale lo ricaverà dal backend
-  const { setWasBlocked } = useConsecutiveUnlockNotification('active');
-  
   const handleSearchLyrics = () => {
     window.open(getLyricsSearchUrl(song.title, song.artist), '_blank');
   };
@@ -106,7 +103,7 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
       
       // Mark that user was blocked by consecutive limit for notification
       if (result.limitType === 'consecutive') {
-        setWasBlocked(true);
+        localStorage.setItem(CONSECUTIVE_BLOCKED_KEY, '1');
       }
       
       setIsSubmitting(false);

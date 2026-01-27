@@ -17,6 +17,7 @@ import { FreeModeState } from "@/hooks/useLiveEvent";
 import { FreeModeClosureOverlay, FreeModeClosureBanner } from "@/components/FreeModeClosureOverlay";
 import { EventCountdownBanner } from "@/components/effects/EventCountdownBanner";
 import { differenceInSeconds, parseISO } from "date-fns";
+import { ConsecutiveUnlockListener } from '@/components/ConsecutiveUnlockListener';
 
 interface FreeModeOpenMicProps {
   freeModeState: FreeModeState;
@@ -203,6 +204,7 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
       />
       
       <div className="min-h-screen bg-background">
+        <ConsecutiveUnlockListener />
         {/* Header */}
         <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
           <div className="container mx-auto px-4 py-3">
@@ -414,3 +416,4 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
 };
 
 export default FreeModeOpenMic;
+

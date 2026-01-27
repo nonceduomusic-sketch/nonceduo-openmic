@@ -8,6 +8,7 @@ import { BookingConfirmationModal } from '@/components/BookingConfirmationModal'
 import { Link } from 'react-router-dom';
 import { useStaffRole } from '@/hooks/useStaffRole';
 import { useReservationStatuses } from '@/hooks/useReservationStatuses';
+import { ConsecutiveUnlockListener } from '@/components/ConsecutiveUnlockListener';
 
 const Index: React.FC = () => {
   const { isStaff } = useStaffRole();
@@ -39,6 +40,7 @@ const Index: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <ConsecutiveUnlockListener />
       {/* Header */}
       <header className="sticky top-0 z-40 bg-card/90 backdrop-blur-md border-b border-border">
         <div className="container py-4">
@@ -126,3 +128,4 @@ const Index: React.FC = () => {
 };
 
 export default Index;
+

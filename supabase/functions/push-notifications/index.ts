@@ -854,68 +854,57 @@ serve(async (req) => {
           }
           
           // Check interval limit (only if interval limits are enabled)
-          // This limit uses a ROLLING window - count songs in the last X minutes
-          if (intervalEnabled && !isDedica && limitsSource.user_limit_songs_interval !== null && limitsSource.user_limit_interval_minutes !== null) {
+          // This limit uses a rolling window tracked in user_booking_counts.
+          // IMPORTANT: do NOT reuse/reset songs_count (it is the total-per-event counter).
+          if (
+            intervalEnabled &&
+            !isDedica &&
+            limitsSource.user_limit_songs_interval !== null &&
+            limitsSource.user_limit_interval_minutes !== null
+          ) {
+            const now = new Date();
             const intervalMs = limitsSource.user_limit_interval_minutes * 60 * 1000;
-            const windowStart = new Date(Date.now() - intervalMs);
-            
-            // Query the user_booking_counts to check if interval tracking is active
-            // We need to count actual songs in the rolling window
-            // For this, we use the last_booking_at as reference point
-            
-            // Count how many bookings this session made in the rolling window
-            // We track via songs_count but need to check if they're within the window
-            const lastBooking = lastBookingAt ? new Date(lastBookingAt) : null;
-            const firstBooking = userCounts?.first_booking_at ? new Date(userCounts.first_booking_at) : null;
-            
-            // If user has bookings and first booking is within the window, count all songs
-            // Otherwise, if first booking is outside window, effectively reset
-            let songsInWindow = 0;
-            
-            if (firstBooking && firstBooking >= windowStart) {
-              // All bookings are within the window
-              songsInWindow = currentSongsCount;
-            } else if (lastBooking && lastBooking >= windowStart && currentSongsCount > 0) {
-              // Some bookings might be in window - we need to estimate
-              // Since we don't have per-booking tracking, use the count directly
-              // This will work if booking happens rapidly within window
-              songsInWindow = currentSongsCount;
-            }
-            
-            console.log(`[push] Interval check: songsInWindow=${songsInWindow}, firstBooking=${firstBooking?.toISOString()}, limit=${limitsSource.user_limit_songs_interval}, interval=${limitsSource.user_limit_interval_minutes}min`);
-            
-            if (songsInWindow >= limitsSource.user_limit_songs_interval && firstBooking) {
-              // Calculate when the window will end (based on first booking in window)
-              const cooldownEndsAt = new Date(firstBooking.getTime() + intervalMs);
-              const now = new Date();
-              
+
+            const windowStartedAtRaw = userCounts?.interval_window_started_at as string | null | undefined;
+            const windowStartedAt = windowStartedAtRaw ? new Date(windowStartedAtRaw) : null;
+            const windowIsExpired = !windowStartedAt || now.getTime() - windowStartedAt.getTime() >= intervalMs;
+
+            const songsInWindow = windowIsExpired ? 0 : (userCounts?.songs_interval_count || 0);
+            const effectiveWindowStart = windowIsExpired ? now : windowStartedAt!;
+
+            console.log(
+              `[push] Interval check: songsInWindow=${songsInWindow}, windowStart=${effectiveWindowStart.toISOString()}, limit=${limitsSource.user_limit_songs_interval}, interval=${limitsSource.user_limit_interval_minutes}min`
+            );
+
+            if (songsInWindow >= limitsSource.user_limit_songs_interval) {
+              const cooldownEndsAt = new Date(effectiveWindowStart.getTime() + intervalMs);
+
               if (now < cooldownEndsAt) {
-                const secondsRemaining = Math.max(1, Math.ceil((cooldownEndsAt.getTime() - now.getTime()) / 1000));
+                const secondsRemaining = Math.max(
+                  1,
+                  Math.ceil((cooldownEndsAt.getTime() - now.getTime()) / 1000)
+                );
                 const minutesRemaining = Math.max(1, Math.ceil(secondsRemaining / 60));
-                const cooldownMsg = limitsSource.user_limit_cooldown_message || 'Hai superato il limite di prenotazioni. Potrai riprendere tra {minutes} minuti.';
+                const cooldownMsg =
+                  limitsSource.user_limit_cooldown_message ||
+                  'Hai superato il limite di prenotazioni. Potrai riprendere tra {minutes} minuti.';
                 const msg = cooldownMsg.replace('{minutes}', String(minutesRemaining));
-                console.log(`[push] BLOCKED interval: ${msg}, cooldown ends at ${cooldownEndsAt.toISOString()}, seconds=${secondsRemaining}`);
-                return json({ 
-                  error: msg, 
-                  error_type: 'user_limit', 
-                  limit_type: 'interval', 
-                  cooldown_minutes: minutesRemaining,
-                  cooldown_seconds: secondsRemaining,
-                  cooldown_ends_at: cooldownEndsAt.toISOString()
-                }, 200);
-              } else {
-                // Cooldown has expired, user can book again
-                // Reset the counts for this session so interval starts fresh
-                console.log(`[push] Interval expired, resetting counts for new window`);
-                await supabase
-                  .from('user_booking_counts')
-                  .update({ 
-                    songs_count: 0, 
-                    first_booking_at: null,
-                    updated_at: new Date().toISOString()
-                  })
-                  .eq('event_id', eventId)
-                  .eq('session_fingerprint', sessionFingerprint);
+
+                console.log(
+                  `[push] BLOCKED interval: ${msg}, cooldown ends at ${cooldownEndsAt.toISOString()}, seconds=${secondsRemaining}`
+                );
+
+                return json(
+                  {
+                    error: msg,
+                    error_type: 'user_limit',
+                    limit_type: 'interval',
+                    cooldown_minutes: minutesRemaining,
+                    cooldown_seconds: secondsRemaining,
+                    cooldown_ends_at: cooldownEndsAt.toISOString(),
+                  },
+                  200
+                );
               }
             }
           }
@@ -948,30 +937,12 @@ serve(async (req) => {
         if (limitsSource?.user_limit_enabled && sessionFingerprint) {
           const eventId = liveEvent?.id || freeModeSettings?.id || 'free_mode';
           const isDedica = !!dedicationMessage;
-          
-          // Check if this is a consecutive booking (no other user booked in between)
-          let newConsecutive = 1;
-          if (!isDedica) {
-            const { data: lastReservation } = await supabase
-              .from('reservations')
-              .select('customer_name')
-              .order('created_at', { ascending: false })
-              .limit(2);
-            
-            // If the second-to-last reservation was also by this user, increment consecutive
-            if (lastReservation && lastReservation.length === 2) {
-              if (lastReservation[1].customer_name === customerName) {
-                const { data: existingCounts } = await supabase
-                  .from('user_booking_counts')
-                  .select('consecutive_songs')
-                  .eq('event_id', eventId)
-                  .eq('session_fingerprint', sessionFingerprint)
-                  .maybeSingle();
-                
-                newConsecutive = (existingCounts?.consecutive_songs || 0) + 1;
-              }
-            }
-          }
+          const intervalEnabled = limitsSource.user_limit_interval_enabled === true;
+          const shouldTrackInterval =
+            intervalEnabled &&
+            !isDedica &&
+            limitsSource.user_limit_songs_interval !== null &&
+            limitsSource.user_limit_interval_minutes !== null;
           
           // Check if user counts exist
           const { data: existingCounts } = await supabase
@@ -980,8 +951,64 @@ serve(async (req) => {
             .eq('event_id', eventId)
             .eq('session_fingerprint', sessionFingerprint)
             .maybeSingle();
+
+          // Determine if this booking is consecutive based on the last booking in this event.
+          // (We use session_fingerprint, not customer_name, to avoid bypass by name changes.)
+          let newConsecutive = 1;
+          let lastBookerFingerprint: string | null = null;
+
+          if (!isDedica) {
+            const { data: lastBooker } = await supabase
+              .from('user_booking_counts')
+              .select('session_fingerprint,last_booking_at')
+              .eq('event_id', eventId)
+              .not('last_booking_at', 'is', null)
+              .order('last_booking_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            lastBookerFingerprint = (lastBooker?.session_fingerprint as string | undefined) ?? null;
+
+            if (lastBookerFingerprint && lastBookerFingerprint === sessionFingerprint) {
+              newConsecutive = (existingCounts?.consecutive_songs || 0) + 1;
+            } else {
+              newConsecutive = 1;
+            }
+          }
+
+          // If another user booked, their streak is broken: reset ONLY that user's consecutive to 0
+          // (this also enables the realtime "sbloccato" notification).
+          if (
+            !isDedica &&
+            lastBookerFingerprint &&
+            lastBookerFingerprint !== sessionFingerprint
+          ) {
+            await supabase
+              .from('user_booking_counts')
+              .update({ consecutive_songs: 0 })
+              .eq('event_id', eventId)
+              .eq('session_fingerprint', lastBookerFingerprint);
+          }
           
           if (existingCounts) {
+            // Interval window tracking (separate from total songs_count)
+            let nextIntervalCount = existingCounts.songs_interval_count || 0;
+            let nextWindowStartedAt: string | null = existingCounts.interval_window_started_at || null;
+
+            if (shouldTrackInterval) {
+              const now = new Date();
+              const intervalMs = (limitsSource.user_limit_interval_minutes as number) * 60 * 1000;
+              const startedAt = nextWindowStartedAt ? new Date(nextWindowStartedAt) : null;
+              const expired = !startedAt || now.getTime() - startedAt.getTime() >= intervalMs;
+
+              if (expired) {
+                nextIntervalCount = 0;
+                nextWindowStartedAt = now.toISOString();
+              }
+
+              nextIntervalCount = nextIntervalCount + 1;
+            }
+
             // Update existing counts
             await supabase
               .from('user_booking_counts')
@@ -990,6 +1017,12 @@ serve(async (req) => {
                 songs_count: (existingCounts.songs_count || 0) + (isDedica ? 0 : 1),
                 dediche_count: (existingCounts.dediche_count || 0) + (isDedica ? 1 : 0),
                 consecutive_songs: isDedica ? 0 : newConsecutive,
+                ...(shouldTrackInterval
+                  ? {
+                      songs_interval_count: nextIntervalCount,
+                      interval_window_started_at: nextWindowStartedAt,
+                    }
+                  : {}),
                 last_booking_at: new Date().toISOString(),
                 last_reservation_id: reservation.id,
                 updated_at: new Date().toISOString(),
@@ -997,6 +1030,7 @@ serve(async (req) => {
               .eq('event_id', eventId)
               .eq('session_fingerprint', sessionFingerprint);
           } else {
+            const now = new Date();
             // Insert new counts
             await supabase
               .from('user_booking_counts')
@@ -1007,19 +1041,12 @@ serve(async (req) => {
                 songs_count: isDedica ? 0 : 1,
                 dediche_count: isDedica ? 1 : 0,
                 consecutive_songs: isDedica ? 0 : 1,
+                songs_interval_count: shouldTrackInterval ? 1 : 0,
+                interval_window_started_at: shouldTrackInterval ? now.toISOString() : null,
                 first_booking_at: new Date().toISOString(),
                 last_booking_at: new Date().toISOString(),
                 last_reservation_id: reservation.id,
               });
-          }
-          
-          // Reset consecutive count for other users who just had their streak broken
-          if (!isDedica) {
-            await supabase
-              .from('user_booking_counts')
-              .update({ consecutive_songs: 0 })
-              .eq('event_id', eventId)
-              .neq('session_fingerprint', sessionFingerprint);
           }
         }
 
