@@ -147,7 +147,10 @@ export const useReservations = () => {
             error: data.error,
             errorType: 'user_limit',
             limitType: data.limit_type,
-            cooldownMinutes: data.cooldown_minutes 
+            cooldownMinutes: data.cooldown_minutes,
+            cooldownEndsAt: data.cooldown_ends_at,
+            consecutiveCount: data.consecutive_count,
+            consecutiveLimit: data.consecutive_limit
           };
         }
         toast.error(data.error);

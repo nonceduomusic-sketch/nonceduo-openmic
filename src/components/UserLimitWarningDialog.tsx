@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, Clock, Music2, Repeat, Hash, X, Sparkles, PartyPopper } from 'lucide-react';
+import { AlertTriangle, Clock, Music2, Repeat, Hash, X, Sparkles, PartyPopper, Timer, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -9,6 +9,7 @@ interface UserLimitWarningDialogProps {
   message: string;
   limitType?: 'total_songs' | 'total_dediche' | 'consecutive' | 'interval';
   cooldownMinutes?: number;
+  cooldownEndsAt?: string;
 }
 
 /**
@@ -25,12 +26,13 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
   message,
   limitType,
   cooldownMinutes,
+  cooldownEndsAt,
 }) => {
   if (!isOpen) return null;
 
   // Determine if this is a blocking message or a success notification
   const isBlockingLimit = cooldownMinutes !== undefined && cooldownMinutes > 0;
-  const isSuccessNotification = !isBlockingLimit && message.includes('Ottimo') || message.includes('Grazie') || message.includes('in forma');
+  const isSuccessNotification = !isBlockingLimit && (message.includes('Ottimo') || message.includes('Grazie') || message.includes('in forma') || message.includes('ritmo'));
 
   const getIcon = () => {
     if (isSuccessNotification) {
@@ -41,9 +43,9 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
       case 'total_dediche':
         return <Hash className="w-8 h-8" />;
       case 'consecutive':
-        return <Repeat className="w-8 h-8" />;
+        return <Users className="w-8 h-8" />;
       case 'interval':
-        return <Clock className="w-8 h-8" />;
+        return <Timer className="w-8 h-8" />;
       default:
         return <AlertTriangle className="w-8 h-8" />;
     }
@@ -58,6 +60,8 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
           return '❤️ Dediche completate!';
         case 'consecutive':
           return '🌟 Che energia!';
+        case 'interval':
+          return '⏱️ Gran ritmo!';
         default:
           return '✨ Fantastico!';
       }
@@ -68,9 +72,9 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
       case 'total_dediche':
         return 'Limite dediche raggiunto';
       case 'consecutive':
-        return 'Troppe prenotazioni consecutive';
+        return 'Tocca agli altri!';
       case 'interval':
-        return 'Attendi un momento';
+        return 'Pausa in corso';
       default:
         return 'Limite raggiunto';
     }
@@ -85,9 +89,9 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
       case 'total_dediche':
         return 'from-primary/20 to-primary/5 border-primary/30';
       case 'consecutive':
-        return 'from-secondary/20 to-secondary/5 border-secondary/30';
+        return 'from-orange-500/20 to-orange-500/5 border-orange-500/30';
       case 'interval':
-        return 'from-accent/20 to-accent/5 border-accent/30';
+        return 'from-green-500/20 to-green-500/5 border-green-500/30';
       default:
         return 'from-destructive/20 to-destructive/5 border-destructive/30';
     }
@@ -102,9 +106,9 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
       case 'total_dediche':
         return 'text-primary';
       case 'consecutive':
-        return 'text-secondary';
+        return 'text-orange-500';
       case 'interval':
-        return 'text-accent';
+        return 'text-green-500';
       default:
         return 'text-destructive';
     }
@@ -118,16 +122,18 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
         case 'total_dediche':
           return '💌 I tuoi messaggi speciali saranno letti durante la serata!';
         case 'consecutive':
-        return '🎤 Fai un po\' di tifo per gli altri e poi tornerai a cantare!';
-      default:
-        return '🌟 Grazie per la tua partecipazione questa sera!';
+          return '🎤 Non appena qualcun altro prenota, tornerai a cantare!';
+        case 'interval':
+          return '⏰ Tra poco potrai prenotare di nuovo. Intanto goditi lo show!';
+        default:
+          return '🌟 Grazie per la tua partecipazione questa sera!';
+      }
     }
-  }
     switch (limitType) {
       case 'consecutive':
-        return '🎵 Lascia spazio agli altri partecipanti, tornerai presto a cantare!';
+        return '🎵 Non appena un altro partecipante prenota, potrai tornare a cantare!';
       case 'interval':
-        return '🎤 Nel frattempo, goditi le esibizioni degli altri!';
+        return '🎤 Goditi le esibizioni degli altri, tra poco tornerai sul palco!';
       default:
         return '🌟 Grazie per la tua partecipazione questa sera!';
     }
@@ -178,12 +184,22 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
           {message}
         </p>
 
-        {/* Cooldown Timer (if applicable - blocking mode only) */}
-        {isBlockingLimit && (
-          <div className="flex items-center justify-center gap-2 mb-6 p-3 rounded-lg bg-muted/50">
-            <Clock className="w-5 h-5 text-accent animate-pulse" />
+        {/* Cooldown Timer (for interval limit blocking) */}
+        {isBlockingLimit && limitType === 'interval' && (
+          <div className="flex items-center justify-center gap-2 mb-6 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+            <Timer className="w-5 h-5 text-green-500 animate-pulse" />
             <span className="text-sm font-medium">
-              Potrai riprendere tra <span className="text-accent font-bold">{cooldownMinutes}</span> minuti
+              Potrai riprendere tra <span className="text-green-500 font-bold">{cooldownMinutes}</span> minuti
+            </span>
+          </div>
+        )}
+
+        {/* Consecutive limit info (blocking) */}
+        {isBlockingLimit && limitType === 'consecutive' && (
+          <div className="flex items-center justify-center gap-2 mb-6 p-3 rounded-lg bg-orange-500/10 border border-orange-500/30">
+            <Users className="w-5 h-5 text-orange-500 animate-pulse" />
+            <span className="text-sm font-medium text-center">
+              Quando un altro partecipante prenota, potrai riprendere!
             </span>
           </div>
         )}
