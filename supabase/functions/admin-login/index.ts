@@ -119,7 +119,69 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // Fetch admin user from admin_users table
+    const trimmedUsername = username.trim().toLowerCase();
+    
+    // First, check if this is an operator (check Auth user with @operator.local email)
+    const operatorEmail = `${trimmedUsername}@operator.local`;
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+    const operatorAuthUser = existingUsers?.users.find(u => u.email === operatorEmail);
+    
+    if (operatorAuthUser) {
+      // This is an operator - verify password directly via Supabase Auth
+      console.log(`Found operator account: ${operatorEmail}`);
+      
+      // Try to sign in with the provided password to verify it
+      // We use a workaround: update password and if it matches, Auth will accept it
+      // Actually, we can verify by attempting signInWithPassword via a temp client
+      const tempClient = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_ANON_KEY") ?? "",
+        { auth: { persistSession: false } }
+      );
+      
+      const { data: signInData, error: signInError } = await tempClient.auth.signInWithPassword({
+        email: operatorEmail,
+        password: password
+      });
+      
+      if (signInError || !signInData.user) {
+        console.log("Operator password mismatch:", signInError?.message);
+        return new Response(
+          JSON.stringify({ error: "Credenziali non valide" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Verify this user actually has the operator role
+      const { data: roleData } = await supabaseAdmin
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", operatorAuthUser.id)
+        .eq("role", "operator")
+        .maybeSingle();
+      
+      if (!roleData) {
+        console.log("User exists but doesn't have operator role");
+        return new Response(
+          JSON.stringify({ error: "Credenziali non valide" }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      console.log(`Operator ${trimmedUsername} authenticated successfully`);
+      
+      return new Response(
+        JSON.stringify({ 
+          success: true,
+          email: operatorEmail,
+          username: operatorAuthUser.user_metadata?.username || trimmedUsername,
+          isOperator: true
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Not an operator, check admin_users table for staff login
     const { data: adminUser, error: fetchError } = await supabaseAdmin
       .from("admin_users")
       .select("username, password_hash")
@@ -154,10 +216,9 @@ serve(async (req) => {
     }
 
     // Generate a unique email for this admin user (for Supabase Auth)
-    const adminEmail = `${username.toLowerCase()}@karaoke-admin.local`;
+    const adminEmail = `${adminUser.username.toLowerCase()}@karaoke-admin.local`;
     
     // Check if Supabase Auth user exists, create if not
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
     let authUser = existingUsers?.users.find(u => u.email === adminEmail);
     
     if (!authUser) {
