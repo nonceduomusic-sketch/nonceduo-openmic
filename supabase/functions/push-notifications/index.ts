@@ -550,37 +550,117 @@ serve(async (req) => {
           // Determine if this is a dedication
           const isDedicaCheck = !!(dedicationMessage && dedicationMessage.length > 0);
 
-          // Check max songs limit (only for non-dedications)
-          if (!isDedicaCheck && liveEvent.openmic_max_songs !== null) {
-            const currentCount = liveEvent.openmic_current_count || 0;
-            const maxAllowed = liveEvent.openmic_max_songs;
+          // === FINAL LIMIT LOGIC (ultimi X minuti) - PREVALE sul limite globale ===
+          // Calculate if we're in the "final period" based on event end time
+          let isInFinalPeriod = false;
+          let minutesToEnd = Infinity;
+          
+          if (liveEvent.event_date && liveEvent.event_end_time) {
+            const endDateTime = new Date(`${liveEvent.event_date}T${liveEvent.event_end_time}`);
+            minutesToEnd = (endDateTime.getTime() - now.getTime()) / (1000 * 60);
+          }
 
-            // Add extra slots if in reopen mode
-            if (isInReopenMode && liveEvent.reopen_extra_songs) {
-              const reopenUsed = liveEvent.reopen_songs_used || 0;
-              const extraAvailable = liveEvent.reopen_extra_songs - reopenUsed;
-              if (currentCount >= maxAllowed && extraAvailable <= 0) {
+          // Check songs: FINAL LIMIT has priority over global limit
+          if (!isDedicaCheck) {
+            // First check if final limit is active and we're in the final period
+            if (liveEvent.openmic_final_limit_enabled && 
+                liveEvent.openmic_final_limit_minutes !== null &&
+                liveEvent.openmic_final_limit_songs !== null &&
+                minutesToEnd <= liveEvent.openmic_final_limit_minutes) {
+              
+              isInFinalPeriod = true;
+              const currentCount = liveEvent.openmic_current_count || 0;
+              const finalMaxAllowed = liveEvent.openmic_final_limit_songs;
+              
+              // In final period, use the more restrictive final limit
+              // Check against the REMAINING slots in final period (not global count)
+              // We need to count how many were booked DURING the final period
+              // For simplicity, we check if current count >= final limit
+              // The final limit acts as "max X more songs can be booked from now"
+              
+              // Calculate how many songs were booked before the final period
+              // For now, we use a simpler approach: if final limit is X, only X more can be booked
+              // once we enter the final period, regardless of the global count
+              
+              // However, we also need to respect the global limit
+              const globalMax = liveEvent.openmic_max_songs;
+              const effectiveMax = globalMax !== null 
+                ? Math.min(currentCount + finalMaxAllowed, globalMax)
+                : currentCount + finalMaxAllowed;
+              
+              if (currentCount >= effectiveMax) {
+                // Check reopen mode
+                if (isInReopenMode && liveEvent.reopen_extra_songs) {
+                  const reopenUsed = liveEvent.reopen_songs_used || 0;
+                  const extraAvailable = liveEvent.reopen_extra_songs - reopenUsed;
+                  if (extraAvailable <= 0) {
+                    return json({ error: `Limite ultimi ${liveEvent.openmic_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} canzoni)` }, 400);
+                  }
+                } else {
+                  return json({ error: `Limite ultimi ${liveEvent.openmic_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} canzoni)` }, 400);
+                }
+              }
+            } else if (liveEvent.openmic_max_songs !== null) {
+              // Not in final period, use global limit
+              const currentCount = liveEvent.openmic_current_count || 0;
+              const maxAllowed = liveEvent.openmic_max_songs;
+
+              // Add extra slots if in reopen mode
+              if (isInReopenMode && liveEvent.reopen_extra_songs) {
+                const reopenUsed = liveEvent.reopen_songs_used || 0;
+                const extraAvailable = liveEvent.reopen_extra_songs - reopenUsed;
+                if (currentCount >= maxAllowed && extraAvailable <= 0) {
+                  return json({ error: 'Limite canzoni raggiunto' }, 400);
+                }
+              } else if (currentCount >= maxAllowed) {
                 return json({ error: 'Limite canzoni raggiunto' }, 400);
               }
-            } else if (currentCount >= maxAllowed) {
-              return json({ error: 'Limite canzoni raggiunto' }, 400);
             }
           }
           
-          // Check max dediche limit (only for dedications)
-          if (isDedicaCheck && liveEvent.dediche_max_total !== null) {
-            const currentCount = liveEvent.dediche_current_count || 0;
-            const maxAllowed = liveEvent.dediche_max_total;
+          // Check dediche: FINAL LIMIT has priority over global limit
+          if (isDedicaCheck) {
+            // First check if final limit is active and we're in the final period
+            if (liveEvent.dediche_final_limit_enabled && 
+                liveEvent.dediche_final_limit_minutes !== null &&
+                liveEvent.dediche_final_limit_total !== null &&
+                minutesToEnd <= liveEvent.dediche_final_limit_minutes) {
+              
+              const currentCount = liveEvent.dediche_current_count || 0;
+              const finalMaxAllowed = liveEvent.dediche_final_limit_total;
+              
+              // Same logic as songs
+              const globalMax = liveEvent.dediche_max_total;
+              const effectiveMax = globalMax !== null 
+                ? Math.min(currentCount + finalMaxAllowed, globalMax)
+                : currentCount + finalMaxAllowed;
+              
+              if (currentCount >= effectiveMax) {
+                if (isInReopenMode && liveEvent.reopen_extra_dediche) {
+                  const reopenUsed = liveEvent.reopen_dediche_used || 0;
+                  const extraAvailable = liveEvent.reopen_extra_dediche - reopenUsed;
+                  if (extraAvailable <= 0) {
+                    return json({ error: `Limite ultimi ${liveEvent.dediche_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} dediche)` }, 400);
+                  }
+                } else {
+                  return json({ error: `Limite ultimi ${liveEvent.dediche_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} dediche)` }, 400);
+                }
+              }
+            } else if (liveEvent.dediche_max_total !== null) {
+              // Not in final period, use global limit
+              const currentCount = liveEvent.dediche_current_count || 0;
+              const maxAllowed = liveEvent.dediche_max_total;
 
-            // Add extra slots if in reopen mode
-            if (isInReopenMode && liveEvent.reopen_extra_dediche) {
-              const reopenUsed = liveEvent.reopen_dediche_used || 0;
-              const extraAvailable = liveEvent.reopen_extra_dediche - reopenUsed;
-              if (currentCount >= maxAllowed && extraAvailable <= 0) {
+              // Add extra slots if in reopen mode
+              if (isInReopenMode && liveEvent.reopen_extra_dediche) {
+                const reopenUsed = liveEvent.reopen_dediche_used || 0;
+                const extraAvailable = liveEvent.reopen_extra_dediche - reopenUsed;
+                if (currentCount >= maxAllowed && extraAvailable <= 0) {
+                  return json({ error: 'Limite dediche raggiunto' }, 400);
+                }
+              } else if (currentCount >= maxAllowed) {
                 return json({ error: 'Limite dediche raggiunto' }, 400);
               }
-            } else if (currentCount >= maxAllowed) {
-              return json({ error: 'Limite dediche raggiunto' }, 400);
             }
           }
         }
@@ -596,47 +676,109 @@ serve(async (req) => {
         if (!liveEvent && freeModeSettings) {
           // Determine if this is a dedication for free mode validation
           const isDedicaFreeMode = !!(dedicationMessage && dedicationMessage.length > 0);
+          const nowFreeMode = new Date();
           
           // Check Free Mode reopen status
           let isFreeModeReopenActive = false;
           if (freeModeSettings.reopen_active && freeModeSettings.reopen_until) {
             const reopenUntil = new Date(freeModeSettings.reopen_until);
-            if (new Date() <= reopenUntil) {
+            if (nowFreeMode <= reopenUntil) {
               isFreeModeReopenActive = true;
             }
           }
           
-          // Check max songs limit for Free Mode (only for non-dedications)
-          if (!isDedicaFreeMode && freeModeSettings.openmic_max_songs !== null) {
-            const currentCount = freeModeSettings.openmic_current_count || 0;
-            const maxAllowed = freeModeSettings.openmic_max_songs;
+          // Calculate minutes to end for Free Mode
+          let freeModeMinutesToEnd = Infinity;
+          if (freeModeSettings.event_date && freeModeSettings.event_end_time) {
+            const endDateTime = new Date(`${freeModeSettings.event_date}T${freeModeSettings.event_end_time}`);
+            freeModeMinutesToEnd = (endDateTime.getTime() - nowFreeMode.getTime()) / (1000 * 60);
+          } else if (freeModeSettings.expires_at) {
+            const expiresAt = new Date(freeModeSettings.expires_at);
+            freeModeMinutesToEnd = (expiresAt.getTime() - nowFreeMode.getTime()) / (1000 * 60);
+          }
+          
+          // Check songs: FINAL LIMIT has priority over global limit
+          if (!isDedicaFreeMode) {
+            // First check if final limit is active and we're in the final period
+            if (freeModeSettings.openmic_final_limit_enabled && 
+                freeModeSettings.openmic_final_limit_minutes !== null &&
+                freeModeSettings.openmic_final_limit_songs !== null &&
+                freeModeMinutesToEnd <= freeModeSettings.openmic_final_limit_minutes) {
+              
+              const currentCount = freeModeSettings.openmic_current_count || 0;
+              const finalMaxAllowed = freeModeSettings.openmic_final_limit_songs;
+              
+              const globalMax = freeModeSettings.openmic_max_songs;
+              const effectiveMax = globalMax !== null 
+                ? Math.min(currentCount + finalMaxAllowed, globalMax)
+                : currentCount + finalMaxAllowed;
+              
+              if (currentCount >= effectiveMax) {
+                if (isFreeModeReopenActive && freeModeSettings.reopen_extra_songs) {
+                  const reopenUsed = freeModeSettings.reopen_songs_used || 0;
+                  const extraAvailable = freeModeSettings.reopen_extra_songs - reopenUsed;
+                  if (extraAvailable <= 0) {
+                    return json({ error: `Limite ultimi ${freeModeSettings.openmic_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} canzoni)` }, 400);
+                  }
+                } else {
+                  return json({ error: `Limite ultimi ${freeModeSettings.openmic_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} canzoni)` }, 400);
+                }
+              }
+            } else if (freeModeSettings.openmic_max_songs !== null) {
+              const currentCount = freeModeSettings.openmic_current_count || 0;
+              const maxAllowed = freeModeSettings.openmic_max_songs;
 
-            // Add extra slots if in reopen mode
-            if (isFreeModeReopenActive && freeModeSettings.reopen_extra_songs) {
-              const reopenUsed = freeModeSettings.reopen_songs_used || 0;
-              const extraAvailable = freeModeSettings.reopen_extra_songs - reopenUsed;
-              if (currentCount >= maxAllowed && extraAvailable <= 0) {
+              if (isFreeModeReopenActive && freeModeSettings.reopen_extra_songs) {
+                const reopenUsed = freeModeSettings.reopen_songs_used || 0;
+                const extraAvailable = freeModeSettings.reopen_extra_songs - reopenUsed;
+                if (currentCount >= maxAllowed && extraAvailable <= 0) {
+                  return json({ error: 'Limite canzoni raggiunto' }, 400);
+                }
+              } else if (currentCount >= maxAllowed) {
                 return json({ error: 'Limite canzoni raggiunto' }, 400);
               }
-            } else if (currentCount >= maxAllowed) {
-              return json({ error: 'Limite canzoni raggiunto' }, 400);
             }
           }
           
-          // Check max dediche limit for Free Mode (only for dedications)
-          if (isDedicaFreeMode && freeModeSettings.dediche_max_total !== null) {
-            const currentCount = freeModeSettings.dediche_current_count || 0;
-            const maxAllowed = freeModeSettings.dediche_max_total;
+          // Check dediche: FINAL LIMIT has priority over global limit
+          if (isDedicaFreeMode) {
+            if (freeModeSettings.dediche_final_limit_enabled && 
+                freeModeSettings.dediche_final_limit_minutes !== null &&
+                freeModeSettings.dediche_final_limit_total !== null &&
+                freeModeMinutesToEnd <= freeModeSettings.dediche_final_limit_minutes) {
+              
+              const currentCount = freeModeSettings.dediche_current_count || 0;
+              const finalMaxAllowed = freeModeSettings.dediche_final_limit_total;
+              
+              const globalMax = freeModeSettings.dediche_max_total;
+              const effectiveMax = globalMax !== null 
+                ? Math.min(currentCount + finalMaxAllowed, globalMax)
+                : currentCount + finalMaxAllowed;
+              
+              if (currentCount >= effectiveMax) {
+                if (isFreeModeReopenActive && freeModeSettings.reopen_extra_dediche) {
+                  const reopenUsed = freeModeSettings.reopen_dediche_used || 0;
+                  const extraAvailable = freeModeSettings.reopen_extra_dediche - reopenUsed;
+                  if (extraAvailable <= 0) {
+                    return json({ error: `Limite ultimi ${freeModeSettings.dediche_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} dediche)` }, 400);
+                  }
+                } else {
+                  return json({ error: `Limite ultimi ${freeModeSettings.dediche_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} dediche)` }, 400);
+                }
+              }
+            } else if (freeModeSettings.dediche_max_total !== null) {
+              const currentCount = freeModeSettings.dediche_current_count || 0;
+              const maxAllowed = freeModeSettings.dediche_max_total;
 
-            // Add extra slots if in reopen mode
-            if (isFreeModeReopenActive && freeModeSettings.reopen_extra_dediche) {
-              const reopenUsed = freeModeSettings.reopen_dediche_used || 0;
-              const extraAvailable = freeModeSettings.reopen_extra_dediche - reopenUsed;
-              if (currentCount >= maxAllowed && extraAvailable <= 0) {
+              if (isFreeModeReopenActive && freeModeSettings.reopen_extra_dediche) {
+                const reopenUsed = freeModeSettings.reopen_dediche_used || 0;
+                const extraAvailable = freeModeSettings.reopen_extra_dediche - reopenUsed;
+                if (currentCount >= maxAllowed && extraAvailable <= 0) {
+                  return json({ error: 'Limite dediche raggiunto' }, 400);
+                }
+              } else if (currentCount >= maxAllowed) {
                 return json({ error: 'Limite dediche raggiunto' }, 400);
               }
-            } else if (currentCount >= maxAllowed) {
-              return json({ error: 'Limite dediche raggiunto' }, 400);
             }
           }
         }
