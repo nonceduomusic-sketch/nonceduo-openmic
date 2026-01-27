@@ -310,40 +310,41 @@ export function AdminOperatorsTab() {
     }
   };
 
-  // Delete operator
+  // Delete operator - using edge function for full cleanup
   const handleDeleteOperator = async (userId: string) => {
     try {
-      // Remove operator role
-      const { error } = await supabase
-        .from("user_roles")
-        .delete()
-        .eq("user_id", userId)
-        .eq("role", "operator");
+      // Find the operator's username from our local data
+      const operator = operators.find(op => op.user_id === userId);
+      if (!operator) {
+        toast({
+          title: "Errore",
+          description: "Operatore non trovato",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      const username = operator.display_name || operator.email;
+      
+      // Call edge function to do full cleanup
+      const { data, error } = await supabase.functions.invoke("admin-credentials-update", {
+        body: {
+          action: "deleteOperator",
+          username: username,
+        },
+      });
 
       if (error) throw error;
-
-      // Also remove their permissions
-      const { data: perms } = await supabase
-        .from("permissions")
-        .select("id")
-        .like("name", "operator.%");
-
-      if (perms?.length) {
-        await supabase
-          .from("user_permissions")
-          .delete()
-          .eq("user_id", userId)
-          .in("permission_id", perms.map((p) => p.id));
-      }
 
       adminAuditLog({
         action: "operator.delete",
         section: "operators",
         entity: "user",
         entity_id: userId,
+        metadata: { username },
       });
 
-      toast({ title: "Operatore rimosso" });
+      toast({ title: "Operatore eliminato completamente" });
       setShowDeleteDialog(null);
       refetch();
     } catch (err: any) {
