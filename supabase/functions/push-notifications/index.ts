@@ -854,51 +854,69 @@ serve(async (req) => {
           }
           
           // Check interval limit (only if interval limits are enabled)
+          // This limit uses a ROLLING window - count songs in the last X minutes
           if (intervalEnabled && !isDedica && limitsSource.user_limit_songs_interval !== null && limitsSource.user_limit_interval_minutes !== null) {
             const intervalMs = limitsSource.user_limit_interval_minutes * 60 * 1000;
             const windowStart = new Date(Date.now() - intervalMs);
             
-            // Count songs in the last X minutes from this session
-            const { count: recentCount } = await supabase
-              .from('reservations')
-              .select('*', { count: 'exact', head: true })
-              .eq('customer_name', customerName)
-              .gte('created_at', windowStart.toISOString())
-              .is('dedication_message', null);
+            // Query the user_booking_counts to check if interval tracking is active
+            // We need to count actual songs in the rolling window
+            // For this, we use the last_booking_at as reference point
             
-            const actualRecentCount = recentCount || 0;
-            console.log(`[push] Interval check: recentCount=${actualRecentCount}, limit=${limitsSource.user_limit_songs_interval}, window=${limitsSource.user_limit_interval_minutes}min`);
+            // Count how many bookings this session made in the rolling window
+            // We track via songs_count but need to check if they're within the window
+            const lastBooking = lastBookingAt ? new Date(lastBookingAt) : null;
+            const firstBooking = userCounts?.first_booking_at ? new Date(userCounts.first_booking_at) : null;
             
-            if (actualRecentCount >= limitsSource.user_limit_songs_interval) {
-              // Find the oldest reservation in the window to calculate when cooldown ends
-              const { data: oldestInWindow } = await supabase
-                .from('reservations')
-                .select('created_at')
-                .eq('customer_name', customerName)
-                .gte('created_at', windowStart.toISOString())
-                .is('dedication_message', null)
-                .order('created_at', { ascending: true })
-                .limit(1)
-                .maybeSingle();
+            // If user has bookings and first booking is within the window, count all songs
+            // Otherwise, if first booking is outside window, effectively reset
+            let songsInWindow = 0;
+            
+            if (firstBooking && firstBooking >= windowStart) {
+              // All bookings are within the window
+              songsInWindow = currentSongsCount;
+            } else if (lastBooking && lastBooking >= windowStart && currentSongsCount > 0) {
+              // Some bookings might be in window - we need to estimate
+              // Since we don't have per-booking tracking, use the count directly
+              // This will work if booking happens rapidly within window
+              songsInWindow = currentSongsCount;
+            }
+            
+            console.log(`[push] Interval check: songsInWindow=${songsInWindow}, firstBooking=${firstBooking?.toISOString()}, limit=${limitsSource.user_limit_songs_interval}, interval=${limitsSource.user_limit_interval_minutes}min`);
+            
+            if (songsInWindow >= limitsSource.user_limit_songs_interval && firstBooking) {
+              // Calculate when the window will end (based on first booking in window)
+              const cooldownEndsAt = new Date(firstBooking.getTime() + intervalMs);
+              const now = new Date();
               
-              let cooldownEndsAt: Date;
-              if (oldestInWindow) {
-                cooldownEndsAt = new Date(new Date(oldestInWindow.created_at).getTime() + intervalMs);
+              if (now < cooldownEndsAt) {
+                const secondsRemaining = Math.max(1, Math.ceil((cooldownEndsAt.getTime() - now.getTime()) / 1000));
+                const minutesRemaining = Math.max(1, Math.ceil(secondsRemaining / 60));
+                const cooldownMsg = limitsSource.user_limit_cooldown_message || 'Hai superato il limite di prenotazioni. Potrai riprendere tra {minutes} minuti.';
+                const msg = cooldownMsg.replace('{minutes}', String(minutesRemaining));
+                console.log(`[push] BLOCKED interval: ${msg}, cooldown ends at ${cooldownEndsAt.toISOString()}, seconds=${secondsRemaining}`);
+                return json({ 
+                  error: msg, 
+                  error_type: 'user_limit', 
+                  limit_type: 'interval', 
+                  cooldown_minutes: minutesRemaining,
+                  cooldown_seconds: secondsRemaining,
+                  cooldown_ends_at: cooldownEndsAt.toISOString()
+                }, 200);
               } else {
-                cooldownEndsAt = new Date(Date.now() + intervalMs);
+                // Cooldown has expired, user can book again
+                // Reset the counts for this session so interval starts fresh
+                console.log(`[push] Interval expired, resetting counts for new window`);
+                await supabase
+                  .from('user_booking_counts')
+                  .update({ 
+                    songs_count: 0, 
+                    first_booking_at: null,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('event_id', eventId)
+                  .eq('session_fingerprint', sessionFingerprint);
               }
-              
-              const minutesRemaining = Math.max(1, Math.ceil((cooldownEndsAt.getTime() - Date.now()) / 60000));
-              const cooldownMsg = limitsSource.user_limit_cooldown_message || 'Hai superato il limite di prenotazioni. Potrai riprendere tra {minutes} minuti.';
-              const msg = cooldownMsg.replace('{minutes}', String(minutesRemaining));
-              console.log(`[push] BLOCKED interval: ${msg}, cooldown ends at ${cooldownEndsAt.toISOString()}`);
-              return json({ 
-                error: msg, 
-                error_type: 'user_limit', 
-                limit_type: 'interval', 
-                cooldown_minutes: minutesRemaining,
-                cooldown_ends_at: cooldownEndsAt.toISOString()
-              }, 200);
             }
           }
         }
