@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -35,6 +35,7 @@ import {
   Music,
   MessageSquare,
   Eye,
+  EyeOff,
   Settings2,
   Trash2,
   RefreshCw,
@@ -75,8 +76,9 @@ export function AdminOperatorsTab() {
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState<string | null>(null);
-  const [newOperatorEmail, setNewOperatorEmail] = useState("");
+  const [newOperatorUsername, setNewOperatorUsername] = useState("");
   const [newOperatorPassword, setNewOperatorPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
 
   // Fetch operators
@@ -234,10 +236,28 @@ export function AdminOperatorsTab() {
 
   // Create new operator
   const handleCreateOperator = async () => {
-    if (!newOperatorEmail || !newOperatorPassword) {
+    if (!newOperatorUsername || !newOperatorPassword) {
       toast({
         title: "Dati mancanti",
-        description: "Inserisci email e password",
+        description: "Inserisci username e password",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newOperatorUsername.length < 3) {
+      toast({
+        title: "Username troppo corto",
+        description: "L'username deve avere almeno 3 caratteri",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newOperatorPassword.length < 6) {
+      toast({
+        title: "Password troppo corta",
+        description: "La password deve avere almeno 6 caratteri",
         variant: "destructive",
       });
       return;
@@ -245,11 +265,11 @@ export function AdminOperatorsTab() {
 
     setIsCreating(true);
     try {
-      // Use admin function to create user
+      // Use admin function to create user (same as staff)
       const { data, error } = await supabase.functions.invoke("admin-credentials-update", {
         body: {
           action: "create",
-          email: newOperatorEmail,
+          username: newOperatorUsername.trim().toLowerCase(),
           password: newOperatorPassword,
           role: "operator",
         },
@@ -261,13 +281,14 @@ export function AdminOperatorsTab() {
         action: "operator.create",
         section: "operators",
         entity: "user",
-        metadata: { email: newOperatorEmail },
+        metadata: { username: newOperatorUsername },
       });
 
-      toast({ title: "Operatore creato", description: newOperatorEmail });
+      toast({ title: "Operatore creato", description: newOperatorUsername });
       setShowCreateDialog(false);
-      setNewOperatorEmail("");
+      setNewOperatorUsername("");
       setNewOperatorPassword("");
+      setShowPassword(false);
       refetch();
     } catch (err: any) {
       toast({
@@ -586,34 +607,63 @@ export function AdminOperatorsTab() {
       </Card>
 
       {/* Create Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+      <Dialog open={showCreateDialog} onOpenChange={(open) => {
+        setShowCreateDialog(open);
+        if (!open) {
+          setNewOperatorUsername("");
+          setNewOperatorPassword("");
+          setShowPassword(false);
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Nuovo Operatore</DialogTitle>
             <DialogDescription>
               Crea un account operatore per gestire gli eventi dal vivo.
+              L'operatore accederà dal pannello admin con username e password.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="email"
-                type="email"
-                placeholder="operatore@esempio.com"
-                value={newOperatorEmail}
-                onChange={(e) => setNewOperatorEmail(e.target.value)}
+                id="username"
+                type="text"
+                placeholder="es. mario_rossi"
+                value={newOperatorUsername}
+                onChange={(e) => setNewOperatorUsername(e.target.value)}
+                maxLength={50}
+                autoComplete="off"
               />
+              <p className="text-xs text-muted-foreground">
+                Solo lettere, numeri e underscore. Min 3 caratteri.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={newOperatorPassword}
-                onChange={(e) => setNewOperatorPassword(e.target.value)}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={newOperatorPassword}
+                  onChange={(e) => setNewOperatorPassword(e.target.value)}
+                  maxLength={100}
+                  className="pr-10"
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Minimo 6 caratteri
+              </p>
             </div>
           </div>
           <DialogFooter>
