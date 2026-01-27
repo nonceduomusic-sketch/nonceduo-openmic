@@ -1043,7 +1043,63 @@ serve(async (req) => {
         };
 
         const stats = await sendToAdminSubscriptions(pushPayload);
-        return json({ success: true, reservation, ...stats });
+        
+        // === CHECK IF USER HAS NOW REACHED THEIR LIMIT ===
+        // Return this info so the frontend can show a friendly "you've reached your limit" message
+        let limitReachedInfo: { type: string; message: string } | null = null;
+        
+        if (limitsSource?.user_limit_enabled && sessionFingerprint) {
+          const eventId = liveEvent?.id || freeModeSettings?.id || 'free_mode';
+          const totalEnabled = limitsSource.user_limit_total_enabled ?? false;
+          const consecutiveEnabled = limitsSource.user_limit_consecutive_enabled ?? false;
+          
+          // Fetch updated counts AFTER the booking was made
+          const { data: updatedCounts } = await supabase
+            .from('user_booking_counts')
+            .select('*')
+            .eq('event_id', eventId)
+            .eq('session_fingerprint', sessionFingerprint)
+            .maybeSingle();
+          
+          const newSongsCount = updatedCounts?.songs_count || 0;
+          const newDedicheCount = updatedCounts?.dediche_count || 0;
+          const newConsecutive = updatedCounts?.consecutive_songs || 0;
+          
+          // Check if user has NOW reached their limit after this booking
+          if (totalEnabled && !isDedica && limitsSource.user_limit_songs_total !== null) {
+            if (newSongsCount >= limitsSource.user_limit_songs_total) {
+              limitReachedInfo = {
+                type: 'total_songs',
+                message: `🎤 Ottimo! Hai prenotato tutte le ${limitsSource.user_limit_songs_total} canzoni disponibili per questa serata. Goditi le esibizioni!`
+              };
+            }
+          }
+          
+          if (!limitReachedInfo && totalEnabled && isDedica && limitsSource.user_limit_dediche_total !== null) {
+            if (newDedicheCount >= limitsSource.user_limit_dediche_total) {
+              limitReachedInfo = {
+                type: 'total_dediche',
+                message: `❤️ Grazie! Hai inviato tutte le ${limitsSource.user_limit_dediche_total} dediche disponibili. I tuoi messaggi speciali verranno letti!`
+              };
+            }
+          }
+          
+          if (!limitReachedInfo && consecutiveEnabled && !isDedica && limitsSource.user_limit_consecutive_songs !== null) {
+            if (newConsecutive >= limitsSource.user_limit_consecutive_songs) {
+              limitReachedInfo = {
+                type: 'consecutive',
+                message: `🎵 Sei in forma! Hai prenotato ${limitsSource.user_limit_consecutive_songs} canzoni consecutive. Ora tocca agli altri cantare!`
+              };
+            }
+          }
+        }
+        
+        return json({ 
+          success: true, 
+          reservation, 
+          ...stats,
+          limit_reached: limitReachedInfo 
+        });
       }
 
       case 'create-message': {

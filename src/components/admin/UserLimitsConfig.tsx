@@ -57,22 +57,28 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
     'Hai superato il limite di prenotazioni. Potrai riprendere tra {minutes} minuti.'
   );
 
-  // Sync with props - only when settings object reference changes
-  const settingsJson = JSON.stringify(settings);
+  // Sync with props only on initial load - use a ref to track initialization
+  const initializedRef = React.useRef(false);
+  const lastEntityIdRef = React.useRef<string | undefined>(undefined);
+  
   useEffect(() => {
-    const parsedSettings = JSON.parse(settingsJson);
-    setEnabled(parsedSettings.user_limit_enabled);
-    setMode(parsedSettings.user_limit_mode || 'session');
-    setTotalEnabled(parsedSettings.user_limit_total_enabled ?? false);
-    setConsecutiveEnabled(parsedSettings.user_limit_consecutive_enabled ?? false);
-    setIntervalEnabled(parsedSettings.user_limit_interval_enabled ?? false);
-    setSongsTotalLimit(parsedSettings.user_limit_songs_total?.toString() || '');
-    setDedicheTotalLimit(parsedSettings.user_limit_dediche_total?.toString() || '');
-    setSongsIntervalLimit(parsedSettings.user_limit_songs_interval?.toString() || '');
-    setIntervalMinutes(parsedSettings.user_limit_interval_minutes?.toString() || '');
-    setConsecutiveSongsLimit(parsedSettings.user_limit_consecutive_songs?.toString() || '');
-    setCooldownMessage(parsedSettings.user_limit_cooldown_message || 'Hai superato il limite di prenotazioni. Potrai riprendere tra {minutes} minuti.');
-  }, [settingsJson]);
+    // Only sync on initial mount or when switching to a different entity
+    if (!initializedRef.current || (entityId && entityId !== lastEntityIdRef.current)) {
+      setEnabled(settings.user_limit_enabled);
+      setMode(settings.user_limit_mode || 'session');
+      setTotalEnabled(settings.user_limit_total_enabled ?? false);
+      setConsecutiveEnabled(settings.user_limit_consecutive_enabled ?? false);
+      setIntervalEnabled(settings.user_limit_interval_enabled ?? false);
+      setSongsTotalLimit(settings.user_limit_songs_total?.toString() || '');
+      setDedicheTotalLimit(settings.user_limit_dediche_total?.toString() || '');
+      setSongsIntervalLimit(settings.user_limit_songs_interval?.toString() || '');
+      setIntervalMinutes(settings.user_limit_interval_minutes?.toString() || '');
+      setConsecutiveSongsLimit(settings.user_limit_consecutive_songs?.toString() || '');
+      setCooldownMessage(settings.user_limit_cooldown_message || 'Hai superato il limite di prenotazioni. Potrai riprendere tra {minutes} minuti.');
+      initializedRef.current = true;
+      lastEntityIdRef.current = entityId;
+    }
+  }, [entityId, settings]);
 
   const handleSave = async () => {
     setIsSaving(true);
