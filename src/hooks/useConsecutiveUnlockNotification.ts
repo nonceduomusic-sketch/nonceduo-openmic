@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getSessionFingerprint } from './useUserBookingLimits';
 
+const CONSECUTIVE_BLOCKED_KEY = 'consecutive_limit_blocked';
+
 /**
  * Hook che monitora quando il limite consecutive viene sbloccato
  * (quando un altro utente prenota e resetta il nostro consecutive_songs a 0)
@@ -12,6 +14,11 @@ export const useConsecutiveUnlockNotification = (eventIdProp: string | null) => 
   const sessionFingerprint = getSessionFingerprint();
   const [eventId, setEventId] = useState<string | null>(eventIdProp);
   const lastConsecutiveRef = useRef<number | null>(null);
+
+  // Sync from localStorage so the notification still works even if the booking modal is closed/unmounted.
+  useEffect(() => {
+    wasBlockedRef.current = localStorage.getItem(CONSECUTIVE_BLOCKED_KEY) === '1';
+  }, []);
 
   // Fetch actual eventId from active event if not provided
   useEffect(() => {
@@ -85,6 +92,9 @@ export const useConsecutiveUnlockNotification = (eventIdProp: string | null) => 
           const newData = payload.new as any;
           const oldConsecutive = lastConsecutiveRef.current;
           const newConsecutive = newData?.consecutive_songs ?? 0;
+
+          const isBlocked =
+            wasBlockedRef.current || localStorage.getItem(CONSECUTIVE_BLOCKED_KEY) === '1';
           
           console.log('[ConsecutiveUnlock] Update received:', {
             oldConsecutive,
@@ -97,7 +107,7 @@ export const useConsecutiveUnlockNotification = (eventIdProp: string | null) => 
             oldConsecutive !== null &&
             oldConsecutive > 0 &&
             newConsecutive === 0 &&
-            wasBlockedRef.current
+            isBlocked
           ) {
             // Show unlock notification
             toast.success('🎉 Sei di nuovo libero di prenotare!', {
@@ -105,6 +115,7 @@ export const useConsecutiveUnlockNotification = (eventIdProp: string | null) => 
               duration: 5000,
             });
             wasBlockedRef.current = false;
+            localStorage.removeItem(CONSECUTIVE_BLOCKED_KEY);
           }
           
           // Update last known value
@@ -124,6 +135,12 @@ export const useConsecutiveUnlockNotification = (eventIdProp: string | null) => 
   const setWasBlocked = useCallback((blocked: boolean) => {
     console.log('[ConsecutiveUnlock] setWasBlocked:', blocked);
     wasBlockedRef.current = blocked;
+
+    if (blocked) {
+      localStorage.setItem(CONSECUTIVE_BLOCKED_KEY, '1');
+    } else {
+      localStorage.removeItem(CONSECUTIVE_BLOCKED_KEY);
+    }
   }, []);
 
   return { setWasBlocked };

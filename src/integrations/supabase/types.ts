@@ -1625,10 +1625,12 @@ export type Database = {
           event_id: string
           first_booking_at: string | null
           id: string
+          interval_window_started_at: string | null
           last_booking_at: string | null
           last_reservation_id: string | null
           session_fingerprint: string
           songs_count: number
+          songs_interval_count: number
           updated_at: string | null
         }
         Insert: {
@@ -1639,10 +1641,12 @@ export type Database = {
           event_id: string
           first_booking_at?: string | null
           id?: string
+          interval_window_started_at?: string | null
           last_booking_at?: string | null
           last_reservation_id?: string | null
           session_fingerprint: string
           songs_count?: number
+          songs_interval_count?: number
           updated_at?: string | null
         }
         Update: {
@@ -1653,10 +1657,12 @@ export type Database = {
           event_id?: string
           first_booking_at?: string | null
           id?: string
+          interval_window_started_at?: string | null
           last_booking_at?: string | null
           last_reservation_id?: string | null
           session_fingerprint?: string
           songs_count?: number
+          songs_interval_count?: number
           updated_at?: string | null
         }
         Relationships: []

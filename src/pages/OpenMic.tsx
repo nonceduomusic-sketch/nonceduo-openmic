@@ -18,6 +18,7 @@ import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
 import { LiveEvent } from '@/hooks/useLiveEvent';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { LeaderboardCard } from '@/components/gamification/LeaderboardCard';
+import { ConsecutiveUnlockListener } from '@/components/ConsecutiveUnlockListener';
 
 interface OpenMicProps {
   /**
@@ -88,6 +89,7 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
 
   return (
     <div className="min-h-screen bg-background">
+      <ConsecutiveUnlockListener />
       <SEO 
         title="Open Mic | Karaoke Live by Non C'è Duo"
         description="Il karaoke live dove TU sei la star! Prenota la tua canzone e sali sul palco con la band."
@@ -298,3 +300,4 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
 };
 
 export default OpenMic;
+
