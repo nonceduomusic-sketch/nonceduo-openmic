@@ -46,59 +46,74 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
     'Hai superato il limite di prenotazioni. Potrai riprendere tra {minutes} minuti.'
   );
 
-  // Sync with props
+  // Sync with props - only when settings object reference changes
+  // (not when individual values change during editing)
+  const settingsJson = JSON.stringify(settings);
   useEffect(() => {
-    setEnabled(settings.user_limit_enabled);
-    setMode(settings.user_limit_mode || 'session');
-    setSongsTotalLimit(settings.user_limit_songs_total?.toString() || '');
-    setDedicheTotalLimit(settings.user_limit_dediche_total?.toString() || '');
-    setSongsIntervalLimit(settings.user_limit_songs_interval?.toString() || '');
-    setIntervalMinutes(settings.user_limit_interval_minutes?.toString() || '');
-    setConsecutiveSongsLimit(settings.user_limit_consecutive_songs?.toString() || '');
-    setCooldownMessage(settings.user_limit_cooldown_message || 'Hai superato il limite di prenotazioni. Potrai riprendere tra {minutes} minuti.');
-  }, [settings]);
+    const parsedSettings = JSON.parse(settingsJson);
+    setEnabled(parsedSettings.user_limit_enabled);
+    setMode(parsedSettings.user_limit_mode || 'session');
+    setSongsTotalLimit(parsedSettings.user_limit_songs_total?.toString() || '');
+    setDedicheTotalLimit(parsedSettings.user_limit_dediche_total?.toString() || '');
+    setSongsIntervalLimit(parsedSettings.user_limit_songs_interval?.toString() || '');
+    setIntervalMinutes(parsedSettings.user_limit_interval_minutes?.toString() || '');
+    setConsecutiveSongsLimit(parsedSettings.user_limit_consecutive_songs?.toString() || '');
+    setCooldownMessage(parsedSettings.user_limit_cooldown_message || 'Hai superato il limite di prenotazioni. Potrai riprendere tra {minutes} minuti.');
+  }, [settingsJson]);
 
   const handleSave = async () => {
     setIsSaving(true);
 
-    const updates: Partial<UserLimitsSettings> = {
-      user_limit_enabled: enabled,
-      user_limit_mode: mode,
-      user_limit_songs_total: songsTotalLimit ? parseInt(songsTotalLimit) : null,
-      user_limit_dediche_total: dedicheTotalLimit ? parseInt(dedicheTotalLimit) : null,
-      user_limit_songs_interval: songsIntervalLimit ? parseInt(songsIntervalLimit) : null,
-      user_limit_interval_minutes: intervalMinutes ? parseInt(intervalMinutes) : null,
-      user_limit_consecutive_songs: consecutiveSongsLimit ? parseInt(consecutiveSongsLimit) : null,
-      user_limit_cooldown_message: cooldownMessage,
-    };
+    try {
+      const updates: Partial<UserLimitsSettings> = {
+        user_limit_enabled: enabled,
+        user_limit_mode: mode,
+        user_limit_songs_total: songsTotalLimit ? parseInt(songsTotalLimit) : null,
+        user_limit_dediche_total: dedicheTotalLimit ? parseInt(dedicheTotalLimit) : null,
+        user_limit_songs_interval: songsIntervalLimit ? parseInt(songsIntervalLimit) : null,
+        user_limit_interval_minutes: intervalMinutes ? parseInt(intervalMinutes) : null,
+        user_limit_consecutive_songs: consecutiveSongsLimit ? parseInt(consecutiveSongsLimit) : null,
+        user_limit_cooldown_message: cooldownMessage,
+      };
 
-    const success = await onUpdate(updates);
+      const success = await onUpdate(updates);
 
-    if (success) {
-      toast({
-        title: 'Limiti utente salvati',
-        description: 'La configurazione è stata aggiornata',
-      });
-      await adminAuditLog({
-        action: 'event.user_limits_updated',
-        entity: 'free_mode_settings',
-        entity_id: entityId,
-        metadata: { 
-          enabled,
-          mode,
-          songs_total: songsTotalLimit || 'nessuno',
-          consecutive: consecutiveSongsLimit || 'nessuno',
-        },
-      });
-    } else {
+      if (success) {
+        toast({
+          title: 'Limiti utente salvati',
+          description: 'La configurazione è stata aggiornata',
+        });
+        // Audit log - non blocca in caso di errore
+        if (entityId) {
+          adminAuditLog({
+            action: 'event.user_limits_updated',
+            entity: 'event_settings',
+            entity_id: entityId,
+            metadata: { 
+              enabled,
+              mode,
+              songs_total: songsTotalLimit || 'nessuno',
+              consecutive: consecutiveSongsLimit || 'nessuno',
+            },
+          }).catch(console.error);
+        }
+      } else {
+        toast({
+          title: 'Errore',
+          description: 'Impossibile salvare i limiti utente',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('[UserLimitsConfig] Save error:', error);
       toast({
         title: 'Errore',
-        description: 'Impossibile salvare i limiti utente',
+        description: 'Si è verificato un errore durante il salvataggio',
         variant: 'destructive',
       });
+    } finally {
+      setIsSaving(false);
     }
-
-    setIsSaving(false);
   };
 
   return (
@@ -116,7 +131,29 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
           </div>
           <Switch
             checked={enabled}
-            onCheckedChange={setEnabled}
+            onCheckedChange={async (checked) => {
+              setEnabled(checked);
+              // Salva immediatamente il toggle principale
+              try {
+                const success = await onUpdate({ user_limit_enabled: checked });
+                if (success) {
+                  toast({
+                    title: checked ? 'Limiti utente attivati' : 'Limiti utente disattivati',
+                    description: checked ? 'Configura i limiti qui sotto' : 'I limiti utente sono disabilitati',
+                  });
+                } else {
+                  setEnabled(!checked); // Ripristina se fallisce
+                  toast({
+                    title: 'Errore',
+                    description: 'Impossibile aggiornare lo stato',
+                    variant: 'destructive',
+                  });
+                }
+              } catch (error) {
+                console.error('[UserLimitsConfig] Toggle error:', error);
+                setEnabled(!checked); // Ripristina se fallisce
+              }
+            }}
           />
         </div>
       </CardHeader>

@@ -283,10 +283,11 @@ export const FreeModeFullPanel: React.FC = () => {
         
         <CardContent className="space-y-4">
           <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as typeof activeSection)}>
-            <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6 gap-1 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 gap-1 h-auto p-1">
               <TabsTrigger value="general" className="text-xs py-2">Generale</TabsTrigger>
               <TabsTrigger value="timing" className="text-xs py-2">Tempi</TabsTrigger>
               <TabsTrigger value="limits" className="text-xs py-2">Limiti</TabsTrigger>
+              <TabsTrigger value="user" className="text-xs py-2">Utente</TabsTrigger>
               <TabsTrigger value="pin" className="text-xs py-2">PIN</TabsTrigger>
               <TabsTrigger value="reopen" className="text-xs py-2">Riapri</TabsTrigger>
               <TabsTrigger value="closure" className="text-xs py-2">Chiusura</TabsTrigger>
@@ -359,6 +360,26 @@ export const FreeModeFullPanel: React.FC = () => {
 
             <TabsContent value="limits" className="mt-4">
               <EventLimitsConfig rules={rules} onUpdate={handleUpdate} />
+            </TabsContent>
+
+            <TabsContent value="user" className="mt-4">
+              <UserLimitsConfig 
+                settings={{
+                  user_limit_enabled: settings?.user_limit_enabled ?? false,
+                  user_limit_mode: (settings?.user_limit_mode as 'session' | 'session_name') ?? 'session',
+                  user_limit_songs_total: settings?.user_limit_songs_total ?? null,
+                  user_limit_dediche_total: settings?.user_limit_dediche_total ?? null,
+                  user_limit_songs_interval: settings?.user_limit_songs_interval ?? null,
+                  user_limit_interval_minutes: settings?.user_limit_interval_minutes ?? null,
+                  user_limit_consecutive_songs: settings?.user_limit_consecutive_songs ?? null,
+                  user_limit_cooldown_message: settings?.user_limit_cooldown_message ?? 'Hai superato il limite di prenotazioni.',
+                }}
+                onUpdate={async (updates) => {
+                  const success = await updateSettings(updates);
+                  return success;
+                }}
+                entityId={settings?.id}
+              />
             </TabsContent>
 
             <TabsContent value="pin" className="mt-4">
