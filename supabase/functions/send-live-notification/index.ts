@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -133,38 +134,43 @@ const sendTelegramMessage = async (
   }
 };
 
-const sendEmail = async (
-  resendApiKey: string,
+const sendEmailViaGmail = async (
   to: string,
   subject: string,
   html: string
 ): Promise<{ success: boolean; error?: string }> => {
+  const gmailAppPassword = Deno.env.get("GMAIL_APP_PASSWORD");
+  
+  if (!gmailAppPassword) {
+    console.error("GMAIL_APP_PASSWORD not configured");
+    return { success: false, error: "Gmail App Password non configurata" };
+  }
+
   try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: "NON C'È DUO Live <noreply@nonceduo.com>",
-        to: [to],
-        subject,
-        html,
-      }),
+    const client = new SmtpClient();
+    
+    await client.connectTLS({
+      hostname: "smtp.gmail.com",
+      port: 465,
+      username: "nonceduo.music@gmail.com",
+      password: gmailAppPassword,
     });
+
+    await client.send({
+      from: "NON C'È DUO Live <nonceduo.music@gmail.com>",
+      to: to,
+      subject: subject,
+      content: "Visualizza questa email in un client che supporta HTML",
+      html: html,
+    });
+
+    await client.close();
     
-    const result = await response.json();
-    
-    if (!response.ok) {
-      console.error("Resend error:", result);
-      return { success: false, error: result.message || "Email send failed" };
-    }
-    
+    console.log("Email sent successfully via Gmail SMTP");
     return { success: true };
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
-    console.error("Email send error:", error);
+    console.error("Gmail SMTP error:", error);
     return { success: false, error: error.message };
   }
 };
@@ -206,7 +212,6 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const telegramBotToken = Deno.env.get("TELEGRAM_BOT_TOKEN")!;
-    const resendApiKey = Deno.env.get("RESEND_API_KEY")!;
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -272,10 +277,10 @@ serve(async (req) => {
       );
     }
 
-    // Send Email notification
+    // Send Email notification via Gmail SMTP
     if (shouldSendEmail) {
       console.log(`Sending Email to ${settings.email_recipient}`);
-      const emailResult = await sendEmail(resendApiKey, settings.email_recipient, emailSubject, emailHtml);
+      const emailResult = await sendEmailViaGmail(settings.email_recipient, emailSubject, emailHtml);
       results.email = { sent: emailResult.success, error: emailResult.error || null };
       
       await logNotification(
