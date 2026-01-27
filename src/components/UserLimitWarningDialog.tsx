@@ -201,8 +201,12 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
   };
 
   const formatTime = (minutes: number, seconds: number) => {
+    if (minutes === 0 && seconds < 60) {
+      // Show just seconds if less than a minute
+      return `00:${seconds.toString().padStart(2, '0')}`;
+    }
     const m = minutes.toString().padStart(2, '0');
-    const s = seconds.toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
   };
 

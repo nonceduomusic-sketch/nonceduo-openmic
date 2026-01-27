@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { getSessionFingerprint } from './useUserBookingLimits';
@@ -11,6 +11,7 @@ export const useConsecutiveUnlockNotification = (eventIdProp: string | null) => 
   const wasBlockedRef = useRef(false);
   const sessionFingerprint = getSessionFingerprint();
   const [eventId, setEventId] = useState<string | null>(eventIdProp);
+  const lastConsecutiveRef = useRef<number | null>(null);
 
   // Fetch actual eventId from active event if not provided
   useEffect(() => {
@@ -44,9 +45,30 @@ export const useConsecutiveUnlockNotification = (eventIdProp: string | null) => 
     }
   }, [eventIdProp]);
 
+  // Fetch initial consecutive count
   useEffect(() => {
     if (!eventId || !sessionFingerprint) return;
+    
+    const fetchInitialCount = async () => {
+      const { data } = await supabase
+        .from('user_booking_counts')
+        .select('consecutive_songs')
+        .eq('event_id', eventId)
+        .eq('session_fingerprint', sessionFingerprint)
+        .maybeSingle();
+      
+      if (data) {
+        lastConsecutiveRef.current = data.consecutive_songs || 0;
+      }
+    };
+    
+    fetchInitialCount();
+  }, [eventId, sessionFingerprint]);
 
+  useEffect(() => {
+    if (!sessionFingerprint) return;
+
+    // Subscribe to ALL changes on user_booking_counts for our session
     const channelName = `consecutive-unlock-${sessionFingerprint}-${Date.now()}`;
     
     const channel = supabase
@@ -60,14 +82,21 @@ export const useConsecutiveUnlockNotification = (eventIdProp: string | null) => 
           filter: `session_fingerprint=eq.${sessionFingerprint}`,
         },
         (payload) => {
-          const oldData = payload.old as any;
           const newData = payload.new as any;
+          const oldConsecutive = lastConsecutiveRef.current;
+          const newConsecutive = newData?.consecutive_songs ?? 0;
           
-          // Check if consecutive_songs was reset to 0 (or lower than before)
-          // and we were previously blocked
+          console.log('[ConsecutiveUnlock] Update received:', {
+            oldConsecutive,
+            newConsecutive,
+            wasBlocked: wasBlockedRef.current
+          });
+          
+          // Check if consecutive_songs was reset to 0 and we were blocked
           if (
-            oldData?.consecutive_songs > 0 &&
-            newData?.consecutive_songs === 0 &&
+            oldConsecutive !== null &&
+            oldConsecutive > 0 &&
+            newConsecutive === 0 &&
             wasBlockedRef.current
           ) {
             // Show unlock notification
@@ -77,19 +106,25 @@ export const useConsecutiveUnlockNotification = (eventIdProp: string | null) => 
             });
             wasBlockedRef.current = false;
           }
+          
+          // Update last known value
+          lastConsecutiveRef.current = newConsecutive;
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[ConsecutiveUnlock] Subscription status:', status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [eventId, sessionFingerprint]);
+  }, [sessionFingerprint]);
 
   // Function to mark that the user was blocked by consecutive limit
-  const setWasBlocked = (blocked: boolean) => {
+  const setWasBlocked = useCallback((blocked: boolean) => {
+    console.log('[ConsecutiveUnlock] setWasBlocked:', blocked);
     wasBlockedRef.current = blocked;
-  };
+  }, []);
 
   return { setWasBlocked };
 };
