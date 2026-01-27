@@ -839,20 +839,26 @@ serve(async (req) => {
           
           // Check consecutive songs limit (only if consecutive limits are enabled)
           if (consecutiveEnabled && !isDedica && limitsSource.user_limit_consecutive_songs !== null) {
+            console.log(`[push] Consecutive check: current=${currentConsecutive}, limit=${limitsSource.user_limit_consecutive_songs}`);
             if (currentConsecutive >= limitsSource.user_limit_consecutive_songs) {
-              const msg = `Hai prenotato ${limitsSource.user_limit_consecutive_songs} canzoni consecutive. Lascia spazio agli altri!`;
-              console.log(`[push] BLOCKED: ${msg}`);
-              return json({ error: msg, error_type: 'user_limit', limit_type: 'consecutive' }, 200);
+              const msg = `Hai prenotato ${limitsSource.user_limit_consecutive_songs} canzoni consecutive. Quando qualcun altro prenota, potrai ricominciare!`;
+              console.log(`[push] BLOCKED consecutive: ${msg}`);
+              return json({ 
+                error: msg, 
+                error_type: 'user_limit', 
+                limit_type: 'consecutive',
+                consecutive_count: currentConsecutive,
+                consecutive_limit: limitsSource.user_limit_consecutive_songs
+              }, 200);
             }
           }
           
           // Check interval limit (only if interval limits are enabled)
-          if (intervalEnabled && !isDedica && limitsSource.user_limit_songs_interval !== null && limitsSource.user_limit_interval_minutes !== null && lastBookingAt) {
-            const lastBooking = new Date(lastBookingAt);
+          if (intervalEnabled && !isDedica && limitsSource.user_limit_songs_interval !== null && limitsSource.user_limit_interval_minutes !== null) {
             const intervalMs = limitsSource.user_limit_interval_minutes * 60 * 1000;
             const windowStart = new Date(Date.now() - intervalMs);
             
-            // Count songs in the last X minutes
+            // Count songs in the last X minutes from this session
             const { count: recentCount } = await supabase
               .from('reservations')
               .select('*', { count: 'exact', head: true })
@@ -860,12 +866,39 @@ serve(async (req) => {
               .gte('created_at', windowStart.toISOString())
               .is('dedication_message', null);
             
-            if ((recentCount || 0) >= limitsSource.user_limit_songs_interval) {
-              const cooldownMsg = limitsSource.user_limit_cooldown_message || 'Hai superato il limite di prenotazioni.';
-              const minutesRemaining = Math.ceil((lastBooking.getTime() + intervalMs - Date.now()) / 60000);
+            const actualRecentCount = recentCount || 0;
+            console.log(`[push] Interval check: recentCount=${actualRecentCount}, limit=${limitsSource.user_limit_songs_interval}, window=${limitsSource.user_limit_interval_minutes}min`);
+            
+            if (actualRecentCount >= limitsSource.user_limit_songs_interval) {
+              // Find the oldest reservation in the window to calculate when cooldown ends
+              const { data: oldestInWindow } = await supabase
+                .from('reservations')
+                .select('created_at')
+                .eq('customer_name', customerName)
+                .gte('created_at', windowStart.toISOString())
+                .is('dedication_message', null)
+                .order('created_at', { ascending: true })
+                .limit(1)
+                .maybeSingle();
+              
+              let cooldownEndsAt: Date;
+              if (oldestInWindow) {
+                cooldownEndsAt = new Date(new Date(oldestInWindow.created_at).getTime() + intervalMs);
+              } else {
+                cooldownEndsAt = new Date(Date.now() + intervalMs);
+              }
+              
+              const minutesRemaining = Math.max(1, Math.ceil((cooldownEndsAt.getTime() - Date.now()) / 60000));
+              const cooldownMsg = limitsSource.user_limit_cooldown_message || 'Hai superato il limite di prenotazioni. Potrai riprendere tra {minutes} minuti.';
               const msg = cooldownMsg.replace('{minutes}', String(minutesRemaining));
-              console.log(`[push] BLOCKED: ${msg}`);
-              return json({ error: msg, error_type: 'user_limit', limit_type: 'interval', cooldown_minutes: minutesRemaining }, 200);
+              console.log(`[push] BLOCKED interval: ${msg}, cooldown ends at ${cooldownEndsAt.toISOString()}`);
+              return json({ 
+                error: msg, 
+                error_type: 'user_limit', 
+                limit_type: 'interval', 
+                cooldown_minutes: minutesRemaining,
+                cooldown_ends_at: cooldownEndsAt.toISOString()
+              }, 200);
             }
           }
         }
@@ -1098,7 +1131,29 @@ serve(async (req) => {
             if (newConsecutive >= limitsSource.user_limit_consecutive_songs) {
               limitReachedInfo = {
                 type: 'consecutive',
-                message: `🎵 Sei in forma! Hai prenotato ${limitsSource.user_limit_consecutive_songs} canzoni consecutive. Ora tocca agli altri cantare!`
+                message: `🎵 Sei in forma! Hai prenotato ${limitsSource.user_limit_consecutive_songs} canzoni consecutive. Quando qualcun altro prenota, potrai ricominciare a cantare!`
+              };
+            }
+          }
+          
+          // Check interval limit reached
+          const intervalEnabled = limitsSource.user_limit_interval_enabled ?? false;
+          if (!limitReachedInfo && intervalEnabled && !isDedica && limitsSource.user_limit_songs_interval !== null && limitsSource.user_limit_interval_minutes !== null) {
+            const intervalMs = limitsSource.user_limit_interval_minutes * 60 * 1000;
+            const windowStart = new Date(Date.now() - intervalMs);
+            
+            // Count songs in the last X minutes
+            const { count: recentCount } = await supabase
+              .from('reservations')
+              .select('*', { count: 'exact', head: true })
+              .eq('customer_name', customerName)
+              .gte('created_at', windowStart.toISOString())
+              .is('dedication_message', null);
+            
+            if ((recentCount || 0) >= limitsSource.user_limit_songs_interval) {
+              limitReachedInfo = {
+                type: 'interval',
+                message: `⏱️ Ottimo ritmo! Hai prenotato ${limitsSource.user_limit_songs_interval} canzoni negli ultimi ${limitsSource.user_limit_interval_minutes} minuti. Goditi le esibizioni, tra poco potrai prenotare ancora!`
               };
             }
           }

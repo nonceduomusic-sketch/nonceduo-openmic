@@ -54,6 +54,7 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
     message: string;
     limitType?: string;
     cooldownMinutes?: number;
+    cooldownEndsAt?: string;
   } | null>(null);
   
   const { createReservation } = useReservations();
@@ -93,6 +94,7 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
         message: result.error,
         limitType: result.limitType,
         cooldownMinutes: result.cooldownMinutes,
+        cooldownEndsAt: result.cooldownEndsAt,
       });
       setShowLimitWarning(true);
       setIsSubmitting(false);
@@ -307,6 +309,7 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
         message={limitWarningData?.message || ''}
         limitType={limitWarningData?.limitType as any}
         cooldownMinutes={limitWarningData?.cooldownMinutes}
+        cooldownEndsAt={limitWarningData?.cooldownEndsAt}
       />
     </div>
   );
