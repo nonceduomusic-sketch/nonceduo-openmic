@@ -12,6 +12,7 @@ import { getLyricsSearchUrl } from '@/lib/whatsapp';
 import { cn } from '@/lib/utils';
 import { fireCelebration, fireHearts } from '@/lib/confetti';
 import { SuccessAnimation } from '@/components/effects/SuccessAnimation';
+import { UserLimitWarningDialog } from '@/components/UserLimitWarningDialog';
 
 const reservationSchema = z.object({
   customer_name: z.string().trim()
@@ -47,6 +48,14 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
   const [wantsDedication, setWantsDedication] = useState(false);
   const [dedicationMessage, setDedicationMessage] = useState('');
   
+  // User limit warning state
+  const [showLimitWarning, setShowLimitWarning] = useState(false);
+  const [limitWarningData, setLimitWarningData] = useState<{
+    message: string;
+    limitType?: string;
+    cooldownMinutes?: number;
+  } | null>(null);
+  
   const { createReservation } = useReservations();
   const handleSearchLyrics = () => {
     window.open(getLyricsSearchUrl(song.title, song.artist), '_blank');
@@ -71,14 +80,26 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
 
     setIsSubmitting(true);
     
-    const success = await createReservation(
+    const result = await createReservation(
       validation.data.customer_name, 
       song.title, 
       song.artist,
       wantsDedication && dedicationMessage.trim() ? dedicationMessage.trim() : undefined
     );
     
-    if (success) {
+    // Handle user limit warning
+    if (typeof result === 'object' && result.errorType === 'user_limit') {
+      setLimitWarningData({
+        message: result.error,
+        limitType: result.limitType,
+        cooldownMinutes: result.cooldownMinutes,
+      });
+      setShowLimitWarning(true);
+      setIsSubmitting(false);
+      return;
+    }
+    
+    if (result === true) {
       setIsConfirmed(true);
       // Fire celebration effects
       if (wantsDedication && dedicationMessage.trim()) {
@@ -258,6 +279,19 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
           </Button>
         </form>
       </div>
+      
+      {/* User Limit Warning Dialog */}
+      <UserLimitWarningDialog
+        isOpen={showLimitWarning}
+        onClose={() => {
+          setShowLimitWarning(false);
+          setLimitWarningData(null);
+          onClose();
+        }}
+        message={limitWarningData?.message || ''}
+        limitType={limitWarningData?.limitType as any}
+        cooldownMinutes={limitWarningData?.cooldownMinutes}
+      />
     </div>
   );
 };

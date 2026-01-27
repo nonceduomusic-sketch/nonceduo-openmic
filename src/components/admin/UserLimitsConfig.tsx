@@ -21,6 +21,10 @@ interface UserLimitsSettings {
   user_limit_interval_minutes: number | null;
   user_limit_consecutive_songs: number | null;
   user_limit_cooldown_message: string;
+  // Individual enable flags for each limit type
+  user_limit_total_enabled?: boolean;
+  user_limit_consecutive_enabled?: boolean;
+  user_limit_interval_enabled?: boolean;
 }
 
 interface Props {
@@ -36,6 +40,13 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
   // Local state
   const [enabled, setEnabled] = useState(settings.user_limit_enabled);
   const [mode, setMode] = useState<'session' | 'session_name'>(settings.user_limit_mode || 'session');
+  
+  // Individual limit toggles
+  const [totalEnabled, setTotalEnabled] = useState(settings.user_limit_total_enabled ?? false);
+  const [consecutiveEnabled, setConsecutiveEnabled] = useState(settings.user_limit_consecutive_enabled ?? false);
+  const [intervalEnabled, setIntervalEnabled] = useState(settings.user_limit_interval_enabled ?? false);
+  
+  // Limit values
   const [songsTotalLimit, setSongsTotalLimit] = useState(settings.user_limit_songs_total?.toString() || '');
   const [dedicheTotalLimit, setDedicheTotalLimit] = useState(settings.user_limit_dediche_total?.toString() || '');
   const [songsIntervalLimit, setSongsIntervalLimit] = useState(settings.user_limit_songs_interval?.toString() || '');
@@ -47,12 +58,14 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
   );
 
   // Sync with props - only when settings object reference changes
-  // (not when individual values change during editing)
   const settingsJson = JSON.stringify(settings);
   useEffect(() => {
     const parsedSettings = JSON.parse(settingsJson);
     setEnabled(parsedSettings.user_limit_enabled);
     setMode(parsedSettings.user_limit_mode || 'session');
+    setTotalEnabled(parsedSettings.user_limit_total_enabled ?? false);
+    setConsecutiveEnabled(parsedSettings.user_limit_consecutive_enabled ?? false);
+    setIntervalEnabled(parsedSettings.user_limit_interval_enabled ?? false);
     setSongsTotalLimit(parsedSettings.user_limit_songs_total?.toString() || '');
     setDedicheTotalLimit(parsedSettings.user_limit_dediche_total?.toString() || '');
     setSongsIntervalLimit(parsedSettings.user_limit_songs_interval?.toString() || '');
@@ -68,11 +81,14 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
       const updates: Partial<UserLimitsSettings> = {
         user_limit_enabled: enabled,
         user_limit_mode: mode,
-        user_limit_songs_total: songsTotalLimit ? parseInt(songsTotalLimit) : null,
-        user_limit_dediche_total: dedicheTotalLimit ? parseInt(dedicheTotalLimit) : null,
-        user_limit_songs_interval: songsIntervalLimit ? parseInt(songsIntervalLimit) : null,
-        user_limit_interval_minutes: intervalMinutes ? parseInt(intervalMinutes) : null,
-        user_limit_consecutive_songs: consecutiveSongsLimit ? parseInt(consecutiveSongsLimit) : null,
+        user_limit_total_enabled: totalEnabled,
+        user_limit_consecutive_enabled: consecutiveEnabled,
+        user_limit_interval_enabled: intervalEnabled,
+        user_limit_songs_total: totalEnabled && songsTotalLimit ? parseInt(songsTotalLimit) : null,
+        user_limit_dediche_total: totalEnabled && dedicheTotalLimit ? parseInt(dedicheTotalLimit) : null,
+        user_limit_songs_interval: intervalEnabled && songsIntervalLimit ? parseInt(songsIntervalLimit) : null,
+        user_limit_interval_minutes: intervalEnabled && intervalMinutes ? parseInt(intervalMinutes) : null,
+        user_limit_consecutive_songs: consecutiveEnabled && consecutiveSongsLimit ? parseInt(consecutiveSongsLimit) : null,
         user_limit_cooldown_message: cooldownMessage,
       };
 
@@ -83,7 +99,7 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
           title: 'Limiti utente salvati',
           description: 'La configurazione è stata aggiornata',
         });
-        // Audit log - non blocca in caso di errore
+        // Audit log
         if (entityId) {
           adminAuditLog({
             action: 'event.user_limits_updated',
@@ -92,8 +108,9 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
             metadata: { 
               enabled,
               mode,
-              songs_total: songsTotalLimit || 'nessuno',
-              consecutive: consecutiveSongsLimit || 'nessuno',
+              total_enabled: totalEnabled,
+              consecutive_enabled: consecutiveEnabled,
+              interval_enabled: intervalEnabled,
             },
           }).catch(console.error);
         }
@@ -133,7 +150,6 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
             checked={enabled}
             onCheckedChange={async (checked) => {
               setEnabled(checked);
-              // Salva immediatamente il toggle principale
               try {
                 const success = await onUpdate({ user_limit_enabled: checked });
                 if (success) {
@@ -142,7 +158,7 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
                     description: checked ? 'Configura i limiti qui sotto' : 'I limiti utente sono disabilitati',
                   });
                 } else {
-                  setEnabled(!checked); // Ripristina se fallisce
+                  setEnabled(!checked);
                   toast({
                     title: 'Errore',
                     description: 'Impossibile aggiornare lo stato',
@@ -151,7 +167,7 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
                 }
               } catch (error) {
                 console.error('[UserLimitsConfig] Toggle error:', error);
-                setEnabled(!checked); // Ripristina se fallisce
+                setEnabled(!checked);
               }
             }}
           />
@@ -199,103 +215,151 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
           {/* Limit Types */}
           <div className="space-y-4">
             {/* Total Limit */}
-            <div className="space-y-3 p-4 rounded-lg border border-border bg-background">
-              <div className="flex items-center gap-2">
-                <Hash className="w-4 h-4 text-blue-500" />
-                <Label className="font-medium">Limite totale per evento</Label>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Numero massimo di prenotazioni per tutta la durata dell'evento.
-              </p>
-              <div className="flex flex-wrap gap-4">
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Max canzoni</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={songsTotalLimit}
-                    onChange={(e) => setSongsTotalLimit(e.target.value)}
-                    placeholder="∞"
-                    className="w-24"
-                  />
+            <div className={cn(
+              "space-y-3 p-4 rounded-lg border transition-all",
+              totalEnabled 
+                ? "border-blue-500/50 bg-blue-500/5" 
+                : "border-border bg-background opacity-75"
+            )}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Hash className="w-4 h-4 text-blue-500" />
+                  <Label className="font-medium">Limite totale per evento</Label>
                 </div>
-                <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Max dediche</Label>
-                  <Input
-                    type="number"
-                    min="1"
-                    value={dedicheTotalLimit}
-                    onChange={(e) => setDedicheTotalLimit(e.target.value)}
-                    placeholder="∞"
-                    className="w-24"
-                  />
-                </div>
+                <Switch
+                  checked={totalEnabled}
+                  onCheckedChange={setTotalEnabled}
+                />
               </div>
+              
+              {totalEnabled && (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Numero massimo di prenotazioni per tutta la durata dell'evento.
+                  </p>
+                  <div className="flex flex-wrap gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Max canzoni</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={songsTotalLimit}
+                        onChange={(e) => setSongsTotalLimit(e.target.value)}
+                        placeholder="∞"
+                        className="w-24"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Max dediche</Label>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={dedicheTotalLimit}
+                        onChange={(e) => setDedicheTotalLimit(e.target.value)}
+                        placeholder="∞"
+                        className="w-24"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Consecutive Limit */}
-            <div className="space-y-3 p-4 rounded-lg border border-border bg-background">
-              <div className="flex items-center gap-2">
-                <Repeat className="w-4 h-4 text-orange-500" />
-                <Label className="font-medium">Limite canzoni consecutive</Label>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Blocca dopo X prenotazioni consecutive senza che altri prenotino nel mezzo.
-              </p>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={consecutiveSongsLimit}
-                  onChange={(e) => setConsecutiveSongsLimit(e.target.value)}
-                  placeholder="∞"
-                  className="w-24"
+            <div className={cn(
+              "space-y-3 p-4 rounded-lg border transition-all",
+              consecutiveEnabled 
+                ? "border-orange-500/50 bg-orange-500/5" 
+                : "border-border bg-background opacity-75"
+            )}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Repeat className="w-4 h-4 text-orange-500" />
+                  <Label className="font-medium">Limite canzoni consecutive</Label>
+                </div>
+                <Switch
+                  checked={consecutiveEnabled}
+                  onCheckedChange={setConsecutiveEnabled}
                 />
-                <span className="text-sm text-muted-foreground">
-                  {consecutiveSongsLimit 
-                    ? `max ${consecutiveSongsLimit} canzoni di fila` 
-                    : 'nessun limite'}
-                </span>
               </div>
+              
+              {consecutiveEnabled && (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Blocca dopo X prenotazioni consecutive senza che altri prenotino nel mezzo.
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={consecutiveSongsLimit}
+                      onChange={(e) => setConsecutiveSongsLimit(e.target.value)}
+                      placeholder="3"
+                      className="w-24"
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      {consecutiveSongsLimit 
+                        ? `max ${consecutiveSongsLimit} canzoni di fila` 
+                        : 'inserisci un valore'}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Interval Limit */}
-            <div className="space-y-3 p-4 rounded-lg border border-border bg-background">
-              <div className="flex items-center gap-2">
-                <Timer className="w-4 h-4 text-green-500" />
-                <Label className="font-medium">Limite temporale</Label>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Dopo X canzoni, l'utente deve aspettare Y minuti prima di prenotare ancora.
-              </p>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm">Max</span>
-                <Input
-                  type="number"
-                  min="1"
-                  max="10"
-                  value={songsIntervalLimit}
-                  onChange={(e) => setSongsIntervalLimit(e.target.value)}
-                  placeholder="∞"
-                  className="w-20"
+            <div className={cn(
+              "space-y-3 p-4 rounded-lg border transition-all",
+              intervalEnabled 
+                ? "border-green-500/50 bg-green-500/5" 
+                : "border-border bg-background opacity-75"
+            )}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Timer className="w-4 h-4 text-green-500" />
+                  <Label className="font-medium">Limite temporale</Label>
+                </div>
+                <Switch
+                  checked={intervalEnabled}
+                  onCheckedChange={setIntervalEnabled}
                 />
-                <span className="text-sm">canzoni ogni</span>
-                <Input
-                  type="number"
-                  min="5"
-                  max="120"
-                  value={intervalMinutes}
-                  onChange={(e) => setIntervalMinutes(e.target.value)}
-                  placeholder="30"
-                  className="w-20"
-                />
-                <span className="text-sm">minuti</span>
               </div>
-              {songsIntervalLimit && intervalMinutes && (
-                <p className="text-xs text-muted-foreground italic">
-                  Esempio: dopo {songsIntervalLimit} canzoni, aspetta {intervalMinutes} minuti
-                </p>
+              
+              {intervalEnabled && (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Dopo X canzoni, l'utente deve aspettare Y minuti prima di prenotare ancora.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm">Max</span>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={songsIntervalLimit}
+                      onChange={(e) => setSongsIntervalLimit(e.target.value)}
+                      placeholder="2"
+                      className="w-20"
+                    />
+                    <span className="text-sm">canzoni ogni</span>
+                    <Input
+                      type="number"
+                      min="5"
+                      max="120"
+                      value={intervalMinutes}
+                      onChange={(e) => setIntervalMinutes(e.target.value)}
+                      placeholder="30"
+                      className="w-20"
+                    />
+                    <span className="text-sm">minuti</span>
+                  </div>
+                  {songsIntervalLimit && intervalMinutes && (
+                    <p className="text-xs text-muted-foreground italic">
+                      Esempio: dopo {songsIntervalLimit} canzoni, aspetta {intervalMinutes} minuti
+                    </p>
+                  )}
+                </>
               )}
             </div>
           </div>
