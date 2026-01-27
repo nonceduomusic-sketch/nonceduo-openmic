@@ -409,6 +409,40 @@ export const useFreeModeSettings = () => {
     });
   };
 
+  // Sincronizza contatori con le prenotazioni reali
+  const syncCounters = async (): Promise<boolean> => {
+    if (!settings?.id) return false;
+    
+    try {
+      // Count actual active reservations
+      const { count: songsCount, error: songsError } = await supabase
+        .from('reservations')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'in_progress')
+        .or('dedication_message.is.null,dedication_message.eq.');
+      
+      const { count: dedicheCount, error: dedicheError } = await supabase
+        .from('reservations')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'in_progress')
+        .not('dedication_message', 'is', null)
+        .neq('dedication_message', '');
+      
+      if (songsError || dedicheError) {
+        console.error('[syncCounters] Error counting reservations:', songsError || dedicheError);
+        return false;
+      }
+      
+      return updateSettings({
+        openmic_current_count: songsCount || 0,
+        dediche_current_count: dedicheCount || 0,
+      });
+    } catch (error) {
+      console.error('[syncCounters] Error:', error);
+      return false;
+    }
+  };
+
   // Genera PIN
   const generatePin = (): string => {
     return Math.floor(1000 + Math.random() * 9000).toString();
@@ -456,6 +490,7 @@ export const useFreeModeSettings = () => {
     incrementOpenMicCount,
     incrementDedicheCount,
     resetCounters,
+    syncCounters,
     generatePin,
     canBookOpenMic,
     canBookDediche,

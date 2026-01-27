@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { 
-  Zap, Play, Square, Music, MessageSquare, Clock, RotateCcw, Trophy, Calendar, Timer
+  Zap, Play, Square, Music, MessageSquare, Clock, RotateCcw, Trophy, Calendar, Timer, RefreshCw
 } from 'lucide-react';
 import { useFreeModeSettings, FreeModeSettings } from '@/hooks/useFreeModeSettings';
 import { useFreeModeScheduler } from '@/hooks/useFreeModeScheduler';
@@ -152,6 +152,7 @@ export const FreeModeFullPanel: React.FC = () => {
     deactivateFreeMode,
     updateSettings,
     resetCounters,
+    syncCounters,
     generatePin,
     getTimeRemaining,
   } = useFreeModeSettings();
@@ -490,16 +491,26 @@ export const FreeModeFullPanel: React.FC = () => {
           </div>
         )}
 
-        {/* Reset contatori */}
-        <div className="flex justify-end">
+        {/* Reset/Sync contatori */}
+        <div className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={syncCounters}
+            title="Sincronizza contatori con prenotazioni reali"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Sincronizza
+          </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={resetCounters}
             disabled={(settings?.openmic_current_count === 0 && settings?.dediche_current_count === 0)}
+            title="Azzera tutti i contatori"
           >
             <RotateCcw className="w-4 h-4 mr-2" />
-            Azzera contatori
+            Azzera
           </Button>
         </div>
 

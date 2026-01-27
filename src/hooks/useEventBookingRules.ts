@@ -370,6 +370,40 @@ export const useEventBookingRules = () => {
     });
   };
 
+  // Sincronizza contatori con le prenotazioni reali
+  const syncCounters = async (): Promise<boolean> => {
+    if (!rules?.id) return false;
+    
+    try {
+      // Count actual active reservations
+      const { count: songsCount, error: songsError } = await supabase
+        .from('reservations')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'in_progress')
+        .or('dedication_message.is.null,dedication_message.eq.');
+      
+      const { count: dedicheCount, error: dedicheError } = await supabase
+        .from('reservations')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'in_progress')
+        .not('dedication_message', 'is', null)
+        .neq('dedication_message', '');
+      
+      if (songsError || dedicheError) {
+        console.error('[syncCounters] Error counting reservations:', songsError || dedicheError);
+        return false;
+      }
+      
+      return updateRules({
+        openmic_current_count: songsCount || 0,
+        dediche_current_count: dedicheCount || 0,
+      });
+    } catch (error) {
+      console.error('[syncCounters] Error:', error);
+      return false;
+    }
+  };
+
   // Start extraordinary reopening
   const startReopen = async (mode: 'time' | 'songs' | 'dediche' | 'combo', value: number, message?: string, extraDediche?: number): Promise<boolean> => {
     const updates: Partial<EventBookingRules> = {
@@ -426,6 +460,7 @@ export const useEventBookingRules = () => {
     incrementOpenMicCount,
     incrementDedicheCount,
     resetCounters,
+    syncCounters,
     startReopen,
     stopReopen,
     refetch: fetchRules,
