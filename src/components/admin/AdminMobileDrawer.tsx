@@ -8,10 +8,12 @@ import {
   Image,
   ListMusic,
   LogOut,
+  Menu,
   MessageSquare,
   Music,
   Newspaper,
   RotateCcw,
+  Send,
   Settings,
   Shield,
   SlidersHorizontal,
@@ -30,7 +32,6 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { AdminMainTab } from "@/components/admin/AdminSidebar";
 import type { AdminSectionKey } from "@/hooks/useAdminSectionAccess";
-import { Menu } from "lucide-react";
 
 type MenuItem = {
   key: AdminMainTab;
@@ -46,6 +47,7 @@ const MENU_ITEMS: MenuItem[] = [
   { key: "notifications", label: "Centro", icon: Bell, group: "Live" },
   { key: "event", label: "Eventi", icon: Calendar, group: "Live" },
   { key: "formats", label: "Formati", icon: SlidersHorizontal, group: "Live" },
+  { key: "notifiche-live", label: "Notifiche Live", icon: Send, group: "Live" },
   { key: "grafiche", label: "Grafiche", icon: Image, group: "Live" },
 
   // === GRUPPO OPERATIVO ===
