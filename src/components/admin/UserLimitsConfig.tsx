@@ -354,7 +354,7 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
                     <span className="text-sm">canzoni ogni</span>
                     <Input
                       type="number"
-                      min="5"
+                      min="1"
                       max="120"
                       value={intervalMinutes}
                       onChange={(e) => setIntervalMinutes(e.target.value)}

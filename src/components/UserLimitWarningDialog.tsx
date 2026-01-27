@@ -1,5 +1,5 @@
-import React from 'react';
-import { AlertTriangle, Clock, Music2, Repeat, Hash, X, Sparkles, PartyPopper, Timer, Users } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { AlertTriangle, Music2, Hash, X, Sparkles, PartyPopper, Timer, Users, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -17,7 +17,7 @@ interface UserLimitWarningDialogProps {
  * raggiunge un limite di prenotazioni. Design coerente con il tema dell'app.
  * 
  * Può essere usato in due contesti:
- * 1. PRE-BOOKING BLOCK: quando l'utente non può prenotare (cooldownMinutes presente)
+ * 1. PRE-BOOKING BLOCK: quando l'utente non può prenotare (cooldownEndsAt presente per interval)
  * 2. POST-BOOKING INFO: quando l'utente ha appena raggiunto il limite (messaggio positivo)
  */
 export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
@@ -28,13 +28,62 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
   cooldownMinutes,
   cooldownEndsAt,
 }) => {
+  const [countdown, setCountdown] = useState<{ minutes: number; seconds: number; expired: boolean }>({
+    minutes: 0,
+    seconds: 0,
+    expired: false,
+  });
+
+  // Calculate countdown when cooldownEndsAt is provided
+  const calculateCountdown = useCallback(() => {
+    if (!cooldownEndsAt) return { minutes: 0, seconds: 0, expired: true };
+    
+    const endTime = new Date(cooldownEndsAt).getTime();
+    const now = Date.now();
+    const diff = endTime - now;
+
+    if (diff <= 0) {
+      return { minutes: 0, seconds: 0, expired: true };
+    }
+
+    const totalSeconds = Math.ceil(diff / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    return { minutes, seconds, expired: false };
+  }, [cooldownEndsAt]);
+
+  useEffect(() => {
+    if (!isOpen || !cooldownEndsAt) return;
+
+    // Initial calculation
+    setCountdown(calculateCountdown());
+
+    // Update every second
+    const interval = setInterval(() => {
+      const result = calculateCountdown();
+      setCountdown(result);
+      
+      if (result.expired) {
+        clearInterval(interval);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [isOpen, cooldownEndsAt, calculateCountdown]);
+
   if (!isOpen) return null;
 
   // Determine if this is a blocking message or a success notification
-  const isBlockingLimit = cooldownMinutes !== undefined && cooldownMinutes > 0;
+  const isIntervalBlock = limitType === 'interval' && cooldownEndsAt && !countdown.expired;
+  const isConsecutiveBlock = limitType === 'consecutive' && cooldownMinutes !== undefined;
+  const isBlockingLimit = isIntervalBlock || isConsecutiveBlock;
   const isSuccessNotification = !isBlockingLimit && (message.includes('Ottimo') || message.includes('Grazie') || message.includes('in forma') || message.includes('ritmo'));
 
   const getIcon = () => {
+    if (countdown.expired && limitType === 'interval') {
+      return <CheckCircle className="w-8 h-8" />;
+    }
     if (isSuccessNotification) {
       return <PartyPopper className="w-8 h-8" />;
     }
@@ -52,6 +101,9 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
   };
 
   const getTitle = () => {
+    if (countdown.expired && limitType === 'interval') {
+      return '✨ Sei di nuovo libero!';
+    }
     if (isSuccessNotification) {
       switch (limitType) {
         case 'total_songs':
@@ -81,6 +133,9 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
   };
 
   const getAccentColor = () => {
+    if (countdown.expired && limitType === 'interval') {
+      return 'from-primary/30 to-secondary/20 border-primary/50';
+    }
     if (isSuccessNotification) {
       return 'from-primary/30 to-secondary/20 border-primary/50';
     }
@@ -91,13 +146,16 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
       case 'consecutive':
         return 'from-orange-500/20 to-orange-500/5 border-orange-500/30';
       case 'interval':
-        return 'from-green-500/20 to-green-500/5 border-green-500/30';
+        return 'from-emerald-500/20 to-emerald-500/5 border-emerald-500/30';
       default:
         return 'from-destructive/20 to-destructive/5 border-destructive/30';
     }
   };
 
   const getIconColor = () => {
+    if (countdown.expired && limitType === 'interval') {
+      return 'text-primary';
+    }
     if (isSuccessNotification) {
       return 'text-primary';
     }
@@ -108,13 +166,16 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
       case 'consecutive':
         return 'text-orange-500';
       case 'interval':
-        return 'text-green-500';
+        return 'text-emerald-500';
       default:
         return 'text-destructive';
     }
   };
 
   const getEncouragementMessage = () => {
+    if (countdown.expired && limitType === 'interval') {
+      return '🎤 Il tempo di attesa è terminato. Prenota subito la tua prossima canzone!';
+    }
     if (isSuccessNotification) {
       switch (limitType) {
         case 'total_songs':
@@ -139,6 +200,12 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
     }
   };
 
+  const formatTime = (minutes: number, seconds: number) => {
+    const m = minutes.toString().padStart(2, '0');
+    const s = seconds.toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-fade-in">
       <div className={cn(
@@ -160,13 +227,13 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
           "mx-auto w-16 h-16 rounded-full flex items-center justify-center mb-4",
           "bg-background/50 backdrop-blur-sm shadow-inner",
           getIconColor(),
-          isSuccessNotification && "animate-bounce"
+          (isSuccessNotification || countdown.expired) && "animate-bounce"
         )}>
           {getIcon()}
         </div>
 
         {/* Sparkles for success */}
-        {isSuccessNotification && (
+        {(isSuccessNotification || countdown.expired) && (
           <div className="absolute top-6 left-1/2 -translate-x-1/2 flex gap-4">
             <Sparkles className="w-4 h-4 text-warning animate-pulse" />
             <Sparkles className="w-4 h-4 text-primary animate-pulse delay-100" />
@@ -181,21 +248,24 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
 
         {/* Message */}
         <p className="text-center text-muted-foreground mb-6 leading-relaxed">
-          {message}
+          {countdown.expired && limitType === 'interval' 
+            ? 'Il tempo di attesa è terminato!' 
+            : message}
         </p>
 
-        {/* Cooldown Timer (for interval limit blocking) */}
-        {isBlockingLimit && limitType === 'interval' && (
-          <div className="flex items-center justify-center gap-2 mb-6 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
-            <Timer className="w-5 h-5 text-green-500 animate-pulse" />
-            <span className="text-sm font-medium">
-              Potrai riprendere tra <span className="text-green-500 font-bold">{cooldownMinutes}</span> minuti
+        {/* Live Countdown Timer (for interval limit blocking) */}
+        {isIntervalBlock && !countdown.expired && (
+          <div className="flex flex-col items-center justify-center gap-2 mb-6 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/30">
+            <Timer className="w-6 h-6 text-emerald-500 animate-pulse" />
+            <span className="text-xs text-muted-foreground">Potrai prenotare tra</span>
+            <span className="text-3xl font-mono font-bold text-emerald-500 tabular-nums">
+              {formatTime(countdown.minutes, countdown.seconds)}
             </span>
           </div>
         )}
 
         {/* Consecutive limit info (blocking) */}
-        {isBlockingLimit && limitType === 'consecutive' && (
+        {isConsecutiveBlock && (
           <div className="flex items-center justify-center gap-2 mb-6 p-3 rounded-lg bg-orange-500/10 border border-orange-500/30">
             <Users className="w-5 h-5 text-orange-500 animate-pulse" />
             <span className="text-sm font-medium text-center">
@@ -207,7 +277,7 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
         {/* Encouragement Message */}
         <div className={cn(
           "text-center text-sm mb-6 p-3 rounded-lg",
-          isSuccessNotification ? "bg-primary/10 text-foreground" : "text-muted-foreground"
+          (isSuccessNotification || countdown.expired) ? "bg-primary/10 text-foreground" : "text-muted-foreground"
         )}>
           <p>{getEncouragementMessage()}</p>
         </div>
@@ -217,12 +287,16 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
           onClick={onClose}
           className={cn(
             "w-full h-12 font-display font-semibold",
-            isSuccessNotification && "neon-button-cyan"
+            (isSuccessNotification || countdown.expired) && "neon-button-cyan"
           )}
-          variant={isSuccessNotification ? "default" : "outline"}
+          variant={(isSuccessNotification || countdown.expired) ? "default" : "outline"}
         >
           <Music2 className="w-4 h-4 mr-2" />
-          {isSuccessNotification ? 'Fantastico!' : 'Ho capito'}
+          {countdown.expired && limitType === 'interval' 
+            ? 'Prenota ora!' 
+            : isSuccessNotification 
+              ? 'Fantastico!' 
+              : 'Ho capito'}
         </Button>
       </div>
     </div>
