@@ -47,7 +47,7 @@ import { DraggablePreview, DraggableElementConfig } from './DraggablePreview';
 
 type EventType = 'public' | 'private';
 type StylePreset = 'minimal' | 'gradient' | 'neon';
-type ImageFormat = 'story' | 'square' | 'portrait';
+type ImageFormat = 'story' | 'square' | 'portrait' | 'a4';
 type OverlayPosition = 'bottom' | 'top' | 'center';
 type TextSize = 'small' | 'medium' | 'large';
 type QrSize = 'small' | 'medium' | 'large';
@@ -186,6 +186,12 @@ const IMAGE_FORMATS: Record<ImageFormat, { label: string; description: string; w
     description: 'Feed Instagram',
     width: 1080,
     height: 1350,
+  },
+  a4: {
+    label: 'A4 Stampa',
+    description: 'Stampa alta qualità',
+    width: 2480,
+    height: 3508,
   },
 };
 

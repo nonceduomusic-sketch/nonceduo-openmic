@@ -47,7 +47,7 @@ import { DraggablePreview, DraggableElementConfig } from './DraggablePreview';
 
 type EventType = 'public' | 'private';
 type StylePreset = 'minimal' | 'gradient' | 'neon';
-type ImageFormat = 'square' | 'portrait' | 'story';
+type ImageFormat = 'square' | 'portrait' | 'story' | 'a4';
 type OverlayPosition = 'bottom' | 'top' | 'center';
 type TextSize = 'small' | 'medium' | 'large';
 
@@ -151,6 +151,12 @@ const IMAGE_FORMATS: Record<ImageFormat, { label: string; description: string; w
     description: 'Storie IG/FB',
     width: 1080,
     height: 1920,
+  },
+  a4: {
+    label: 'A4 Stampa',
+    description: 'Stampa alta qualità',
+    width: 2480,
+    height: 3508,
   },
 };
 
