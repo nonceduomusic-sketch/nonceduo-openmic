@@ -867,7 +867,13 @@ export const AdminDashboard: React.FC = () => {
                 setCommunitySubTab(subTab as "groups" | "invites" | "users" | "feed" | "blocked");
               }
             }}
-            access={access}
+            access={operatorPerms.isOperator 
+              ? { 
+                  openmic: operatorPerms.canViewOpenmic, 
+                  dediche: operatorPerms.canViewDediche, 
+                  community: false 
+                } 
+              : access}
           />
         ) : null}
         </div>
