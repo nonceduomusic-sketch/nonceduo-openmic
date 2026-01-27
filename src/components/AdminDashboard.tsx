@@ -475,8 +475,17 @@ export const AdminDashboard: React.FC = () => {
         ? 'Admin'
         : staffRole === 'moderator'
           ? 'Staff'
-          : 'Staff';
+          : staffRole === 'operator'
+            ? 'Operatore'
+            : 'Staff';
   const staffEmail = session?.user?.email ?? currentUser?.email ?? '';
+  
+  // Get the user's display name for personalized greeting
+  const userName = currentUser?.username || 
+    session?.user?.user_metadata?.display_name || 
+    session?.user?.user_metadata?.username ||
+    session?.user?.email?.split('@')[0] || 
+    'Utente';
 
   const exitSelectionMode = () => {
     setSelectionMode(false);
@@ -573,7 +582,7 @@ export const AdminDashboard: React.FC = () => {
               
               <div className="flex items-center gap-2">
                 <h1 className="font-display text-base sm:text-lg font-bold tracking-tight">
-                  Admin
+                  Ciao {userName}! 👋
                 </h1>
                 <Badge variant="secondary" className="capitalize text-[10px] h-5 font-medium">{staffLabel}</Badge>
               </div>
