@@ -129,9 +129,9 @@ const DEFAULT_CONFIG: EventStoryConfig = {
 };
 
 const QR_SIZES: Record<QrSize, { label: string; scale: number }> = {
-  small: { label: 'Piccolo', scale: 1 },
-  medium: { label: 'Medio', scale: 1.6 },
-  large: { label: 'Grande', scale: 2.2 },
+  small: { label: 'Piccolo', scale: 1.2 },
+  medium: { label: 'Medio', scale: 2.0 },
+  large: { label: 'Grande', scale: 3.0 },
 };
 
 const QR_POSITIONS: Record<QrPosition, { label: string }> = {
@@ -141,7 +141,7 @@ const QR_POSITIONS: Record<QrPosition, { label: string }> = {
 };
 
 const QR_DESTINATIONS: Record<QrDestination, { label: string; path: string; cta: string }> = {
-  app: { label: 'App (Hub)', path: '/app', cta: 'Scegli il formato!' },
+  app: { label: 'App (Hub)', path: '/app', cta: 'Scansiona e partecipa!' },
   openmic: { label: 'Open Mic', path: '/app/openmic', cta: 'Prenota la tua canzone!' },
   dediche: { label: 'Dediche', path: '/app/dediche', cta: 'Invia una dedica!' },
 };
@@ -753,7 +753,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
           
           ctx.textAlign = 'center';
           
-          ctx.font = `600 ${pinTitleSize}px "Orbitron", sans-serif`;
+          ctx.font = `700 ${pinTitleSize}px "Inter", sans-serif`;
           ctx.fillStyle = style.accent;
           if (config.stylePreset === 'neon' && !aiGeneratedBg) {
             ctx.shadowColor = style.accent;
@@ -764,9 +764,9 @@ export const EventStoryGeneratorCard: React.FC = () => {
           ctx.shadowBlur = 0;
           
           const destCta = QR_DESTINATIONS[config.qrDestination].cta;
-          ctx.font = `400 ${subtitleSize}px "Inter", sans-serif`;
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-          ctx.fillText(`${destCta} (PIN richiesto)`, textX, textStartY + 35);
+          ctx.font = `500 ${subtitleSize}px "Inter", sans-serif`;
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+          ctx.fillText(destCta, textX, textStartY + 40);
           
           ctx.textAlign = 'center';
         } catch (qrError) {
