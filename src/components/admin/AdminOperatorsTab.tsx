@@ -42,6 +42,7 @@ import {
   Shield,
   ChevronDown,
   ChevronUp,
+  Pencil,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -76,10 +77,18 @@ export function AdminOperatorsTab() {
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState<string | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const [editingOperator, setEditingOperator] = useState<OperatorUser | null>(null);
   const [newOperatorUsername, setNewOperatorUsername] = useState("");
   const [newOperatorPassword, setNewOperatorPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  
+  // Edit credentials
+  const [editUsername, setEditUsername] = useState("");
+  const [editPassword, setEditPassword] = useState("");
+  const [showEditPassword, setShowEditPassword] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   // Fetch operators
   const { data: operators = [], isLoading, refetch } = useQuery({
@@ -346,6 +355,85 @@ export function AdminOperatorsTab() {
     }
   };
 
+  // Edit operator credentials
+  const handleEditCredentials = async () => {
+    if (!editingOperator) return;
+
+    const originalUsername = editingOperator.display_name || editingOperator.email;
+    const usernameChanged = editUsername.trim() && editUsername.trim() !== originalUsername;
+    const passwordChanged = editPassword.trim().length > 0;
+
+    if (!usernameChanged && !passwordChanged) {
+      toast({
+        title: "Nessuna modifica",
+        description: "Modifica almeno username o password",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (usernameChanged && editUsername.trim().length < 3) {
+      toast({
+        title: "Username troppo corto",
+        description: "L'username deve avere almeno 3 caratteri",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (passwordChanged && editPassword.length < 6) {
+      toast({
+        title: "Password troppo corta",
+        description: "La password deve avere almeno 6 caratteri",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsEditing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-credentials-update", {
+        body: {
+          action: "updateCredentials",
+          username: originalUsername,
+          newUsername: usernameChanged ? editUsername.trim() : undefined,
+          password: passwordChanged ? editPassword : undefined,
+        },
+      });
+
+      if (error) throw error;
+      if (!data?.success) throw new Error(data?.error || "Errore");
+
+      const changes = [];
+      if (usernameChanged) changes.push("username");
+      if (passwordChanged) changes.push("password");
+
+      adminAuditLog({
+        action: "operator.credentials_update",
+        section: "operators",
+        entity: "user",
+        entity_id: editingOperator.user_id,
+        metadata: { changes, newUsername: usernameChanged ? editUsername : undefined },
+      });
+
+      toast({ title: "Credenziali aggiornate", description: changes.join(", ") });
+      setShowEditDialog(false);
+      setEditingOperator(null);
+      setEditUsername("");
+      setEditPassword("");
+      setShowEditPassword(false);
+      refetch();
+    } catch (err: any) {
+      toast({
+        title: "Errore",
+        description: err.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsEditing(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -577,8 +665,21 @@ export function AdminOperatorsTab() {
                     </div>
                   </div>
 
-                  {/* Delete button */}
-                  <div className="flex justify-end">
+                  {/* Action buttons */}
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setEditingOperator(operator);
+                        setEditUsername(operator.display_name || operator.email);
+                        setEditPassword("");
+                        setShowEditDialog(true);
+                      }}
+                    >
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Modifica Credenziali
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -586,7 +687,7 @@ export function AdminOperatorsTab() {
                       onClick={() => setShowDeleteDialog(operator.user_id)}
                     >
                       <Trash2 className="w-4 h-4 mr-2" />
-                      Rimuovi Operatore
+                      Rimuovi
                     </Button>
                   </div>
                 </CardContent>
@@ -703,6 +804,86 @@ export function AdminOperatorsTab() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Credentials Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={(open) => {
+        setShowEditDialog(open);
+        if (!open) {
+          setEditingOperator(null);
+          setEditUsername("");
+          setEditPassword("");
+          setShowEditPassword(false);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-5 h-5 text-primary" />
+              Modifica Credenziali
+            </DialogTitle>
+            <DialogDescription>
+              Modifica username e/o password per <strong>{editingOperator?.display_name || editingOperator?.email}</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-username">Username</Label>
+              <Input
+                id="edit-username"
+                type="text"
+                value={editUsername}
+                onChange={(e) => setEditUsername(e.target.value)}
+                placeholder="Nuovo username"
+                maxLength={50}
+              />
+              <p className="text-xs text-muted-foreground">
+                Lascia invariato per mantenere l'username attuale
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-password">Nuova Password</Label>
+              <div className="relative">
+                <Input
+                  id="edit-password"
+                  type={showEditPassword ? "text" : "password"}
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  placeholder="Lascia vuoto per non cambiare"
+                  className="pr-10"
+                  maxLength={100}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowEditPassword(!showEditPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                >
+                  {showEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Lascia vuoto per mantenere la password attuale
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
+              Annulla
+            </Button>
+            <Button
+              onClick={handleEditCredentials}
+              disabled={isEditing || (!editPassword.trim() && editUsername === (editingOperator?.display_name || editingOperator?.email))}
+            >
+              {isEditing ? (
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Pencil className="w-4 h-4 mr-2" />
+              )}
+              Salva
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
