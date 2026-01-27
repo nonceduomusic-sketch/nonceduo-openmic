@@ -305,14 +305,20 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
                       value={consecutiveSongsLimit}
                       onChange={(e) => setConsecutiveSongsLimit(e.target.value)}
                       placeholder="3"
-                      className="w-24"
+                      className={cn("w-24", !consecutiveSongsLimit && "border-red-500 focus:border-red-500")}
+                      required
                     />
                     <span className="text-sm text-muted-foreground">
                       {consecutiveSongsLimit 
                         ? `max ${consecutiveSongsLimit} canzoni di fila` 
-                        : 'inserisci un valore'}
+                        : ''}
                     </span>
                   </div>
+                  {!consecutiveSongsLimit && (
+                    <p className="text-xs text-red-500 font-medium">
+                      ⚠️ Inserisci un valore e clicca "Salva Limiti" per attivare
+                    </p>
+                  )}
                 </>
               )}
             </div>
@@ -349,7 +355,8 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
                       value={songsIntervalLimit}
                       onChange={(e) => setSongsIntervalLimit(e.target.value)}
                       placeholder="2"
-                      className="w-20"
+                      className={cn("w-20", !songsIntervalLimit && "border-red-500 focus:border-red-500")}
+                      required
                     />
                     <span className="text-sm">canzoni ogni</span>
                     <Input
@@ -358,12 +365,17 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
                       max="120"
                       value={intervalMinutes}
                       onChange={(e) => setIntervalMinutes(e.target.value)}
-                      placeholder="30"
-                      className="w-20"
+                      placeholder="5"
+                      className={cn("w-20", !intervalMinutes && "border-red-500 focus:border-red-500")}
+                      required
                     />
                     <span className="text-sm">minuti</span>
                   </div>
-                  {songsIntervalLimit && intervalMinutes && (
+                  {!songsIntervalLimit || !intervalMinutes ? (
+                    <p className="text-xs text-red-500 font-medium">
+                      ⚠️ Inserisci entrambi i valori e clicca "Salva Limiti" per attivare
+                    </p>
+                  ) : (
                     <p className="text-xs text-muted-foreground italic">
                       Esempio: dopo {songsIntervalLimit} canzoni, aspetta {intervalMinutes} minuti
                     </p>
