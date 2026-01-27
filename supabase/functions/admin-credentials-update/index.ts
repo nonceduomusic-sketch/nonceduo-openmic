@@ -68,18 +68,18 @@ serve(async (req) => {
       auth: { persistSession: false },
     });
     
-    // Get the authenticated user
-    const { data: { user }, error: userError } = await supabaseAuth.auth.getUser();
+    // Validate JWT using getClaims (local validation, more reliable)
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
     
-    if (userError || !user) {
-      console.log('[admin-credentials-update] Invalid user token:', userError?.message);
+    if (claimsError || !claimsData?.claims) {
+      console.log('[admin-credentials-update] Invalid token claims:', claimsError?.message);
       return new Response(
         JSON.stringify({ error: 'Token non valido' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const userId = user.id;
+    const userId = claimsData.claims.sub as string;
     console.log('[admin-credentials-update] Authenticated user:', userId);
     
     // Use service role for admin operations
@@ -251,6 +251,88 @@ serve(async (req) => {
         console.log(`[admin-credentials-update] Returning ${adminsWithRoles.length} admins with roles`);
         return new Response(
           JSON.stringify({ admins: adminsWithRoles }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'create': {
+        // Create new operator
+        if (!username || !password) {
+          return new Response(
+            JSON.stringify({ error: 'Username e password richiesti' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const operatorEmail = `${username.toLowerCase()}@operator.local`;
+        console.log(`[admin-credentials-update] Creating operator: ${operatorEmail}`);
+        
+        // Create Supabase Auth user for operator
+        const { data: newOperator, error: createError } = await supabase.auth.admin.createUser({
+          email: operatorEmail,
+          password,
+          email_confirm: true,
+          user_metadata: { username, is_operator: true }
+        });
+
+        if (createError) {
+          console.error('[admin-credentials-update] Error creating operator:', createError);
+          return new Response(
+            JSON.stringify({ error: createError.message }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (newOperator?.user) {
+          // Assign operator role
+          await supabase
+            .from('user_roles')
+            .upsert({ user_id: newOperator.user.id, role: 'operator' }, { onConflict: 'user_id,role' });
+
+          // Create profile
+          await supabase
+            .from('profiles')
+            .upsert({
+              user_id: newOperator.user.id,
+              display_name: username,
+              username: username.toLowerCase()
+            }, { onConflict: 'user_id' });
+
+          // Assign default operator permissions
+          const { data: operatorPerms } = await supabase
+            .from('permissions')
+            .select('id, name')
+            .like('name', 'operator.%');
+
+          if (operatorPerms) {
+            const defaultPerms = operatorPerms.filter(p => 
+              ['operator.view_centro', 'operator.view_openmic', 'operator.view_dediche', 
+               'operator.openmic_readonly', 'operator.dediche_readonly'].includes(p.name)
+            );
+
+            for (const perm of defaultPerms) {
+              await supabase
+                .from('user_permissions')
+                .upsert({
+                  user_id: newOperator.user.id,
+                  permission_id: perm.id,
+                  granted: true
+                }, { onConflict: 'user_id,permission_id' });
+            }
+          }
+
+          // Also create in admin_users table for login compatibility
+          const passwordHash = await hashPassword(password);
+          await supabase
+            .from('admin_users')
+            .insert({ username, password_hash: passwordHash })
+            .single();
+
+          console.log(`[admin-credentials-update] Created operator: ${username}`);
+        }
+
+        return new Response(
+          JSON.stringify({ success: true, userId: newOperator?.user?.id }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
