@@ -1862,6 +1862,7 @@ export type Database = {
       }
       is_format_protected: { Args: { p_format: string }; Returns: boolean }
       is_live_session_active: { Args: { p_section: string }; Returns: boolean }
+      is_operator: { Args: { _user_id: string }; Returns: boolean }
       is_owner: { Args: { _user_id: string }; Returns: boolean }
       is_session_participant: {
         Args: { conv_id: string; session: string }
@@ -1896,7 +1897,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user" | "owner"
+      app_role: "admin" | "moderator" | "user" | "owner" | "operator"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2024,7 +2025,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user", "owner"],
+      app_role: ["admin", "moderator", "user", "owner", "operator"],
     },
   },
 } as const

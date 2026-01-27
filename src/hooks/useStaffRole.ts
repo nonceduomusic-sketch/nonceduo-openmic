@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useSocialAuth } from "@/contexts/SocialAuthContext";
 
-export type StaffRole = "owner" | "admin" | "moderator";
+export type StaffRole = "owner" | "admin" | "moderator" | "operator";
 
 interface UseStaffRoleResult {
   isLoading: boolean;
@@ -34,7 +34,7 @@ export function useStaffRole(): UseStaffRoleResult {
         .from("user_roles")
         .select("role")
         .eq("user_id", user.id)
-        .in("role", ["owner", "admin", "moderator"])
+        .in("role", ["owner", "admin", "moderator", "operator"])
         .maybeSingle();
 
       if (cancelled) return;

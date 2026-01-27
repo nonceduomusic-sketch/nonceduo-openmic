@@ -18,6 +18,12 @@ type Props = {
     dediche: boolean;
     community: boolean;
   };
+  isOperator?: boolean;
+  operatorAccess?: {
+    canViewCentro: boolean;
+    canViewOpenmic: boolean;
+    canViewDediche: boolean;
+  };
 };
 
 type Item = {
@@ -45,8 +51,21 @@ const ITEMS: Item[] = [
   { key: "dediche", label: "Dediche", icon: MessageSquare, badge: (b) => b.dedicheUnread, gatedBy: "dediche" },
 ];
 
-export function AdminMobileTabBar({ value, onChange, onBlockedChange, badges, access }: Props) {
+export function AdminMobileTabBar({ value, onChange, onBlockedChange, badges, access, isOperator = false, operatorAccess }: Props) {
+  // For operators, show only Centro, Open Mic, Dediche
+  const visibleItems = isOperator 
+    ? ITEMS.filter(item => ["notifications", "openmic", "dediche"].includes(item.key))
+    : ITEMS;
+
   const isDisabled = (item: Item) => {
+    // Operators have special restricted view
+    if (isOperator && operatorAccess) {
+      if (item.key === "notifications") return !operatorAccess.canViewCentro;
+      if (item.key === "openmic") return !operatorAccess.canViewOpenmic;
+      if (item.key === "dediche") return !operatorAccess.canViewDediche;
+      return true; // Block everything else for operators
+    }
+    
     if (!item.gatedBy) return false;
     return !access[item.gatedBy];
   };
@@ -62,7 +81,7 @@ export function AdminMobileTabBar({ value, onChange, onBlockedChange, badges, ac
       <div className="absolute inset-0 bg-background/85 backdrop-blur-2xl border-t border-border/40" />
       
       <div className="relative flex items-stretch h-[56px]">
-        {ITEMS.map((item) => {
+        {visibleItems.map((item) => {
           const Icon = item.icon;
           const active = value === item.key;
           const disabled = isDisabled(item);
