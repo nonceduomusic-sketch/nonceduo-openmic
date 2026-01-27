@@ -884,7 +884,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
     }
   }, [config, aiGeneratedBg, toast]);
 
-  const downloadImage = useCallback(async () => {
+  const downloadImage = useCallback(() => {
     if (!previewUrl) return;
 
     const formatConfig = IMAGE_FORMATS[config.imageFormat];
@@ -892,28 +892,47 @@ export const EventStoryGeneratorCard: React.FC = () => {
     const dateStr = config.eventDate ? format(config.eventDate, 'yyyy-MM-dd') : 'evento';
     const fileName = `story-${nameStr}-${dateStr}-${formatConfig.width}x${formatConfig.height}.png`;
 
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      ((navigator as any).platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1);
+
+    const openInNewTab = (url: string) => {
+      const w = window.open('', '_blank', 'noopener,noreferrer');
+      if (w) {
+        try {
+          w.opener = null;
+        } catch {}
+        w.location.href = url;
+        return;
+      }
+      window.location.href = url;
+    };
+
     try {
-      const response = await fetch(previewUrl);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      
+      if (isIOS) {
+        openInNewTab(previewUrl);
+        toast({
+          title: 'Immagine aperta',
+          description: 'Tieni premuto sull\'immagine e seleziona "Salva immagine".',
+        });
+        return;
+      }
+
       const link = document.createElement('a');
       link.download = fileName;
-      link.href = blobUrl;
+      link.href = previewUrl;
+      link.rel = 'noopener';
       link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       toast({
         title: 'Download avviato',
-        description: 'La grafica è stata scaricata.',
+        description: 'Controlla la cartella Download del telefono.',
       });
-      
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     } catch (error) {
       console.error('Download error:', error);
-      window.open(previewUrl, '_blank');
+      openInNewTab(previewUrl);
       toast({
         title: 'Aperto in nuova scheda',
         description: 'Tieni premuto sull\'immagine per salvarla.',

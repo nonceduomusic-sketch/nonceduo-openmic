@@ -759,7 +759,7 @@ export const EventPosterGeneratorCard: React.FC = () => {
     }
   }, [config, aiGeneratedBg, toast, generateAIBackground]);
 
-  const downloadImage = useCallback(async () => {
+  const downloadImage = useCallback(() => {
     if (!previewUrl) return;
 
     const formatConfig = IMAGE_FORMATS[config.imageFormat];
@@ -767,28 +767,51 @@ export const EventPosterGeneratorCard: React.FC = () => {
     const nameStr = config.venueName ? config.venueName.toLowerCase().replace(/\s+/g, '-') : 'locandina';
     const fileName = `poster-${nameStr}-${dateStr}-${formatConfig.width}x${formatConfig.height}.png`;
 
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      // iPadOS reports as Mac, but has touch points
+      ((navigator as any).platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1);
+
+    const openInNewTab = (url: string) => {
+      // Popup-safe: create the tab immediately during the user click
+      const w = window.open('', '_blank', 'noopener,noreferrer');
+      if (w) {
+        try {
+          w.opener = null;
+        } catch {}
+        w.location.href = url;
+        return;
+      }
+      window.location.href = url;
+    };
+
     try {
-      const response = await fetch(previewUrl);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      
+      // iOS Safari doesn't reliably support programmatic downloads
+      if (isIOS) {
+        openInNewTab(previewUrl);
+        toast({
+          title: 'Immagine aperta',
+          description: 'Tieni premuto sull\'immagine e seleziona "Salva immagine".',
+        });
+        return;
+      }
+
+      // IMPORTANT: no async/await before click => keeps user gesture on Android
       const link = document.createElement('a');
       link.download = fileName;
-      link.href = blobUrl;
+      link.href = previewUrl;
+      link.rel = 'noopener';
       link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       toast({
         title: 'Download avviato',
-        description: 'La locandina è stata scaricata.',
+        description: 'Controlla la cartella Download del telefono.',
       });
-      
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     } catch (error) {
       console.error('Download error:', error);
-      window.open(previewUrl, '_blank');
+      openInNewTab(previewUrl);
       toast({
         title: 'Aperto in nuova scheda',
         description: 'Tieni premuto sull\'immagine per salvarla.',
