@@ -220,35 +220,47 @@ serve(async (req) => {
 
         console.log(`[admin-credentials-update] Found ${admins?.length || 0} admins`);
 
-        // Get roles for each admin
-        const adminsWithRoles = await Promise.all(
-          (admins || []).map(async (admin) => {
-            const adminEmail = `${admin.username.toLowerCase()}@karaoke-admin.local`;
-            const { data: users } = await supabase.auth.admin.listUsers();
-            const authUser = users?.users.find(u => u.email === adminEmail);
+        // Get roles for each admin and FILTER OUT operators
+        const { data: allUsers } = await supabase.auth.admin.listUsers();
+        
+        const adminsWithRoles: Array<{username: string; created_at: string; role: string}> = [];
+        
+        for (const admin of admins || []) {
+          // Try both email patterns
+          const adminEmail = `${admin.username.toLowerCase()}@karaoke-admin.local`;
+          const operatorEmail = `${admin.username.toLowerCase()}@operator.local`;
+          
+          let authUser = allUsers?.users.find(u => u.email === adminEmail);
+          const isOperatorEmail = !authUser;
+          if (!authUser) {
+            authUser = allUsers?.users.find(u => u.email === operatorEmail);
+          }
+          
+          let role = 'moderator'; // default
+          if (admin.username.toLowerCase() === 'iacopo') {
+            role = 'owner';
+          }
+          
+          if (authUser) {
+            const { data: roleData } = await supabase
+              .from('user_roles')
+              .select('role')
+              .eq('user_id', authUser.id)
+              .maybeSingle();
             
-            let role = 'moderator'; // default
-            if (admin.username.toLowerCase() === 'iacopo') {
-              role = 'owner';
-            } else if (admin.username.toLowerCase() === 'gianluca') {
-              role = 'admin';
-            }
-            
-            if (authUser) {
-              const { data: roleData } = await supabase
-                .from('user_roles')
-                .select('role')
-                .eq('user_id', authUser.id)
-                .maybeSingle();
-              
-              if (roleData) role = roleData.role;
-            }
-            
-            return { ...admin, role };
-          })
-        );
+            if (roleData) role = roleData.role;
+          }
+          
+          // Skip operators - they belong in the Operators tab, not Staff
+          if (role === 'operator') {
+            console.log(`[admin-credentials-update] Skipping operator: ${admin.username}`);
+            continue;
+          }
+          
+          adminsWithRoles.push({ ...admin, role });
+        }
 
-        console.log(`[admin-credentials-update] Returning ${adminsWithRoles.length} admins with roles`);
+        console.log(`[admin-credentials-update] Returning ${adminsWithRoles.length} staff (excluding operators)`);
         return new Response(
           JSON.stringify({ admins: adminsWithRoles }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -321,12 +333,8 @@ serve(async (req) => {
             }
           }
 
-          // Also create in admin_users table for login compatibility
-          const passwordHash = await hashPassword(password);
-          await supabase
-            .from('admin_users')
-            .insert({ username, password_hash: passwordHash })
-            .single();
+          // NOTE: Operators do NOT go in admin_users table - that's for Staff only
+          // Operators authenticate via Supabase Auth with @operator.local email
 
           console.log(`[admin-credentials-update] Created operator: ${username}`);
         }
