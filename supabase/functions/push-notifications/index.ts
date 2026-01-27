@@ -1132,6 +1132,27 @@ serve(async (req) => {
 
         const stats = await sendToAdminSubscriptions(pushPayload);
         
+        // === SEND LIVE NOTIFICATIONS (Email + Telegram) ===
+        // Fire and forget - don't block the response
+        const liveNotificationPayload = {
+          type: isDedica ? 'dediche' : 'openmic',
+          reservationId: reservation.id,
+          customerName: reservation.customer_name,
+          songTitle: reservation.song_title,
+          songArtist: reservation.song_artist,
+          dedicationMessage: reservation.dedication_message || undefined,
+        };
+        
+        // Call the send-live-notification function asynchronously
+        fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/send-live-notification`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+          },
+          body: JSON.stringify(liveNotificationPayload),
+        }).catch(err => console.error('[push] Failed to send live notification:', err));
+        
         // === CHECK IF USER HAS NOW REACHED THEIR LIMIT ===
         // Return this info so the frontend can show a friendly "you've reached your limit" message
         let limitReachedInfo: { type: string; message: string } | null = null;

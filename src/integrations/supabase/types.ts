@@ -943,6 +943,90 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_logs: {
+        Row: {
+          channel: string
+          created_at: string | null
+          error_message: string | null
+          id: string
+          message_body: string
+          notification_type: string
+          recipient: string
+          reservation_id: string | null
+          status: string
+          subject: string | null
+        }
+        Insert: {
+          channel: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          message_body: string
+          notification_type: string
+          recipient: string
+          reservation_id?: string | null
+          status?: string
+          subject?: string | null
+        }
+        Update: {
+          channel?: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          message_body?: string
+          notification_type?: string
+          recipient?: string
+          reservation_id?: string | null
+          status?: string
+          subject?: string | null
+        }
+        Relationships: []
+      }
+      notification_settings: {
+        Row: {
+          dediche_email_enabled: boolean
+          dediche_telegram_enabled: boolean
+          email_enabled: boolean
+          email_recipient: string
+          id: string
+          openmic_email_enabled: boolean
+          openmic_telegram_enabled: boolean
+          telegram_dediche_chat_id: string
+          telegram_enabled: boolean
+          telegram_openmic_chat_id: string
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          dediche_email_enabled?: boolean
+          dediche_telegram_enabled?: boolean
+          email_enabled?: boolean
+          email_recipient?: string
+          id?: string
+          openmic_email_enabled?: boolean
+          openmic_telegram_enabled?: boolean
+          telegram_dediche_chat_id?: string
+          telegram_enabled?: boolean
+          telegram_openmic_chat_id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          dediche_email_enabled?: boolean
+          dediche_telegram_enabled?: boolean
+          email_enabled?: boolean
+          email_recipient?: string
+          id?: string
+          openmic_email_enabled?: boolean
+          openmic_telegram_enabled?: boolean
+          telegram_dediche_chat_id?: string
+          telegram_enabled?: boolean
+          telegram_openmic_chat_id?: string
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           body: string | null
