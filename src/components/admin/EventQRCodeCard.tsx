@@ -381,25 +381,40 @@ export const EventQRCodeCard: React.FC = () => {
     const nameStr = config.venueName ? config.venueName.toLowerCase().replace(/\s+/g, '-') : 'evento';
     const fileName = `qrcode-${nameStr}-${dateStr}-${formatConfig.width}x${formatConfig.height}.png`;
 
+    // Detect mobile devices
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
     try {
       const response = await fetch(previewUrl);
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
-      link.download = fileName;
-      link.href = blobUrl;
-      link.style.display = 'none';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      
-      toast({
-        title: 'Download avviato',
-        description: 'Il QR Code è stato scaricato.',
-      });
-      
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+
+      if (isMobile) {
+        // On mobile: open in new tab for manual save
+        window.open(blobUrl, '_blank');
+        toast({
+          title: 'Immagine aperta',
+          description: 'Tieni premuto sull\'immagine e seleziona "Salva immagine".',
+        });
+        // Keep URL alive longer for mobile
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 120000);
+      } else {
+        // On desktop: direct download
+        const link = document.createElement('a');
+        link.download = fileName;
+        link.href = blobUrl;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({
+          title: 'Download completato',
+          description: 'Il QR Code è stato scaricato.',
+        });
+        
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      }
     } catch (error) {
       console.error('Download error:', error);
       window.open(previewUrl, '_blank');
