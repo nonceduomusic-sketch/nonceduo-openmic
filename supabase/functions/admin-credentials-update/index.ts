@@ -114,7 +114,20 @@ serve(async (req) => {
         // Hash the password
         const passwordHash = await hashPassword(password);
         
-        // Check if admin exists
+        // Check if there's an existing operator with same username - delete it first
+        const operatorEmail = `${username.toLowerCase()}@operator.local`;
+        const { data: allUsers } = await supabase.auth.admin.listUsers();
+        const existingOperator = allUsers?.users.find(u => u.email === operatorEmail);
+        
+        if (existingOperator) {
+          console.log(`[admin-credentials-update] Deleting existing operator to recreate as staff: ${operatorEmail}`);
+          await supabase.from('user_roles').delete().eq('user_id', existingOperator.id);
+          await supabase.from('user_permissions').delete().eq('user_id', existingOperator.id);
+          await supabase.from('profiles').delete().eq('user_id', existingOperator.id);
+          await supabase.auth.admin.deleteUser(existingOperator.id);
+        }
+        
+        // Check if admin exists in admin_users table
         const { data: existing } = await supabase
           .from('admin_users')
           .select('id')
@@ -142,11 +155,15 @@ serve(async (req) => {
 
         // Update or create Supabase Auth user
         const adminEmail = `${username.toLowerCase()}@karaoke-admin.local`;
-        const { data: existingUsers } = await supabase.auth.admin.listUsers();
-        const authUser = existingUsers?.users.find(u => u.email === adminEmail);
+        const authUser = allUsers?.users.find(u => u.email === adminEmail);
 
         if (authUser) {
           await supabase.auth.admin.updateUserById(authUser.id, { password });
+          // Update role if specified
+          if (role) {
+            await supabase.from('user_roles').delete().eq('user_id', authUser.id);
+            await supabase.from('user_roles').upsert({ user_id: authUser.id, role }, { onConflict: 'user_id,role' });
+          }
           console.log(`[admin-credentials-update] Updated auth user: ${adminEmail}`);
         } else {
           const { data: newUser, error: createError } = await supabase.auth.admin.createUser({
@@ -162,6 +179,16 @@ serve(async (req) => {
             await supabase
               .from('user_roles')
               .upsert({ user_id: newUser.user.id, role: userRole }, { onConflict: 'user_id,role' });
+            
+            // Create profile
+            await supabase
+              .from('profiles')
+              .upsert({
+                user_id: newUser.user.id,
+                display_name: username,
+                username: username.toLowerCase()
+              }, { onConflict: 'user_id' });
+              
             console.log(`[admin-credentials-update] Created auth user with role ${userRole}: ${adminEmail}`);
           } else if (createError) {
             console.error(`[admin-credentials-update] Error creating auth user:`, createError);
@@ -189,16 +216,27 @@ serve(async (req) => {
           .delete()
           .eq('username', username);
 
-        // Delete Supabase Auth user
+        // Delete Supabase Auth user (try both patterns)
         const adminEmail = `${username.toLowerCase()}@karaoke-admin.local`;
+        const operatorEmail = `${username.toLowerCase()}@operator.local`;
         const { data: existingUsers } = await supabase.auth.admin.listUsers();
-        const authUser = existingUsers?.users.find(u => u.email === adminEmail);
+        let authUser = existingUsers?.users.find(u => u.email === adminEmail);
+        if (!authUser) {
+          authUser = existingUsers?.users.find(u => u.email === operatorEmail);
+        }
 
         if (authUser) {
+          // Remove user roles
+          await supabase.from('user_roles').delete().eq('user_id', authUser.id);
+          // Remove user permissions
+          await supabase.from('user_permissions').delete().eq('user_id', authUser.id);
+          // Remove profile
+          await supabase.from('profiles').delete().eq('user_id', authUser.id);
+          // Finally delete the auth user
           await supabase.auth.admin.deleteUser(authUser.id);
         }
 
-        console.log(`[admin-credentials-update] Deleted admin: ${username}`);
+        console.log(`[admin-credentials-update] Fully deleted admin: ${username}`);
         return new Response(
           JSON.stringify({ success: true }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -277,7 +315,31 @@ serve(async (req) => {
         }
 
         const operatorEmail = `${username.toLowerCase()}@operator.local`;
+        const adminEmail = `${username.toLowerCase()}@karaoke-admin.local`;
         console.log(`[admin-credentials-update] Creating operator: ${operatorEmail}`);
+        
+        // Check for existing user with same email (either pattern)
+        const { data: existingUsersList } = await supabase.auth.admin.listUsers();
+        const existingOperator = existingUsersList?.users.find(u => u.email === operatorEmail);
+        const existingAdmin = existingUsersList?.users.find(u => u.email === adminEmail);
+        
+        // If exists, delete it first to allow recreation
+        if (existingOperator) {
+          console.log(`[admin-credentials-update] Deleting existing operator to recreate: ${operatorEmail}`);
+          await supabase.from('user_roles').delete().eq('user_id', existingOperator.id);
+          await supabase.from('user_permissions').delete().eq('user_id', existingOperator.id);
+          await supabase.from('profiles').delete().eq('user_id', existingOperator.id);
+          await supabase.auth.admin.deleteUser(existingOperator.id);
+        }
+        
+        if (existingAdmin) {
+          console.log(`[admin-credentials-update] Deleting existing admin to recreate as operator: ${adminEmail}`);
+          await supabase.from('admin_users').delete().eq('username', username);
+          await supabase.from('user_roles').delete().eq('user_id', existingAdmin.id);
+          await supabase.from('user_permissions').delete().eq('user_id', existingAdmin.id);
+          await supabase.from('profiles').delete().eq('user_id', existingAdmin.id);
+          await supabase.auth.admin.deleteUser(existingAdmin.id);
+        }
         
         // Create Supabase Auth user for operator
         const { data: newOperator, error: createError } = await supabase.auth.admin.createUser({
@@ -333,9 +395,6 @@ serve(async (req) => {
             }
           }
 
-          // NOTE: Operators do NOT go in admin_users table - that's for Staff only
-          // Operators authenticate via Supabase Auth with @operator.local email
-
           console.log(`[admin-credentials-update] Created operator: ${username}`);
         }
 
@@ -364,100 +423,123 @@ serve(async (req) => {
 
         console.log(`[admin-credentials-update] Updating credentials for: ${username}`);
 
-        // Find the admin_users entry
-        const { data: existingAdmin } = await supabase
-          .from('admin_users')
-          .select('id, username')
-          .eq('username', username)
-          .maybeSingle();
+        // Try to find the user in auth (could be admin or operator)
+        const adminEmail = `${username.toLowerCase()}@karaoke-admin.local`;
+        const operatorEmail = `${username.toLowerCase()}@operator.local`;
+        
+        const { data: existingUsers } = await supabase.auth.admin.listUsers();
+        let authUser = existingUsers?.users.find(u => u.email === adminEmail);
+        const isOperator = !authUser;
+        if (!authUser) {
+          authUser = existingUsers?.users.find(u => u.email === operatorEmail);
+        }
 
-        if (!existingAdmin) {
+        if (!authUser) {
           return new Response(
             JSON.stringify({ error: 'Utente non trovato' }),
             { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        // Prepare update object for admin_users
-        const adminUpdate: Record<string, string> = {};
-        
+        // Check if new username is already taken (by either staff or operator)
         if (newUsername && newUsername !== username) {
-          // Check if new username is already taken
-          const { data: existingNewUsername } = await supabase
-            .from('admin_users')
-            .select('id')
-            .eq('username', newUsername)
-            .maybeSingle();
-
-          if (existingNewUsername) {
+          const newAdminEmail = `${newUsername.toLowerCase()}@karaoke-admin.local`;
+          const newOperatorEmail = `${newUsername.toLowerCase()}@operator.local`;
+          const existingNewAdmin = existingUsers?.users.find(u => u.email === newAdminEmail);
+          const existingNewOperator = existingUsers?.users.find(u => u.email === newOperatorEmail);
+          
+          if (existingNewAdmin || existingNewOperator) {
             return new Response(
               JSON.stringify({ error: 'Username già in uso' }),
               { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
-          adminUpdate.username = newUsername;
         }
 
-        if (password) {
-          adminUpdate.password_hash = await hashPassword(password);
-        }
-
-        // Update admin_users if there are changes
-        if (Object.keys(adminUpdate).length > 0) {
-          const { error: updateError } = await supabase
-            .from('admin_users')
-            .update(adminUpdate)
-            .eq('username', username);
-
-          if (updateError) throw updateError;
+        // Update admin_users if it's a staff member (not operator)
+        if (!isOperator) {
+          const adminUpdate: Record<string, string> = {};
+          if (newUsername && newUsername !== username) {
+            adminUpdate.username = newUsername;
+          }
+          if (password) {
+            adminUpdate.password_hash = await hashPassword(password);
+          }
+          if (Object.keys(adminUpdate).length > 0) {
+            await supabase
+              .from('admin_users')
+              .update(adminUpdate)
+              .eq('username', username);
+          }
         }
 
         // Update Supabase Auth user
-        // Try both admin and operator email patterns
-        const adminEmail = `${username.toLowerCase()}@karaoke-admin.local`;
-        const operatorEmail = `${username.toLowerCase()}@operator.local`;
+        const authUpdate: Record<string, any> = {};
         
-        const { data: existingUsers } = await supabase.auth.admin.listUsers();
-        let authUser = existingUsers?.users.find(u => u.email === adminEmail);
-        if (!authUser) {
-          authUser = existingUsers?.users.find(u => u.email === operatorEmail);
+        if (newUsername && newUsername !== username) {
+          const newEmail = isOperator 
+            ? `${newUsername.toLowerCase()}@operator.local`
+            : `${newUsername.toLowerCase()}@karaoke-admin.local`;
+          authUpdate.email = newEmail;
+          authUpdate.user_metadata = { ...authUser.user_metadata, username: newUsername };
+        }
+        
+        if (password) {
+          authUpdate.password = password;
         }
 
-        if (authUser) {
-          const authUpdate: Record<string, any> = {};
-          
-          if (newUsername && newUsername !== username) {
-            // Determine new email based on which pattern was found
-            const isOperator = authUser.email?.includes('@operator.local');
-            const newEmail = isOperator 
-              ? `${newUsername.toLowerCase()}@operator.local`
-              : `${newUsername.toLowerCase()}@karaoke-admin.local`;
-            authUpdate.email = newEmail;
-            authUpdate.user_metadata = { ...authUser.user_metadata, username: newUsername };
-          }
-          
-          if (password) {
-            authUpdate.password = password;
-          }
+        if (Object.keys(authUpdate).length > 0) {
+          await supabase.auth.admin.updateUserById(authUser.id, authUpdate);
+          console.log(`[admin-credentials-update] Updated auth user for: ${username}`);
+        }
 
-          if (Object.keys(authUpdate).length > 0) {
-            await supabase.auth.admin.updateUserById(authUser.id, authUpdate);
-            console.log(`[admin-credentials-update] Updated auth user for: ${username}`);
-          }
-
-          // Update profile if username changed
-          if (newUsername && newUsername !== username) {
-            await supabase
-              .from('profiles')
-              .update({ 
-                display_name: newUsername, 
-                username: newUsername.toLowerCase() 
-              })
-              .eq('user_id', authUser.id);
-          }
+        // Update profile if username changed
+        if (newUsername && newUsername !== username) {
+          await supabase
+            .from('profiles')
+            .update({ 
+              display_name: newUsername, 
+              username: newUsername.toLowerCase() 
+            })
+            .eq('user_id', authUser.id);
         }
 
         console.log(`[admin-credentials-update] Updated credentials for: ${username} -> ${newUsername || username}`);
+        return new Response(
+          JSON.stringify({ success: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'deleteOperator': {
+        // Full deletion of an operator
+        if (!username) {
+          return new Response(
+            JSON.stringify({ error: 'Username richiesto' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const operatorEmail = `${username.toLowerCase()}@operator.local`;
+        console.log(`[admin-credentials-update] Deleting operator: ${operatorEmail}`);
+        
+        const { data: existingUsers } = await supabase.auth.admin.listUsers();
+        const authUser = existingUsers?.users.find(u => u.email === operatorEmail);
+
+        if (authUser) {
+          // Remove user roles
+          await supabase.from('user_roles').delete().eq('user_id', authUser.id);
+          // Remove user permissions
+          await supabase.from('user_permissions').delete().eq('user_id', authUser.id);
+          // Remove profile
+          await supabase.from('profiles').delete().eq('user_id', authUser.id);
+          // Finally delete the auth user
+          await supabase.auth.admin.deleteUser(authUser.id);
+          console.log(`[admin-credentials-update] Fully deleted operator: ${username}`);
+        } else {
+          console.log(`[admin-credentials-update] Operator not found: ${operatorEmail}`);
+        }
+
         return new Response(
           JSON.stringify({ success: true }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
