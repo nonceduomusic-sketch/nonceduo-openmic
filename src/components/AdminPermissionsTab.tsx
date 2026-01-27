@@ -42,6 +42,8 @@ import {
   Zap,
   Check,
   Settings,
+  Eye,
+  UserCog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -81,7 +83,7 @@ interface UserPermissionOverride {
   granted_by: string | null;
 }
 
-type AppRole = 'owner' | 'admin' | 'moderator' | 'user';
+type AppRole = 'owner' | 'admin' | 'moderator' | 'operator' | 'user';
 
 // Staff presets for quick assignment
 const STAFF_PRESETS = [
@@ -108,10 +110,29 @@ const STAFF_PRESETS = [
   },
 ] as const;
 
+// Operator-specific presets
+const OPERATOR_PRESETS = [
+  {
+    key: 'op_view_only',
+    label: 'Solo Visualizzazione',
+    icon: Eye,
+    color: 'bg-muted text-muted-foreground border-muted-foreground/30',
+    permissions: ['operator.view_centro', 'operator.view_openmic', 'operator.view_dediche', 'operator.openmic_readonly', 'operator.dediche_readonly']
+  },
+  {
+    key: 'op_full_manage',
+    label: 'Gestione Completa',
+    icon: Settings,
+    color: 'bg-primary/20 text-primary-foreground border-primary/30',
+    permissions: ['operator.view_centro', 'operator.view_openmic', 'operator.view_dediche', 'operator.openmic_manage', 'operator.dediche_manage']
+  },
+] as const;
+
 const ROLE_ICONS: Record<string, React.ReactNode> = {
   owner: <Crown className="w-4 h-4 text-accent" />,
   admin: <Shield className="w-4 h-4 text-primary" />,
   moderator: <ShieldCheck className="w-4 h-4 text-secondary" />,
+  operator: <UserCog className="w-4 h-4 text-accent" />,
   user: <User className="w-4 h-4 text-muted-foreground" />,
 };
 
@@ -119,6 +140,7 @@ const ROLE_LABELS: Record<string, string> = {
   owner: 'Owner',
   admin: 'Admin',
   moderator: 'Staff',
+  operator: 'Operatore',
   user: 'Utente',
 };
 
@@ -126,18 +148,21 @@ const PERMISSION_GROUP_LABELS: Record<string, string> = {
   openmic: 'Open Mic',
   dediche: 'Dediche',
   community: 'Community',
+  operator: 'Operatore',
   settings: 'Impostazioni',
   users: 'Utenti',
+  centro: 'Centro',
   altro: 'Altro',
 };
 
-const PRIMARY_PERMISSION_GROUPS = ['openmic', 'dediche', 'community'] as const;
+const PRIMARY_PERMISSION_GROUPS = ['openmic', 'dediche', 'community', 'operator'] as const;
 
 const ROLE_COLORS: Record<AppRole, string> = {
-  owner: 'bg-amber-50 text-amber-700 border-amber-200',
-  admin: 'bg-blue-50 text-blue-700 border-blue-200',
-  moderator: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-  user: 'bg-gray-50 text-gray-600 border-gray-200',
+  owner: 'bg-accent/10 text-accent border-accent/30',
+  admin: 'bg-primary/10 text-primary border-primary/30',
+  moderator: 'bg-secondary/10 text-secondary-foreground border-secondary/30',
+  operator: 'bg-accent/10 text-accent border-accent/30',
+  user: 'bg-muted text-muted-foreground border-border',
 };
 
 export const AdminPermissionsTab: React.FC = () => {
@@ -559,6 +584,7 @@ export const AdminPermissionsTab: React.FC = () => {
     owner: filteredUsers.filter(u => u.role === 'owner'),
     admin: filteredUsers.filter(u => u.role === 'admin'),
     moderator: filteredUsers.filter(u => u.role === 'moderator'),
+    operator: filteredUsers.filter(u => u.role === 'operator'),
     user: filteredUsers.filter(u => u.role === 'user'),
   };
 
@@ -651,7 +677,7 @@ export const AdminPermissionsTab: React.FC = () => {
 
           {/* Users List */}
           <div className="grid gap-4">
-            {(['owner', 'admin', 'moderator', 'user'] as const).map(role => (
+            {(['owner', 'admin', 'moderator', 'operator', 'user'] as const).map(role => (
               groupedUsers[role].length > 0 && (
                 <Card key={role} className="overflow-hidden">
                   <CardHeader className="py-3 bg-muted/30">
@@ -748,8 +774,8 @@ export const AdminPermissionsTab: React.FC = () => {
         {/* ========== ROLES TAB ========== */}
         <TabsContent value="roles" className="space-y-4">
           {/* Role Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {(['owner', 'admin', 'moderator', 'user'] as const).map(role => {
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {(['owner', 'admin', 'moderator', 'operator', 'user'] as const).map(role => {
               const count = getRolePermissions(role).length;
               return (
                 <Card 
