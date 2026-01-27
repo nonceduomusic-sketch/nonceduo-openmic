@@ -477,10 +477,13 @@ serve(async (req) => {
         const dedicationMessage = isString(dedicationMessageRaw) ? dedicationMessageRaw.trim() : null;
 
         // Mirror the same constraints used client-side / RLS
-        if (!isWithin(customerName, 1, 80)) return json({ error: 'Nome non valido' }, 400);
-        if (!isWithin(songTitle, 1, 120)) return json({ error: 'Titolo non valido' }, 400);
-        if (!isWithin(songArtist, 1, 120)) return json({ error: 'Artista non valido' }, 400);
-        if (dedicationMessage && dedicationMessage.length > 500) return json({ error: 'Messaggio troppo lungo' }, 400);
+        // NOTE: For user-facing validation errors we return 200 with { error: ... }.
+        // supabase.functions.invoke() treats non-2xx responses as generic "non-2xx status code" errors
+        // and the frontend can't reliably read the JSON body to show a proper UI dialog.
+        if (!isWithin(customerName, 1, 80)) return json({ error: 'Nome non valido' }, 200);
+        if (!isWithin(songTitle, 1, 120)) return json({ error: 'Titolo non valido' }, 200);
+        if (!isWithin(songArtist, 1, 120)) return json({ error: 'Artista non valido' }, 200);
+        if (dedicationMessage && dedicationMessage.length > 500) return json({ error: 'Messaggio troppo lungo' }, 200);
 
         // === SERVER-SIDE EVENT VALIDATION ===
         // Fetch live event to validate booking rules
@@ -510,7 +513,7 @@ serve(async (req) => {
         
         // If no live event AND not in free mode, bookings are not allowed
         if (!liveEvent && !isFreeMode) {
-          return json({ error: 'Nessun evento attivo al momento' }, 400);
+          return json({ error: 'Nessun evento attivo al momento' }, 200);
         }
 
         let isInReopenMode = false;
@@ -521,21 +524,21 @@ serve(async (req) => {
           // Check if Open Mic is enabled for this event
           const isOpenmicEvent = liveEvent.event_type === 'openmic' || liveEvent.event_type === 'both';
           if (!isOpenmicEvent || !liveEvent.openmic_enabled) {
-            return json({ error: 'Prenotazioni Open Mic non attive per questo evento' }, 400);
+            return json({ error: 'Prenotazioni Open Mic non attive per questo evento' }, 200);
           }
 
           // Check booking window
           if (liveEvent.booking_opens_at) {
             const opensAt = new Date(liveEvent.booking_opens_at);
             if (now < opensAt) {
-              return json({ error: 'Le prenotazioni non sono ancora aperte' }, 400);
+              return json({ error: 'Le prenotazioni non sono ancora aperte' }, 200);
             }
           }
 
           if (liveEvent.booking_closes_at) {
             const closesAt = new Date(liveEvent.booking_closes_at);
             if (now > closesAt && !liveEvent.reopen_active) {
-              return json({ error: 'Le prenotazioni sono chiuse' }, 400);
+              return json({ error: 'Le prenotazioni sono chiuse' }, 200);
             }
           }
 
@@ -594,10 +597,10 @@ serve(async (req) => {
                   const reopenUsed = liveEvent.reopen_songs_used || 0;
                   const extraAvailable = liveEvent.reopen_extra_songs - reopenUsed;
                   if (extraAvailable <= 0) {
-                    return json({ error: `Limite ultimi ${liveEvent.openmic_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} canzoni)` }, 400);
+                    return json({ error: `Limite ultimi ${liveEvent.openmic_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} canzoni)` }, 200);
                   }
                 } else {
-                  return json({ error: `Limite ultimi ${liveEvent.openmic_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} canzoni)` }, 400);
+                  return json({ error: `Limite ultimi ${liveEvent.openmic_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} canzoni)` }, 200);
                 }
               }
             } else if (liveEvent.openmic_max_songs !== null) {
@@ -610,10 +613,10 @@ serve(async (req) => {
                 const reopenUsed = liveEvent.reopen_songs_used || 0;
                 const extraAvailable = liveEvent.reopen_extra_songs - reopenUsed;
                 if (currentCount >= maxAllowed && extraAvailable <= 0) {
-                  return json({ error: 'Limite canzoni raggiunto' }, 400);
+                  return json({ error: 'Limite canzoni raggiunto' }, 200);
                 }
               } else if (currentCount >= maxAllowed) {
-                return json({ error: 'Limite canzoni raggiunto' }, 400);
+                return json({ error: 'Limite canzoni raggiunto' }, 200);
               }
             }
           }
@@ -640,10 +643,10 @@ serve(async (req) => {
                   const reopenUsed = liveEvent.reopen_dediche_used || 0;
                   const extraAvailable = liveEvent.reopen_extra_dediche - reopenUsed;
                   if (extraAvailable <= 0) {
-                    return json({ error: `Limite ultimi ${liveEvent.dediche_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} dediche)` }, 400);
+                    return json({ error: `Limite ultimi ${liveEvent.dediche_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} dediche)` }, 200);
                   }
                 } else {
-                  return json({ error: `Limite ultimi ${liveEvent.dediche_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} dediche)` }, 400);
+                  return json({ error: `Limite ultimi ${liveEvent.dediche_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} dediche)` }, 200);
                 }
               }
             } else if (liveEvent.dediche_max_total !== null) {
@@ -656,10 +659,10 @@ serve(async (req) => {
                 const reopenUsed = liveEvent.reopen_dediche_used || 0;
                 const extraAvailable = liveEvent.reopen_extra_dediche - reopenUsed;
                 if (currentCount >= maxAllowed && extraAvailable <= 0) {
-                  return json({ error: 'Limite dediche raggiunto' }, 400);
+                  return json({ error: 'Limite dediche raggiunto' }, 200);
                 }
               } else if (currentCount >= maxAllowed) {
-                return json({ error: 'Limite dediche raggiunto' }, 400);
+                return json({ error: 'Limite dediche raggiunto' }, 200);
               }
             }
           }
@@ -718,10 +721,10 @@ serve(async (req) => {
                   const reopenUsed = freeModeSettings.reopen_songs_used || 0;
                   const extraAvailable = freeModeSettings.reopen_extra_songs - reopenUsed;
                   if (extraAvailable <= 0) {
-                    return json({ error: `Limite ultimi ${freeModeSettings.openmic_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} canzoni)` }, 400);
+                    return json({ error: `Limite ultimi ${freeModeSettings.openmic_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} canzoni)` }, 200);
                   }
                 } else {
-                  return json({ error: `Limite ultimi ${freeModeSettings.openmic_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} canzoni)` }, 400);
+                  return json({ error: `Limite ultimi ${freeModeSettings.openmic_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} canzoni)` }, 200);
                 }
               }
             } else if (freeModeSettings.openmic_max_songs !== null) {
@@ -732,10 +735,10 @@ serve(async (req) => {
                 const reopenUsed = freeModeSettings.reopen_songs_used || 0;
                 const extraAvailable = freeModeSettings.reopen_extra_songs - reopenUsed;
                 if (currentCount >= maxAllowed && extraAvailable <= 0) {
-                  return json({ error: 'Limite canzoni raggiunto' }, 400);
+                  return json({ error: 'Limite canzoni raggiunto' }, 200);
                 }
               } else if (currentCount >= maxAllowed) {
-                return json({ error: 'Limite canzoni raggiunto' }, 400);
+                return json({ error: 'Limite canzoni raggiunto' }, 200);
               }
             }
           }
@@ -760,10 +763,10 @@ serve(async (req) => {
                   const reopenUsed = freeModeSettings.reopen_dediche_used || 0;
                   const extraAvailable = freeModeSettings.reopen_extra_dediche - reopenUsed;
                   if (extraAvailable <= 0) {
-                    return json({ error: `Limite ultimi ${freeModeSettings.dediche_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} dediche)` }, 400);
+                    return json({ error: `Limite ultimi ${freeModeSettings.dediche_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} dediche)` }, 200);
                   }
                 } else {
-                  return json({ error: `Limite ultimi ${freeModeSettings.dediche_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} dediche)` }, 400);
+                  return json({ error: `Limite ultimi ${freeModeSettings.dediche_final_limit_minutes} minuti raggiunto (${finalMaxAllowed} dediche)` }, 200);
                 }
               }
             } else if (freeModeSettings.dediche_max_total !== null) {
@@ -774,10 +777,10 @@ serve(async (req) => {
                 const reopenUsed = freeModeSettings.reopen_dediche_used || 0;
                 const extraAvailable = freeModeSettings.reopen_extra_dediche - reopenUsed;
                 if (currentCount >= maxAllowed && extraAvailable <= 0) {
-                  return json({ error: 'Limite dediche raggiunto' }, 400);
+                  return json({ error: 'Limite dediche raggiunto' }, 200);
                 }
               } else if (currentCount >= maxAllowed) {
-                return json({ error: 'Limite dediche raggiunto' }, 400);
+                return json({ error: 'Limite dediche raggiunto' }, 200);
               }
             }
           }
@@ -822,7 +825,7 @@ serve(async (req) => {
             if (currentSongsCount >= limitsSource.user_limit_songs_total) {
               const msg = `Hai raggiunto il limite di ${limitsSource.user_limit_songs_total} canzoni per questa serata`;
               console.log(`[push] BLOCKED: ${msg}`);
-              return json({ error: msg, error_type: 'user_limit', limit_type: 'total_songs' }, 400);
+              return json({ error: msg, error_type: 'user_limit', limit_type: 'total_songs' }, 200);
             }
           }
           
@@ -830,7 +833,7 @@ serve(async (req) => {
           if (totalEnabled && isDedica && limitsSource.user_limit_dediche_total !== null) {
             if (currentDedicheCount >= limitsSource.user_limit_dediche_total) {
               const msg = `Hai raggiunto il limite di ${limitsSource.user_limit_dediche_total} dediche per questa serata`;
-              return json({ error: msg, error_type: 'user_limit', limit_type: 'total_dediche' }, 400);
+              return json({ error: msg, error_type: 'user_limit', limit_type: 'total_dediche' }, 200);
             }
           }
           
@@ -839,7 +842,7 @@ serve(async (req) => {
             if (currentConsecutive >= limitsSource.user_limit_consecutive_songs) {
               const msg = `Hai prenotato ${limitsSource.user_limit_consecutive_songs} canzoni consecutive. Lascia spazio agli altri!`;
               console.log(`[push] BLOCKED: ${msg}`);
-              return json({ error: msg, error_type: 'user_limit', limit_type: 'consecutive' }, 400);
+              return json({ error: msg, error_type: 'user_limit', limit_type: 'consecutive' }, 200);
             }
           }
           
@@ -862,7 +865,7 @@ serve(async (req) => {
               const minutesRemaining = Math.ceil((lastBooking.getTime() + intervalMs - Date.now()) / 60000);
               const msg = cooldownMsg.replace('{minutes}', String(minutesRemaining));
               console.log(`[push] BLOCKED: ${msg}`);
-              return json({ error: msg, error_type: 'user_limit', limit_type: 'interval', cooldown_minutes: minutesRemaining }, 400);
+              return json({ error: msg, error_type: 'user_limit', limit_type: 'interval', cooldown_minutes: minutesRemaining }, 200);
             }
           }
         }
@@ -885,7 +888,7 @@ serve(async (req) => {
           console.error('Error creating reservation:', error);
           // Check for duplicate constraint
           if (error.code === '23505') {
-            return json({ error: 'Questa canzone è già stata prenotata' }, 400);
+            return json({ error: 'Questa canzone è già stata prenotata' }, 200);
           }
           return json({ error: 'Errore creazione prenotazione' }, 500);
         }
