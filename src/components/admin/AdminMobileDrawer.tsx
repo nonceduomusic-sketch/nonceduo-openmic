@@ -56,6 +56,7 @@ const MENU_ITEMS: MenuItem[] = [
 
   // === GRUPPO GESTIONE ===
   { key: "settings", label: "Impostazioni", icon: Settings, group: "Gestione" },
+  { key: "operators", label: "Operatori", icon: Users, group: "Gestione", ownerOnly: true },
   { key: "staff", label: "Staff", icon: Users, group: "Gestione", ownerOnly: true },
   { key: "permissions", label: "Permessi", icon: Shield, group: "Gestione", ownerOnly: true },
   { key: "audit", label: "Audit", icon: Database, group: "Gestione", ownerOnly: true },
