@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, Users, Timer, Repeat, Hash, Save, Info } from 'lucide-react';
+import { User, Users, Timer, Repeat, Hash, Save, Info, RotateCcw } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useToast } from '@/hooks/use-toast';
 import { adminAuditLog } from '@/lib/adminAudit';
 import { cn } from '@/lib/utils';
+import { useReservations } from '@/hooks/useReservations';
 
 interface UserLimitsSettings {
   user_limit_enabled: boolean;
@@ -35,7 +36,9 @@ interface Props {
 
 export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId }) => {
   const { toast } = useToast();
+  const { resetUserCounts } = useReservations();
   const [isSaving, setIsSaving] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
 
   // Local state
   const [enabled, setEnabled] = useState(settings.user_limit_enabled);
@@ -384,11 +387,26 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
             </p>
           </div>
 
-          {/* Save Button */}
-          <div className="flex justify-end pt-4">
+          {/* Action Buttons */}
+          <div className="flex flex-wrap gap-2 justify-end pt-4 border-t border-border">
+            <Button 
+              variant="outline" 
+              onClick={async () => {
+                setIsResetting(true);
+                try {
+                  await resetUserCounts();
+                } finally {
+                  setIsResetting(false);
+                }
+              }} 
+              disabled={isResetting}
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              {isResetting ? 'Resettando...' : 'Reset Conteggi'}
+            </Button>
             <Button onClick={handleSave} disabled={isSaving}>
               <Save className="w-4 h-4 mr-2" />
-              {isSaving ? 'Salvataggio...' : 'Salva Limiti Utente'}
+              {isSaving ? 'Salvataggio...' : 'Salva Limiti'}
             </Button>
           </div>
         </CardContent>

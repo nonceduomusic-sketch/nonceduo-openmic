@@ -299,6 +299,20 @@ export const useReservations = () => {
     }
   };
 
+  const resetUserCounts = async () => {
+    try {
+      await callAdminApi('resetUserCounts');
+      toast.success('Conteggi utenti resettati');
+      return true;
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.error('Error resetting user counts:', error);
+      }
+      toast.error('Errore nel reset conteggi utenti');
+      return false;
+    }
+  };
+
   const deleteReservation = async (id: string) => {
     try {
       await callAdminApi('delete', { id });
@@ -365,5 +379,6 @@ export const useReservations = () => {
     deleteReservation,
     deleteMultipleReservations,
     restoreReservation,
+    resetUserCounts,
   };
 };

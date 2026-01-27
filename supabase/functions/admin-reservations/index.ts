@@ -419,6 +419,41 @@ serve(async (req: Request): Promise<Response> => {
         break;
       }
 
+      case "resetUserCounts": {
+        // Reset all user booking counts for the active event
+        // First, get the active event/free mode ID
+        const { data: liveEvent } = await supabase
+          .from('event_booking_rules')
+          .select('id')
+          .eq('event_status', 'live')
+          .maybeSingle();
+        
+        const { data: freeMode } = await supabase
+          .from('free_mode_settings')
+          .select('id')
+          .eq('is_active', true)
+          .maybeSingle();
+        
+        const eventId = liveEvent?.id || freeMode?.id;
+        
+        if (eventId) {
+          const { error } = await supabase
+            .from("user_booking_counts")
+            .delete()
+            .eq("event_id", eventId);
+
+          if (error) {
+            console.error("Error resetting user counts:", error);
+            return new Response(
+              JSON.stringify({ error: "Errore nel reset conteggi utente" }),
+              { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+            );
+          }
+          console.log(`Reset user booking counts for event: ${eventId}`);
+        }
+        break;
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: "Azione non valida" }),
