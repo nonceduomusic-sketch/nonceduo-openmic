@@ -42,8 +42,7 @@ import {
   UserPlus,
   Eye,
   EyeOff,
-  Ban,
-  KeyRound,
+  Pencil,
 } from 'lucide-react';
 
 interface AdminUser {
@@ -70,7 +69,7 @@ export const AdminStaffTab: React.FC = () => {
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<AdminUser | null>(null);
   
   // New staff creation
@@ -80,9 +79,10 @@ export const AdminStaffTab: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // Password change
-  const [newPassword, setNewPassword] = useState('');
-  const [showNewPassword, setShowNewPassword] = useState(false);
+  // Edit credentials
+  const [editUsername, setEditUsername] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [showEditPassword, setShowEditPassword] = useState(false);
 
   const fetchStaff = useCallback(async () => {
     setLoading(true);
@@ -171,9 +171,25 @@ export const AdminStaffTab: React.FC = () => {
     }
   };
 
-  const handleChangePassword = async () => {
-    if (!selectedStaff || !newPassword.trim()) {
-      toast.error('Inserisci la nuova password');
+  const handleEditCredentials = async () => {
+    if (!selectedStaff) return;
+
+    // Validate at least one change
+    const usernameChanged = editUsername.trim() && editUsername.trim() !== selectedStaff.username;
+    const passwordChanged = editPassword.trim().length > 0;
+
+    if (!usernameChanged && !passwordChanged) {
+      toast.error('Modifica almeno username o password');
+      return;
+    }
+
+    if (usernameChanged && editUsername.trim().length < 3) {
+      toast.error('Username deve avere almeno 3 caratteri');
+      return;
+    }
+
+    if (passwordChanged && editPassword.length < 6) {
+      toast.error('Password deve avere almeno 6 caratteri');
       return;
     }
 
@@ -181,10 +197,10 @@ export const AdminStaffTab: React.FC = () => {
     try {
       const { data, error } = await supabase.functions.invoke('admin-credentials-update', {
         body: { 
-          action: 'upsertAdmin',
+          action: 'updateCredentials',
           username: selectedStaff.username,
-          password: newPassword,
-          role: selectedStaff.role
+          newUsername: usernameChanged ? editUsername.trim() : undefined,
+          password: passwordChanged ? editPassword : undefined,
         }
       });
 
@@ -192,13 +208,19 @@ export const AdminStaffTab: React.FC = () => {
         throw new Error(data?.error || 'Errore');
       }
 
-      toast.success(`Password di "${selectedStaff.username}" aggiornata`);
-      setShowPasswordDialog(false);
-      setNewPassword('');
+      const changes = [];
+      if (usernameChanged) changes.push('username');
+      if (passwordChanged) changes.push('password');
+      
+      toast.success(`Credenziali aggiornate (${changes.join(', ')})`);
+      setShowEditDialog(false);
+      setEditUsername('');
+      setEditPassword('');
       setSelectedStaff(null);
-    } catch (error) {
-      console.error('Error changing password:', error);
-      toast.error('Impossibile cambiare la password');
+      fetchStaff();
+    } catch (error: any) {
+      console.error('Error updating credentials:', error);
+      toast.error(error.message || 'Impossibile aggiornare le credenziali');
     } finally {
       setIsProcessing(false);
     }
@@ -288,7 +310,7 @@ export const AdminStaffTab: React.FC = () => {
                     
                     {/* Actions */}
                     <div className="flex items-center gap-2">
-                      {/* Change Password */}
+                      {/* Edit Credentials */}
                       {!isOwner && (
                         <Button 
                           variant="ghost" 
@@ -296,10 +318,12 @@ export const AdminStaffTab: React.FC = () => {
                           className="h-9 w-9"
                           onClick={() => {
                             setSelectedStaff(admin);
-                            setShowPasswordDialog(true);
+                            setEditUsername(admin.username);
+                            setEditPassword('');
+                            setShowEditDialog(true);
                           }}
                         >
-                          <KeyRound className="w-4 h-4" />
+                          <Pencil className="w-4 h-4" />
                         </Button>
                       )}
                       
@@ -419,49 +443,78 @@ export const AdminStaffTab: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Change Password Dialog */}
-      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+      {/* Edit Credentials Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={(open) => {
+        setShowEditDialog(open);
+        if (!open) {
+          setEditUsername('');
+          setEditPassword('');
+          setShowEditPassword(false);
+          setSelectedStaff(null);
+        }
+      }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <KeyRound className="w-5 h-5 text-primary" />
-              Cambia Password
+              <Pencil className="w-5 h-5 text-primary" />
+              Modifica Credenziali
             </DialogTitle>
             <DialogDescription>
-              Imposta una nuova password per <strong>{selectedStaff?.username}</strong>
+              Modifica username e/o password per <strong>{selectedStaff?.username}</strong>
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
+              <Label>Username</Label>
+              <Input
+                type="text"
+                value={editUsername}
+                onChange={(e) => setEditUsername(e.target.value)}
+                placeholder="Nuovo username"
+                maxLength={50}
+              />
+              <p className="text-xs text-muted-foreground">
+                Lascia invariato per mantenere l'username attuale
+              </p>
+            </div>
+            <div className="space-y-2">
               <Label>Nuova Password</Label>
               <div className="relative">
                 <Input
-                  type={showNewPassword ? 'text' : 'password'}
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Nuova password sicura"
+                  type={showEditPassword ? 'text' : 'password'}
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  placeholder="Lascia vuoto per non cambiare"
                   className="pr-10"
+                  maxLength={100}
                 />
                 <button
                   type="button"
-                  onClick={() => setShowNewPassword(!showNewPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  onClick={() => setShowEditPassword(!showEditPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Lascia vuoto per mantenere la password attuale
+              </p>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => {
-              setShowPasswordDialog(false);
-              setNewPassword('');
+              setShowEditDialog(false);
+              setEditUsername('');
+              setEditPassword('');
               setSelectedStaff(null);
             }}>
               Annulla
             </Button>
-            <Button onClick={handleChangePassword} disabled={isProcessing || !newPassword.trim()}>
-              {isProcessing ? 'Salvataggio...' : 'Salva Password'}
+            <Button 
+              onClick={handleEditCredentials} 
+              disabled={isProcessing || (!editPassword.trim() && editUsername === selectedStaff?.username)}
+            >
+              {isProcessing ? 'Salvataggio...' : 'Salva Modifiche'}
             </Button>
           </DialogFooter>
         </DialogContent>

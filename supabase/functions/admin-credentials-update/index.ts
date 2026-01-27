@@ -337,6 +337,125 @@ serve(async (req) => {
         );
       }
 
+      case 'updateCredentials': {
+        // Update username and/or password for any staff/operator
+        if (!username) {
+          return new Response(
+            JSON.stringify({ error: 'Username corrente richiesto' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Prevent modifying owner
+        if (username.toLowerCase() === 'iacopo') {
+          return new Response(
+            JSON.stringify({ error: 'Non puoi modificare il proprietario' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        console.log(`[admin-credentials-update] Updating credentials for: ${username}`);
+
+        // Find the admin_users entry
+        const { data: existingAdmin } = await supabase
+          .from('admin_users')
+          .select('id, username')
+          .eq('username', username)
+          .maybeSingle();
+
+        if (!existingAdmin) {
+          return new Response(
+            JSON.stringify({ error: 'Utente non trovato' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Prepare update object for admin_users
+        const adminUpdate: Record<string, string> = {};
+        
+        if (newUsername && newUsername !== username) {
+          // Check if new username is already taken
+          const { data: existingNewUsername } = await supabase
+            .from('admin_users')
+            .select('id')
+            .eq('username', newUsername)
+            .maybeSingle();
+
+          if (existingNewUsername) {
+            return new Response(
+              JSON.stringify({ error: 'Username già in uso' }),
+              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          adminUpdate.username = newUsername;
+        }
+
+        if (password) {
+          adminUpdate.password_hash = await hashPassword(password);
+        }
+
+        // Update admin_users if there are changes
+        if (Object.keys(adminUpdate).length > 0) {
+          const { error: updateError } = await supabase
+            .from('admin_users')
+            .update(adminUpdate)
+            .eq('username', username);
+
+          if (updateError) throw updateError;
+        }
+
+        // Update Supabase Auth user
+        // Try both admin and operator email patterns
+        const adminEmail = `${username.toLowerCase()}@karaoke-admin.local`;
+        const operatorEmail = `${username.toLowerCase()}@operator.local`;
+        
+        const { data: existingUsers } = await supabase.auth.admin.listUsers();
+        let authUser = existingUsers?.users.find(u => u.email === adminEmail);
+        if (!authUser) {
+          authUser = existingUsers?.users.find(u => u.email === operatorEmail);
+        }
+
+        if (authUser) {
+          const authUpdate: Record<string, any> = {};
+          
+          if (newUsername && newUsername !== username) {
+            // Determine new email based on which pattern was found
+            const isOperator = authUser.email?.includes('@operator.local');
+            const newEmail = isOperator 
+              ? `${newUsername.toLowerCase()}@operator.local`
+              : `${newUsername.toLowerCase()}@karaoke-admin.local`;
+            authUpdate.email = newEmail;
+            authUpdate.user_metadata = { ...authUser.user_metadata, username: newUsername };
+          }
+          
+          if (password) {
+            authUpdate.password = password;
+          }
+
+          if (Object.keys(authUpdate).length > 0) {
+            await supabase.auth.admin.updateUserById(authUser.id, authUpdate);
+            console.log(`[admin-credentials-update] Updated auth user for: ${username}`);
+          }
+
+          // Update profile if username changed
+          if (newUsername && newUsername !== username) {
+            await supabase
+              .from('profiles')
+              .update({ 
+                display_name: newUsername, 
+                username: newUsername.toLowerCase() 
+              })
+              .eq('user_id', authUser.id);
+          }
+        }
+
+        console.log(`[admin-credentials-update] Updated credentials for: ${username} -> ${newUsername || username}`);
+        return new Response(
+          JSON.stringify({ success: true }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       default:
         return new Response(
           JSON.stringify({ error: 'Azione non valida' }),
