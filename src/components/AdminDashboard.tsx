@@ -44,6 +44,7 @@ import { AdminStaffTab } from '@/components/admin/AdminStaffTab';
 import { AdminFormatsTab } from '@/components/admin/AdminFormatsTab';
 import { AdminEventiTab } from '@/components/admin/AdminEventiTab';
 import { AdminGraficheTab } from '@/components/admin/AdminGraficheTab';
+import { AdminOperatorsTab } from '@/components/admin/AdminOperatorsTab';
 import { AdminSidebar, type AdminMainTab } from '@/components/admin/AdminSidebar';
 import {
   AlertDialog,
@@ -68,6 +69,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 import { Badge } from '@/components/ui/badge';
 import { adminAuditLog } from '@/lib/adminAudit';
 import { useAdminSectionAccess } from '@/hooks/useAdminSectionAccess';
+import { useOperatorPermissions } from '@/hooks/useOperatorPermissions';
 import { AdminMobileTabBar } from '@/components/admin/AdminMobileTabBar';
 import { AdminMobileDrawer } from '@/components/admin/AdminMobileDrawer';
 import { AdminOpenMicMobileActions } from '@/components/admin/AdminOpenMicMobileActions';
@@ -84,6 +86,7 @@ export const AdminDashboard: React.FC = () => {
   const { currentUser, logout, staffRole, session } = useAdmin();
   const { toast } = useToast();
   const { access, isLoading: isAccessLoading } = useAdminSectionAccess();
+  const operatorPerms = useOperatorPermissions();
   const isMobile = useIsMobile();
   const {
     activeReservations,
@@ -501,6 +504,12 @@ export const AdminDashboard: React.FC = () => {
               onBlockedSelect={handleBlockedSelect}
               access={access}
               isOwner={staffRole === 'owner'}
+              isOperator={operatorPerms.isOperator}
+              operatorAccess={{
+                canViewCentro: operatorPerms.canViewCentro,
+                canViewOpenmic: operatorPerms.canViewOpenmic,
+                canViewDediche: operatorPerms.canViewDediche,
+              }}
             />
           )}
         <SidebarInset>
@@ -581,44 +590,47 @@ export const AdminDashboard: React.FC = () => {
                 <Home className="w-4.5 h-4.5" />
               </Button>
 
-              {/* Desktop (md+) - reset dropdown + logout */}
+              {/* Desktop (md+) - reset dropdown + logout - HIDDEN for operators */}
               <div className="hidden md:flex items-center gap-2">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="rounded-xl text-muted-foreground hover:text-foreground"
-                    >
-                      <RotateCcw className="w-4 h-4 mr-1.5" />
-                      Reset
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56 rounded-xl">
-                    <DropdownMenuItem
-                      onClick={() => { setResetOption('openmic'); setShowResetDialog(true); }}
-                      className="rounded-lg"
-                    >
-                      <Music className="w-4 h-4 mr-2" />
-                      Reset Open Mic
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => { setResetOption('messages'); setShowResetDialog(true); }}
-                      className="rounded-lg"
-                    >
-                      <MessageSquare className="w-4 h-4 mr-2" />
-                      Reset Dediche
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem
-                      onClick={() => { setResetOption('all'); setShowResetDialog(true); }}
-                      className="text-destructive focus:text-destructive rounded-lg"
-                    >
-                      <AlertTriangle className="w-4 h-4 mr-2" />
-                      Reset Totale
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                {/* Reset menu - only for non-operators */}
+                {!operatorPerms.isOperator && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-xl text-muted-foreground hover:text-foreground"
+                      >
+                        <RotateCcw className="w-4 h-4 mr-1.5" />
+                        Reset
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-56 rounded-xl">
+                      <DropdownMenuItem
+                        onClick={() => { setResetOption('openmic'); setShowResetDialog(true); }}
+                        className="rounded-lg"
+                      >
+                        <Music className="w-4 h-4 mr-2" />
+                        Reset Open Mic
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => { setResetOption('messages'); setShowResetDialog(true); }}
+                        className="rounded-lg"
+                      >
+                        <MessageSquare className="w-4 h-4 mr-2" />
+                        Reset Dediche
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => { setResetOption('all'); setShowResetDialog(true); }}
+                        className="text-destructive focus:text-destructive rounded-lg"
+                      >
+                        <AlertTriangle className="w-4 h-4 mr-2" />
+                        Reset Totale
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -752,8 +764,8 @@ export const AdminDashboard: React.FC = () => {
                   <ReservationCard
                     key={reservation.id}
                     reservation={reservation}
-                    onComplete={handleComplete}
-                    onDelete={handleSingleDelete}
+                    onComplete={operatorPerms.canManageOpenmic ? handleComplete : undefined}
+                    onDelete={operatorPerms.canDelete ? handleSingleDelete : undefined}
                     selectionMode={selectionMode}
                     isSelected={selectedIds.has(reservation.id)}
                     onSelect={handleSelect}
@@ -776,8 +788,8 @@ export const AdminDashboard: React.FC = () => {
                   <ReservationCard
                     key={reservation.id}
                     reservation={reservation}
-                    onReactivate={handleReactivate}
-                    onDelete={handleSingleDelete}
+                    onReactivate={operatorPerms.canManageOpenmic ? handleReactivate : undefined}
+                    onDelete={operatorPerms.canDelete ? handleSingleDelete : undefined}
                     selectionMode={selectionMode}
                     isSelected={selectedIds.has(reservation.id)}
                     onSelect={handleSelect}
@@ -826,6 +838,15 @@ export const AdminDashboard: React.FC = () => {
           <AdminFormatsTab />
         ) : mainTab === 'grafiche' ? (
           <AdminGraficheTab />
+        ) : mainTab === 'operators' ? (
+          staffRole === 'owner' ? (
+            <AdminOperatorsTab />
+          ) : (
+            <div className="text-center py-12">
+              <Shield className="w-16 h-16 text-muted-foreground mx-auto mb-4 opacity-50" />
+              <p className="text-muted-foreground">Solo l'Owner può gestire gli Operatori</p>
+            </div>
+          )
         ) : mainTab === 'audit' ? (
           staffRole === 'owner' ? (
             <AdminAuditTab />
@@ -867,6 +888,12 @@ export const AdminDashboard: React.FC = () => {
         onChange={setMainTab}
         onBlockedChange={handleBlockedSelect}
         access={access}
+        isOperator={operatorPerms.isOperator}
+        operatorAccess={{
+          canViewCentro: operatorPerms.canViewCentro,
+          canViewOpenmic: operatorPerms.canViewOpenmic,
+          canViewDediche: operatorPerms.canViewDediche,
+        }}
         badges={{
           totalNotifications,
           openmicActiveCount: activeReservations.length,

@@ -36,6 +36,7 @@ export type AdminMainTab =
   | "songs"
   | "formats"
   | "grafiche"
+  | "operators"
   | "staff"
   | "permissions"
   | "settings"
@@ -53,7 +54,7 @@ type Item = {
  * Sidebar riorganizzata con 3 gruppi logici:
  * 1. LIVE: Centro notifiche + Eventi (liberi/programmati) + Formati + Grafiche
  * 2. OPERATIVO: Gestione attiva Open Mic, Dediche, Community, Canzoni
- * 3. GESTIONE: Staff, Permessi, Impostazioni, Audit (owner-only dove necessario)
+ * 3. GESTIONE: Operatori, Staff, Permessi, Impostazioni, Audit (owner-only dove necessario)
  */
 const ITEMS: Item[] = [
   // === GRUPPO LIVE ===
@@ -70,6 +71,7 @@ const ITEMS: Item[] = [
   
   // === GRUPPO GESTIONE ===
   { key: "settings", label: "Impostazioni", icon: Settings, group: "Gestione", description: "Configurazione generale" },
+  { key: "operators", label: "Operatori", icon: Users, group: "Gestione", description: "Account operativi" },
   { key: "staff", label: "Staff", icon: Users, group: "Gestione", description: "Gestione team" },
   { key: "permissions", label: "Permessi", icon: Shield, group: "Gestione", description: "Controllo accessi" },
   { key: "audit", label: "Audit", icon: Database, group: "Gestione", description: "Log attività" },
@@ -81,28 +83,56 @@ export function AdminSidebar({
   access,
   onBlockedSelect,
   isOwner = false,
+  isOperator = false,
+  operatorAccess,
 }: {
   active: AdminMainTab;
   onSelect: (tab: AdminMainTab) => void;
   access: Record<AdminSectionKey, boolean>;
   onBlockedSelect?: (tab: AdminMainTab) => void;
   isOwner?: boolean;
+  isOperator?: boolean;
+  operatorAccess?: {
+    canViewCentro: boolean;
+    canViewOpenmic: boolean;
+    canViewDediche: boolean;
+  };
 }) {
   const isBlocked = (key: AdminMainTab) => {
+    // Operators have special restricted view
+    if (isOperator && operatorAccess) {
+      if (key === "notifications") return !operatorAccess.canViewCentro;
+      if (key === "openmic") return !operatorAccess.canViewOpenmic;
+      if (key === "dediche") return !operatorAccess.canViewDediche;
+      // Operators never see these sections
+      if (["event", "formats", "grafiche", "songs", "community", "settings", "staff", "permissions", "audit"].includes(key)) {
+        return true;
+      }
+      return false;
+    }
+    
     if (key === "openmic") return !access.openmic;
     if (key === "songs") return !access.openmic;
     if (key === "dediche") return !access.dediche;
     if (key === "community") return !access.community;
     // Staff, permissions, and audit tabs are owner-only
     if (key === "staff") return !isOwner;
+    if (key === "operators") return !isOwner;
     if (key === "permissions") return !isOwner;
     if (key === "audit") return !isOwner;
     return false;
   };
 
-  // Filter items based on visibility - owner-only tabs hidden from non-owners
+  // Filter items based on visibility
   const visibleItems = ITEMS.filter((item) => {
+    // Operators only see Centro, Open Mic, Dediche
+    if (isOperator) {
+      return ["notifications", "openmic", "dediche"].includes(item.key);
+    }
+    // Owner-only tabs hidden from non-owners
+    // Owner-only tabs hidden from non-owners
     if (item.key === "staff" && !isOwner) return false;
+    if (item.key === "operators" && !isOwner) return false;
     if (item.key === "permissions" && !isOwner) return false;
     if (item.key === "audit" && !isOwner) return false;
     return true;

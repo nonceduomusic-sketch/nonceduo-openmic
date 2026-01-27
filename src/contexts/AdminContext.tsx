@@ -12,7 +12,7 @@ interface AdminContextType {
   isLoading: boolean;
   currentUser: AdminUser | null;
   session: Session | null;
-  staffRole: 'owner' | 'admin' | 'moderator' | null;
+  staffRole: 'owner' | 'admin' | 'moderator' | 'operator' | null;
   login: (email: string, password: string) => Promise<{ error: Error | null }>;
   logout: () => Promise<void>;
 }
@@ -23,7 +23,7 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [isLoading, setIsLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<AdminUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [staffRole, setStaffRole] = useState<'owner' | 'admin' | 'moderator' | null>(null);
+  const [staffRole, setStaffRole] = useState<'owner' | 'admin' | 'moderator' | 'operator' | null>(null);
 
   useEffect(() => {
     // IMPORTANT: do NOT do async Supabase calls inside onAuthStateChange callback.
@@ -49,9 +49,9 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const tryFetchRole = async () => {
         const { data, error } = await supabase
           .from('user_roles')
-          .select('role')
-          .eq('user_id', user.id)
-          .in('role', ['owner', 'admin', 'moderator'])
+        .select('role')
+        .eq('user_id', user.id)
+        .in('role', ['owner', 'admin', 'moderator', 'operator'])
           .maybeSingle();
 
         if (error) {
@@ -59,7 +59,7 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           return null;
         }
 
-        return (data?.role as 'owner' | 'admin' | 'moderator' | undefined) ?? null;
+        return (data?.role as 'owner' | 'admin' | 'moderator' | 'operator' | undefined) ?? null;
       };
 
       // First attempt
