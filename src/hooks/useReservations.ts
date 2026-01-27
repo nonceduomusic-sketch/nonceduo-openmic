@@ -153,6 +153,18 @@ export const useReservations = () => {
         toast.error(data.error);
         return false;
       }
+      
+      toast.success('Prenotazione inviata!');
+      
+      // Return success with limit reached info if present (post-booking warning)
+      if (data?.limit_reached) {
+        return { 
+          success: true, 
+          limitReached: data.limit_reached 
+        };
+      }
+      
+      return true;
     } catch (error: any) {
       if (import.meta.env.DEV) {
         console.error('Error creating reservation:', error);
@@ -161,9 +173,6 @@ export const useReservations = () => {
       toast.error(errorMessage);
       return false;
     }
-
-    toast.success('Prenotazione inviata!');
-    return true;
   };
 
   const completeReservation = async (id: string) => {

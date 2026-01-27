@@ -87,7 +87,7 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
       wantsDedication && dedicationMessage.trim() ? dedicationMessage.trim() : undefined
     );
     
-    // Handle user limit warning
+    // Handle user limit warning (pre-booking block)
     if (typeof result === 'object' && result.errorType === 'user_limit') {
       setLimitWarningData({
         message: result.error,
@@ -99,13 +99,29 @@ export const BookingConfirmationModal: React.FC<BookingConfirmationModalProps> =
       return;
     }
     
-    if (result === true) {
+    // Handle success
+    if (result === true || (typeof result === 'object' && result.success)) {
       setIsConfirmed(true);
+      
       // Fire celebration effects
       if (wantsDedication && dedicationMessage.trim()) {
         fireHearts();
       } else {
         fireCelebration();
+      }
+      
+      // Check if user has NOW reached their limit after this booking
+      // Show a friendly message after the success animation
+      if (typeof result === 'object' && result.limitReached) {
+        // Delay showing the limit reached dialog until after the success is shown
+        setTimeout(() => {
+          setLimitWarningData({
+            message: result.limitReached.message,
+            limitType: result.limitReached.type,
+            cooldownMinutes: undefined,
+          });
+          setShowLimitWarning(true);
+        }, 2000); // Show after 2 seconds so user sees success first
       }
     }
     
