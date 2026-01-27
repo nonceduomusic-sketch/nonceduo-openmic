@@ -373,7 +373,7 @@ export const EventQRCodeCard: React.FC = () => {
     }
   }, [config, toast]);
 
-  const downloadImage = useCallback(async () => {
+  const downloadImage = useCallback(() => {
     if (!previewUrl) return;
 
     const formatConfig = IMAGE_FORMATS[config.imageFormat];
@@ -381,43 +381,49 @@ export const EventQRCodeCard: React.FC = () => {
     const nameStr = config.venueName ? config.venueName.toLowerCase().replace(/\s+/g, '-') : 'evento';
     const fileName = `qrcode-${nameStr}-${dateStr}-${formatConfig.width}x${formatConfig.height}.png`;
 
-    // Detect mobile devices
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      ((navigator as any).platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1);
+
+    const openInNewTab = (url: string) => {
+      const w = window.open('', '_blank', 'noopener,noreferrer');
+      if (w) {
+        try {
+          w.opener = null;
+        } catch {}
+        w.location.href = url;
+        return;
+      }
+      window.location.href = url;
+    };
 
     try {
-      const response = await fetch(previewUrl);
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-
-      if (isMobile) {
-        // On mobile: open in new tab for manual save
-        window.open(blobUrl, '_blank');
+      // iOS Safari: open, then user saves manually
+      if (isIOS) {
+        openInNewTab(previewUrl);
         toast({
           title: 'Immagine aperta',
           description: 'Tieni premuto sull\'immagine e seleziona "Salva immagine".',
         });
-        // Keep URL alive longer for mobile
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 120000);
-      } else {
-        // On desktop: direct download
-        const link = document.createElement('a');
-        link.download = fileName;
-        link.href = blobUrl;
-        link.style.display = 'none';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        toast({
-          title: 'Download completato',
-          description: 'Il QR Code è stato scaricato.',
-        });
-        
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+        return;
       }
+
+      // Android/desktop: keep it within the click gesture (no await)
+      const link = document.createElement('a');
+      link.download = fileName;
+      link.href = previewUrl;
+      link.rel = 'noopener';
+      link.style.display = 'none';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast({
+        title: 'Download avviato',
+        description: 'Controlla la cartella Download del telefono.',
+      });
     } catch (error) {
       console.error('Download error:', error);
-      window.open(previewUrl, '_blank');
+      openInNewTab(previewUrl);
       toast({
         title: 'Aperto in nuova scheda',
         description: 'Tieni premuto sull\'immagine per salvarla.',
