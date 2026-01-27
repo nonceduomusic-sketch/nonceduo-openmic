@@ -57,7 +57,15 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
     closurePreviewEnabled,
     countdownEndShowMinutes,
     endMode,
-  } = freeModeState;
+    // Final period limits
+    openmicFinalLimitEnabled,
+    openmicFinalLimitMinutes,
+    openmicFinalLimitSongs,
+  } = freeModeState as FreeModeState & {
+    openmicFinalLimitEnabled?: boolean;
+    openmicFinalLimitMinutes?: number | null;
+    openmicFinalLimitSongs?: number | null;
+  };
 
   // Update time every second
   useEffect(() => {
@@ -155,7 +163,37 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
   };
 
   const bookedCount = statuses.filter(s => s.status === 'in_progress').length;
-  const remaining = openmicMaxSongs ? openmicMaxSongs - openmicCurrentCount : null;
+  
+  // Calculate effective limit: if final limit is active and we're in the final period,
+  // use the final limit (more restrictive) instead of global limit
+  const effectiveMaxSongs = useMemo(() => {
+    // Check if final limit is active
+    if (!openmicFinalLimitEnabled || !openmicFinalLimitMinutes || !openmicFinalLimitSongs) {
+      return openmicMaxSongs;
+    }
+    
+    // Calculate minutes to end based on expiresAt
+    if (!expiresAt) {
+      return openmicMaxSongs;
+    }
+    
+    const endTime = new Date(expiresAt);
+    const minutesToEnd = (endTime.getTime() - now.getTime()) / (1000 * 60);
+    
+    // If we're in the final period, use the more restrictive limit
+    if (minutesToEnd <= openmicFinalLimitMinutes) {
+      // The effective limit is either the final limit or global limit, whichever is smaller
+      if (openmicMaxSongs === null) {
+        return openmicFinalLimitSongs;
+      }
+      return Math.min(openmicFinalLimitSongs, openmicMaxSongs);
+    }
+    
+    // Not in final period, use global limit
+    return openmicMaxSongs;
+  }, [openmicMaxSongs, openmicFinalLimitEnabled, openmicFinalLimitMinutes, openmicFinalLimitSongs, expiresAt, now]);
+  
+  const remaining = effectiveMaxSongs ? effectiveMaxSongs - openmicCurrentCount : null;
 
   return (
     <>
