@@ -365,14 +365,17 @@ export type Database = {
           reopen_songs_used: number | null
           reopen_until: string | null
           updated_at: string | null
+          user_limit_consecutive_enabled: boolean | null
           user_limit_consecutive_songs: number | null
           user_limit_cooldown_message: string | null
           user_limit_dediche_total: number | null
           user_limit_enabled: boolean | null
+          user_limit_interval_enabled: boolean | null
           user_limit_interval_minutes: number | null
           user_limit_mode: string | null
           user_limit_songs_interval: number | null
           user_limit_songs_total: number | null
+          user_limit_total_enabled: boolean | null
           voting_enabled: boolean | null
         }
         Insert: {
@@ -419,14 +422,17 @@ export type Database = {
           reopen_songs_used?: number | null
           reopen_until?: string | null
           updated_at?: string | null
+          user_limit_consecutive_enabled?: boolean | null
           user_limit_consecutive_songs?: number | null
           user_limit_cooldown_message?: string | null
           user_limit_dediche_total?: number | null
           user_limit_enabled?: boolean | null
+          user_limit_interval_enabled?: boolean | null
           user_limit_interval_minutes?: number | null
           user_limit_mode?: string | null
           user_limit_songs_interval?: number | null
           user_limit_songs_total?: number | null
+          user_limit_total_enabled?: boolean | null
           voting_enabled?: boolean | null
         }
         Update: {
@@ -473,14 +479,17 @@ export type Database = {
           reopen_songs_used?: number | null
           reopen_until?: string | null
           updated_at?: string | null
+          user_limit_consecutive_enabled?: boolean | null
           user_limit_consecutive_songs?: number | null
           user_limit_cooldown_message?: string | null
           user_limit_dediche_total?: number | null
           user_limit_enabled?: boolean | null
+          user_limit_interval_enabled?: boolean | null
           user_limit_interval_minutes?: number | null
           user_limit_mode?: string | null
           user_limit_songs_interval?: number | null
           user_limit_songs_total?: number | null
+          user_limit_total_enabled?: boolean | null
           voting_enabled?: boolean | null
         }
         Relationships: []
@@ -534,14 +543,17 @@ export type Database = {
           started_at: string | null
           updated_at: string | null
           updated_by: string | null
+          user_limit_consecutive_enabled: boolean | null
           user_limit_consecutive_songs: number | null
           user_limit_cooldown_message: string | null
           user_limit_dediche_total: number | null
           user_limit_enabled: boolean | null
+          user_limit_interval_enabled: boolean | null
           user_limit_interval_minutes: number | null
           user_limit_mode: string | null
           user_limit_songs_interval: number | null
           user_limit_songs_total: number | null
+          user_limit_total_enabled: boolean | null
           voting_enabled: boolean | null
         }
         Insert: {
@@ -592,14 +604,17 @@ export type Database = {
           started_at?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          user_limit_consecutive_enabled?: boolean | null
           user_limit_consecutive_songs?: number | null
           user_limit_cooldown_message?: string | null
           user_limit_dediche_total?: number | null
           user_limit_enabled?: boolean | null
+          user_limit_interval_enabled?: boolean | null
           user_limit_interval_minutes?: number | null
           user_limit_mode?: string | null
           user_limit_songs_interval?: number | null
           user_limit_songs_total?: number | null
+          user_limit_total_enabled?: boolean | null
           voting_enabled?: boolean | null
         }
         Update: {
@@ -650,14 +665,17 @@ export type Database = {
           started_at?: string | null
           updated_at?: string | null
           updated_by?: string | null
+          user_limit_consecutive_enabled?: boolean | null
           user_limit_consecutive_songs?: number | null
           user_limit_cooldown_message?: string | null
           user_limit_dediche_total?: number | null
           user_limit_enabled?: boolean | null
+          user_limit_interval_enabled?: boolean | null
           user_limit_interval_minutes?: number | null
           user_limit_mode?: string | null
           user_limit_songs_interval?: number | null
           user_limit_songs_total?: number | null
+          user_limit_total_enabled?: boolean | null
           voting_enabled?: boolean | null
         }
         Relationships: []

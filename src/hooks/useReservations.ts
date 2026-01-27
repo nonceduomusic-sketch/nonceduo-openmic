@@ -140,6 +140,16 @@ export const useReservations = () => {
       
       // Check if backend returned an error message
       if (data?.error) {
+        // Return structured error data for user limit warnings
+        if (data.error_type === 'user_limit') {
+          return { 
+            success: false, 
+            error: data.error,
+            errorType: 'user_limit',
+            limitType: data.limit_type,
+            cooldownMinutes: data.cooldown_minutes 
+          };
+        }
         toast.error(data.error);
         return false;
       }

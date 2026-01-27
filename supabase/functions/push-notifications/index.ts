@@ -808,32 +808,37 @@ serve(async (req) => {
           
           const isDedica = !!dedicationMessage;
           
-          // Check total songs limit
-          if (!isDedica && limitsSource.user_limit_songs_total !== null) {
+          // Check if individual limit types are enabled (new flags)
+          const totalEnabled = limitsSource.user_limit_total_enabled ?? true; // Default true for backward compat
+          const consecutiveEnabled = limitsSource.user_limit_consecutive_enabled ?? true;
+          const intervalEnabled = limitsSource.user_limit_interval_enabled ?? true;
+          
+          // Check total songs limit (only if total limits are enabled)
+          if (totalEnabled && !isDedica && limitsSource.user_limit_songs_total !== null) {
             if (currentSongsCount >= limitsSource.user_limit_songs_total) {
               const msg = `Hai raggiunto il limite di ${limitsSource.user_limit_songs_total} canzoni per questa serata`;
-              return json({ error: msg }, 400);
+              return json({ error: msg, error_type: 'user_limit', limit_type: 'total_songs' }, 400);
             }
           }
           
-          // Check total dediche limit
-          if (isDedica && limitsSource.user_limit_dediche_total !== null) {
+          // Check total dediche limit (only if total limits are enabled)
+          if (totalEnabled && isDedica && limitsSource.user_limit_dediche_total !== null) {
             if (currentDedicheCount >= limitsSource.user_limit_dediche_total) {
               const msg = `Hai raggiunto il limite di ${limitsSource.user_limit_dediche_total} dediche per questa serata`;
-              return json({ error: msg }, 400);
+              return json({ error: msg, error_type: 'user_limit', limit_type: 'total_dediche' }, 400);
             }
           }
           
-          // Check consecutive songs limit
-          if (!isDedica && limitsSource.user_limit_consecutive_songs !== null) {
+          // Check consecutive songs limit (only if consecutive limits are enabled)
+          if (consecutiveEnabled && !isDedica && limitsSource.user_limit_consecutive_songs !== null) {
             if (currentConsecutive >= limitsSource.user_limit_consecutive_songs) {
               const msg = `Hai prenotato ${limitsSource.user_limit_consecutive_songs} canzoni consecutive. Lascia spazio agli altri!`;
-              return json({ error: msg }, 400);
+              return json({ error: msg, error_type: 'user_limit', limit_type: 'consecutive' }, 400);
             }
           }
           
-          // Check interval limit (max X songs every Y minutes)
-          if (!isDedica && limitsSource.user_limit_songs_interval !== null && limitsSource.user_limit_interval_minutes !== null && lastBookingAt) {
+          // Check interval limit (only if interval limits are enabled)
+          if (intervalEnabled && !isDedica && limitsSource.user_limit_songs_interval !== null && limitsSource.user_limit_interval_minutes !== null && lastBookingAt) {
             const lastBooking = new Date(lastBookingAt);
             const intervalMs = limitsSource.user_limit_interval_minutes * 60 * 1000;
             const windowStart = new Date(Date.now() - intervalMs);
@@ -850,7 +855,7 @@ serve(async (req) => {
               const cooldownMsg = limitsSource.user_limit_cooldown_message || 'Hai superato il limite di prenotazioni.';
               const minutesRemaining = Math.ceil((lastBooking.getTime() + intervalMs - Date.now()) / 60000);
               const msg = cooldownMsg.replace('{minutes}', String(minutesRemaining));
-              return json({ error: msg }, 400);
+              return json({ error: msg, error_type: 'user_limit', limit_type: 'interval', cooldown_minutes: minutesRemaining }, 400);
             }
           }
         }
