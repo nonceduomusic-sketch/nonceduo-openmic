@@ -52,7 +52,7 @@ export const AdminProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         .select('role')
         .eq('user_id', user.id)
         .in('role', ['owner', 'admin', 'moderator', 'operator'])
-          .maybeSingle();
+        .maybeSingle();
 
         if (error) {
           console.error('Admin role check failed:', error);
