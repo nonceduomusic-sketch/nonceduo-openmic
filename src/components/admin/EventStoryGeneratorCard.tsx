@@ -23,6 +23,7 @@ import {
   MessageSquare,
   Info,
   AlignCenter,
+  Share2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -885,55 +886,11 @@ export const EventStoryGeneratorCard: React.FC = () => {
     const dateStr = config.eventDate ? format(config.eventDate, 'yyyy-MM-dd') : 'evento';
     const fileName = `story-${nameStr}-${dateStr}-${formatConfig.width}x${formatConfig.height}.png`;
 
-    const ua = navigator.userAgent;
-    // iOS/Safari doesn't support the download attribute reliably.
-    const isIOS = /iPad|iPhone|iPod/.test(ua);
-    const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
-    const isAndroid = /Android/i.test(ua);
-    // Some in-app browsers are very restrictive (Instagram, Facebook, etc.)
-    const isInAppBrowser = /(Instagram|FBAN|FBAV|Line|Twitter|TikTok|Snapchat)/i.test(ua);
-    
     try {
-      // Convert base64 to blob
       const response = await fetch(previewUrl);
       const blob = await response.blob();
-
-      // 1) Android / In-app: prefer Share Sheet (most reliable)
-      const navAny = navigator as unknown as {
-        share?: (data: unknown) => Promise<void>;
-        canShare?: (data: unknown) => boolean;
-      };
-      if ((isAndroid || isInAppBrowser) && typeof navAny.share === 'function') {
-        const file = new File([blob], fileName, { type: blob.type || 'image/png' });
-        const canShareFiles = typeof navAny.canShare !== 'function' || navAny.canShare({ files: [file] });
-        if (canShareFiles) {
-          await navAny.share({ files: [file], title: fileName });
-          toast({
-            title: 'Condivisione aperta',
-            description: 'Seleziona “Salva” o “Download” dal menu di condivisione.',
-            duration: 5000,
-          });
-          return;
-        }
-      }
-
-      // 2) iOS/Safari: open in new tab and instruct long-press save
-      if (isIOS || isSafari) {
-        const blobUrl = URL.createObjectURL(blob);
-        const newWindow = window.open(blobUrl, '_blank');
-        if (!newWindow) window.location.href = blobUrl;
-
-        toast({
-          title: '📲 Immagine aperta',
-          description: 'Tieni premuto sull\'immagine e seleziona “Salva immagine”.',
-          duration: 5000,
-        });
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-        return;
-      }
-
-      // 3) Default (desktop + Android browsers that support it): direct download
       const blobUrl = URL.createObjectURL(blob);
+      
       const link = document.createElement('a');
       link.download = fileName;
       link.href = blobUrl;
@@ -941,19 +898,62 @@ export const EventStoryGeneratorCard: React.FC = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-
+      
       toast({
         title: 'Download avviato',
         description: 'La grafica è stata scaricata.',
       });
+      
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     } catch (error) {
       console.error('Download error:', error);
-      // Fallback: open in new tab for manual save
       window.open(previewUrl, '_blank');
       toast({
         title: 'Aperto in nuova scheda',
         description: 'Tieni premuto sull\'immagine per salvarla.',
+      });
+    }
+  }, [previewUrl, config, toast]);
+
+  const shareImage = useCallback(async () => {
+    if (!previewUrl) return;
+
+    const formatConfig = IMAGE_FORMATS[config.imageFormat];
+    const nameStr = config.venueName ? config.venueName.toLowerCase().replace(/\s+/g, '-') : 'grafica';
+    const dateStr = config.eventDate ? format(config.eventDate, 'yyyy-MM-dd') : 'evento';
+    const fileName = `story-${nameStr}-${dateStr}-${formatConfig.width}x${formatConfig.height}.png`;
+
+    try {
+      const response = await fetch(previewUrl);
+      const blob = await response.blob();
+      
+      const navAny = navigator as unknown as {
+        share?: (data: unknown) => Promise<void>;
+        canShare?: (data: unknown) => boolean;
+      };
+      
+      if (typeof navAny.share === 'function') {
+        const file = new File([blob], fileName, { type: blob.type || 'image/png' });
+        const canShareFiles = typeof navAny.canShare !== 'function' || navAny.canShare({ files: [file] });
+        if (canShareFiles) {
+          await navAny.share({ files: [file], title: fileName });
+          return;
+        }
+      }
+      
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+      toast({
+        title: 'Condivisione non supportata',
+        description: 'Tieni premuto sull\'immagine per condividerla.',
+      });
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (error) {
+      console.error('Share error:', error);
+      toast({
+        title: 'Errore condivisione',
+        description: 'Impossibile condividere l\'immagine.',
+        variant: 'destructive',
       });
     }
   }, [previewUrl, config, toast]);
@@ -1131,7 +1131,7 @@ export const EventStoryGeneratorCard: React.FC = () => {
             elements={[
               { id: 'logo', label: 'Logo', x: config.logoPos.x, y: config.logoPos.y, enabled: config.useBrandLogo },
               { id: 'foto', label: 'Foto', x: config.fotoPos.x, y: config.fotoPos.y, enabled: config.showSplash },
-              { id: 'title', label: 'Titolo', x: config.titlePos.x, y: config.titlePos.y, enabled: config.showTitle && !config.useBrandLogo },
+              { id: 'title', label: 'Titolo', x: config.titlePos.x, y: config.titlePos.y, enabled: config.showTitle },
               { id: 'venue', label: 'Locale', x: config.venuePos.x, y: config.venuePos.y, enabled: config.showVenue && !!config.venueName },
               { id: 'datetime', label: 'Data/Ora', x: config.datetimePos.x, y: config.datetimePos.y, enabled: config.showDatetime && !!(config.eventDate || config.eventTime) },
               { id: 'qr', label: 'QR', x: config.qrPos.x, y: config.qrPos.y, enabled: config.showQrCode },
@@ -1474,15 +1474,26 @@ export const EventStoryGeneratorCard: React.FC = () => {
                 <Check className="w-4 h-4 text-green-500" />
                 Anteprima
               </span>
-              <Button
-                onClick={downloadImage}
-                variant="secondary"
-                size="sm"
-                className="gap-2"
-              >
-                <Download className="w-4 h-4" />
-                Scarica PNG
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={shareImage}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Condividi
+                </Button>
+                <Button
+                  onClick={downloadImage}
+                  variant="secondary"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Scarica
+                </Button>
+              </div>
             </div>
             
             <div className={cn(

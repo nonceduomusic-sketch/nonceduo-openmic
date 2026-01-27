@@ -45,6 +45,7 @@ interface QRCodeConfig {
   eventDate: Date | undefined;
   eventTime: string;
   eventType: EventType;
+  showEventType: boolean;
   additionalInfo: string;
   stylePreset: StylePreset;
   imageFormat: ImageFormat;
@@ -58,6 +59,7 @@ const DEFAULT_CONFIG: QRCodeConfig = {
   eventDate: undefined,
   eventTime: '',
   eventType: 'public',
+  showEventType: true,
   additionalInfo: '',
   stylePreset: 'neon',
   imageFormat: 'square',
@@ -252,8 +254,8 @@ export const EventQRCodeCard: React.FC = () => {
         currentY += 80 * scale;
       }
 
-      // Event type badge
-      if (config.eventType) {
+      // Event type badge - only if showEventType is enabled
+      if (config.showEventType) {
         const badgeText = config.eventType === 'public' ? '🌐 Evento Pubblico' : '🔒 Evento Privato';
         ctx.font = `500 ${Math.round(28 * scale)}px "Inter", sans-serif`;
         ctx.fillStyle = config.eventType === 'public' ? 'rgba(34, 197, 94, 0.9)' : 'rgba(251, 146, 60, 0.9)';
@@ -379,52 +381,11 @@ export const EventQRCodeCard: React.FC = () => {
     const nameStr = config.venueName ? config.venueName.toLowerCase().replace(/\s+/g, '-') : 'evento';
     const fileName = `qrcode-${nameStr}-${dateStr}-${formatConfig.width}x${formatConfig.height}.png`;
 
-    const ua = navigator.userAgent;
-    const isIOS = /iPad|iPhone|iPod/.test(ua);
-    const isSafari = /^((?!chrome|android).)*safari/i.test(ua);
-    const isAndroid = /Android/i.test(ua);
-    const isInAppBrowser = /(Instagram|FBAN|FBAV|Line|Twitter|TikTok|Snapchat)/i.test(ua);
-    
     try {
       const response = await fetch(previewUrl);
       const blob = await response.blob();
-
-      // Android / In-app: prefer Share Sheet
-      const navAny = navigator as unknown as {
-        share?: (data: unknown) => Promise<void>;
-        canShare?: (data: unknown) => boolean;
-      };
-      if ((isAndroid || isInAppBrowser) && typeof navAny.share === 'function') {
-        const file = new File([blob], fileName, { type: blob.type || 'image/png' });
-        const canShareFiles = typeof navAny.canShare !== 'function' || navAny.canShare({ files: [file] });
-        if (canShareFiles) {
-          await navAny.share({ files: [file], title: fileName });
-          toast({
-            title: 'Condivisione aperta',
-            description: 'Seleziona "Salva" o "Download" dal menu.',
-            duration: 5000,
-          });
-          return;
-        }
-      }
-
-      // iOS/Safari: open in new tab
-      if (isIOS || isSafari) {
-        const blobUrl = URL.createObjectURL(blob);
-        const newWindow = window.open(blobUrl, '_blank');
-        if (!newWindow) window.location.href = blobUrl;
-
-        toast({
-          title: '📲 Immagine aperta',
-          description: 'Tieni premuto sull\'immagine e seleziona "Salva immagine".',
-          duration: 5000,
-        });
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
-        return;
-      }
-
-      // Desktop: direct download
       const blobUrl = URL.createObjectURL(blob);
+      
       const link = document.createElement('a');
       link.download = fileName;
       link.href = blobUrl;
@@ -432,18 +393,62 @@ export const EventQRCodeCard: React.FC = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
-
+      
       toast({
         title: 'Download avviato',
         description: 'Il QR Code è stato scaricato.',
       });
+      
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     } catch (error) {
       console.error('Download error:', error);
       window.open(previewUrl, '_blank');
       toast({
         title: 'Aperto in nuova scheda',
         description: 'Tieni premuto sull\'immagine per salvarla.',
+      });
+    }
+  }, [previewUrl, config, toast]);
+
+  const shareImage = useCallback(async () => {
+    if (!previewUrl) return;
+
+    const formatConfig = IMAGE_FORMATS[config.imageFormat];
+    const dateStr = config.eventDate ? format(config.eventDate, 'yyyy-MM-dd') : 'qr';
+    const nameStr = config.venueName ? config.venueName.toLowerCase().replace(/\s+/g, '-') : 'evento';
+    const fileName = `qrcode-${nameStr}-${dateStr}-${formatConfig.width}x${formatConfig.height}.png`;
+
+    try {
+      const response = await fetch(previewUrl);
+      const blob = await response.blob();
+      
+      const navAny = navigator as unknown as {
+        share?: (data: unknown) => Promise<void>;
+        canShare?: (data: unknown) => boolean;
+      };
+      
+      if (typeof navAny.share === 'function') {
+        const file = new File([blob], fileName, { type: blob.type || 'image/png' });
+        const canShareFiles = typeof navAny.canShare !== 'function' || navAny.canShare({ files: [file] });
+        if (canShareFiles) {
+          await navAny.share({ files: [file], title: fileName });
+          return;
+        }
+      }
+      
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+      toast({
+        title: 'Condivisione non supportata',
+        description: 'Tieni premuto sull\'immagine per condividerla.',
+      });
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 60000);
+    } catch (error) {
+      console.error('Share error:', error);
+      toast({
+        title: 'Errore condivisione',
+        description: 'Impossibile condividere l\'immagine.',
+        variant: 'destructive',
       });
     }
   }, [previewUrl, config, toast]);
@@ -646,6 +651,23 @@ export const EventQRCodeCard: React.FC = () => {
           </RadioGroup>
         </div>
 
+        {/* Show Event Type Toggle */}
+        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+          <Label htmlFor="qr-show-event-type" className="text-sm cursor-pointer">
+            Mostra tipologia evento
+          </Label>
+          <Button
+            id="qr-show-event-type"
+            variant={config.showEventType ? "default" : "outline"}
+            size="sm"
+            onClick={() => updateConfig('showEventType', !config.showEventType)}
+            className="h-8"
+          >
+            {config.showEventType ? <Check className="w-4 h-4 mr-1" /> : null}
+            {config.showEventType ? 'Attivo' : 'Disattivo'}
+          </Button>
+        </div>
+
         {/* Style Preset */}
         <div className="space-y-2">
           <Label className="flex items-center gap-2 text-sm">
@@ -747,15 +769,26 @@ export const EventQRCodeCard: React.FC = () => {
                 <Check className="w-4 h-4 text-green-500" />
                 Anteprima
               </span>
-              <Button
-                onClick={downloadImage}
-                variant="secondary"
-                size="sm"
-                className="gap-2"
-              >
-                <Download className="w-4 h-4" />
-                Scarica
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={shareImage}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Share2 className="w-4 h-4" />
+                  Condividi
+                </Button>
+                <Button
+                  onClick={downloadImage}
+                  variant="secondary"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Download className="w-4 h-4" />
+                  Scarica
+                </Button>
+              </div>
             </div>
             
             <div className={cn(
