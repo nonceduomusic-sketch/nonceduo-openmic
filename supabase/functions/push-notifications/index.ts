@@ -808,15 +808,20 @@ serve(async (req) => {
           
           const isDedica = !!dedicationMessage;
           
-          // Check if individual limit types are enabled (new flags)
-          const totalEnabled = limitsSource.user_limit_total_enabled ?? true; // Default true for backward compat
-          const consecutiveEnabled = limitsSource.user_limit_consecutive_enabled ?? true;
-          const intervalEnabled = limitsSource.user_limit_interval_enabled ?? true;
+          // Check if individual limit types are enabled - default FALSE to require explicit opt-in
+          const totalEnabled = limitsSource.user_limit_total_enabled === true;
+          const consecutiveEnabled = limitsSource.user_limit_consecutive_enabled === true;
+          const intervalEnabled = limitsSource.user_limit_interval_enabled === true;
+          
+          console.log(`[push] User limits check: totalEnabled=${totalEnabled}, consecutiveEnabled=${consecutiveEnabled}, intervalEnabled=${intervalEnabled}`);
+          console.log(`[push] Current counts: songs=${currentSongsCount}, dediche=${currentDedicheCount}, consecutive=${currentConsecutive}`);
+          console.log(`[push] Limits: songs_total=${limitsSource.user_limit_songs_total}, dediche_total=${limitsSource.user_limit_dediche_total}, consecutive=${limitsSource.user_limit_consecutive_songs}`);
           
           // Check total songs limit (only if total limits are enabled)
           if (totalEnabled && !isDedica && limitsSource.user_limit_songs_total !== null) {
             if (currentSongsCount >= limitsSource.user_limit_songs_total) {
               const msg = `Hai raggiunto il limite di ${limitsSource.user_limit_songs_total} canzoni per questa serata`;
+              console.log(`[push] BLOCKED: ${msg}`);
               return json({ error: msg, error_type: 'user_limit', limit_type: 'total_songs' }, 400);
             }
           }
@@ -833,6 +838,7 @@ serve(async (req) => {
           if (consecutiveEnabled && !isDedica && limitsSource.user_limit_consecutive_songs !== null) {
             if (currentConsecutive >= limitsSource.user_limit_consecutive_songs) {
               const msg = `Hai prenotato ${limitsSource.user_limit_consecutive_songs} canzoni consecutive. Lascia spazio agli altri!`;
+              console.log(`[push] BLOCKED: ${msg}`);
               return json({ error: msg, error_type: 'user_limit', limit_type: 'consecutive' }, 400);
             }
           }
@@ -855,6 +861,7 @@ serve(async (req) => {
               const cooldownMsg = limitsSource.user_limit_cooldown_message || 'Hai superato il limite di prenotazioni.';
               const minutesRemaining = Math.ceil((lastBooking.getTime() + intervalMs - Date.now()) / 60000);
               const msg = cooldownMsg.replace('{minutes}', String(minutesRemaining));
+              console.log(`[push] BLOCKED: ${msg}`);
               return json({ error: msg, error_type: 'user_limit', limit_type: 'interval', cooldown_minutes: minutesRemaining }, 400);
             }
           }
