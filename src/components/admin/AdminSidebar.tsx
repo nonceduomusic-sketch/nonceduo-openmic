@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AdminSectionKey } from "@/hooks/useAdminSectionAccess";
+import { Send } from "lucide-react";
 
 export type AdminMainTab =
   | "notifications"
@@ -36,6 +37,7 @@ export type AdminMainTab =
   | "songs"
   | "formats"
   | "grafiche"
+  | "notifiche-live"
   | "operators"
   | "staff"
   | "permissions"
@@ -61,6 +63,7 @@ const ITEMS: Item[] = [
   { key: "notifications", label: "Centro", icon: Bell, group: "Live", description: "Dashboard in tempo reale" },
   { key: "event", label: "Eventi", icon: Calendar, group: "Live", description: "Eventi liberi e programmati" },
   { key: "formats", label: "Formati", icon: SlidersHorizontal, group: "Live", description: "Toggle e votazioni" },
+  { key: "notifiche-live", label: "Notifiche Live", icon: Send, group: "Live", description: "Email e Telegram" },
   { key: "grafiche", label: "Grafiche", icon: Image, group: "Live", description: "Locandine e storie" },
   
   // === GRUPPO OPERATIVO ===

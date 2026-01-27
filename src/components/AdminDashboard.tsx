@@ -45,6 +45,7 @@ import { AdminFormatsTab } from '@/components/admin/AdminFormatsTab';
 import { AdminEventiTab } from '@/components/admin/AdminEventiTab';
 import { AdminGraficheTab } from '@/components/admin/AdminGraficheTab';
 import { AdminOperatorsTab } from '@/components/admin/AdminOperatorsTab';
+import { AdminNotificheLiveTab } from '@/components/admin/AdminNotificheLiveTab';
 import { AdminSidebar, type AdminMainTab } from '@/components/admin/AdminSidebar';
 import {
   AlertDialog,
@@ -838,6 +839,8 @@ export const AdminDashboard: React.FC = () => {
           <AdminFormatsTab />
         ) : mainTab === 'grafiche' ? (
           <AdminGraficheTab />
+        ) : mainTab === 'notifiche-live' ? (
+          <AdminNotificheLiveTab />
         ) : mainTab === 'operators' ? (
           staffRole === 'owner' ? (
             <AdminOperatorsTab />
