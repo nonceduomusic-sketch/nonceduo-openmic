@@ -56,6 +56,13 @@ export interface FreeModeState {
   dedicheMaxTotal: number | null;
   dedicheCurrentCount: number;
   expiresAt: string | null;
+  // Final period limits (ultimi X minuti)
+  openmicFinalLimitEnabled: boolean;
+  openmicFinalLimitMinutes: number | null;
+  openmicFinalLimitSongs: number | null;
+  dedicheFinalLimitEnabled: boolean;
+  dedicheFinalLimitMinutes: number | null;
+  dedicheFinalLimitTotal: number | null;
   // Reopening
   reopenActive: boolean;
   reopenUntil: string | null;
@@ -104,6 +111,12 @@ export const useLiveEvent = () => {
     dedicheMaxTotal: null,
     dedicheCurrentCount: 0,
     expiresAt: null,
+    openmicFinalLimitEnabled: false,
+    openmicFinalLimitMinutes: null,
+    openmicFinalLimitSongs: null,
+    dedicheFinalLimitEnabled: false,
+    dedicheFinalLimitMinutes: null,
+    dedicheFinalLimitTotal: null,
     reopenActive: false,
     reopenUntil: null,
     reopenMessage: null,
@@ -174,6 +187,12 @@ export const useLiveEvent = () => {
           dedicheMaxTotal: null,
           dedicheCurrentCount: 0,
           expiresAt: null,
+          openmicFinalLimitEnabled: false,
+          openmicFinalLimitMinutes: null,
+          openmicFinalLimitSongs: null,
+          dedicheFinalLimitEnabled: false,
+          dedicheFinalLimitMinutes: null,
+          dedicheFinalLimitTotal: null,
           reopenActive: false,
           reopenUntil: null,
           reopenMessage: null,
@@ -215,6 +234,12 @@ export const useLiveEvent = () => {
           dedicheMaxTotal: freeModeData?.dediche_max_total ?? null,
           dedicheCurrentCount: freeModeData?.dediche_current_count ?? 0,
           expiresAt: freeModeData?.expires_at ?? null,
+          openmicFinalLimitEnabled: freeModeData?.openmic_final_limit_enabled ?? false,
+          openmicFinalLimitMinutes: freeModeData?.openmic_final_limit_minutes ?? null,
+          openmicFinalLimitSongs: freeModeData?.openmic_final_limit_songs ?? null,
+          dedicheFinalLimitEnabled: freeModeData?.dediche_final_limit_enabled ?? false,
+          dedicheFinalLimitMinutes: freeModeData?.dediche_final_limit_minutes ?? null,
+          dedicheFinalLimitTotal: freeModeData?.dediche_final_limit_total ?? null,
           reopenActive: freeModeData?.reopen_active ?? false,
           reopenUntil: freeModeData?.reopen_until ?? null,
           reopenMessage: freeModeData?.reopen_message ?? null,
@@ -289,7 +314,8 @@ export const useLiveEvent = () => {
           schema: 'public',
           table: 'free_mode_settings',
         },
-        () => {
+        (payload) => {
+          console.log('[useLiveEvent] Free mode settings changed:', payload);
           fetchEvents();
         }
       )

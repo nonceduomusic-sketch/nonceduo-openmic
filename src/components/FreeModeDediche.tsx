@@ -39,6 +39,10 @@ export const FreeModeDediche: React.FC<FreeModeDedicheProps> = ({ freeModeState 
     closureMessage,
     closureRedirectUrl,
     closurePreviewEnabled,
+    // Final period limits
+    dedicheFinalLimitEnabled,
+    dedicheFinalLimitMinutes,
+    dedicheFinalLimitTotal,
   } = freeModeState;
 
   // Update time every second
@@ -98,7 +102,35 @@ export const FreeModeDediche: React.FC<FreeModeDedicheProps> = ({ freeModeState 
     return { minutes, seconds: secs };
   }, [reopenUntil, now, isReopenValid]);
 
-  const remaining = dedicheMaxTotal ? dedicheMaxTotal - dedicheCurrentCount : null;
+  // Calculate effective limit: if final limit is active and we're in the final period,
+  // use the final limit (more restrictive) instead of global limit
+  const effectiveMaxDediche = useMemo(() => {
+    // Check if final limit is active
+    if (!dedicheFinalLimitEnabled || !dedicheFinalLimitMinutes || !dedicheFinalLimitTotal) {
+      return dedicheMaxTotal;
+    }
+    
+    // Calculate minutes to end based on expiresAt
+    if (!expiresAt) {
+      return dedicheMaxTotal;
+    }
+    
+    const endTime = new Date(expiresAt);
+    const minutesToEnd = (endTime.getTime() - now.getTime()) / (1000 * 60);
+    
+    // If we're in the final period, use the more restrictive limit
+    if (minutesToEnd <= dedicheFinalLimitMinutes) {
+      if (dedicheMaxTotal === null) {
+        return dedicheFinalLimitTotal;
+      }
+      return Math.min(dedicheFinalLimitTotal, dedicheMaxTotal);
+    }
+    
+    // Not in final period, use global limit
+    return dedicheMaxTotal;
+  }, [dedicheMaxTotal, dedicheFinalLimitEnabled, dedicheFinalLimitMinutes, dedicheFinalLimitTotal, expiresAt, now]);
+
+  const remaining = effectiveMaxDediche ? effectiveMaxDediche - dedicheCurrentCount : null;
 
   return (
     <>
