@@ -192,7 +192,7 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
     }
     switch (limitType) {
       case 'consecutive':
-        return '🎵 Non appena un altro partecipante prenota, potrai tornare a cantare!';
+        return '🎵 Tieni d\'occhio la Scaletta Live in alto! Non appena qualcuno prenota, torni in pista!';
       case 'interval':
         return '🎤 Goditi le esibizioni degli altri, tra poco tornerai sul palco!';
       default:
@@ -270,11 +270,21 @@ export const UserLimitWarningDialog: React.FC<UserLimitWarningDialogProps> = ({
 
         {/* Consecutive limit info (blocking) */}
         {isConsecutiveBlock && (
-          <div className="flex items-center justify-center gap-2 mb-6 p-3 rounded-lg bg-orange-500/10 border border-orange-500/30">
-            <Users className="w-5 h-5 text-orange-500 animate-pulse" />
-            <span className="text-sm font-medium text-center">
-              Quando un altro partecipante prenota, potrai riprendere!
-            </span>
+          <div className="flex flex-col items-center gap-3 mb-6 p-4 rounded-lg bg-orange-500/10 border border-orange-500/30">
+            <div className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-orange-500 animate-pulse" />
+              <span className="text-sm font-medium text-center">
+                Lascia spazio agli altri! 🎤
+              </span>
+            </div>
+            <div className="text-center space-y-2">
+              <p className="text-xs text-muted-foreground">
+                👆 <strong>Controlla in alto la Scaletta Live</strong> per vedere chi canta!
+              </p>
+              <p className="text-xs text-orange-400 font-medium">
+                Appena qualcun altro prenota, torni libero di prenotare!
+              </p>
+            </div>
           </div>
         )}
 
