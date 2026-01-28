@@ -23,6 +23,7 @@ import { EventPinConfig } from './EventPinConfig';
 import { EventTimingConfig } from './EventTimingConfig';
 import { UserLimitsConfig } from './UserLimitsConfig';
 import { EventCountdownBanner } from '@/components/effects/EventCountdownBanner';
+import { PinProtectionCard } from './PinProtectionCard';
 
 /**
  * Adapter che converte FreeModeSettings nel formato EventBookingRules
@@ -382,8 +383,12 @@ export const FreeModeFullPanel: React.FC = () => {
               />
             </TabsContent>
 
-            <TabsContent value="pin" className="mt-4">
+            <TabsContent value="pin" className="mt-4 space-y-4">
               <EventPinConfig rules={rules} onUpdate={handleUpdate} generatePin={generatePin} />
+              {/* Gestione sessioni PIN - mostra solo quando evento è attivo */}
+              {settings?.is_active && settings?.pin_enabled && (
+                <PinProtectionCard title="Gestione Sessioni PIN" />
+              )}
             </TabsContent>
 
             <TabsContent value="reopen" className="mt-4">
