@@ -49,13 +49,13 @@ serve(async (req: Request): Promise<Response> => {
     // Create service role client for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify admin role via user_roles table (not user_metadata which is client-controllable)
-    // Accept owner, admin, or moderator roles
+    // Verify role via user_roles table (not user_metadata which is client-controllable)
+    // Operators are allowed ONLY for Dediche operations when explicitly permitted.
     const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', userId)
-      .in('role', ['owner', 'admin', 'moderator'])
+      .in('role', ['owner', 'admin', 'moderator', 'operator'])
       .maybeSingle();
 
     if (roleError || !roleData) {
@@ -66,11 +66,55 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    const userRole = roleData.role;
-
     const body = await req.json();
     const { action } = body;
     console.log(`Admin chat action: ${action} by ${userEmail}`);
+
+    const userRole = roleData.role as string;
+
+    // Operators: allow ONLY Dediche-safe actions, and only if explicitly permitted.
+    if (userRole === 'operator') {
+      const operatorAllowedActions = new Set(['sendMessage', 'markAsRead', 'markAsUnread']);
+      if (!operatorAllowedActions.has(action)) {
+        return new Response(
+          JSON.stringify({ error: 'Accesso negato - Azione non consentita per Operatore' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Permission gate (owner config): must have Dediche manage
+      const { data: canManageDediche, error: permErr } = await supabase.rpc('has_permission', {
+        _user_id: userId,
+        _permission_name: 'operator.dediche_manage',
+      });
+
+      if (permErr || !canManageDediche) {
+        return new Response(
+          JSON.stringify({ error: 'Accesso negato - Permesso Dediche non sufficiente' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Additional safety: Operators can act ONLY on Dediche (no Community/groups)
+      const convId = body?.conversation_id;
+      const msgConvId = body?.conversation_id;
+      const targetConversationId = convId || msgConvId;
+
+      if (targetConversationId) {
+        const { data: conv, error: convErr } = await supabase
+          .from('conversations')
+          .select('id, section, is_group')
+          .eq('id', targetConversationId)
+          .maybeSingle();
+
+        if (convErr || !conv || conv.section !== 'dediche' || conv.is_group) {
+          return new Response(
+            JSON.stringify({ error: 'Accesso negato - Operatore può agire solo sulle Dediche private' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
 
     let result;
 

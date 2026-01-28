@@ -58,6 +58,9 @@ export const useReservations = () => {
         console.error('Error fetching reservations:', error);
       }
       toast.error('Errore nel caricamento delle prenotazioni');
+      // IMPORTANT: fail fast to avoid leaving the UI in an endless loading state
+      setReservations([]);
+      setLoading(false);
       return;
     }
 

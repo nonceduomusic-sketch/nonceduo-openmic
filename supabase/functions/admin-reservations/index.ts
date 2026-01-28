@@ -49,12 +49,13 @@ serve(async (req: Request): Promise<Response> => {
     // Use service role for database operations
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Verify admin or owner role via user_roles table (not user_metadata which is client-controllable)
+    // Verify role via user_roles table (not user_metadata which is client-controllable)
+    // Operators are allowed ONLY for non-destructive Open Mic management when explicitly permitted.
     const { data: roleData, error: roleError } = await supabase
       .from('user_roles')
       .select('role')
       .eq('user_id', userId)
-      .in('role', ['admin', 'owner'])
+      .in('role', ['admin', 'owner', 'operator'])
       .maybeSingle();
 
     if (roleError || !roleData) {
@@ -65,10 +66,34 @@ serve(async (req: Request): Promise<Response> => {
       );
     }
     
-    console.log(`User ${userEmail} authenticated with role: ${roleData.role}`);
+    const userRole = roleData.role as string;
+    console.log(`User ${userEmail} authenticated with role: ${userRole}`);
 
     const { action, id, ids, status, filter, reservation } = await req.json();
     console.log(`Admin reservation action: ${action} by ${userEmail}`);
+
+    // Operators: allow ONLY safe actions, and only if they have the explicit permission.
+    if (userRole === 'operator') {
+      const operatorAllowedActions = new Set(['complete', 'reactivate']);
+      if (!operatorAllowedActions.has(action)) {
+        return new Response(
+          JSON.stringify({ error: 'Accesso negato - Azione non consentita per Operatore' }),
+          { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+
+      const { data: canManage, error: permErr } = await supabase.rpc('has_permission', {
+        _user_id: userId,
+        _permission_name: 'operator.openmic_manage',
+      });
+
+      if (permErr || !canManage) {
+        return new Response(
+          JSON.stringify({ error: 'Accesso negato - Permesso Open Mic non sufficiente' }),
+          { status: 403, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+    }
 
     switch (action) {
       case "complete": {
