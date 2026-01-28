@@ -389,7 +389,12 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                       </DialogDescription>
                     </DialogHeader>
                     <div className="flex flex-col items-center gap-4 py-4">
-                      {qrCodeDataUrl ? (
+                      {!eventUrl ? (
+                        <div className="w-48 h-48 bg-muted rounded-xl flex flex-col items-center justify-center text-center p-4">
+                          <p className="text-sm text-muted-foreground">Link evento non disponibile</p>
+                          <p className="text-xs text-muted-foreground mt-2">Prova a rigenerare il link</p>
+                        </div>
+                      ) : qrCodeDataUrl ? (
                         <div className="p-4 bg-white rounded-xl shadow-lg">
                           <img 
                             src={qrCodeDataUrl} 
@@ -407,7 +412,7 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                           Link evento (senza PIN)
                         </p>
                         <p className="text-xs text-muted-foreground max-w-xs break-all">
-                          {eventUrl}
+                          {eventUrl || 'Non disponibile'}
                         </p>
                       </div>
                       <div className="flex gap-2">
@@ -418,13 +423,17 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                                 setCopied('link');
                                 setTimeout(() => setCopied(null), 2000);
                                 toast.success('Link copiato!');
-                              }).catch(() => {
+                              }).catch((err) => {
+                                console.error('Clipboard error:', err);
                                 toast.error('Errore nel copiare il link');
                               });
+                            } else {
+                              toast.error('Link non disponibile');
                             }
                           }} 
                           variant="outline" 
                           className="gap-2"
+                          disabled={!eventUrl}
                         >
                           {copied === 'link' ? (
                             <>
@@ -470,10 +479,13 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                                 document.body.removeChild(link);
                                 toast.success('QR Code scaricato!');
                               }
+                            } else {
+                              toast.error('QR Code non disponibile');
                             }
                           }}
                           variant="outline"
                           className="gap-2"
+                          disabled={!qrCodeDataUrl}
                         >
                           <Download className="w-4 h-4" />
                           Scarica
