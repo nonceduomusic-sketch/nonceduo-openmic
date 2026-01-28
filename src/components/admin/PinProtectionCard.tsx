@@ -79,7 +79,7 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
   } = useUnifiedLiveSession();
 
   // Reset PIN sessions is allowed for Owner + Admin (matches backend policies)
-  const canDisconnectAll = staffRole === 'owner' || staffRole === 'admin';
+  const canDisconnectAll = isOwner || staffRole === 'owner' || staffRole === 'admin';
 
   const { resetAllSessions, countActiveSessions, resetting } = useAdminPinSessionReset();
 
@@ -478,48 +478,49 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
               </div>
             )}
 
-            {/* Active Sessions Count + Reset - ALWAYS show when PIN is active */}
-            {canDisconnectAll && (
-              <div className="flex items-center justify-between p-2 rounded-lg bg-muted/20">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Users className="w-4 h-4" />
-                  <span>
-                    {loadingSessionCount 
-                      ? 'Caricamento...' 
-                      : activeSessionsCount > 0 
-                        ? `${activeSessionsCount} utenti connessi` 
-                        : 'Nessun utente connesso'}
-                  </span>
-                </div>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      className="h-7 text-xs text-destructive hover:text-destructive gap-1"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      Sconnetti tutti
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Invalidare tutte le sessioni?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Tutti gli utenti dovranno reinserire il PIN per accedere.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Annulla</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleResetSessions} disabled={resetting}>
-                        {resetting ? 'Invalidando...' : 'Conferma'}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              </div>
-            )}
           </>
+        )}
+
+        {/* Active Sessions Count + Reset (show whenever there is an active session) */}
+        {canDisconnectAll && session && (
+          <div className="flex items-center justify-between p-2 rounded-lg bg-muted/20">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Users className="w-4 h-4" />
+              <span>
+                {loadingSessionCount
+                  ? 'Caricamento...'
+                  : activeSessionsCount > 0
+                    ? `${activeSessionsCount} utenti connessi`
+                    : 'Nessun utente connesso'}
+              </span>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-xs text-destructive hover:text-destructive gap-1"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  Sconnetti tutti
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Invalidare tutte le sessioni?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tutti gli utenti dovranno reinserire il PIN per accedere.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleResetSessions} disabled={resetting}>
+                    {resetting ? 'Invalidando...' : 'Conferma'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </div>
         )}
       </CardContent>
     </Card>

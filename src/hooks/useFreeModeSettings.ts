@@ -73,6 +73,67 @@ export const useFreeModeSettings = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const computeProtectedFormats = useCallback((s: Pick<FreeModeSettings, 'openmic_enabled' | 'dediche_enabled'>) => {
+    const formats: string[] = [];
+    if (s.openmic_enabled !== false) formats.push('openmic');
+    if (s.dediche_enabled !== false) formats.push('dediche');
+    return formats;
+  }, []);
+
+  // Keep the active live_sessions row in sync with Free Mode PIN settings.
+  // User-side PIN validation reads from live_sessions, so a mismatch here blocks entry.
+  const syncActiveLiveSessionIfNeeded = useCallback(async (s: FreeModeSettings) => {
+    if (!s.is_active) return;
+    if (!s.pin_enabled || !s.pin_code) return;
+
+    const desiredPin = s.pin_code.toUpperCase().trim();
+    const desiredFormats = computeProtectedFormats(s);
+
+    try {
+      const { data: activeSession, error: activeError } = await supabase
+        .from('live_sessions')
+        .select('id, pin_code, protected_formats')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (activeError) {
+        if (import.meta.env.DEV) console.warn('[FreeMode] sync live_sessions: read error', activeError);
+      }
+
+      if (!activeSession?.id) {
+        await supabase
+          .from('live_sessions')
+          .insert({
+            section: 'global',
+            pin_code: desiredPin,
+            protected_formats: desiredFormats,
+            is_active: true,
+          });
+        return;
+      }
+
+      const currentPin = String(activeSession.pin_code || '').toUpperCase().trim();
+      const currentFormats = (activeSession.protected_formats as string[]) || [];
+      const formatsEqual =
+        currentFormats.length === desiredFormats.length &&
+        desiredFormats.every((f) => currentFormats.includes(f));
+
+      if (currentPin !== desiredPin || !formatsEqual) {
+        await supabase
+          .from('live_sessions')
+          .update({
+            pin_code: desiredPin,
+            protected_formats: desiredFormats,
+          })
+          .eq('id', activeSession.id);
+      }
+    } catch (e) {
+      if (import.meta.env.DEV) console.error('[FreeMode] sync live_sessions failed', e);
+    }
+  }, [computeProtectedFormats]);
+
   const fetchSettings = useCallback(async () => {
     try {
       const { data, error: fetchError } = await supabase
@@ -114,6 +175,20 @@ export const useFreeModeSettings = () => {
       supabase.removeChannel(channel);
     };
   }, [fetchSettings]);
+
+  // Auto-sync live session whenever Free Mode settings change while active.
+  useEffect(() => {
+    if (!settings) return;
+    syncActiveLiveSessionIfNeeded(settings);
+  }, [
+    settings?.id,
+    settings?.is_active,
+    settings?.pin_enabled,
+    settings?.pin_code,
+    settings?.openmic_enabled,
+    settings?.dediche_enabled,
+    syncActiveLiveSessionIfNeeded,
+  ]);
 
   const updateSettings = async (updates: Partial<FreeModeSettings>): Promise<boolean> => {
     if (!settings?.id) return false;

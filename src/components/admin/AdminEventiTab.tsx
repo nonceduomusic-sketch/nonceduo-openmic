@@ -83,6 +83,7 @@ export const AdminEventiTab: React.FC = () => {
     deleteEvent,
     resetCounters: resetScheduledCounters,
     syncCounters: syncScheduledCounters,
+    updatePin,
     generatePin,
   } = useEventBookingRules();
 
@@ -625,7 +626,13 @@ export const AdminEventiTab: React.FC = () => {
                 <TabsContent value="pin" className="mt-4 space-y-4">
                   <EventPinConfig 
                     rules={rules} 
-                    onUpdate={updateRules}
+                  onUpdate={async (updates) => {
+                    // IMPORTANT: when changing PIN on a LIVE scheduled event we must also sync the active live_session,
+                    // otherwise user-side validation (which checks live_sessions) will fail.
+                    const nextPinRequired = updates.pin_required ?? rules.pin_required;
+                    const nextPinCode = (updates.pin_code ?? rules.pin_code) ?? null;
+                    return updatePin(nextPinRequired ? nextPinCode : null, nextPinRequired);
+                  }}
                     generatePin={generatePin}
                   />
                   {/* Gestione sessioni PIN: mostrala sempre quando l'evento è LIVE.
