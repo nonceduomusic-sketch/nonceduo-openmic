@@ -46,6 +46,7 @@ import {
   Trash2,
   Lock,
   Unlock,
+  Download,
 } from 'lucide-react';
 import { useUnifiedLiveSession, FormatType } from '@/hooks/useUnifiedLiveSession';
 import { useAdminPinSessionReset } from '@/hooks/usePinSession';
@@ -409,19 +410,75 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                           {eventUrl}
                         </p>
                       </div>
-                      <Button onClick={() => eventUrl && copyToClipboard(eventUrl, 'link')} variant="outline" className="gap-2">
-                        {copied === 'link' ? (
-                          <>
-                            <CheckCircle2 className="w-4 h-4 text-secondary" />
-                            Copiato!
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-4 h-4" />
-                            Copia Link
-                          </>
-                        )}
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button 
+                          onClick={() => {
+                            if (eventUrl) {
+                              navigator.clipboard.writeText(eventUrl).then(() => {
+                                setCopied('link');
+                                setTimeout(() => setCopied(null), 2000);
+                                toast.success('Link copiato!');
+                              }).catch(() => {
+                                toast.error('Errore nel copiare il link');
+                              });
+                            }
+                          }} 
+                          variant="outline" 
+                          className="gap-2"
+                        >
+                          {copied === 'link' ? (
+                            <>
+                              <CheckCircle2 className="w-4 h-4 text-secondary" />
+                              Copiato!
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="w-4 h-4" />
+                              Copia Link
+                            </>
+                          )}
+                        </Button>
+                        <Button 
+                          onClick={() => {
+                            if (qrCodeDataUrl) {
+                              // Check if on iOS/Safari
+                              const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+                              
+                              if (isIOS) {
+                                // iOS: Open in new tab for manual save
+                                const newTab = window.open();
+                                if (newTab) {
+                                  newTab.document.write(`
+                                    <html>
+                                      <head><title>QR Code Evento</title></head>
+                                      <body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f5;">
+                                        <img src="${qrCodeDataUrl}" alt="QR Code" style="max-width:90%;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);" />
+                                        <p style="margin-top:16px;font-family:system-ui;color:#666;">Tieni premuto sull'immagine per salvare</p>
+                                      </body>
+                                    </html>
+                                  `);
+                                  newTab.document.close();
+                                }
+                                toast.success('Tieni premuto per salvare l\'immagine');
+                              } else {
+                                // Android/Desktop: Direct download
+                                const link = document.createElement('a');
+                                link.href = qrCodeDataUrl;
+                                link.download = 'qr-code-evento.png';
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                toast.success('QR Code scaricato!');
+                              }
+                            }
+                          }}
+                          variant="outline"
+                          className="gap-2"
+                        >
+                          <Download className="w-4 h-4" />
+                          Scarica
+                        </Button>
+                      </div>
                     </div>
                   </DialogContent>
                 </Dialog>
