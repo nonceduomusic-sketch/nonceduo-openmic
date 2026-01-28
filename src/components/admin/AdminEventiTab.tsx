@@ -92,7 +92,7 @@ export const AdminEventiTab: React.FC = () => {
   const [activeSection, setActiveSection] = useState<'general' | 'timing' | 'limits' | 'user' | 'pin' | 'reopen' | 'closure'>('general');
   const [isSaving, setIsSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [tempName, setTempName] = useState(rules?.event_name || 'Nuovo Evento');
+  const [tempName, setTempName] = useState(rules?.event_name || 'EVENTO LIVE');
 
   // Sync tempName when rules load or change
   useEffect(() => {
@@ -169,7 +169,7 @@ export const AdminEventiTab: React.FC = () => {
   const handleCreateNew = async () => {
     setIsSaving(true);
     const newId = await createRules({
-      event_name: 'Nuovo Evento',
+      event_name: 'EVENTO LIVE',
       event_status: 'draft',
       event_type: 'both',
     });

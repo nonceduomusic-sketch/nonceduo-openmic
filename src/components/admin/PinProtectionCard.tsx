@@ -49,6 +49,7 @@ import {
 } from 'lucide-react';
 import { useUnifiedLiveSession, FormatType } from '@/hooks/useUnifiedLiveSession';
 import { useAdminPinSessionReset } from '@/hooks/usePinSession';
+import { useAdmin } from '@/contexts/AdminContext';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { adminAuditLog } from '@/lib/adminAudit';
@@ -60,6 +61,8 @@ interface PinProtectionCardProps {
 export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({ 
   title = 'Protezione PIN'
 }) => {
+  const { staffRole } = useAdmin();
+
   const { 
     session, 
     loading, 
@@ -74,6 +77,9 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
     getEventUrl,
     regenerateLinkCode,
   } = useUnifiedLiveSession();
+
+  // Reset PIN sessions is allowed for Owner + Admin (matches backend policies)
+  const canDisconnectAll = staffRole === 'owner' || staffRole === 'admin';
 
   const { resetAllSessions, countActiveSessions, resetting } = useAdminPinSessionReset();
 
@@ -473,7 +479,7 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
             )}
 
             {/* Active Sessions Count + Reset - ALWAYS show when PIN is active */}
-            {isOwner && (
+            {canDisconnectAll && (
               <div className="flex items-center justify-between p-2 rounded-lg bg-muted/20">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Users className="w-4 h-4" />

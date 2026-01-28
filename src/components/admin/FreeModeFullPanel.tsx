@@ -33,7 +33,7 @@ const adaptToEventRules = (settings: FreeModeSettings | null): EventBookingRules
   if (!settings) {
     return {
       id: 'free-mode',
-      event_name: 'Evento Libero',
+      event_name: 'EVENTO LIVE',
       event_status: 'draft',
       event_type: 'both',
       is_active: false,
@@ -90,7 +90,7 @@ const adaptToEventRules = (settings: FreeModeSettings | null): EventBookingRules
 
   return {
     id: settings.id,
-    event_name: settings.event_name || 'Evento Libero',
+    event_name: settings.event_name || 'EVENTO LIVE',
     event_status: settings.is_active ? 'live' : 'draft',
     event_type: 'both',
     is_active: settings.is_active ?? false,
@@ -163,7 +163,7 @@ export const FreeModeFullPanel: React.FC = () => {
 
   const [activeSection, setActiveSection] = useState<'general' | 'timing' | 'limits' | 'user' | 'pin' | 'reopen' | 'closure'>('general');
   const [editingName, setEditingName] = useState(false);
-  const [tempName, setTempName] = useState(settings?.event_name || 'Evento Libero');
+  const [tempName, setTempName] = useState(settings?.event_name || 'EVENTO LIVE');
 
   // Sync tempName when settings load
   useEffect(() => {
@@ -254,7 +254,7 @@ export const FreeModeFullPanel: React.FC = () => {
 
   const handleActivate = async () => {
     await activateFreeMode({
-      eventName: settings?.event_name || 'Evento Libero',
+      eventName: settings?.event_name || 'EVENTO LIVE',
       openmic: settings?.openmic_enabled ?? true,
       dediche: settings?.dediche_enabled ?? true,
       voting: settings?.voting_enabled ?? true,
@@ -432,7 +432,7 @@ export const FreeModeFullPanel: React.FC = () => {
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-lg">
             <Zap className="w-5 h-5 text-primary" />
-            {settings?.event_name || 'Evento Libero'}
+            {settings?.event_name || 'EVENTO LIVE'}
           </CardTitle>
           <Badge variant="default" className="animate-pulse">LIVE</Badge>
         </div>
