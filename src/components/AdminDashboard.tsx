@@ -219,13 +219,26 @@ export const AdminDashboard: React.FC = () => {
 
   const isMainTabBlocked = useCallback(
     (tab: AdminMainTab) => {
+      // Operators use their own permission system
+      if (operatorPerms.isOperator) {
+        if (tab === 'notifications') return !operatorPerms.canViewCentro;
+        if (tab === 'openmic') return !operatorPerms.canViewOpenmic;
+        if (tab === 'dediche') return !operatorPerms.canViewDediche;
+        // Operators never have access to these tabs
+        if (['songs', 'community', 'event', 'formats', 'grafiche', 'notifiche-live', 'settings', 'staff', 'operators', 'permissions', 'audit'].includes(tab)) {
+          return true;
+        }
+        return false;
+      }
+      
+      // Regular staff use the standard access system
       if (tab === 'openmic') return !access.openmic;
       if (tab === 'songs') return !access.openmic;
       if (tab === 'dediche') return !access.dediche;
       if (tab === 'community') return !access.community;
       return false;
     },
-    [access.community, access.dediche, access.openmic],
+    [access.community, access.dediche, access.openmic, operatorPerms],
   );
 
   // On first load, pick the first allowed tab so the user doesn't land on a blocked section.
@@ -565,15 +578,21 @@ export const AdminDashboard: React.FC = () => {
                 onBlockedSelect={handleBlockedSelect}
                 access={access}
                 isOwner={staffRole === 'owner'}
+                isOperator={operatorPerms.isOperator}
+                operatorAccess={{
+                  canViewCentro: operatorPerms.canViewCentro,
+                  canViewOpenmic: operatorPerms.canViewOpenmic,
+                  canViewDediche: operatorPerms.canViewDediche,
+                }}
                 badges={{
                   totalNotifications,
                   openmicActiveCount: activeReservations.length,
                   dedicheUnread: notificationCounts.unreadDedicheMessages,
                   communityUnread: notificationCounts.unreadCommunityMessages,
                 }}
-                onResetOpenMic={() => { setResetOption('openmic'); setShowResetDialog(true); }}
-                onResetDediche={() => { setResetOption('messages'); setShowResetDialog(true); }}
-                onResetAll={() => { setResetOption('all'); setShowResetDialog(true); }}
+                onResetOpenMic={operatorPerms.isOperator ? undefined : () => { setResetOption('openmic'); setShowResetDialog(true); }}
+                onResetDediche={operatorPerms.isOperator ? undefined : () => { setResetOption('messages'); setShowResetDialog(true); }}
+                onResetAll={operatorPerms.isOperator ? undefined : () => { setResetOption('all'); setShowResetDialog(true); }}
                 onLogout={logout}
               />
               
