@@ -248,6 +248,34 @@ export const useFreeModeSettings = () => {
 
     const success = await updateSettings(updates);
     if (success) {
+      // Se PIN abilitato, crea live_session per persistenza
+      if (updates.pin_enabled && updates.pin_code) {
+        const protectedFormats: string[] = [];
+        if (updates.openmic_enabled !== false && (config?.openmic !== false)) {
+          protectedFormats.push('openmic');
+        }
+        if (updates.dediche_enabled !== false && (config?.dediche !== false)) {
+          protectedFormats.push('dediche');
+        }
+
+        // Disattiva eventuali live_sessions esistenti
+        await supabase
+          .from('live_sessions')
+          .update({ is_active: false, deactivated_at: new Date().toISOString() })
+          .eq('is_active', true);
+
+        // Crea nuova live_session
+        await supabase
+          .from('live_sessions')
+          .insert({
+            section: 'freemode',
+            pin_code: updates.pin_code.toUpperCase().trim(),
+            protected_formats: protectedFormats,
+            is_active: true,
+          });
+
+        console.log('[activateFreeMode] Created live_session with PIN');
+      }
       toast.success('Evento Libero attivato!');
     }
     return success;
@@ -263,6 +291,13 @@ export const useFreeModeSettings = () => {
       reopen_active: false,
     });
     if (success) {
+      // Disattiva live_session per invalidare tutti i PIN
+      await supabase
+        .from('live_sessions')
+        .update({ is_active: false, deactivated_at: new Date().toISOString() })
+        .eq('is_active', true);
+      
+      console.log('[deactivateFreeMode] Deactivated live_session - all PIN sessions invalidated');
       toast.success('Evento Libero disattivato');
     }
     return success;

@@ -3,7 +3,6 @@ import OpenMic from "@/pages/OpenMic";
 import OpenMicInfo from "@/pages/OpenMicInfo";
 import { PreEventPage } from "@/components/PreEventPage";
 import { FormatPinGate } from "@/components/FormatPinGate";
-import { FreeModePinGate } from "@/components/FreeModePinGate";
 import { FreeModeOpenMic } from "@/components/FreeModeOpenMic";
 import { useLiveEvent } from "@/hooks/useLiveEvent";
 import { usePinSession } from "@/hooks/usePinSession";
@@ -18,10 +17,13 @@ import { usePinSession } from "@/hooks/usePinSession";
  *      - Se pin_required && !pinValidated → mostra PIN gate
  *      - Altrimenti → mostra LIVE
  * 2. Se Free Mode attiva per openmic:
- *    - Se pin_enabled && !pinValidated → mostra PIN gate
+ *    - Se pin_enabled && !pinValidated → mostra PIN gate (stesso sistema unificato)
  *    - Altrimenti → mostra Open Mic senza limiti
  * 3. Se esistono eventi READY → mostra PreEventPage
  * 4. Altrimenti → mostra Info
+ * 
+ * NOTA IMPORTANTE: Il PIN è legato all'EVENTO, non al format.
+ * Una volta validato il PIN, l'utente ha accesso a TUTTI i format dell'evento.
  */
 const AppOpenMic: React.FC = () => {
   const { eventState, liveEvent, upcomingEvents, isOpenmicVisible, isFreeMode, freeMode } = useLiveEvent();
@@ -31,33 +33,15 @@ const AppOpenMic: React.FC = () => {
     sessionInvalidated 
   } = usePinSession('openmic');
   const [pinValidated, setPinValidated] = useState(false);
-  const [freeModePinValidated, setFreeModePinValidated] = useState(false);
 
-  // Check sessionStorage for free mode PIN validation
-  useEffect(() => {
-    const sessionKey = 'freemode_pin_openmic';
-    const validated = sessionStorage.getItem(sessionKey);
-    if (validated === 'validated') {
-      setFreeModePinValidated(true);
-    }
-  }, []);
-
-  // Invalidate free mode PIN session when PIN is disabled
-  useEffect(() => {
-    if (!freeMode.pinEnabled) {
-      sessionStorage.removeItem('freemode_pin_openmic');
-      setFreeModePinValidated(false);
-    }
-  }, [freeMode.pinEnabled]);
-
-  // Auto-validate if session is valid (persistent login for scheduled events)
+  // Auto-validate if session is valid (persistent login - works across format switches!)
   useEffect(() => {
     if (!sessionLoading && hasValidSession && !sessionInvalidated) {
       setPinValidated(true);
     }
   }, [sessionLoading, hasValidSession, sessionInvalidated]);
 
-  // Reset pin validation if session is invalidated
+  // Reset pin validation if session is invalidated (PIN changed, event closed, etc.)
   useEffect(() => {
     if (sessionInvalidated) {
       setPinValidated(false);
@@ -67,11 +51,6 @@ const AppOpenMic: React.FC = () => {
   // Handler for pin validation from FormatPinGate
   const handlePinValidated = useCallback(() => {
     setPinValidated(true);
-  }, []);
-
-  // Handler for free mode pin validation
-  const handleFreeModePinValidated = useCallback(() => {
-    setFreeModePinValidated(true);
   }, []);
 
   // Loading state
@@ -109,14 +88,13 @@ const AppOpenMic: React.FC = () => {
 
   // CASE 2: Free Mode attiva per Open Mic
   if (eventState.type === 'freemode' && freeMode.openmic) {
-    // Se PIN abilitato e non ancora validato
-    if (freeMode.pinEnabled && freeMode.pinCode && !freeModePinValidated) {
+    // Se PIN abilitato e non ancora validato - usa lo stesso sistema unificato
+    if (freeMode.pinEnabled && freeMode.pinCode && !pinValidated) {
       return (
-        <FreeModePinGate
+        <FormatPinGate
           format="openmic"
           formatDisplayName={freeMode.eventName || "Open Mic"}
-          expectedPin={freeMode.pinCode}
-          onPinValidated={handleFreeModePinValidated}
+          onPinValidated={handlePinValidated}
           backTo="/app"
           backLabel="Torna all'app"
         />
