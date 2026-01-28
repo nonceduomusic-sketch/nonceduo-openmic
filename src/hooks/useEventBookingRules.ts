@@ -199,8 +199,12 @@ export const useEventBookingRules = () => {
   // Cambia lo stato workflow di un evento
   const setEventStatus = async (eventId: string, newStatus: EventStatus): Promise<boolean> => {
     try {
+      // Ottieni i dati dell'evento per gestire correttamente il PIN
+      const targetEvent = allRules.find(r => r.id === eventId);
+      
       // Se stiamo mettendo un evento in "live", chiudiamo tutti gli altri eventi live
       if (newStatus === 'live') {
+        // Prima chiudi gli altri eventi live
         const { error: closeError } = await supabase
           .from('event_booking_rules')
           .update({ event_status: 'closed' })
@@ -208,6 +212,61 @@ export const useEventBookingRules = () => {
           .neq('id', eventId);
 
         if (closeError) throw closeError;
+        
+        // Disattiva TUTTE le live_sessions esistenti (per pulizia)
+        await supabase
+          .from('live_sessions')
+          .update({ 
+            is_active: false, 
+            deactivated_at: new Date().toISOString() 
+          })
+          .eq('is_active', true);
+
+        // Se l'evento richiede PIN, crea una nuova live_session
+        if (targetEvent?.pin_required && targetEvent?.pin_code) {
+          // Determina quali format sono protetti in base al tipo evento
+          const protectedFormats: string[] = [];
+          if (targetEvent.event_type === 'openmic' || targetEvent.event_type === 'both') {
+            protectedFormats.push('openmic');
+          }
+          if (targetEvent.event_type === 'dediche' || targetEvent.event_type === 'both') {
+            protectedFormats.push('dediche');
+          }
+
+          const { error: sessionError } = await supabase
+            .from('live_sessions')
+            .insert({
+              section: 'event',
+              pin_code: targetEvent.pin_code.toUpperCase().trim(),
+              protected_formats: protectedFormats,
+              is_active: true,
+              expires_at: null, // L'evento gestisce la scadenza
+            });
+
+          if (sessionError) {
+            console.error('[setEventStatus] Error creating live_session:', sessionError);
+            // Non blocchiamo l'attivazione dell'evento, ma logghiamo l'errore
+          } else {
+            console.log('[setEventStatus] Created live_session with PIN for event:', eventId);
+          }
+        }
+      }
+
+      // Se stiamo CHIUDENDO un evento live, disattiviamo la live_session (invalida tutti i PIN)
+      if (newStatus === 'closed' && targetEvent?.event_status === 'live') {
+        const { error: deactivateError } = await supabase
+          .from('live_sessions')
+          .update({ 
+            is_active: false, 
+            deactivated_at: new Date().toISOString() 
+          })
+          .eq('is_active', true);
+
+        if (deactivateError) {
+          console.error('[setEventStatus] Error deactivating live_session:', deactivateError);
+        } else {
+          console.log('[setEventStatus] Deactivated live_sessions - all PIN sessions invalidated');
+        }
       }
 
       // Aggiorna lo stato dell'evento target
@@ -243,7 +302,7 @@ export const useEventBookingRules = () => {
     return setEventStatus(targetId, 'closed');
   };
 
-  // Aggiorna PIN
+  // Aggiorna PIN - sincronizza anche con live_sessions se l'evento è LIVE
   const updatePin = async (pinCode: string | null, pinRequired: boolean): Promise<boolean> => {
     if (!rules?.id) return false;
     
@@ -257,6 +316,65 @@ export const useEventBookingRules = () => {
         .eq('id', rules.id);
 
       if (updateError) throw updateError;
+
+      // Se l'evento è LIVE, aggiorna anche la live_session
+      if (rules.event_status === 'live') {
+        if (pinRequired && pinCode) {
+          // Determina quali format sono protetti in base al tipo evento
+          const protectedFormats: string[] = [];
+          if (rules.event_type === 'openmic' || rules.event_type === 'both') {
+            protectedFormats.push('openmic');
+          }
+          if (rules.event_type === 'dediche' || rules.event_type === 'both') {
+            protectedFormats.push('dediche');
+          }
+
+          // Cerca una live_session attiva
+          const { data: existingSession } = await supabase
+            .from('live_sessions')
+            .select('id')
+            .eq('is_active', true)
+            .maybeSingle();
+
+          if (existingSession) {
+            // Aggiorna il PIN - questo invaliderà automaticamente tutte le pin_sessions
+            // grazie al trigger on_live_session_pin_change
+            await supabase
+              .from('live_sessions')
+              .update({ 
+                pin_code: pinCode.toUpperCase().trim(),
+                protected_formats: protectedFormats,
+              })
+              .eq('id', existingSession.id);
+            
+            console.log('[updatePin] Updated live_session PIN - all user sessions invalidated');
+          } else {
+            // Crea nuova live_session
+            await supabase
+              .from('live_sessions')
+              .insert({
+                section: 'event',
+                pin_code: pinCode.toUpperCase().trim(),
+                protected_formats: protectedFormats,
+                is_active: true,
+              });
+            
+            console.log('[updatePin] Created new live_session with PIN');
+          }
+        } else {
+          // PIN disabilitato - disattiva la live_session
+          await supabase
+            .from('live_sessions')
+            .update({ 
+              is_active: false, 
+              deactivated_at: new Date().toISOString() 
+            })
+            .eq('is_active', true);
+          
+          console.log('[updatePin] PIN disabled - deactivated live_session');
+        }
+      }
+
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Errore aggiornamento PIN');
