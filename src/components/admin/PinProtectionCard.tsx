@@ -382,11 +382,6 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                         <QrCode className="w-5 h-5 text-secondary" />
                         QR Code Evento
                       </DialogTitle>
-                      <DialogDescription>
-                        Scansionando il QR code, i partecipanti arrivano alla pagina dell'evento.
-                        <br />
-                        <span className="text-xs text-secondary">Il PIN lo comunichi tu a voce quando vuoi!</span>
-                      </DialogDescription>
                     </DialogHeader>
                     <div className="flex flex-col items-center gap-4 py-4">
                       {!eventUrl ? (
@@ -407,10 +402,7 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                           <div className="animate-spin w-8 h-8 border-2 border-secondary border-t-transparent rounded-full" />
                         </div>
                       )}
-                      <div className="text-center space-y-2">
-                        <p className="text-sm font-medium text-foreground">
-                          Link evento (senza PIN)
-                        </p>
+                      <div className="text-center">
                         <p className="text-xs text-muted-foreground max-w-xs break-all">
                           {eventUrl || 'Non disponibile'}
                         </p>
