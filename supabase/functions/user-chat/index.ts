@@ -251,6 +251,24 @@ serve(async (req: Request): Promise<Response> => {
         return json(500, { error: "Errore invio messaggio" });
       }
 
+      // Send live notification for dediche section (Email + Telegram)
+      if (section === "dediche") {
+        const liveNotificationPayload = {
+          type: "dediche",
+          customerName: senderName,
+          dedicationMessage: messageText,
+        };
+        
+        fetch(`${supabaseUrl}/functions/v1/send-live-notification`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${serviceKey}`,
+          },
+          body: JSON.stringify(liveNotificationPayload),
+        }).catch(err => console.error("[user-chat] Failed to send live notification:", err));
+      }
+
       return json(200, { conversation: convData, participant: partData, message: msgData });
     }
 

@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { SmtpClient } from "https://deno.land/x/smtp@v0.7.0/mod.ts";
+import { Resend } from "https://esm.sh/resend@4.0.0";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -134,43 +134,38 @@ const sendTelegramMessage = async (
   }
 };
 
-const sendEmailViaGmail = async (
+const sendEmailViaResend = async (
   to: string,
   subject: string,
   html: string
 ): Promise<{ success: boolean; error?: string }> => {
-  const gmailAppPassword = Deno.env.get("GMAIL_APP_PASSWORD");
+  const resendApiKey = Deno.env.get("RESEND_API_KEY");
   
-  if (!gmailAppPassword) {
-    console.error("GMAIL_APP_PASSWORD not configured");
-    return { success: false, error: "Gmail App Password non configurata" };
+  if (!resendApiKey) {
+    console.error("RESEND_API_KEY not configured");
+    return { success: false, error: "Resend API Key non configurata" };
   }
 
   try {
-    const client = new SmtpClient();
+    const resend = new Resend(resendApiKey);
     
-    await client.connectTLS({
-      hostname: "smtp.gmail.com",
-      port: 465,
-      username: "nonceduo.music@gmail.com",
-      password: gmailAppPassword,
-    });
-
-    await client.send({
-      from: "NON C'È DUO Live <nonceduo.music@gmail.com>",
-      to: to,
+    const { data, error } = await resend.emails.send({
+      from: "NON C'È DUO Live <onboarding@resend.dev>",
+      to: [to],
       subject: subject,
-      content: "Visualizza questa email in un client che supporta HTML",
       html: html,
     });
 
-    await client.close();
+    if (error) {
+      console.error("Resend API error:", error);
+      return { success: false, error: error.message };
+    }
     
-    console.log("Email sent successfully via Gmail SMTP");
+    console.log("Email sent successfully via Resend:", data);
     return { success: true };
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
-    console.error("Gmail SMTP error:", error);
+    console.error("Resend error:", error);
     return { success: false, error: error.message };
   }
 };
@@ -280,7 +275,7 @@ serve(async (req) => {
     // Send Email notification via Gmail SMTP
     if (shouldSendEmail) {
       console.log(`Sending Email to ${settings.email_recipient}`);
-      const emailResult = await sendEmailViaGmail(settings.email_recipient, emailSubject, emailHtml);
+      const emailResult = await sendEmailViaResend(settings.email_recipient, emailSubject, emailHtml);
       results.email = { sent: emailResult.success, error: emailResult.error || null };
       
       await logNotification(
