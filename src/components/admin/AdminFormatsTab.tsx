@@ -1,5 +1,5 @@
 import React from 'react';
-import { Power, Trophy, Info, Users } from 'lucide-react';
+import { Power, Trophy, Info, Users, User } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -76,6 +76,38 @@ export const AdminFormatsTab: React.FC = () => {
                   id="voting-toggle"
                   checked={globalSettings.voting}
                   onCheckedChange={() => toggleGlobalFormat('voting')}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Mostra Nome Prenotante */}
+          <Card className="border-blue-500/20 bg-blue-500/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <User className="w-4 h-4 text-blue-500" />
+                Mostra Nome Prenotante
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Visualizza il nome di chi prenota nella Scaletta Live pubblica
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="booker-name-toggle" className="text-sm">
+                    {globalSettings.show_booker_name ? 'Visibile' : 'Nascosto'}
+                  </Label>
+                  {globalSettings.show_booker_name && (
+                    <Badge variant="outline" className="text-blue-500 border-blue-500/30 text-xs">
+                      🎤 Nome
+                    </Badge>
+                  )}
+                </div>
+                <Switch
+                  id="booker-name-toggle"
+                  checked={globalSettings.show_booker_name}
+                  onCheckedChange={() => toggleGlobalFormat('show_booker_name')}
                 />
               </div>
             </CardContent>
