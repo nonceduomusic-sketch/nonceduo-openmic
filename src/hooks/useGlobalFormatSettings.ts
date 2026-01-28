@@ -122,7 +122,7 @@ export const useGlobalFormatSettings = () => {
   };
 };
 
-// Hook for public pages to check if a format is active
+// Hook for public pages to check if a format is active (with real-time updates)
 export const useFormatActiveCheck = (format: GlobalFormatKey) => {
   const [isActive, setIsActive] = useState(true);
   const [loading, setLoading] = useState(true);
@@ -148,13 +148,14 @@ export const useFormatActiveCheck = (format: GlobalFormatKey) => {
 
     checkFormat();
 
-    // Subscribe to changes
+    // Subscribe to changes with unique channel name
+    const channelName = `format-active-${format}-${Date.now()}`;
     const channel = supabase
-      .channel(`format-active-${format}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE',
           schema: 'public',
           table: 'global_format_settings',
           filter: `format_key=eq.${format}`,

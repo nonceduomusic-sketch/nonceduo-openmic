@@ -1,11 +1,9 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Music, FileText, Users, ChevronDown, ChevronUp, Sparkles, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { getLyricsSearchUrl } from '@/lib/whatsapp';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { VoteButtons } from '@/components/live/VoteButtons';
-import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
 import { supabase } from '@/integrations/supabase/client';
 
 interface QueueSong {
@@ -33,6 +31,7 @@ interface LiveQueueDisplayProps {
  * - Pulsante "Testo" sempre visibile
  * - Auto-scroll per liste lunghe
  * - Collapsible per liste molto lunghe
+ * - Nome prenotante (se attivo nelle impostazioni)
  */
 export const LiveQueueDisplay: React.FC<LiveQueueDisplayProps> = ({ 
   songs, 
@@ -42,9 +41,7 @@ export const LiveQueueDisplay: React.FC<LiveQueueDisplayProps> = ({
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [bookerNames, setBookerNames] = useState<Record<string, string>>({});
-  
-  // Check if show_booker_name setting is active
-  const { isActive: showBookerName, loading: settingLoading } = useFormatActiveCheck('show_booker_name');
+  const [showBookerName, setShowBookerName] = useState(false);
   
   // Filter and sort songs: only in_progress, sorted by created_at (oldest first)
   const activeSongs = songs
@@ -55,8 +52,48 @@ export const LiveQueueDisplay: React.FC<LiveQueueDisplayProps> = ({
   const displayedSongs = isExpanded ? activeSongs : activeSongs.slice(0, maxVisible);
   const hiddenCount = activeSongs.length - maxVisible;
 
-  // Fetch booker names when setting is active
+  // Fetch show_booker_name setting and subscribe to real-time updates
   useEffect(() => {
+    const fetchSetting = async () => {
+      const { data, error } = await supabase
+        .from('global_format_settings')
+        .select('is_active')
+        .eq('format_key', 'show_booker_name')
+        .maybeSingle();
+      
+      if (!error && data) {
+        setShowBookerName(data.is_active);
+      }
+    };
+    
+    fetchSetting();
+    
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel(`show-booker-name-setting-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'global_format_settings',
+          filter: 'format_key=eq.show_booker_name',
+        },
+        (payload) => {
+          if (payload.new && 'is_active' in payload.new) {
+            setShowBookerName((payload.new as { is_active: boolean }).is_active);
+          }
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Fetch booker names when setting is active
+  const fetchBookerNames = useCallback(async () => {
     if (!showBookerName || activeSongs.length === 0) {
       setBookerNames({});
       return;
@@ -64,23 +101,23 @@ export const LiveQueueDisplay: React.FC<LiveQueueDisplayProps> = ({
     
     const reservationIds = activeSongs.map(s => s.id);
     
-    const fetchBookerNames = async () => {
-      const { data, error } = await supabase
-        .from('reservations')
-        .select('id, customer_name')
-        .in('id', reservationIds);
-      
-      if (!error && data) {
-        const names: Record<string, string> = {};
-        data.forEach(r => {
-          names[r.id] = r.customer_name;
-        });
-        setBookerNames(names);
-      }
-    };
+    const { data, error } = await supabase
+      .from('reservations')
+      .select('id, customer_name')
+      .in('id', reservationIds);
     
+    if (!error && data) {
+      const names: Record<string, string> = {};
+      data.forEach(r => {
+        names[r.id] = r.customer_name;
+      });
+      setBookerNames(names);
+    }
+  }, [showBookerName, activeSongs]);
+
+  useEffect(() => {
     fetchBookerNames();
-  }, [showBookerName, activeSongs.map(s => s.id).join(',')]);
+  }, [fetchBookerNames]);
 
   // Auto-scroll to show newest song when added
   useEffect(() => {
@@ -155,10 +192,12 @@ export const LiveQueueDisplay: React.FC<LiveQueueDisplayProps> = ({
                 </p>
                 {/* Booker name - shown when setting is active */}
                 {showBookerName && bookerNames[song.id] && (
-                  <p className="text-xs text-primary/80 truncate flex items-center gap-1 mt-0.5">
-                    <User className="w-3 h-3" />
-                    {bookerNames[song.id]}
-                  </p>
+                  <div className="flex items-center gap-1 mt-0.5">
+                    <User className="w-3 h-3 text-primary/80" />
+                    <span className="text-xs text-primary/80 font-medium truncate">
+                      {bookerNames[song.id]}
+                    </span>
+                  </div>
                 )}
               </div>
 
