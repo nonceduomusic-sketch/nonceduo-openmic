@@ -53,6 +53,7 @@ import { useAdmin } from '@/contexts/AdminContext';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { adminAuditLog } from '@/lib/adminAudit';
+import QRCode from 'qrcode';
 
 interface PinProtectionCardProps {
   title?: string;
@@ -84,12 +85,33 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
   const { resetAllSessions, countActiveSessions, resetting } = useAdminPinSessionReset();
 
   const [showQR, setShowQR] = useState(false);
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState<'pin' | 'link' | null>(null);
   const [isEditingPin, setIsEditingPin] = useState(false);
   const [editPinValue, setEditPinValue] = useState('');
   const [activeSessionsCount, setActiveSessionsCount] = useState<number>(0);
   const [isTogglingPin, setIsTogglingPin] = useState(false);
   const [loadingSessionCount, setLoadingSessionCount] = useState(false);
+
+  // Generate QR code when dialog opens
+  const eventUrl = getEventUrl();
+  
+  useEffect(() => {
+    if (showQR && eventUrl) {
+      QRCode.toDataURL(eventUrl, {
+        width: 300,
+        margin: 2,
+        color: {
+          dark: '#1a1a3a',
+          light: '#ffffff'
+        }
+      }).then(url => {
+        setQrCodeDataUrl(url);
+      }).catch(err => {
+        console.error('Error generating QR code:', err);
+      });
+    }
+  }, [showQR, eventUrl]);
 
   // Fetch active sessions count - refetch periodically and after actions
   const refreshSessionCount = useCallback(async () => {
@@ -196,11 +218,7 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
     }
   };
 
-  // Generate QR code URL
-  const eventUrl = getEventUrl();
-  const qrCodeUrl = eventUrl 
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(eventUrl)}&bgcolor=ffffff&color=1a1a3a`
-    : null;
+  // eventUrl is already defined at the top of the component
 
   if (loading) {
     return (
@@ -364,29 +382,35 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                         QR Code Evento
                       </DialogTitle>
                       <DialogDescription>
-                        Mostra questo QR code ai partecipanti
+                        Scansionando il QR code, i partecipanti arrivano alla pagina dell'evento.
+                        <br />
+                        <span className="text-xs text-secondary">Il PIN lo comunichi tu a voce quando vuoi!</span>
                       </DialogDescription>
                     </DialogHeader>
                     <div className="flex flex-col items-center gap-4 py-4">
-                      {qrCodeUrl && (
-                        <div className="p-4 bg-white rounded-xl">
+                      {qrCodeDataUrl ? (
+                        <div className="p-4 bg-white rounded-xl shadow-lg">
                           <img 
-                            src={qrCodeUrl} 
-                            alt="QR Code PIN"
+                            src={qrCodeDataUrl} 
+                            alt="QR Code Evento"
                             className="w-48 h-48"
                           />
                         </div>
+                      ) : (
+                        <div className="w-48 h-48 bg-muted rounded-xl flex items-center justify-center">
+                          <div className="animate-spin w-8 h-8 border-2 border-secondary border-t-transparent rounded-full" />
+                        </div>
                       )}
-                      <div className="text-center">
-                        <p className="text-sm text-muted-foreground mb-1">
-                          Oppure inserisci il codice:
+                      <div className="text-center space-y-2">
+                        <p className="text-sm font-medium text-foreground">
+                          Link evento (senza PIN)
                         </p>
-                        <p className="text-3xl font-mono font-bold tracking-wider text-secondary">
-                          {session.pin_code}
+                        <p className="text-xs text-muted-foreground max-w-xs break-all">
+                          {eventUrl}
                         </p>
                       </div>
-                      <Button onClick={() => copyToClipboard(session.pin_code, 'pin')} variant="outline" className="gap-2">
-                        {copied === 'pin' ? (
+                      <Button onClick={() => eventUrl && copyToClipboard(eventUrl, 'link')} variant="outline" className="gap-2">
+                        {copied === 'link' ? (
                           <>
                             <CheckCircle2 className="w-4 h-4 text-secondary" />
                             Copiato!
@@ -394,7 +418,7 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                         ) : (
                           <>
                             <Copy className="w-4 h-4" />
-                            Copia PIN
+                            Copia Link
                           </>
                         )}
                       </Button>
