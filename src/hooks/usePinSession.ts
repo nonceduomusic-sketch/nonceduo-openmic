@@ -231,23 +231,50 @@ export function usePinSession(format: FormatKey) {
       )
       .subscribe();
 
-    // Also subscribe to live_sessions changes (PIN change, deactivation)
+    // Also subscribe to live_sessions changes (PIN change, deactivation, mass invalidation)
     const liveChannel = supabase
-      .channel(`live-session-change-global-${stored.liveSessionId.substring(0, 8)}`)
+      .channel(`live-session-change-global-${stored.liveSessionId.substring(0, 8)}-${Date.now()}`)
       .on(
         'postgres_changes',
         { 
-          event: '*', 
+          event: 'UPDATE', 
           schema: 'public', 
           table: 'live_sessions',
           filter: `id=eq.${stored.liveSessionId}`
         },
         (payload) => {
-          // IMPORTANT: avoid invalidating on unrelated updates (e.g. updated_at).
-          // We only hard-invalidate on clear lock-breaking events.
-          if (payload.eventType !== 'UPDATE') return;
+          const prev = payload.old as { 
+            is_active?: boolean; 
+            sessions_invalidated_at?: string | null;
+            pin_code?: string;
+          };
+          const next = payload.new as { 
+            is_active?: boolean; 
+            expires_at?: string | null;
+            sessions_invalidated_at?: string | null;
+            pin_code?: string;
+          };
 
-          const next = payload.new as { is_active?: boolean; expires_at?: string | null };
+          // Check if sessions were mass-invalidated (admin clicked "Sconnetti tutti")
+          if (next?.sessions_invalidated_at && 
+              next.sessions_invalidated_at !== prev?.sessions_invalidated_at) {
+            console.log('[PinSession] Admin invalidated all sessions -> forcing re-auth');
+            setHasValidSession(false);
+            setSessionInvalidated(true);
+            setInvalidationReason('admin_reset');
+            removeSession();
+            return;
+          }
+
+          // Check if PIN was changed
+          if (next?.pin_code && prev?.pin_code && next.pin_code !== prev.pin_code) {
+            console.log('[PinSession] PIN changed -> invalidate');
+            setHasValidSession(false);
+            setSessionInvalidated(true);
+            setInvalidationReason('pin_changed');
+            removeSession();
+            return;
+          }
 
           if (next?.is_active === false) {
             console.log('[PinSession] Live session deactivated -> invalidate');
