@@ -472,18 +472,28 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
               </div>
             )}
 
-            {/* Active Sessions Count + Reset */}
-            {isOwner && activeSessionsCount > 0 && (
+            {/* Active Sessions Count + Reset - ALWAYS show when PIN is active */}
+            {isOwner && (
               <div className="flex items-center justify-between p-2 rounded-lg bg-muted/20">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Users className="w-4 h-4" />
-                  <span>{activeSessionsCount} utenti con PIN valido</span>
+                  <span>
+                    {loadingSessionCount 
+                      ? 'Caricamento...' 
+                      : activeSessionsCount > 0 
+                        ? `${activeSessionsCount} utenti connessi` 
+                        : 'Nessun utente connesso'}
+                  </span>
                 </div>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button size="sm" variant="ghost" className="h-7 text-xs text-destructive hover:text-destructive">
-                      <Trash2 className="w-3 h-3 mr-1" />
-                      Invalida tutti
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="h-7 text-xs text-destructive hover:text-destructive gap-1"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      Sconnetti tutti
                     </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent>

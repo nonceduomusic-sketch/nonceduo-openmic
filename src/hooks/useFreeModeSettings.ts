@@ -264,11 +264,11 @@ export const useFreeModeSettings = () => {
           .update({ is_active: false, deactivated_at: new Date().toISOString() })
           .eq('is_active', true);
 
-        // Crea nuova live_session
+        // Crea nuova live_session (section='global' per rispettare il constraint DB)
         await supabase
           .from('live_sessions')
           .insert({
-            section: 'freemode',
+            section: 'global',
             pin_code: updates.pin_code.toUpperCase().trim(),
             protected_formats: protectedFormats,
             is_active: true,
