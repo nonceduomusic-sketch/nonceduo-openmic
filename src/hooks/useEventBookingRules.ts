@@ -236,7 +236,7 @@ export const useEventBookingRules = () => {
           const { error: sessionError } = await supabase
             .from('live_sessions')
             .insert({
-              section: 'event',
+              section: 'global', // Deve essere 'global' per rispettare il constraint DB
               pin_code: targetEvent.pin_code.toUpperCase().trim(),
               protected_formats: protectedFormats,
               is_active: true,
