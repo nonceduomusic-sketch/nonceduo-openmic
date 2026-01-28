@@ -58,6 +58,7 @@ import { EventTimingConfig } from './EventTimingConfig';
 import { UserLimitsConfig } from './UserLimitsConfig';
 import { FreeModeFullPanel } from './FreeModeFullPanel';
 import { PinProtectionCard } from './PinProtectionCard';
+import { ConnectedUsersStatCard } from './ConnectedUsersStatCard';
 
 /**
  * Tab Eventi Unificato:
@@ -411,7 +412,7 @@ export const AdminEventiTab: React.FC = () => {
               {/* Stats rapide */}
               <Card>
                 <CardContent className="pt-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     <div className="bg-muted/50 rounded-lg p-3 text-center">
                       <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-xs mb-1">
                         <Music className="w-3.5 h-3.5" />
@@ -469,6 +470,9 @@ export const AdminEventiTab: React.FC = () => {
                         )}
                       </p>
                     </div>
+
+                    {/* Connected Users */}
+                    <ConnectedUsersStatCard />
                   </div>
 
                   {/* Reset/Sync contatori */}

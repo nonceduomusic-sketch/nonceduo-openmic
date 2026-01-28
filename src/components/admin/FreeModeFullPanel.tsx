@@ -24,6 +24,7 @@ import { EventTimingConfig } from './EventTimingConfig';
 import { UserLimitsConfig } from './UserLimitsConfig';
 import { EventCountdownBanner } from '@/components/effects/EventCountdownBanner';
 import { PinProtectionCard } from './PinProtectionCard';
+import { ConnectedUsersStatCard } from './ConnectedUsersStatCard';
 
 /**
  * Adapter che converte FreeModeSettings nel formato EventBookingRules
@@ -439,13 +440,13 @@ export const FreeModeFullPanel: React.FC = () => {
       
       <CardContent className="space-y-4">
         {/* Stats */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <div className="bg-primary/10 rounded-lg p-3 text-center">
             <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-xs mb-1">
               <Music className="w-3.5 h-3.5" />
               <span>Canzoni</span>
             </div>
-            <div className="text-2xl font-bold">
+            <div className="text-xl font-bold">
               {settings?.openmic_current_count || 0}
               {settings?.openmic_max_songs && (
                 <span className="text-muted-foreground font-normal text-sm">
@@ -459,7 +460,7 @@ export const FreeModeFullPanel: React.FC = () => {
               <MessageSquare className="w-3.5 h-3.5" />
               <span>Dediche</span>
             </div>
-            <div className="text-2xl font-bold">
+            <div className="text-xl font-bold">
               {settings?.dediche_current_count || 0}
               {settings?.dediche_max_total && (
                 <span className="text-muted-foreground font-normal text-sm">
@@ -468,6 +469,8 @@ export const FreeModeFullPanel: React.FC = () => {
               )}
             </div>
           </div>
+          {/* Connected Users */}
+          <ConnectedUsersStatCard />
         </div>
 
         {/* Countdown fine evento con banner animato - sempre visibile per admin (null = sempre) */}
@@ -642,8 +645,10 @@ export const FreeModeFullPanel: React.FC = () => {
             />
           </TabsContent>
 
-          <TabsContent value="pin" className="mt-3">
+          <TabsContent value="pin" className="mt-3 space-y-4">
             <EventPinConfig rules={rules} onUpdate={handleUpdate} generatePin={generatePin} />
+            {/* Gestione sessioni PIN: mostra sempre quando evento attivo */}
+            <PinProtectionCard title="Gestione Sessioni PIN" />
           </TabsContent>
 
           <TabsContent value="reopen" className="mt-3">
