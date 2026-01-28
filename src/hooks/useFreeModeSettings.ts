@@ -276,7 +276,8 @@ export const useFreeModeSettings = () => {
 
         console.log('[activateFreeMode] Created live_session with PIN');
       }
-      toast.success('Evento Libero attivato!');
+      const name = (updates.event_name || settings?.event_name || 'EVENTO LIVE').trim();
+      toast.success(`${name} attivato!`);
     }
     return success;
   };
@@ -298,7 +299,8 @@ export const useFreeModeSettings = () => {
         .eq('is_active', true);
       
       console.log('[deactivateFreeMode] Deactivated live_session - all PIN sessions invalidated');
-      toast.success('Evento Libero disattivato');
+      const name = (settings?.event_name || 'EVENTO LIVE').trim();
+      toast.success(`${name} disattivato`);
     }
     return success;
   };

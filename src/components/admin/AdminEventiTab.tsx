@@ -628,10 +628,9 @@ export const AdminEventiTab: React.FC = () => {
                     onUpdate={updateRules}
                     generatePin={generatePin}
                   />
-                  {/* Gestione sessioni PIN - mostra solo quando evento è LIVE con PIN attivo */}
-                  {rules.event_status === 'live' && rules.pin_required && (
-                    <PinProtectionCard title="Gestione Sessioni PIN" />
-                  )}
+                  {/* Gestione sessioni PIN: mostrala sempre quando l'evento è LIVE.
+                      La card gestisce internamente stato PIN e permessi (incl. "Sconnetti tutti"). */}
+                  {rules.event_status === 'live' && <PinProtectionCard title="Gestione Sessioni PIN" />}
                 </TabsContent>
 
                 {/* RIAPRI TAB */}
