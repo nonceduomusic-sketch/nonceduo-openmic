@@ -1,12 +1,11 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Flame, Heart, ThumbsUp, Trophy, Music } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { usePerformanceVotes, useTopPerformances } from '@/hooks/useLiveInteraction';
 import { triggerHaptic } from '@/lib/haptics';
 import { fireEmojiRain } from '@/lib/confetti';
-import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
-
+import { supabase } from '@/integrations/supabase/client';
 interface VoteButtonsProps {
   reservationId: string;
   className?: string;
@@ -25,7 +24,49 @@ export const VoteButtons: React.FC<VoteButtonsProps> = ({
   compact = false,
 }) => {
   const { voteCounts, userVoteType, vote, isLoading } = usePerformanceVotes(reservationId);
-  const { isActive: votingEnabled, loading: votingLoading } = useFormatActiveCheck('voting');
+  const [votingEnabled, setVotingEnabled] = useState(true);
+  const [votingLoading, setVotingLoading] = useState(true);
+
+  // Direct real-time subscription for voting flag
+  useEffect(() => {
+    const fetchSetting = async () => {
+      const { data, error } = await supabase
+        .from('global_format_settings')
+        .select('is_active')
+        .eq('format_key', 'voting')
+        .maybeSingle();
+      
+      if (!error && data) {
+        setVotingEnabled(data.is_active);
+      }
+      setVotingLoading(false);
+    };
+    
+    fetchSetting();
+    
+    // Subscribe to real-time changes with unique channel name
+    const channel = supabase
+      .channel(`voting-setting-live-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'global_format_settings',
+          filter: 'format_key=eq.voting',
+        },
+        (payload) => {
+          if (payload.new && 'is_active' in payload.new) {
+            setVotingEnabled((payload.new as { is_active: boolean }).is_active);
+          }
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const handleVote = useCallback(async (type: 'up' | 'fire' | 'heart') => {
     if (userVoteType === type) return; // Already selected this
