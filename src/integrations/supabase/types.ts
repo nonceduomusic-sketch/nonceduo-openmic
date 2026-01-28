@@ -858,6 +858,7 @@ export type Database = {
           pin_code: string
           protected_formats: string[] | null
           section: string
+          sessions_invalidated_at: string | null
         }
         Insert: {
           created_at?: string
@@ -872,6 +873,7 @@ export type Database = {
           pin_code: string
           protected_formats?: string[] | null
           section: string
+          sessions_invalidated_at?: string | null
         }
         Update: {
           created_at?: string
@@ -886,6 +888,7 @@ export type Database = {
           pin_code?: string
           protected_formats?: string[] | null
           section?: string
+          sessions_invalidated_at?: string | null
         }
         Relationships: []
       }
