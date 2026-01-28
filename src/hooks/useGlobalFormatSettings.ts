@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export type GlobalFormatKey = 'openmic' | 'dediche' | 'community' | 'voting';
+export type GlobalFormatKey = 'openmic' | 'dediche' | 'community' | 'voting' | 'show_booker_name';
 
 export interface GlobalFormatSetting {
   format_key: GlobalFormatKey;
@@ -16,6 +16,7 @@ export const useGlobalFormatSettings = () => {
     dediche: true,
     community: true,
     voting: true,
+    show_booker_name: true,
   });
   const [loading, setLoading] = useState(true);
 
@@ -33,6 +34,7 @@ export const useGlobalFormatSettings = () => {
           dediche: true,
           community: true,
           voting: true,
+          show_booker_name: true,
         };
         data.forEach((item) => {
           const key = item.format_key as GlobalFormatKey;
@@ -91,7 +93,14 @@ export const useGlobalFormatSettings = () => {
       if (error) throw error;
 
       setSettings(prev => ({ ...prev, [format]: newValue }));
-      toast.success(`${format === 'openmic' ? 'Open Mic' : format === 'dediche' ? 'Dediche' : format === 'community' ? 'Community' : 'Votazioni'} ${newValue ? 'attivato' : 'disattivato'}`);
+      const formatNames: Record<GlobalFormatKey, string> = {
+        openmic: 'Open Mic',
+        dediche: 'Dediche',
+        community: 'Community',
+        voting: 'Votazioni',
+        show_booker_name: 'Nome prenotante',
+      };
+      toast.success(`${formatNames[format]} ${newValue ? 'attivato' : 'disattivato'}`);
       return true;
     } catch (error) {
       console.error('Error toggling format:', error);
