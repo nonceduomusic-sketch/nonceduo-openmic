@@ -57,6 +57,7 @@ import { EventTypeSelector } from './EventTypeSelector';
 import { EventTimingConfig } from './EventTimingConfig';
 import { UserLimitsConfig } from './UserLimitsConfig';
 import { FreeModeFullPanel } from './FreeModeFullPanel';
+import { PinProtectionCard } from './PinProtectionCard';
 
 /**
  * Tab Eventi Unificato:
@@ -621,12 +622,16 @@ export const AdminEventiTab: React.FC = () => {
                 </TabsContent>
 
                 {/* PIN TAB */}
-                <TabsContent value="pin" className="mt-4">
+                <TabsContent value="pin" className="mt-4 space-y-4">
                   <EventPinConfig 
                     rules={rules} 
                     onUpdate={updateRules}
                     generatePin={generatePin}
                   />
+                  {/* Gestione sessioni PIN - mostra solo quando evento è LIVE con PIN attivo */}
+                  {rules.event_status === 'live' && rules.pin_required && (
+                    <PinProtectionCard title="Gestione Sessioni PIN" />
+                  )}
                 </TabsContent>
 
                 {/* RIAPRI TAB */}
