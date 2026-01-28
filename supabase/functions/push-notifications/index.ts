@@ -1134,8 +1134,10 @@ serve(async (req) => {
         
         // === SEND LIVE NOTIFICATIONS (Email + Telegram) ===
         // Fire and forget - don't block the response
+        // IMPORTANT: Song reservations are ALWAYS "openmic" type, even if they have a dedication message.
+        // The "dediche" type is only for standalone dedications sent via the chat/dediche section.
         const liveNotificationPayload = {
-          type: isDedica ? 'dediche' : 'openmic',
+          type: 'openmic' as const,
           reservationId: reservation.id,
           customerName: reservation.customer_name,
           songTitle: reservation.song_title,
