@@ -70,6 +70,12 @@ interface AdminMobileDrawerProps {
   onBlockedSelect?: (tab: AdminMainTab) => void;
   access: Record<AdminSectionKey, boolean>;
   isOwner: boolean;
+  isOperator?: boolean;
+  operatorAccess?: {
+    canViewCentro: boolean;
+    canViewOpenmic: boolean;
+    canViewDediche: boolean;
+  };
   badges?: {
     totalNotifications?: number;
     openmicActiveCount?: number;
@@ -88,6 +94,8 @@ export function AdminMobileDrawer({
   onBlockedSelect,
   access,
   isOwner,
+  isOperator = false,
+  operatorAccess,
   badges = {},
   onResetOpenMic,
   onResetDediche,
@@ -97,6 +105,14 @@ export function AdminMobileDrawer({
   const [open, setOpen] = React.useState(false);
 
   const isBlocked = (item: MenuItem) => {
+    // Operators have special restricted view
+    if (isOperator && operatorAccess) {
+      if (item.key === "notifications") return !operatorAccess.canViewCentro;
+      if (item.key === "openmic") return !operatorAccess.canViewOpenmic;
+      if (item.key === "dediche") return !operatorAccess.canViewDediche;
+      return true; // Block everything else for operators
+    }
+    
     if (item.ownerOnly && !isOwner) return true;
     if (item.gatedBy && !access[item.gatedBy]) return true;
     return false;
@@ -120,6 +136,10 @@ export function AdminMobileDrawer({
   };
 
   const visibleItems = MENU_ITEMS.filter((item) => {
+    // Operators only see Centro, Open Mic, Dediche
+    if (isOperator) {
+      return ["notifications", "openmic", "dediche"].includes(item.key);
+    }
     // Hide owner-only items from non-owners
     if (item.ownerOnly && !isOwner) return false;
     return true;
@@ -185,11 +205,11 @@ export function AdminMobileDrawer({
 
         {/* Navigation */}
         <div className="flex-1 overflow-y-auto p-3">
-          {renderGroup("Live", "Live", "🔴")}
-          <Separator className="my-3" />
+          {!isOperator && renderGroup("Live", "Live", "🔴")}
+          {!isOperator && <Separator className="my-3" />}
           {renderGroup("Operativo", "Operativo", "📋")}
-          <Separator className="my-3" />
-          {renderGroup("Gestione", "Gestione", "⚙️")}
+          {!isOperator && <Separator className="my-3" />}
+          {!isOperator && renderGroup("Gestione", "Gestione", "⚙️")}
         </div>
 
         {/* Footer Actions */}
