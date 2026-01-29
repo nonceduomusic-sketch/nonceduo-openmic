@@ -390,11 +390,13 @@ export const useUnifiedLiveSession = () => {
 
   // Get event URL - always use nonceduo.com for production
   const getEventUrl = (): string | null => {
-    if (!session?.event_link_code) return null;
+    if (!session) return null;
     // Use current origin so the link always works in Preview + Published.
     // (No hardcoded domains.)
+    // Fallback to default link code if not set
+    const linkCode = session.event_link_code || 'nonceduo';
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    return `${origin}/evento-live/${session.event_link_code}`;
+    return `${origin}/evento-live/${linkCode}`;
   };
 
   // Regenerate the event link code (manual action)
