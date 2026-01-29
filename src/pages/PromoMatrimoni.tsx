@@ -8,6 +8,7 @@ import { PromoFeatures } from '@/components/promo/PromoFeatures';
 import { PromoTestimonials } from '@/components/promo/PromoTestimonials';
 import { PromoCTA } from '@/components/promo/PromoCTA';
 import { PromoGallery } from '@/components/promo/PromoGallery';
+import { PromoHeader } from '@/components/promo/PromoHeader';
 import { Button } from '@/components/ui/button';
 import { Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -82,21 +83,26 @@ const PromoMatrimoni: React.FC = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        {/* Hero with elegant gold accent */}
-        <PromoHero
-          badge="Matrimoni & Ricevimenti"
-          subtitle="Il Vostro Grande Giorno"
-          title="Indimenticabile"
-          description="Non solo musica. Emozioni vere, momenti spontanei, ospiti che cantano per voi. Il matrimonio che avete sempre sognato."
-          accentColor="gold"
-        >
-          <a href="https://wa.me/393807911941?text=Ciao! Mi sposo e vorrei informazioni su Non c'è Duo per il matrimonio" target="_blank" rel="noopener noreferrer">
-            <Button size="lg" className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold text-lg px-8 py-6 rounded-full shadow-lg shadow-amber-500/25">
-              <Phone className="w-5 h-5 mr-2" />
-              Parliamo del vostro matrimonio
-            </Button>
-          </a>
-        </PromoHero>
+        {/* Fixed Header */}
+        <PromoHeader accentColor="gold" />
+        
+        {/* Hero with elegant gold accent - with top padding for fixed header */}
+        <div className="pt-14">
+          <PromoHero
+            badge="Matrimoni & Ricevimenti"
+            subtitle="Il Vostro Grande Giorno"
+            title="Indimenticabile"
+            description="Non solo musica. Emozioni vere, momenti spontanei, ospiti che cantano per voi. Il matrimonio che avete sempre sognato."
+            accentColor="gold"
+          >
+            <a href="https://wa.me/393807911941?text=Ciao! Mi sposo e vorrei informazioni su Non c'è Duo per il matrimonio" target="_blank" rel="noopener noreferrer">
+              <Button size="lg" className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-bold text-lg px-8 py-6 rounded-full shadow-lg shadow-amber-500/25">
+                <Phone className="w-5 h-5 mr-2" />
+                Parliamo del vostro matrimonio
+              </Button>
+            </a>
+          </PromoHero>
+        </div>
 
         {/* Emotional moment section */}
         <section className="py-16 md:py-24 bg-card/30">

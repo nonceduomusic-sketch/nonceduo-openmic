@@ -8,6 +8,7 @@ import { PromoFeatures } from '@/components/promo/PromoFeatures';
 import { PromoTestimonials } from '@/components/promo/PromoTestimonials';
 import { PromoCTA } from '@/components/promo/PromoCTA';
 import { PromoGallery } from '@/components/promo/PromoGallery';
+import { PromoHeader } from '@/components/promo/PromoHeader';
 import { Button } from '@/components/ui/button';
 import { Phone } from 'lucide-react';
 
@@ -81,21 +82,26 @@ const PromoLocali: React.FC = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        {/* Hero */}
-        <PromoHero
-          badge="Per Locali & Club"
-          subtitle="Trasforma le tue serate in"
-          title="Eventi Virali"
-          description="Basta serate piatte. Con Open Mic e Dediche Live il tuo pubblico diventa protagonista. Più coinvolgimento, più consumazioni, più passaparola."
-          accentColor="pink"
-        >
-          <a href="https://wa.me/393807911941?text=Ciao! Ho un locale e vorrei informazioni su Non c'è Duo" target="_blank" rel="noopener noreferrer">
-            <Button size="lg" className="neon-button-pink text-lg px-8 py-6 rounded-full">
-              <Phone className="w-5 h-5 mr-2" />
-              Parliamo della tua serata
-            </Button>
-          </a>
-        </PromoHero>
+        {/* Fixed Header */}
+        <PromoHeader accentColor="pink" />
+        
+        {/* Hero - with top padding for fixed header */}
+        <div className="pt-14">
+          <PromoHero
+            badge="Per Locali & Club"
+            subtitle="Trasforma le tue serate in"
+            title="Eventi Virali"
+            description="Basta serate piatte. Con Open Mic e Dediche Live il tuo pubblico diventa protagonista. Più coinvolgimento, più consumazioni, più passaparola."
+            accentColor="pink"
+          >
+            <a href="https://wa.me/393807911941?text=Ciao! Ho un locale e vorrei informazioni su Non c'è Duo" target="_blank" rel="noopener noreferrer">
+              <Button size="lg" className="neon-button-pink text-lg px-8 py-6 rounded-full">
+                <Phone className="w-5 h-5 mr-2" />
+                Parliamo della tua serata
+              </Button>
+            </a>
+          </PromoHero>
+        </div>
 
         {/* Stats */}
         <PromoStats stats={stats} accentColor="pink" />

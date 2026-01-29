@@ -8,6 +8,7 @@ import { PromoFeatures } from '@/components/promo/PromoFeatures';
 import { PromoTestimonials } from '@/components/promo/PromoTestimonials';
 import { PromoCTA } from '@/components/promo/PromoCTA';
 import { PromoGallery } from '@/components/promo/PromoGallery';
+import { PromoHeader } from '@/components/promo/PromoHeader';
 import { Button } from '@/components/ui/button';
 import { Phone } from 'lucide-react';
 
@@ -81,21 +82,26 @@ const PromoEventi: React.FC = () => {
       </Helmet>
 
       <div className="min-h-screen bg-background">
-        {/* Hero */}
-        <PromoHero
-          badge="Eventi Privati & Corporate"
-          subtitle="Trasforma il tuo evento in"
-          title="Un'Esperienza Unica"
-          description="Non il solito intrattenimento. I tuoi ospiti salgono sul palco, dedicano canzoni, creano momenti che resteranno per sempre."
-          accentColor="cyan"
-        >
-          <a href="https://wa.me/393807911941?text=Ciao! Sto organizzando un evento e vorrei informazioni su Non c'è Duo" target="_blank" rel="noopener noreferrer">
-            <Button size="lg" className="neon-button-cyan text-lg px-8 py-6 rounded-full">
-              <Phone className="w-5 h-5 mr-2" />
-              Parliamo del tuo evento
-            </Button>
-          </a>
-        </PromoHero>
+        {/* Fixed Header */}
+        <PromoHeader accentColor="cyan" />
+        
+        {/* Hero - with top padding for fixed header */}
+        <div className="pt-14">
+          <PromoHero
+            badge="Eventi Privati & Corporate"
+            subtitle="Trasforma il tuo evento in"
+            title="Un'Esperienza Unica"
+            description="Non il solito intrattenimento. I tuoi ospiti salgono sul palco, dedicano canzoni, creano momenti che resteranno per sempre."
+            accentColor="cyan"
+          >
+            <a href="https://wa.me/393807911941?text=Ciao! Sto organizzando un evento e vorrei informazioni su Non c'è Duo" target="_blank" rel="noopener noreferrer">
+              <Button size="lg" className="neon-button-cyan text-lg px-8 py-6 rounded-full">
+                <Phone className="w-5 h-5 mr-2" />
+                Parliamo del tuo evento
+              </Button>
+            </a>
+          </PromoHero>
+        </div>
 
         {/* Stats */}
         <PromoStats stats={stats} accentColor="cyan" />
