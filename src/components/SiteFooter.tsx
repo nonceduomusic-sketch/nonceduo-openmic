@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Mic2, Shield, Download } from 'lucide-react';
+import { Mic2, Shield, Download, Handshake } from 'lucide-react';
 
 interface SiteFooterProps {
   variant?: 'default' | 'minimal' | 'social';
@@ -88,6 +88,10 @@ export const SiteFooter: React.FC<SiteFooterProps> = ({
             </Link>
             <Link to="/partyband" className="text-muted-foreground hover:text-primary transition-colors">
               Party Band
+            </Link>
+            <Link to="/collabora" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
+              <Handshake className="w-3 h-3" />
+              Collabora
             </Link>
             <Link to="/installa" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
               <Download className="w-3 h-3" />

@@ -29,6 +29,7 @@ import Installa from "./pages/Installa";
 import PromoLocali from "./pages/PromoLocali";
 import PromoEventi from "./pages/PromoEventi";
 import PromoMatrimoni from "./pages/PromoMatrimoni";
+import Collabora from "./pages/Collabora";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ const App = () => (
             <Route path="/installa" element={<Installa />} />
 
             {/* Promo Pages - per target */}
+            <Route path="/collabora" element={<Collabora />} />
             <Route path="/promo/locali" element={<PromoLocali />} />
             <Route path="/promo/eventi" element={<PromoEventi />} />
             <Route path="/promo/matrimoni" element={<PromoMatrimoni />} />
