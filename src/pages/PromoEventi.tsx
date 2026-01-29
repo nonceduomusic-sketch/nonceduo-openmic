@@ -1,12 +1,13 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Users, Award, Briefcase, Clock, Shield, Sparkles, HeartHandshake, Target } from 'lucide-react';
+import { Award, Briefcase, Clock, Shield, HeartHandshake, Target } from 'lucide-react';
 import { PromoHero } from '@/components/promo/PromoHero';
 import { PromoStats } from '@/components/promo/PromoStats';
 import { PromoFormats } from '@/components/promo/PromoFormats';
 import { PromoFeatures } from '@/components/promo/PromoFeatures';
 import { PromoTestimonials } from '@/components/promo/PromoTestimonials';
 import { PromoCTA } from '@/components/promo/PromoCTA';
+import { PromoGallery } from '@/components/promo/PromoGallery';
 import { Button } from '@/components/ui/button';
 import { Phone } from 'lucide-react';
 
@@ -98,6 +99,9 @@ const PromoEventi: React.FC = () => {
 
         {/* Stats */}
         <PromoStats stats={stats} accentColor="cyan" />
+
+        {/* Real Photos Gallery */}
+        <PromoGallery variant="eventi" />
 
         {/* Formats */}
         <PromoFormats variant="eventi" showBand={true} showOpenMic={true} showDediche={true} />
