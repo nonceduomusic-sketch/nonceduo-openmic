@@ -145,7 +145,7 @@ const Collabora: React.FC = () => {
                 Hai un'idea diversa?
               </h3>
               <p className="text-muted-foreground mb-8">
-                Festival, sagre, eventi speciali... contattaci e raccontaci il tuo progetto!
+                Festival, rassegne, eventi speciali... contattaci e raccontaci il tuo progetto!
               </p>
               <a
                 href="https://wa.me/393807911941?text=Ciao! Ho un progetto speciale da proporvi..."
