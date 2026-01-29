@@ -67,7 +67,7 @@ const PromoLocali: React.FC = () => {
       rating: 5,
     },
     {
-      quote: "Professionali, puntuali e il pubblico li adora. Li richiamo ogni mese.",
+      quote: "Professionali, puntuali e il pubblico li adora. Ormai sono un appuntamento fisso dell'estate.",
       author: "Andrea T.",
       role: "Direttore - Lido Estivo",
       rating: 5,
