@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Award, Briefcase, Clock, Shield, HeartHandshake, Target } from 'lucide-react';
 import { PromoHero } from '@/components/promo/PromoHero';
@@ -13,6 +13,11 @@ import { Button } from '@/components/ui/button';
 import { Phone } from 'lucide-react';
 
 const PromoEventi: React.FC = () => {
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const stats = [
     { value: 200, suffix: '+', label: 'Eventi Privati' },
     { value: 50, suffix: '+', label: 'Aziende Servite' },

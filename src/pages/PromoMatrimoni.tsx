@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Heart, Music, Clock, Sparkles, Camera, Star, Users } from 'lucide-react';
 import { PromoHero } from '@/components/promo/PromoHero';
@@ -14,6 +14,11 @@ import { Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const PromoMatrimoni: React.FC = () => {
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const stats = [
     { value: 150, suffix: '+', label: 'Matrimoni' },
     { value: 100, suffix: '%', label: 'Piste Piene' },

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Users, Calendar, TrendingUp, Zap, Repeat, BarChart3 } from 'lucide-react';
 import { PromoHero } from '@/components/promo/PromoHero';
@@ -13,6 +13,11 @@ import { Button } from '@/components/ui/button';
 import { Phone } from 'lucide-react';
 
 const PromoLocali: React.FC = () => {
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
+
   const stats = [
     { value: 500, suffix: '+', label: 'Serate Live' },
     { value: 50, suffix: '+', label: 'Locali Partner' },
