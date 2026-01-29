@@ -1,12 +1,13 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Heart, Music, Users, Clock, Sparkles, Camera, Mic2, Star } from 'lucide-react';
+import { Heart, Music, Clock, Sparkles, Camera, Star, Users } from 'lucide-react';
 import { PromoHero } from '@/components/promo/PromoHero';
 import { PromoStats } from '@/components/promo/PromoStats';
 import { PromoFormats } from '@/components/promo/PromoFormats';
 import { PromoFeatures } from '@/components/promo/PromoFeatures';
 import { PromoTestimonials } from '@/components/promo/PromoTestimonials';
 import { PromoCTA } from '@/components/promo/PromoCTA';
+import { PromoGallery } from '@/components/promo/PromoGallery';
 import { Button } from '@/components/ui/button';
 import { Phone } from 'lucide-react';
 import { motion } from 'framer-motion';
@@ -128,6 +129,9 @@ const PromoMatrimoni: React.FC = () => {
 
         {/* Stats */}
         <PromoStats stats={stats} accentColor="gold" />
+
+        {/* Real Photos Gallery */}
+        <PromoGallery variant="matrimoni" />
 
         {/* Formats - matrimoni focused */}
         <PromoFormats variant="matrimoni" showBand={true} showOpenMic={true} showDediche={true} />

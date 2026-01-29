@@ -1,12 +1,13 @@
 import React from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Users, Calendar, TrendingUp, Zap, PartyPopper, Repeat, BarChart3, Sparkles } from 'lucide-react';
+import { Users, Calendar, TrendingUp, Zap, Repeat, BarChart3 } from 'lucide-react';
 import { PromoHero } from '@/components/promo/PromoHero';
 import { PromoStats } from '@/components/promo/PromoStats';
 import { PromoFormats } from '@/components/promo/PromoFormats';
 import { PromoFeatures } from '@/components/promo/PromoFeatures';
 import { PromoTestimonials } from '@/components/promo/PromoTestimonials';
 import { PromoCTA } from '@/components/promo/PromoCTA';
+import { PromoGallery } from '@/components/promo/PromoGallery';
 import { Button } from '@/components/ui/button';
 import { Phone } from 'lucide-react';
 
@@ -98,6 +99,9 @@ const PromoLocali: React.FC = () => {
 
         {/* Stats */}
         <PromoStats stats={stats} accentColor="pink" />
+
+        {/* Real Photos Gallery */}
+        <PromoGallery variant="locali" />
 
         {/* Formats */}
         <PromoFormats variant="locali" showBand={true} showOpenMic={true} showDediche={true} />
