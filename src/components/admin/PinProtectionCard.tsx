@@ -440,48 +440,23 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                           )}
                         </Button>
                         <Button 
-                          onClick={async () => {
+                          onClick={() => {
                             if (qrCodeDataUrl) {
                               try {
-                                // Convert data URL to blob
-                                const response = await fetch(qrCodeDataUrl);
-                                const blob = await response.blob();
-                                
-                                // Try Web Share API first (works on most mobile browsers)
-                                if (navigator.share && navigator.canShare) {
-                                  const file = new File([blob], 'qr-code-evento.png', { type: 'image/png' });
-                                  const shareData = { files: [file] };
-                                  
-                                  if (navigator.canShare(shareData)) {
-                                    await navigator.share(shareData);
-                                    toast.success('Immagine condivisa!');
-                                    return;
-                                  }
-                                }
-                                
-                                // Fallback: Create object URL and open in new tab
-                                const blobUrl = URL.createObjectURL(blob);
-                                const newTab = window.open(blobUrl, '_blank');
-                                
-                                if (newTab) {
-                                  toast.success('Tieni premuto sull\'immagine per salvare');
-                                } else {
-                                  // If popup blocked, try download link
-                                  const link = document.createElement('a');
-                                  link.href = blobUrl;
-                                  link.download = 'qr-code-evento.png';
-                                  link.style.display = 'none';
-                                  document.body.appendChild(link);
-                                  link.click();
-                                  setTimeout(() => {
-                                    document.body.removeChild(link);
-                                    URL.revokeObjectURL(blobUrl);
-                                  }, 100);
-                                  toast.success('Download avviato!');
-                                }
+                                // Direct download using anchor tag
+                                const link = document.createElement('a');
+                                link.href = qrCodeDataUrl;
+                                link.download = 'qr-code-evento.png';
+                                link.style.display = 'none';
+                                document.body.appendChild(link);
+                                link.click();
+                                document.body.removeChild(link);
+                                toast.success('Download avviato!');
                               } catch (error) {
                                 console.error('Download error:', error);
-                                toast.error('Errore nel download');
+                                // Fallback: open in new tab
+                                window.open(qrCodeDataUrl, '_blank');
+                                toast.info('Tieni premuto sull\'immagine per salvare');
                               }
                             } else {
                               toast.error('QR Code non disponibile');
