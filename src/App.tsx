@@ -26,6 +26,9 @@ import OpenMicInfo from "./pages/OpenMicInfo";
 import DedicheInfo from "./pages/DedicheInfo";
 import EventoLive from "./pages/EventoLive";
 import Installa from "./pages/Installa";
+import PromoLocali from "./pages/PromoLocali";
+import PromoEventi from "./pages/PromoEventi";
+import PromoMatrimoni from "./pages/PromoMatrimoni";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +54,11 @@ const App = () => (
             
             {/* PWA Install page */}
             <Route path="/installa" element={<Installa />} />
+
+            {/* Promo Pages - per target */}
+            <Route path="/promo/locali" element={<PromoLocali />} />
+            <Route path="/promo/eventi" element={<PromoEventi />} />
+            <Route path="/promo/matrimoni" element={<PromoMatrimoni />} />
 
             {/* APP (launcher + live) */}
             <Route path="/app" element={<AppLauncher />} />
