@@ -16,11 +16,12 @@ import {
   Home,
   Radio,
   Clock,
-  Sparkles
+  Sparkles,
+  Users
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LiveReactionBar } from '@/components/live/LiveReactionBar';
-import { LiveViewerCount } from '@/components/effects/LiveViewerCount';
+import { useConnectedUsersCount } from '@/hooks/useConnectedUsersCount';
 import { toast } from 'sonner';
 
 interface EventSession {
@@ -276,12 +277,9 @@ const EventoLive: React.FC = () => {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <LiveViewerCount />
-              <Badge className="bg-primary/20 text-primary animate-pulse">
-                🔴 LIVE
-              </Badge>
-            </div>
+            <Badge className="bg-primary/20 text-primary animate-pulse">
+              🔴 LIVE
+            </Badge>
           </div>
         </div>
       </header>

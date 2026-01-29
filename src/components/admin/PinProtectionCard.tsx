@@ -440,36 +440,48 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                           )}
                         </Button>
                         <Button 
-                          onClick={() => {
+                          onClick={async () => {
                             if (qrCodeDataUrl) {
-                              // Check if on iOS/Safari
-                              const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-                              
-                              if (isIOS) {
-                                // iOS: Open in new tab for manual save
-                                const newTab = window.open();
-                                if (newTab) {
-                                  newTab.document.write(`
-                                    <html>
-                                      <head><title>QR Code Evento</title></head>
-                                      <body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f5;">
-                                        <img src="${qrCodeDataUrl}" alt="QR Code" style="max-width:90%;border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,0.1);" />
-                                        <p style="margin-top:16px;font-family:system-ui;color:#666;">Tieni premuto sull'immagine per salvare</p>
-                                      </body>
-                                    </html>
-                                  `);
-                                  newTab.document.close();
+                              try {
+                                // Convert data URL to blob
+                                const response = await fetch(qrCodeDataUrl);
+                                const blob = await response.blob();
+                                
+                                // Try Web Share API first (works on most mobile browsers)
+                                if (navigator.share && navigator.canShare) {
+                                  const file = new File([blob], 'qr-code-evento.png', { type: 'image/png' });
+                                  const shareData = { files: [file] };
+                                  
+                                  if (navigator.canShare(shareData)) {
+                                    await navigator.share(shareData);
+                                    toast.success('Immagine condivisa!');
+                                    return;
+                                  }
                                 }
-                                toast.success('Tieni premuto per salvare l\'immagine');
-                              } else {
-                                // Android/Desktop: Direct download
-                                const link = document.createElement('a');
-                                link.href = qrCodeDataUrl;
-                                link.download = 'qr-code-evento.png';
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                                toast.success('QR Code scaricato!');
+                                
+                                // Fallback: Create object URL and open in new tab
+                                const blobUrl = URL.createObjectURL(blob);
+                                const newTab = window.open(blobUrl, '_blank');
+                                
+                                if (newTab) {
+                                  toast.success('Tieni premuto sull\'immagine per salvare');
+                                } else {
+                                  // If popup blocked, try download link
+                                  const link = document.createElement('a');
+                                  link.href = blobUrl;
+                                  link.download = 'qr-code-evento.png';
+                                  link.style.display = 'none';
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  setTimeout(() => {
+                                    document.body.removeChild(link);
+                                    URL.revokeObjectURL(blobUrl);
+                                  }, 100);
+                                  toast.success('Download avviato!');
+                                }
+                              } catch (error) {
+                                console.error('Download error:', error);
+                                toast.error('Errore nel download');
                               }
                             } else {
                               toast.error('QR Code non disponibile');
