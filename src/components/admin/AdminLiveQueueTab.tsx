@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { 
   ListMusic, 
   GripVertical, 
@@ -17,25 +17,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-interface DraggableReservation extends Reservation {
-  order_index: number;
-}
-
 export const AdminLiveQueueTab: React.FC = () => {
   const { activeReservations, loading, refetch } = useReservations();
   const [reordering, setReordering] = useState(false);
   const [localOrder, setLocalOrder] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState<string | null>(null);
+  const [hasManualChanges, setHasManualChanges] = useState(false);
 
-  // Initialize local order when reservations change
-  React.useEffect(() => {
-    if (!reordering) {
-      setLocalOrder(activeReservations.map(r => r.id));
+  // Initialize local order when reservations change (and not during manual reorder)
+  useEffect(() => {
+    if (!hasManualChanges) {
+      const newOrder = activeReservations.map(r => r.id);
+      setLocalOrder(newOrder);
     }
-  }, [activeReservations, reordering]);
+  }, [activeReservations, hasManualChanges]);
 
   // Get ordered reservations based on local order
-  const orderedReservations = React.useMemo(() => {
+  const orderedReservations = useMemo(() => {
     if (localOrder.length === 0) return activeReservations;
     
     const orderMap = new Map(localOrder.map((id, index) => [id, index]));
@@ -46,14 +44,26 @@ export const AdminLiveQueueTab: React.FC = () => {
     });
   }, [activeReservations, localOrder]);
 
+  // Check if order has changed from original
+  const hasChanges = useMemo(() => {
+    if (localOrder.length === 0) return false;
+    const originalOrder = activeReservations.map(r => r.id);
+    if (originalOrder.length !== localOrder.length) return false;
+    return JSON.stringify(originalOrder) !== JSON.stringify(localOrder);
+  }, [activeReservations, localOrder]);
+
   const moveItem = useCallback((fromIndex: number, toIndex: number) => {
-    if (toIndex < 0 || toIndex >= localOrder.length) return;
+    if (toIndex < 0 || toIndex >= orderedReservations.length) return;
     
-    const newOrder = [...localOrder];
+    // Get current order based on orderedReservations (visual order)
+    const currentIds = orderedReservations.map(r => r.id);
+    const newOrder = [...currentIds];
     const [movedItem] = newOrder.splice(fromIndex, 1);
     newOrder.splice(toIndex, 0, movedItem);
+    
     setLocalOrder(newOrder);
-  }, [localOrder]);
+    setHasManualChanges(true);
+  }, [orderedReservations]);
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     setIsDragging(id);
@@ -75,11 +85,16 @@ export const AdminLiveQueueTab: React.FC = () => {
       return;
     }
 
-    const fromIndex = localOrder.indexOf(draggedId);
-    const toIndex = localOrder.indexOf(targetId);
+    const currentIds = orderedReservations.map(r => r.id);
+    const fromIndex = currentIds.indexOf(draggedId);
+    const toIndex = currentIds.indexOf(targetId);
     
     if (fromIndex !== -1 && toIndex !== -1) {
-      moveItem(fromIndex, toIndex);
+      const newOrder = [...currentIds];
+      const [movedItem] = newOrder.splice(fromIndex, 1);
+      newOrder.splice(toIndex, 0, movedItem);
+      setLocalOrder(newOrder);
+      setHasManualChanges(true);
     }
     
     setIsDragging(null);
@@ -112,6 +127,7 @@ export const AdminLiveQueueTab: React.FC = () => {
       }
       
       toast.success('Ordine scaletta salvato!');
+      setHasManualChanges(false);
       await refetch();
     } catch (error) {
       console.error('Failed to save order:', error);
@@ -121,10 +137,10 @@ export const AdminLiveQueueTab: React.FC = () => {
     }
   };
 
-  const hasChanges = React.useMemo(() => {
-    const originalOrder = activeReservations.map(r => r.id);
-    return JSON.stringify(originalOrder) !== JSON.stringify(localOrder);
-  }, [activeReservations, localOrder]);
+  const cancelChanges = useCallback(() => {
+    setLocalOrder(activeReservations.map(r => r.id));
+    setHasManualChanges(false);
+  }, [activeReservations]);
 
   if (loading) {
     return (
@@ -153,17 +169,26 @@ export const AdminLiveQueueTab: React.FC = () => {
             </div>
             
             {hasChanges && (
-              <Button 
-                onClick={saveOrder} 
-                disabled={reordering}
-                className="neon-button-pink"
-                size="sm"
-              >
-                {reordering ? (
-                  <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-                ) : null}
-                Salva Ordine
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button 
+                  onClick={cancelChanges} 
+                  variant="outline"
+                  size="sm"
+                >
+                  Annulla
+                </Button>
+                <Button 
+                  onClick={saveOrder} 
+                  disabled={reordering}
+                  className="neon-button-pink"
+                  size="sm"
+                >
+                  {reordering ? (
+                    <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                  ) : null}
+                  Salva Ordine
+                </Button>
+              </div>
             )}
           </div>
         </CardHeader>
