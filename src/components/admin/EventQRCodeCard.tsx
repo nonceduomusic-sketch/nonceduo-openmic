@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import {
@@ -18,6 +18,7 @@ import {
   MessageSquare,
   Printer,
   Share2,
+  Type,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -27,9 +28,12 @@ import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Slider } from '@/components/ui/slider';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import QRCode from 'qrcode';
+import { DraggablePreview } from './DraggablePreview';
+import { MARGIN_PRESETS, PercentPosition } from './PositionGrid';
 
 // Brand logo assets
 import brandLogoText from '@/assets/brand-logo-text.png';
@@ -45,13 +49,34 @@ interface QRCodeConfig {
   eventDate: Date | undefined;
   eventTime: string;
   eventType: EventType;
-  showEventType: boolean;
   additionalInfo: string;
   stylePreset: StylePreset;
   imageFormat: ImageFormat;
   qrDestination: QrDestination;
-  useBrandLogo: boolean;
+  // Element visibility flags
+  showLogo: boolean;
+  showTitle: boolean;
+  showVenue: boolean;
+  showDatetime: boolean;
+  showBadge: boolean;
+  showQr: boolean;
+  showCta: boolean;
+  showInfo: boolean;
+  showFooter: boolean;
+  // Element positions
+  logoPos: PercentPosition;
+  titlePos: PercentPosition;
+  venuePos: PercentPosition;
+  datetimePos: PercentPosition;
+  badgePos: PercentPosition;
+  qrPos: PercentPosition;
+  ctaPos: PercentPosition;
+  infoPos: PercentPosition;
+  footerPos: PercentPosition;
+  elementMargin: number;
 }
+
+const STORAGE_KEY = 'ncd_qrcode_generator_config';
 
 const DEFAULT_CONFIG: QRCodeConfig = {
   title: '',
@@ -59,12 +84,31 @@ const DEFAULT_CONFIG: QRCodeConfig = {
   eventDate: undefined,
   eventTime: '',
   eventType: 'public',
-  showEventType: true,
   additionalInfo: '',
   stylePreset: 'neon',
   imageFormat: 'square',
   qrDestination: 'app',
-  useBrandLogo: true,
+  // Visibility defaults
+  showLogo: true,
+  showTitle: true,
+  showVenue: true,
+  showDatetime: true,
+  showBadge: true,
+  showQr: true,
+  showCta: true,
+  showInfo: false,
+  showFooter: true,
+  // Position defaults
+  logoPos: { x: 50, y: 10 },
+  titlePos: { x: 50, y: 20 },
+  venuePos: { x: 50, y: 28 },
+  datetimePos: { x: 50, y: 35 },
+  badgePos: { x: 50, y: 42 },
+  qrPos: { x: 50, y: 58 },
+  ctaPos: { x: 50, y: 80 },
+  infoPos: { x: 50, y: 88 },
+  footerPos: { x: 50, y: 95 },
+  elementMargin: MARGIN_PRESETS.standard,
 };
 
 const STYLE_PRESETS: Record<StylePreset, { label: string; accent: string; bgStart: string; bgEnd: string }> = {
@@ -121,21 +165,82 @@ const QR_DESTINATIONS: Record<QrDestination, { label: string; path: string; cta:
   dediche: { label: 'Dediche', path: '/app/dediche', cta: 'Invia una dedica!' },
 };
 
+// Serialize config for localStorage (excluding Date)
+const serializeConfig = (config: QRCodeConfig): string => {
+  return JSON.stringify({
+    ...config,
+    eventDate: config.eventDate ? config.eventDate.toISOString() : null,
+  });
+};
+
+const deserializeConfig = (json: string): QRCodeConfig | null => {
+  try {
+    const parsed = JSON.parse(json);
+    return {
+      ...DEFAULT_CONFIG,
+      ...parsed,
+      eventDate: parsed.eventDate ? new Date(parsed.eventDate) : undefined,
+      // Ensure position objects exist with valid defaults
+      logoPos: parsed.logoPos ?? DEFAULT_CONFIG.logoPos,
+      titlePos: parsed.titlePos ?? DEFAULT_CONFIG.titlePos,
+      venuePos: parsed.venuePos ?? DEFAULT_CONFIG.venuePos,
+      datetimePos: parsed.datetimePos ?? DEFAULT_CONFIG.datetimePos,
+      badgePos: parsed.badgePos ?? DEFAULT_CONFIG.badgePos,
+      qrPos: parsed.qrPos ?? DEFAULT_CONFIG.qrPos,
+      ctaPos: parsed.ctaPos ?? DEFAULT_CONFIG.ctaPos,
+      infoPos: parsed.infoPos ?? DEFAULT_CONFIG.infoPos,
+      footerPos: parsed.footerPos ?? DEFAULT_CONFIG.footerPos,
+      elementMargin: parsed.elementMargin ?? DEFAULT_CONFIG.elementMargin,
+      // Visibility flags with defaults
+      showLogo: parsed.showLogo ?? DEFAULT_CONFIG.showLogo,
+      showTitle: parsed.showTitle ?? DEFAULT_CONFIG.showTitle,
+      showVenue: parsed.showVenue ?? DEFAULT_CONFIG.showVenue,
+      showDatetime: parsed.showDatetime ?? DEFAULT_CONFIG.showDatetime,
+      showBadge: parsed.showBadge ?? DEFAULT_CONFIG.showBadge,
+      showQr: parsed.showQr ?? DEFAULT_CONFIG.showQr,
+      showCta: parsed.showCta ?? DEFAULT_CONFIG.showCta,
+      showInfo: parsed.showInfo ?? DEFAULT_CONFIG.showInfo,
+      showFooter: parsed.showFooter ?? DEFAULT_CONFIG.showFooter,
+    };
+  } catch {
+    return null;
+  }
+};
+
 export const EventQRCodeCard: React.FC = () => {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [config, setConfig] = useState<QRCodeConfig>(DEFAULT_CONFIG);
+  
+  // Load config from localStorage on mount
+  const [config, setConfig] = useState<QRCodeConfig>(() => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = deserializeConfig(stored);
+      if (parsed) return parsed;
+    }
+    return DEFAULT_CONFIG;
+  });
 
-  const updateConfig = <K extends keyof QRCodeConfig>(key: K, value: QRCodeConfig[K]) => {
+  // Save config to localStorage on change
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, serializeConfig(config));
+    } catch (e) {
+      console.warn('Failed to save config to localStorage:', e);
+    }
+  }, [config]);
+
+  const updateConfig = useCallback(<K extends keyof QRCodeConfig>(key: K, value: QRCodeConfig[K]) => {
     setConfig(prev => ({ ...prev, [key]: value }));
     setPreviewUrl(null);
-  };
+  }, []);
 
   const resetConfig = useCallback(() => {
     setConfig(DEFAULT_CONFIG);
     setPreviewUrl(null);
+    localStorage.removeItem(STORAGE_KEY);
     toast({
       title: 'Dati resettati',
       description: 'Tutti i campi sono stati svuotati.',
@@ -191,12 +296,12 @@ export const EventQRCodeCard: React.FC = () => {
 
       ctx.textAlign = 'center';
 
-      // Calculate vertical layout
-      let currentY = canvas.height * 0.08;
-      const padding = 60 * scale;
+      // Helper to convert percentage to canvas coordinates
+      const toCanvasX = (pct: number) => (pct / 100) * canvas.width;
+      const toCanvasY = (pct: number) => (pct / 100) * canvas.height;
 
       // Draw brand logo if enabled
-      if (config.useBrandLogo) {
+      if (config.showLogo) {
         try {
           const logoImg = new Image();
           await new Promise<void>((resolve, reject) => {
@@ -207,38 +312,37 @@ export const EventQRCodeCard: React.FC = () => {
           
           const logoHeight = 80 * scale;
           const logoWidth = (logoImg.width / logoImg.height) * logoHeight;
-          ctx.drawImage(logoImg, (canvas.width - logoWidth) / 2, currentY, logoWidth, logoHeight);
-          currentY += logoHeight + 40 * scale;
+          const logoX = toCanvasX(config.logoPos.x) - logoWidth / 2;
+          const logoY = toCanvasY(config.logoPos.y) - logoHeight / 2;
+          ctx.drawImage(logoImg, logoX, logoY, logoWidth, logoHeight);
         } catch (e) {
           console.error('Failed to load logo:', e);
         }
       }
 
-      // Draw title if provided
-      if (config.title.trim()) {
+      // Draw title if enabled and provided
+      if (config.showTitle && config.title.trim()) {
         ctx.font = `800 ${Math.round(64 * scale)}px "Inter", sans-serif`;
         ctx.fillStyle = style.accent;
         if (config.stylePreset === 'neon') {
           ctx.shadowColor = style.accent;
           ctx.shadowBlur = 20;
         }
-        ctx.fillText(config.title.toUpperCase(), canvas.width / 2, currentY + 60 * scale);
+        ctx.fillText(config.title.toUpperCase(), toCanvasX(config.titlePos.x), toCanvasY(config.titlePos.y));
         ctx.shadowBlur = 0;
-        currentY += 100 * scale;
       }
 
-      // Draw venue if provided
-      if (config.venueName.trim()) {
+      // Draw venue if enabled and provided
+      if (config.showVenue && config.venueName.trim()) {
         ctx.font = `600 ${Math.round(42 * scale)}px "Inter", sans-serif`;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-        ctx.fillText(`📍 ${config.venueName}`, canvas.width / 2, currentY + 50 * scale);
-        currentY += 70 * scale;
+        ctx.fillText(`📍 ${config.venueName}`, toCanvasX(config.venuePos.x), toCanvasY(config.venuePos.y));
       }
 
-      // Draw date + time if provided
+      // Draw date + time if enabled and provided
       const hasDate = config.eventDate;
       const hasTime = config.eventTime.trim();
-      if (hasDate || hasTime) {
+      if (config.showDatetime && (hasDate || hasTime)) {
         let dateTimeStr = '';
         if (hasDate) {
           dateTimeStr = format(config.eventDate!, 'EEEE d MMMM yyyy', { locale: it });
@@ -250,57 +354,59 @@ export const EventQRCodeCard: React.FC = () => {
         
         ctx.font = `500 ${Math.round(36 * scale)}px "Inter", sans-serif`;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.fillText(dateTimeStr, canvas.width / 2, currentY + 50 * scale);
-        currentY += 80 * scale;
+        ctx.fillText(dateTimeStr, toCanvasX(config.datetimePos.x), toCanvasY(config.datetimePos.y));
       }
 
-      // Event type badge - only if showEventType is enabled
-      if (config.showEventType) {
+      // Event type badge if enabled
+      if (config.showBadge) {
         const badgeText = config.eventType === 'public' ? '🌐 Evento Pubblico' : '🔒 Evento Privato';
         ctx.font = `500 ${Math.round(28 * scale)}px "Inter", sans-serif`;
         ctx.fillStyle = config.eventType === 'public' ? 'rgba(34, 197, 94, 0.9)' : 'rgba(251, 146, 60, 0.9)';
-        ctx.fillText(badgeText, canvas.width / 2, currentY + 40 * scale);
-        currentY += 60 * scale;
+        ctx.fillText(badgeText, toCanvasX(config.badgePos.x), toCanvasY(config.badgePos.y));
       }
 
-      // Generate and draw QR code - VERY LARGE
-      const baseUrl = 'https://nonceduo-openmic.lovable.app';
-      const appUrl = baseUrl + QR_DESTINATIONS[config.qrDestination].path;
-      
-      // QR size based on format - much bigger for A4
-      const qrSize = isA4 ? 900 : (config.imageFormat === 'story' ? 450 : 380);
-      
-      try {
-        const qrDataUrl = await QRCode.toDataURL(appUrl, {
-          width: 512,
-          margin: 1,
-          color: {
-            dark: '#ffffff',
-            light: '#00000000',
-          },
-        });
+      // Generate and draw QR code if enabled
+      if (config.showQr) {
+        const baseUrl = 'https://nonceduo-openmic.lovable.app';
+        const appUrl = baseUrl + QR_DESTINATIONS[config.qrDestination].path;
         
-        const qrImg = new Image();
-        await new Promise<void>((resolve, reject) => {
-          qrImg.onload = () => resolve();
-          qrImg.onerror = reject;
-          qrImg.src = qrDataUrl;
-        });
+        // QR size based on format
+        const qrSize = isA4 ? 900 : (config.imageFormat === 'story' ? 450 : 380);
         
-        // Center the QR in remaining space
-        const qrY = currentY + 40 * scale;
-        const qrX = (canvas.width - qrSize) / 2;
-        
-        // QR background with glow
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
-        ctx.beginPath();
-        ctx.roundRect(qrX - 30, qrY - 30, qrSize + 60, qrSize + 60, 30);
-        ctx.fill();
-        
-        ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
-        
-        // CTA under QR
-        const ctaY = qrY + qrSize + 60 * scale;
+        try {
+          const qrDataUrl = await QRCode.toDataURL(appUrl, {
+            width: 512,
+            margin: 1,
+            color: {
+              dark: '#ffffff',
+              light: '#00000000',
+            },
+          });
+          
+          const qrImg = new Image();
+          await new Promise<void>((resolve, reject) => {
+            qrImg.onload = () => resolve();
+            qrImg.onerror = reject;
+            qrImg.src = qrDataUrl;
+          });
+          
+          const qrX = toCanvasX(config.qrPos.x) - qrSize / 2;
+          const qrY = toCanvasY(config.qrPos.y) - qrSize / 2;
+          
+          // QR background with glow
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+          ctx.beginPath();
+          ctx.roundRect(qrX - 30, qrY - 30, qrSize + 60, qrSize + 60, 30);
+          ctx.fill();
+          
+          ctx.drawImage(qrImg, qrX, qrY, qrSize, qrSize);
+        } catch (qrError) {
+          console.error('QR generation error:', qrError);
+        }
+      }
+
+      // CTA under QR if enabled
+      if (config.showCta) {
         const destCta = QR_DESTINATIONS[config.qrDestination].cta;
         
         ctx.font = `700 ${Math.round(48 * scale)}px "Inter", sans-serif`;
@@ -309,20 +415,17 @@ export const EventQRCodeCard: React.FC = () => {
           ctx.shadowColor = style.accent;
           ctx.shadowBlur = 15;
         }
-        ctx.fillText('📱 SCANSIONA IL QR', canvas.width / 2, ctaY);
+        ctx.fillText('📱 SCANSIONA IL QR', toCanvasX(config.ctaPos.x), toCanvasY(config.ctaPos.y));
         ctx.shadowBlur = 0;
         
         ctx.font = `500 ${Math.round(36 * scale)}px "Inter", sans-serif`;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-        ctx.fillText(destCta, canvas.width / 2, ctaY + 50 * scale);
-        
-      } catch (qrError) {
-        console.error('QR generation error:', qrError);
+        ctx.fillText(destCta, toCanvasX(config.ctaPos.x), toCanvasY(config.ctaPos.y) + 50 * scale);
       }
 
-      // Additional info at bottom
-      if (config.additionalInfo.trim()) {
-        const infoY = canvas.height - 120 * scale;
+      // Additional info if enabled and provided
+      if (config.showInfo && config.additionalInfo.trim()) {
+        const padding = 60 * scale;
         ctx.font = `400 ${Math.round(28 * scale)}px "Inter", sans-serif`;
         ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
         
@@ -343,16 +446,18 @@ export const EventQRCodeCard: React.FC = () => {
         }
         if (currentLine) lines.push(currentLine);
         
+        const infoY = toCanvasY(config.infoPos.y);
         lines.slice(0, 2).forEach((line, i) => {
-          ctx.fillText(line, canvas.width / 2, infoY + i * 40 * scale);
+          ctx.fillText(line, toCanvasX(config.infoPos.x), infoY + i * 40 * scale);
         });
       }
 
-      // Footer branding
-      const footerY = canvas.height - 50 * scale;
-      ctx.font = `500 ${Math.round(24 * scale)}px "Inter", sans-serif`;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-      ctx.fillText("NON C'È DUO • LIVE", canvas.width / 2, footerY);
+      // Footer branding if enabled
+      if (config.showFooter) {
+        ctx.font = `500 ${Math.round(24 * scale)}px "Inter", sans-serif`;
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.fillText("NON C'È DUO • LIVE", toCanvasX(config.footerPos.x), toCanvasY(config.footerPos.y));
+      }
 
       const url = canvas.toDataURL('image/png');
       setPreviewUrl(url);
@@ -672,23 +777,6 @@ export const EventQRCodeCard: React.FC = () => {
           </RadioGroup>
         </div>
 
-        {/* Show Event Type Toggle */}
-        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-          <Label htmlFor="qr-show-event-type" className="text-sm cursor-pointer">
-            Mostra tipologia evento
-          </Label>
-          <Button
-            id="qr-show-event-type"
-            variant={config.showEventType ? "default" : "outline"}
-            size="sm"
-            onClick={() => updateConfig('showEventType', !config.showEventType)}
-            className="h-8"
-          >
-            {config.showEventType ? <Check className="w-4 h-4 mr-1" /> : null}
-            {config.showEventType ? 'Attivo' : 'Disattivo'}
-          </Button>
-        </div>
-
         {/* Style Preset */}
         <div className="space-y-2">
           <Label className="flex items-center gap-2 text-sm">
@@ -740,21 +828,92 @@ export const EventQRCodeCard: React.FC = () => {
           />
         </div>
 
-        {/* Logo Toggle */}
-        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-          <Label htmlFor="qr-logo" className="text-sm cursor-pointer">
-            Mostra logo "NON C'È DUO"
-          </Label>
-          <Button
-            id="qr-logo"
-            variant={config.useBrandLogo ? "default" : "outline"}
-            size="sm"
-            onClick={() => updateConfig('useBrandLogo', !config.useBrandLogo)}
-            className="h-8"
-          >
-            {config.useBrandLogo ? <Check className="w-4 h-4 mr-1" /> : null}
-            {config.useBrandLogo ? 'Attivo' : 'Disattivo'}
-          </Button>
+        {/* Elementi Visibili - Same style as Poster/Story */}
+        <div className="space-y-3 p-3 rounded-xl bg-muted/30 border border-border/50">
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Elementi Visibili</p>
+          
+          {/* Instagram-style horizontal scrollable pills */}
+          <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 scrollbar-hide">
+            {[
+              { id: 'logo', label: 'Logo', checked: config.showLogo, onChange: (v: boolean) => updateConfig('showLogo', v) },
+              { id: 'title', label: 'Titolo', checked: config.showTitle, onChange: (v: boolean) => updateConfig('showTitle', v) },
+              { id: 'venue', label: 'Locale', checked: config.showVenue, onChange: (v: boolean) => updateConfig('showVenue', v) },
+              { id: 'datetime', label: 'Data', checked: config.showDatetime, onChange: (v: boolean) => updateConfig('showDatetime', v) },
+              { id: 'badge', label: 'Badge', checked: config.showBadge, onChange: (v: boolean) => updateConfig('showBadge', v) },
+              { id: 'qr', label: 'QR Code', checked: config.showQr, onChange: (v: boolean) => updateConfig('showQr', v) },
+              { id: 'cta', label: 'CTA', checked: config.showCta, onChange: (v: boolean) => updateConfig('showCta', v) },
+              { id: 'info', label: 'Info', checked: config.showInfo, onChange: (v: boolean) => updateConfig('showInfo', v) },
+              { id: 'footer', label: 'Footer', checked: config.showFooter, onChange: (v: boolean) => updateConfig('showFooter', v) },
+            ].map((el) => (
+              <button
+                key={el.id}
+                type="button"
+                onClick={() => el.onChange(!el.checked)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-medium whitespace-nowrap",
+                  "transition-all duration-200 border shrink-0",
+                  "touch-manipulation active:scale-95",
+                  el.checked 
+                    ? "bg-primary/15 border-primary/40 text-foreground shadow-sm"
+                    : "bg-muted/30 border-border/50 text-muted-foreground"
+                )}
+              >
+                <span className={cn(
+                  "w-2 h-2 rounded-full transition-colors",
+                  el.checked ? "bg-emerald-500" : "bg-muted-foreground/30"
+                )} />
+                <span>{el.label}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Draggable Preview */}
+          <DraggablePreview
+            width={IMAGE_FORMATS[config.imageFormat].width}
+            height={IMAGE_FORMATS[config.imageFormat].height}
+            backgroundColor="hsl(var(--muted))"
+          elements={[
+              { id: 'logo', label: 'Logo', x: config.logoPos.x, y: config.logoPos.y, enabled: config.showLogo },
+              { id: 'title', label: 'Titolo', x: config.titlePos.x, y: config.titlePos.y, enabled: config.showTitle && !!config.title.trim() },
+              { id: 'venue', label: 'Locale', x: config.venuePos.x, y: config.venuePos.y, enabled: config.showVenue && !!config.venueName.trim() },
+              { id: 'datetime', label: 'Data/Ora', x: config.datetimePos.x, y: config.datetimePos.y, enabled: config.showDatetime && !!(config.eventDate || config.eventTime.trim()) },
+              { id: 'badge', label: 'Badge', x: config.badgePos.x, y: config.badgePos.y, enabled: config.showBadge },
+              { id: 'qr', label: 'QR Code', x: config.qrPos.x, y: config.qrPos.y, enabled: config.showQr },
+              { id: 'cta', label: 'CTA', x: config.ctaPos.x, y: config.ctaPos.y, enabled: config.showCta },
+              { id: 'info', label: 'Info', x: config.infoPos.x, y: config.infoPos.y, enabled: config.showInfo && !!config.additionalInfo.trim() },
+              { id: 'footer', label: 'Footer', x: config.footerPos.x, y: config.footerPos.y, enabled: config.showFooter },
+            ]}
+            onElementMove={(id, x, y) => {
+              if (id === 'logo') updateConfig('logoPos', { x, y });
+              else if (id === 'title') updateConfig('titlePos', { x, y });
+              else if (id === 'venue') updateConfig('venuePos', { x, y });
+              else if (id === 'datetime') updateConfig('datetimePos', { x, y });
+              else if (id === 'badge') updateConfig('badgePos', { x, y });
+              else if (id === 'qr') updateConfig('qrPos', { x, y });
+              else if (id === 'cta') updateConfig('ctaPos', { x, y });
+              else if (id === 'info') updateConfig('infoPos', { x, y });
+              else if (id === 'footer') updateConfig('footerPos', { x, y });
+            }}
+            margin={8}
+            freePositioning={true}
+            snapToGrid={false}
+          />
+          
+          {/* Margin Slider */}
+          <div className="space-y-2 pt-3 border-t border-border/50">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Margini</Label>
+              <span className="text-xs font-medium text-muted-foreground">{config.elementMargin}px</span>
+            </div>
+            <Slider
+              value={[config.elementMargin]}
+              onValueChange={(v) => updateConfig('elementMargin', v[0])}
+              min={MARGIN_PRESETS.compact}
+              max={MARGIN_PRESETS.ultra}
+              step={10}
+              className="w-full"
+            />
+          </div>
         </div>
 
         {/* Generate Button */}
