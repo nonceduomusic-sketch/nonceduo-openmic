@@ -247,7 +247,7 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
             <h2 className="font-display font-bold text-lg text-primary">Prenota la tua canzone</h2>
           </div>
           <p className="text-sm text-muted-foreground">
-            Scegli tra {filteredSongs.length} canzoni disponibili 👇
+            Centinaia di brani. Band dal vivo. Tu al centro.
           </p>
         </div>
 
