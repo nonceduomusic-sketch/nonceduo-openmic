@@ -15,13 +15,10 @@ import {
   Loader2,
   Home,
   Radio,
-  Clock,
-  Sparkles,
-  Users
+  Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LiveReactionBar } from '@/components/live/LiveReactionBar';
-import { useConnectedUsersCount } from '@/hooks/useConnectedUsersCount';
 import { toast } from 'sonner';
 
 interface EventSession {
