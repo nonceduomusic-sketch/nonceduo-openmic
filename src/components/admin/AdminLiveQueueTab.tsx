@@ -258,6 +258,14 @@ export const AdminLiveQueueTab: React.FC = () => {
                       {reservation.customer_name}
                     </Badge>
                   </div>
+                  {/* Dedication message - full text */}
+                  {isDedica && (
+                    <div className="mt-2 p-2 rounded-lg bg-pink-500/10 border border-pink-500/20">
+                      <p className="text-xs text-pink-300 italic whitespace-pre-wrap break-words">
+                        "{reservation.dedication_message}"
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Move Buttons */}
