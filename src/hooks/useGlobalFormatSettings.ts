@@ -165,11 +165,16 @@ export const useFormatActiveCheck = (format: GlobalFormatKey) => {
         },
         (payload) => {
           // Filter in the callback to only process our format
-          const newData = payload.new as GlobalFormatSetting | undefined;
-          if (newData && newData.format_key === format && 'is_active' in newData) {
-            console.log(`[Realtime] Format ${format} updated to:`, newData.is_active);
-            setIsActive(newData.is_active);
-          }
+          // NOTE: on DELETE, payload.new can be null; in that case we still refetch.
+          const newData = payload.new as (GlobalFormatSetting | undefined | null);
+          const oldData = payload.old as (Partial<GlobalFormatSetting> | undefined | null);
+
+          const affectedKey = newData?.format_key ?? oldData?.format_key;
+          if (affectedKey !== format) return;
+
+          // Most reliable approach: refetch the canonical value from DB.
+          // (Some realtime payloads can be partial depending on publication columns.)
+          void checkFormat();
         }
       )
       .subscribe((status) => {
