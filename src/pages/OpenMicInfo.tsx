@@ -77,7 +77,7 @@ const OpenMicInfo: React.FC = () => {
                   </div>
                   <div>
                     <p className="font-semibold">Catalogo brani</p>
-                    <p className="text-sm text-muted-foreground">Centinaia di brani. Tu al centro.</p>
+                    <p className="text-sm text-muted-foreground">Centinaia di canzoni tra cui scegliere</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
