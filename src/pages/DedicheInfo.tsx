@@ -12,7 +12,7 @@ import { useLiveEvent } from "@/hooks/useLiveEvent";
 const DedicheInfo: React.FC = () => {
   const { isDedicheVisible, loading, liveEvent, isFreeMode } = useLiveEvent();
 
-  // "Serata in corso" quando:
+  // "Evento Live in corso" quando:
   // 1. C'è un evento LIVE con dediche visibili, OPPURE
   // 2. Siamo in Free Mode con dediche attive
   const isActuallyLive = isDedicheVisible && (Boolean(liveEvent) || isFreeMode);
@@ -43,13 +43,13 @@ const DedicheInfo: React.FC = () => {
             </div>
           </div>
 
-          {/* Status Badge - only show "Serata in corso" when ACTUALLY live */}
+          {/* Status Badge - only show "Evento Live in corso" when ACTUALLY live */}
           {!loading && (
             <div className="flex justify-center">
               {isActuallyLive ? (
                 <Badge className="bg-secondary/20 text-secondary border-secondary/30 text-base px-4 py-2 gap-2">
                   <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-                  Serata in corso!
+                  Evento Live in corso!
                 </Badge>
               ) : (
                 <Badge variant="outline" className="text-base px-4 py-2 gap-2 text-muted-foreground">

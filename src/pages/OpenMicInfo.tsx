@@ -12,7 +12,7 @@ import { useLiveEvent } from "@/hooks/useLiveEvent";
 const OpenMicInfo: React.FC = () => {
   const { isOpenmicVisible, loading, liveEvent, isFreeMode } = useLiveEvent();
 
-  // "Serata in corso" quando:
+  // "Evento Live in corso" quando:
   // 1. C'è un evento LIVE con openmic visibile, OPPURE
   // 2. Siamo in Free Mode con openmic attivo
   const isActuallyLive = isOpenmicVisible && (Boolean(liveEvent) || isFreeMode);
@@ -43,13 +43,13 @@ const OpenMicInfo: React.FC = () => {
             </div>
           </div>
 
-          {/* Status Badge - only show "Serata in corso" when ACTUALLY live */}
+          {/* Status Badge - only show "Evento Live in corso" when ACTUALLY live */}
           {!loading && (
             <div className="flex justify-center">
               {isActuallyLive ? (
                 <Badge className="bg-secondary/20 text-secondary border-secondary/30 text-base px-4 py-2 gap-2">
                   <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
-                  Serata in corso!
+                  Evento Live in corso!
                 </Badge>
               ) : (
                 <Badge variant="outline" className="text-base px-4 py-2 gap-2 text-muted-foreground">
