@@ -68,7 +68,7 @@ const ITEMS: Item[] = [
   
   // === GRUPPO OPERATIVO ===
   { key: "openmic", label: "Open Mic", icon: Music, group: "Operativo", description: "Prenotazioni canzoni" },
-  { key: "songs", label: "Canzoni", icon: ListMusic, group: "Operativo", description: "Catalogo brani" },
+  { key: "songs", label: "Scaletta Live", icon: ListMusic, group: "Operativo", description: "Coda e catalogo brani" },
   { key: "dediche", label: "Dediche", icon: MessageSquare, group: "Operativo", description: "Messaggi e chat" },
   { key: "community", label: "Community", icon: Newspaper, group: "Operativo", description: "Gruppi e bacheca" },
   
