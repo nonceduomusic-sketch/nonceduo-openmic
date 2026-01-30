@@ -55,12 +55,20 @@ export const useReservationStatuses = () => {
         (payload) => {
           if (payload.eventType === 'INSERT') {
             const newStatus = payload.new as ReservationStatus;
-            setStatuses((prev) => [...prev, newStatus]);
+            setStatuses((prev) => 
+              [...prev, newStatus].sort((a, b) => 
+                new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+              )
+            );
           } else if (payload.eventType === 'UPDATE') {
             setStatuses((prev) =>
-              prev.map((s) =>
-                s.id === payload.new.id ? (payload.new as ReservationStatus) : s
-              )
+              prev
+                .map((s) =>
+                  s.id === payload.new.id ? (payload.new as ReservationStatus) : s
+                )
+                .sort((a, b) => 
+                  new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                )
             );
           } else if (payload.eventType === 'DELETE') {
             setStatuses((prev) =>
