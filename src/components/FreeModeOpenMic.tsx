@@ -10,6 +10,7 @@ import { SongCardWithStatus } from "@/components/SongCardWithStatus";
 import { BookingConfirmationModal } from "@/components/BookingConfirmationModal";
 import { LiveQueueDisplay } from "@/components/LiveQueueDisplay";
 import { useReservationStatuses } from "@/hooks/useReservationStatuses";
+import { useFormatActiveCheck } from "@/hooks/useGlobalFormatSettings";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
@@ -42,6 +43,9 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
   const [now, setNow] = useState(new Date());
   
   const { statuses, isSongBooked, isSongCompleted } = useReservationStatuses();
+  
+  // Check if live queue should be shown to users
+  const { isActive: showLiveQueue } = useFormatActiveCheck('show_live_queue');
 
   const {
     eventName,
@@ -336,7 +340,7 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
               </div>
 
               {/* Queue Display - Collapsible */}
-              {queueSongs.length > 0 && (
+              {showLiveQueue && queueSongs.length > 0 && (
                 <div className="rounded-xl border-2 border-secondary/30 bg-secondary/5 p-3">
                   <Collapsible open={showQueue} onOpenChange={setShowQueue}>
                     <CollapsibleTrigger asChild>
