@@ -151,25 +151,30 @@ export const useFormatActiveCheck = (format: GlobalFormatKey) => {
 
     checkFormat();
 
-    // Subscribe to changes with unique channel name
-    const channelName = `format-active-${format}-${Date.now()}`;
+    // Subscribe to ALL changes on global_format_settings table (filter by format in callback)
+    // This is more reliable than using filter param which may not work with all configurations
+    const channelName = `format-active-check-${format}-${Date.now()}`;
     const channel = supabase
       .channel(channelName)
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
           table: 'global_format_settings',
-          filter: `format_key=eq.${format}`,
         },
         (payload) => {
-          if (payload.new && 'is_active' in payload.new) {
-            setIsActive((payload.new as GlobalFormatSetting).is_active);
+          // Filter in the callback to only process our format
+          const newData = payload.new as GlobalFormatSetting | undefined;
+          if (newData && newData.format_key === format && 'is_active' in newData) {
+            console.log(`[Realtime] Format ${format} updated to:`, newData.is_active);
+            setIsActive(newData.is_active);
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`[Realtime] Subscription status for ${format}:`, status);
+      });
 
     return () => {
       supabase.removeChannel(channel);
