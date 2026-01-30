@@ -192,34 +192,48 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
       )}
 
       {/* Live Queue Display - Collapsible */}
-      {showLiveQueue && queueSongs.length > 0 && (
+      {showLiveQueue && (
         <div className="container pt-4">
           <div className="rounded-xl border-2 border-secondary/30 bg-secondary/5 p-3">
-            <Collapsible open={showQueue} onOpenChange={setShowQueue}>
-              <CollapsibleTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  className="w-full flex items-center justify-between p-3 h-auto bg-secondary/10 hover:bg-secondary/20 rounded-lg border border-secondary/30"
-                >
-                  <div className="flex items-center gap-2">
-                    <ListMusic className="w-5 h-5 text-secondary" />
-                    <span className="font-display font-bold text-secondary">Scaletta Live</span>
-                    <span className="text-xs bg-secondary/20 text-secondary px-2 py-0.5 rounded-full">
-                      {queueSongs.length} in coda
-                    </span>
-                  </div>
-                  <span className="text-xs text-secondary/70">
-                    {showQueue ? '▲ Chiudi' : '▼ Vedi chi canta'}
-                  </span>
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-2">
-                <LiveQueueDisplay songs={queueSongs} />
-              </CollapsibleContent>
-            </Collapsible>
-            <p className="text-xs text-center text-secondary/60 mt-2">
-              👆 Queste sono le canzoni già prenotate stasera
-            </p>
+            {queueSongs.length > 0 ? (
+              <>
+                <Collapsible open={showQueue} onOpenChange={setShowQueue}>
+                  <CollapsibleTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      className="w-full flex items-center justify-between p-3 h-auto bg-secondary/10 hover:bg-secondary/20 rounded-lg border border-secondary/30"
+                    >
+                      <div className="flex items-center gap-2">
+                        <ListMusic className="w-5 h-5 text-secondary" />
+                        <span className="font-display font-bold text-secondary">Scaletta Live</span>
+                        <span className="text-xs bg-secondary/20 text-secondary px-2 py-0.5 rounded-full">
+                          {queueSongs.length} in coda
+                        </span>
+                      </div>
+                      <span className="text-xs text-secondary/70">
+                        {showQueue ? '▲ Chiudi' : '▼ Vedi chi canta'}
+                      </span>
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2">
+                    <LiveQueueDisplay songs={queueSongs} />
+                  </CollapsibleContent>
+                </Collapsible>
+                <p className="text-xs text-center text-secondary/60 mt-2">
+                  👆 Queste sono le canzoni già prenotate stasera
+                </p>
+              </>
+            ) : (
+              <div className="py-3 text-center">
+                <div className="flex items-center justify-center gap-2">
+                  <ListMusic className="w-5 h-5 text-secondary" />
+                  <span className="font-display font-bold text-secondary">Scaletta Live</span>
+                </div>
+                <p className="text-xs text-secondary/70 mt-1">
+                  Nessuna canzone in coda al momento
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
