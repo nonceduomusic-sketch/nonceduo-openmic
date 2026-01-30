@@ -838,7 +838,9 @@ serve(async (req) => {
           }
           
           // Check consecutive songs limit (only if consecutive limits are enabled)
-          if (consecutiveEnabled && !isDedica && limitsSource.user_limit_consecutive_songs !== null) {
+          // NOTE: This applies to ALL bookings (songs and dediche) to prevent bypassing
+          // the limit by alternating between songs and dediche.
+          if (consecutiveEnabled && limitsSource.user_limit_consecutive_songs !== null) {
             console.log(`[push] Consecutive check: current=${currentConsecutive}, limit=${limitsSource.user_limit_consecutive_songs}`);
             if (currentConsecutive >= limitsSource.user_limit_consecutive_songs) {
               const msg = `Hai prenotato ${limitsSource.user_limit_consecutive_songs} canzoni consecutive. Quando qualcun altro prenota, potrai ricominciare!`;
@@ -954,32 +956,31 @@ serve(async (req) => {
 
           // Determine if this booking is consecutive based on the last booking in this event.
           // (We use session_fingerprint, not customer_name, to avoid bypass by name changes.)
+          // NOTE: Both songs AND dediche count towards consecutive limits to prevent bypass.
           let newConsecutive = 1;
           let lastBookerFingerprint: string | null = null;
 
-          if (!isDedica) {
-            const { data: lastBooker } = await supabase
-              .from('user_booking_counts')
-              .select('session_fingerprint,last_booking_at')
-              .eq('event_id', eventId)
-              .not('last_booking_at', 'is', null)
-              .order('last_booking_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
+          // Always check consecutive for ALL booking types (songs and dediche)
+          const { data: lastBooker } = await supabase
+            .from('user_booking_counts')
+            .select('session_fingerprint,last_booking_at')
+            .eq('event_id', eventId)
+            .not('last_booking_at', 'is', null)
+            .order('last_booking_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-            lastBookerFingerprint = (lastBooker?.session_fingerprint as string | undefined) ?? null;
+          lastBookerFingerprint = (lastBooker?.session_fingerprint as string | undefined) ?? null;
 
-            if (lastBookerFingerprint && lastBookerFingerprint === sessionFingerprint) {
-              newConsecutive = (existingCounts?.consecutive_songs || 0) + 1;
-            } else {
-              newConsecutive = 1;
-            }
+          if (lastBookerFingerprint && lastBookerFingerprint === sessionFingerprint) {
+            newConsecutive = (existingCounts?.consecutive_songs || 0) + 1;
+          } else {
+            newConsecutive = 1;
           }
 
           // If another user booked, their streak is broken: reset ONLY that user's consecutive to 0
           // (this also enables the realtime "sbloccato" notification).
           if (
-            !isDedica &&
             lastBookerFingerprint &&
             lastBookerFingerprint !== sessionFingerprint
           ) {
@@ -1010,13 +1011,14 @@ serve(async (req) => {
             }
 
             // Update existing counts
+            // NOTE: consecutive_songs is updated for BOTH songs and dediche
             await supabase
               .from('user_booking_counts')
               .update({
                 customer_name: customerName,
                 songs_count: (existingCounts.songs_count || 0) + (isDedica ? 0 : 1),
                 dediche_count: (existingCounts.dediche_count || 0) + (isDedica ? 1 : 0),
-                consecutive_songs: isDedica ? 0 : newConsecutive,
+                consecutive_songs: newConsecutive, // Count ALL bookings (songs + dediche)
                 ...(shouldTrackInterval
                   ? {
                       songs_interval_count: nextIntervalCount,
@@ -1032,6 +1034,7 @@ serve(async (req) => {
           } else {
             const now = new Date();
             // Insert new counts
+            // NOTE: consecutive_songs starts at 1 for ALL booking types (songs + dediche)
             await supabase
               .from('user_booking_counts')
               .insert({
@@ -1040,7 +1043,7 @@ serve(async (req) => {
                 customer_name: customerName,
                 songs_count: isDedica ? 0 : 1,
                 dediche_count: isDedica ? 1 : 0,
-                consecutive_songs: isDedica ? 0 : 1,
+                consecutive_songs: 1, // Count ALL bookings (songs + dediche)
                 songs_interval_count: shouldTrackInterval ? 1 : 0,
                 interval_window_started_at: shouldTrackInterval ? now.toISOString() : null,
                 first_booking_at: new Date().toISOString(),
