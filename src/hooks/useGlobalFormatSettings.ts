@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -127,33 +127,49 @@ export const useGlobalFormatSettings = () => {
 
 // Hook for public pages to check if a format is active (with real-time updates)
 export const useFormatActiveCheck = (format: GlobalFormatKey) => {
-  const [isActive, setIsActive] = useState(true);
+  const [isActive, setIsActive] = useState<boolean | null>(null); // null = loading
   const [loading, setLoading] = useState(true);
+  const mountedRef = useRef(true);
 
-  useEffect(() => {
-    const checkFormat = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('global_format_settings')
-          .select('is_active')
-          .eq('format_key', format)
-          .maybeSingle();
+  // Stable fetch function
+  const fetchFormatStatus = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('global_format_settings')
+        .select('is_active')
+        .eq('format_key', format)
+        .maybeSingle();
 
-        if (error) throw error;
-        setIsActive(data?.is_active ?? true);
-      } catch (error) {
-        console.error('Error checking format:', error);
+      if (!mountedRef.current) return;
+
+      if (error) {
+        console.error(`[useFormatActiveCheck] Error fetching ${format}:`, error);
+        setIsActive(true); // Default to true on error
+      } else {
+        const newValue = data?.is_active ?? true;
+        console.log(`[useFormatActiveCheck] ${format} = ${newValue}`);
+        setIsActive(newValue);
+      }
+    } catch (error) {
+      console.error(`[useFormatActiveCheck] Exception for ${format}:`, error);
+      if (mountedRef.current) {
         setIsActive(true);
-      } finally {
+      }
+    } finally {
+      if (mountedRef.current) {
         setLoading(false);
       }
-    };
+    }
+  }, [format]);
 
-    checkFormat();
+  useEffect(() => {
+    mountedRef.current = true;
+    
+    // Initial fetch
+    fetchFormatStatus();
 
-    // Subscribe to ALL changes on global_format_settings table (filter by format in callback)
-    // This is more reliable than using filter param which may not work with all configurations
-    const channelName = `format-active-check-${format}-${Date.now()}`;
+    // Subscribe to ALL changes on global_format_settings table
+    const channelName = `format-check-${format}-${Date.now()}`;
     const channel = supabase
       .channel(channelName)
       .on(
@@ -164,17 +180,18 @@ export const useFormatActiveCheck = (format: GlobalFormatKey) => {
           table: 'global_format_settings',
         },
         (payload) => {
-          // Filter in the callback to only process our format
-          // NOTE: on DELETE, payload.new can be null; in that case we still refetch.
+          // Check if this update is for our format
           const newData = payload.new as (GlobalFormatSetting | undefined | null);
           const oldData = payload.old as (Partial<GlobalFormatSetting> | undefined | null);
-
           const affectedKey = newData?.format_key ?? oldData?.format_key;
+          
+          console.log(`[Realtime] Received update for ${affectedKey}, we're watching ${format}`);
+          
           if (affectedKey !== format) return;
 
-          // Most reliable approach: refetch the canonical value from DB.
-          // (Some realtime payloads can be partial depending on publication columns.)
-          void checkFormat();
+          // Refetch to get the canonical value
+          console.log(`[Realtime] Refetching ${format} due to realtime update`);
+          fetchFormatStatus();
         }
       )
       .subscribe((status) => {
@@ -182,9 +199,11 @@ export const useFormatActiveCheck = (format: GlobalFormatKey) => {
       });
 
     return () => {
+      mountedRef.current = false;
       supabase.removeChannel(channel);
     };
-  }, [format]);
+  }, [format, fetchFormatStatus]);
 
-  return { isActive, loading };
+  // Return true as default while loading to avoid flash
+  return { isActive: isActive ?? true, loading };
 };
