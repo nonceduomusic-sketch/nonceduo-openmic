@@ -373,7 +373,7 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
               <div className="flex items-center justify-between text-sm text-muted-foreground">
                 <span className="flex items-center gap-2">
                   <Music2 className="w-4 h-4" />
-                  {filteredSongs.length} canzoni
+                  Centinaia di brani. Band dal vivo. Tu al centro.
                 </span>
                 {bookedCount > 0 && (
                   <span className="flex items-center gap-2">
