@@ -44,7 +44,7 @@ const NotificationItem: React.FC<{
   onDismiss: () => void;
 }> = ({ notification, onDismiss }) => {
   useEffect(() => {
-    const timer = setTimeout(onDismiss, 4000);
+    const timer = setTimeout(onDismiss, 3000);
     return () => clearTimeout(timer);
   }, [onDismiss]);
 

@@ -22,7 +22,7 @@ export const ChatNotificationPopup = forwardRef<HTMLDivElement, ChatNotification
     const timer = setTimeout(() => {
       setIsVisible(false);
       setTimeout(onClose, 300);
-    }, 5000);
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, [onClose]);
