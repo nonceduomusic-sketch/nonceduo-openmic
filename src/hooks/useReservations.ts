@@ -372,6 +372,7 @@ export const useReservations = () => {
     activeReservations,
     completedReservations,
     loading,
+    refetch: fetchReservations,
     createReservation,
     completeReservation,
     reactivateReservation,

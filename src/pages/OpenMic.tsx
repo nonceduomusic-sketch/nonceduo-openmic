@@ -14,7 +14,7 @@ import { useReservationStatuses } from '@/hooks/useReservationStatuses';
 import { SEO } from '@/components/SEO';
 import { UserLoginIndicator } from '@/components/UserLoginIndicator';
 import { useStaffRole } from '@/hooks/useStaffRole';
-import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
+import { useFormatActiveCheck, useGlobalFormatSettings } from '@/hooks/useGlobalFormatSettings';
 import { LiveEvent } from '@/hooks/useLiveEvent';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { LeaderboardCard } from '@/components/gamification/LeaderboardCard';
@@ -40,6 +40,9 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
   
   // Check if dediche format is active (for showing/hiding chat button)
   const { isActive: isDedicheActive } = useFormatActiveCheck('dediche');
+  
+  // Check if live queue should be shown to users
+  const { isActive: showLiveQueue } = useFormatActiveCheck('show_live_queue');
   
   // Use the public statuses hook for real-time updates (no auth required)
   const { isSongBooked, isSongCompleted, activeCount, loading, bookedSongKeys, statuses } = useReservationStatuses();
@@ -189,7 +192,7 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
       )}
 
       {/* Live Queue Display - Collapsible */}
-      {queueSongs.length > 0 && (
+      {showLiveQueue && queueSongs.length > 0 && (
         <div className="container pt-4">
           <div className="rounded-xl border-2 border-secondary/30 bg-secondary/5 p-3">
             <Collapsible open={showQueue} onOpenChange={setShowQueue}>

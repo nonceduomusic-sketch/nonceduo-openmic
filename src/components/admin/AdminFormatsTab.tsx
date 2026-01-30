@@ -1,5 +1,5 @@
 import React from 'react';
-import { Power, Trophy, Info, Users, User } from 'lucide-react';
+import { Power, Trophy, Info, Users, User, ListMusic } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -12,9 +12,10 @@ import { useGlobalFormatSettings } from '@/hooks/useGlobalFormatSettings';
 /**
  * Tab Formati Semplificato (senza conflitto con Eventi):
  * 
- * 1. Votazioni Pubblico - Toggle globale per abilitare/disabilitare voti
- * 2. Community - Toggle globale per abilitare/disabilitare la community
- * 3. Notifiche Admin - Configurazione notifiche push
+ * 1. Mostra Scaletta Live - Toggle per mostrare/nascondere la scaletta agli utenti
+ * 2. Votazioni Pubblico - Toggle globale per abilitare/disabilitare voti
+ * 3. Community - Toggle globale per abilitare/disabilitare la community
+ * 4. Notifiche Admin - Configurazione notifiche push
  * 
  * NOTA: Open Mic e Dediche sono gestiti SOLO tramite Eventi (Programmato o Libero)
  */
@@ -49,6 +50,38 @@ export const AdminFormatsTab: React.FC = () => {
 
       {canManageActive && (
         <div className="space-y-4">
+          {/* Mostra Scaletta Live */}
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ListMusic className="w-4 h-4 text-primary" />
+                Mostra Scaletta Live
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Rendi visibile agli utenti l'ordine delle canzoni in coda
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="queue-toggle" className="text-sm">
+                    {globalSettings.show_live_queue ? 'Visibile' : 'Nascosta'}
+                  </Label>
+                  {globalSettings.show_live_queue && (
+                    <Badge variant="outline" className="text-primary border-primary/30 text-xs">
+                      📋 Pubblica
+                    </Badge>
+                  )}
+                </div>
+                <Switch
+                  id="queue-toggle"
+                  checked={globalSettings.show_live_queue}
+                  onCheckedChange={() => toggleGlobalFormat('show_live_queue')}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Votazioni Pubblico */}
           <Card className="border-warning/20 bg-warning/5">
             <CardHeader className="pb-3">
@@ -163,6 +196,7 @@ export const AdminFormatsTab: React.FC = () => {
         <AlertDescription className="text-xs text-muted-foreground">
           <ul className="space-y-1 mt-1">
             <li><strong>Open Mic e Dediche:</strong> Gestiti tramite tab <em>Eventi</em> (Programmato o Libero)</li>
+            <li><strong>Scaletta Live:</strong> Se visibile, gli utenti vedono l'ordine delle canzoni in coda</li>
             <li><strong>Votazioni:</strong> Toggle globale per permettere al pubblico di votare le performance</li>
             <li><strong>Community:</strong> Toggle globale per abilitare/disabilitare la sezione social</li>
             <li><strong>Notifiche:</strong> Ricevi alert push sulle nuove prenotazioni e messaggi</li>

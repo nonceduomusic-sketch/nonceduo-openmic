@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export type GlobalFormatKey = 'openmic' | 'dediche' | 'community' | 'voting' | 'show_booker_name';
+export type GlobalFormatKey = 'openmic' | 'dediche' | 'community' | 'voting' | 'show_booker_name' | 'show_live_queue';
 
 export interface GlobalFormatSetting {
   format_key: GlobalFormatKey;
@@ -17,6 +17,7 @@ export const useGlobalFormatSettings = () => {
     community: true,
     voting: true,
     show_booker_name: true,
+    show_live_queue: true,
   });
   const [loading, setLoading] = useState(true);
 
@@ -35,6 +36,7 @@ export const useGlobalFormatSettings = () => {
           community: true,
           voting: true,
           show_booker_name: true,
+          show_live_queue: true,
         };
         data.forEach((item) => {
           const key = item.format_key as GlobalFormatKey;
@@ -99,6 +101,7 @@ export const useGlobalFormatSettings = () => {
         community: 'Community',
         voting: 'Votazioni',
         show_booker_name: 'Nome prenotante',
+        show_live_queue: 'Scaletta Live',
       };
       toast.success(`${formatNames[format]} ${newValue ? 'attivato' : 'disattivato'}`);
       return true;
