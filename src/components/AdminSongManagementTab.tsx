@@ -52,7 +52,7 @@ export const AdminSongManagementTab: React.FC = () => {
     loading 
   } = useReservations();
   
-  const [activeTab, setActiveTab] = useState<'songs' | 'queue'>('songs');
+  const [activeTab, setActiveTab] = useState<'songs' | 'queue'>('queue');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'booked' | 'available'>('all');
 
