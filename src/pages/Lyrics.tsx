@@ -28,6 +28,9 @@ const FONT_SIZES = [16, 20, 24, 28, 32];
 const DEFAULT_FONT_SIZE = 20;
 const FONT_SIZE_STORAGE_KEY = 'lyrics-font-size';
 
+// Lines per highlight chunk
+const LINES_PER_CHUNK = 3;
+
 // Generate a consistent color based on song ID
 const getColorForSong = (id: string): string => {
   let hash = 0;
@@ -62,12 +65,31 @@ const Lyrics: React.FC = () => {
     return DEFAULT_FONT_SIZE;
   });
 
-  // Highlight state
-  const [currentLineIndex, setCurrentLineIndex] = useState<number>(-1);
-  const lineRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  // Highlight state - now tracks chunk index
+  const [currentChunkIndex, setCurrentChunkIndex] = useState<number>(-1);
+  const chunkRefs = useRef<(HTMLDivElement | null)[]>([]);
 
-  // Split lyrics into lines
-  const lyricsLines = song?.testo?.split('\n') || [];
+  // Normalize and split lyrics into lines, handling various newline formats
+  const normalizeLyrics = (text: string | null | undefined): string[] => {
+    if (!text) return [];
+    // Handle escaped newlines, Windows CRLF, and Unix LF
+    return text
+      .replace(/\\n/g, '\n')      // escaped \n
+      .replace(/\r\n/g, '\n')     // Windows CRLF
+      .replace(/\r/g, '\n')       // old Mac CR
+      .split('\n');
+  };
+
+  const lyricsLines = normalizeLyrics(song?.testo);
+  
+  // Group lines into chunks of LINES_PER_CHUNK
+  const lyricsChunks = React.useMemo(() => {
+    const chunks: string[][] = [];
+    for (let i = 0; i < lyricsLines.length; i += LINES_PER_CHUNK) {
+      chunks.push(lyricsLines.slice(i, i + LINES_PER_CHUNK));
+    }
+    return chunks;
+  }, [lyricsLines]);
 
   useEffect(() => {
     const loadSong = async () => {
@@ -96,15 +118,15 @@ const Lyrics: React.FC = () => {
     } catch {}
   }, [fontSize]);
 
-  // Scroll to highlighted line
+  // Scroll to highlighted chunk
   useEffect(() => {
-    if (currentLineIndex >= 0 && lineRefs.current[currentLineIndex]) {
-      lineRefs.current[currentLineIndex]?.scrollIntoView({
+    if (currentChunkIndex >= 0 && chunkRefs.current[currentChunkIndex]) {
+      chunkRefs.current[currentChunkIndex]?.scrollIntoView({
         behavior: 'smooth',
         block: 'center',
       });
     }
-  }, [currentLineIndex]);
+  }, [currentChunkIndex]);
 
   const handleZoomIn = useCallback(() => {
     setFontSize((prev) => {
@@ -126,13 +148,13 @@ const Lyrics: React.FC = () => {
     });
   }, []);
 
-  const handleLineUp = useCallback(() => {
-    setCurrentLineIndex((prev) => Math.max(-1, prev - 1));
+  const handleChunkUp = useCallback(() => {
+    setCurrentChunkIndex((prev) => Math.max(-1, prev - 1));
   }, []);
 
-  const handleLineDown = useCallback(() => {
-    setCurrentLineIndex((prev) => Math.min(lyricsLines.length - 1, prev + 1));
-  }, [lyricsLines.length]);
+  const handleChunkDown = useCallback(() => {
+    setCurrentChunkIndex((prev) => Math.min(lyricsChunks.length - 1, prev + 1));
+  }, [lyricsChunks.length]);
 
   const backgroundColor = id ? getColorForSong(id) : BACKGROUND_COLORS[0];
 
@@ -246,22 +268,26 @@ const Lyrics: React.FC = () => {
         <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-2xl mb-24">
           {song.testo ? (
             <div
-              className="whitespace-pre-wrap font-sans leading-relaxed text-white"
+              className="font-sans leading-relaxed text-white"
               style={{ fontSize: `${fontSize}px` }}
             >
-              {lyricsLines.map((line, index) => (
-                <span
-                  key={index}
-                  ref={(el) => (lineRefs.current[index] = el)}
+              {lyricsChunks.map((chunk, chunkIndex) => (
+                <div
+                  key={chunkIndex}
+                  ref={(el) => (chunkRefs.current[chunkIndex] = el)}
                   className={cn(
-                    'block py-1 px-2 -mx-2 rounded transition-all duration-300',
-                    currentLineIndex === index && highlightEnabled
-                      ? 'bg-yellow-400/40 font-bold scale-[1.02]'
+                    'py-2 px-3 -mx-3 rounded-lg transition-all duration-300 mb-2',
+                    currentChunkIndex === chunkIndex && highlightEnabled
+                      ? 'bg-yellow-400/30 ring-2 ring-yellow-400/50 scale-[1.01]'
                       : ''
                   )}
                 >
-                  {line || '\u00A0'}
-                </span>
+                  {chunk.map((line, lineIndex) => (
+                    <div key={lineIndex} className="py-0.5">
+                      {line || '\u00A0'}
+                    </div>
+                  ))}
+                </div>
               ))}
             </div>
           ) : (
@@ -351,23 +377,23 @@ const Lyrics: React.FC = () => {
             {highlightEnabled && (
               <>
                 {zoomEnabled && <div className="h-px bg-white/20 my-1" />}
-                <Button
+              <Button
                   variant="ghost"
                   size="icon"
-                  onClick={handleLineUp}
-                  disabled={currentLineIndex < 0}
+                  onClick={handleChunkUp}
+                  disabled={currentChunkIndex < 0}
                   className="text-white hover:bg-white/20 h-10 w-10"
-                  title="Riga precedente"
+                  title="Blocco precedente"
                 >
                   <ChevronUp className="w-5 h-5" />
                 </Button>
                 <Button
                   variant="ghost"
                   size="icon"
-                  onClick={handleLineDown}
-                  disabled={currentLineIndex >= lyricsLines.length - 1}
+                  onClick={handleChunkDown}
+                  disabled={currentChunkIndex >= lyricsChunks.length - 1}
                   className="text-white hover:bg-white/20 h-10 w-10"
-                  title="Riga successiva"
+                  title="Blocco successivo"
                 >
                   <ChevronDown className="w-5 h-5" />
                 </Button>
