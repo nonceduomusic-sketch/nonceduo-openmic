@@ -1,10 +1,11 @@
 import React from 'react';
-import { Power, Trophy, Info, Users, User, ListMusic } from 'lucide-react';
+import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
 import { AdminNotificationsCard } from '@/components/admin/AdminNotificationsCard';
 import { useCentroPermissions } from '@/hooks/useCentroPermissions';
 import { useGlobalFormatSettings } from '@/hooks/useGlobalFormatSettings';
@@ -168,6 +169,78 @@ export const AdminFormatsTab: React.FC = () => {
                   id="community-toggle"
                   checked={globalSettings.community}
                   onCheckedChange={() => toggleGlobalFormat('community')}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Separator for Lyrics section */}
+          <Separator className="my-6" />
+          
+          <div className="flex items-center gap-2 mb-4">
+            <ZoomIn className="w-4 h-4 text-muted-foreground" />
+            <h3 className="text-sm font-medium text-muted-foreground">Impostazioni Pagina Testi</h3>
+          </div>
+
+          {/* Lyrics Zoom Controls */}
+          <Card className="border-violet-500/20 bg-violet-500/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ZoomIn className="w-4 h-4 text-violet-500" />
+                Zoom Testi (+ / -)
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Mostra i pulsanti per ingrandire/rimpicciolire il testo nella pagina testi
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="lyrics-zoom-toggle" className="text-sm">
+                    {globalSettings.lyrics_zoom ? 'Visibili' : 'Nascosti'}
+                  </Label>
+                  {globalSettings.lyrics_zoom && (
+                    <Badge variant="outline" className="text-violet-500 border-violet-500/30 text-xs">
+                      🔍 Attivo
+                    </Badge>
+                  )}
+                </div>
+                <Switch
+                  id="lyrics-zoom-toggle"
+                  checked={globalSettings.lyrics_zoom}
+                  onCheckedChange={() => toggleGlobalFormat('lyrics_zoom')}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Lyrics Highlight Arrows */}
+          <Card className="border-amber-500/20 bg-amber-500/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <ArrowUpDown className="w-4 h-4 text-amber-500" />
+                Evidenziatore Testi (↑ ↓)
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Mostra frecce per evidenziare manualmente le righe del testo (stile karaoke)
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="lyrics-highlight-toggle" className="text-sm">
+                    {globalSettings.lyrics_highlight_arrows ? 'Visibili' : 'Nascosti'}
+                  </Label>
+                  {globalSettings.lyrics_highlight_arrows && (
+                    <Badge variant="outline" className="text-amber-500 border-amber-500/30 text-xs">
+                      🎤 Karaoke
+                    </Badge>
+                  )}
+                </div>
+                <Switch
+                  id="lyrics-highlight-toggle"
+                  checked={globalSettings.lyrics_highlight_arrows}
+                  onCheckedChange={() => toggleGlobalFormat('lyrics_highlight_arrows')}
                 />
               </div>
             </CardContent>
