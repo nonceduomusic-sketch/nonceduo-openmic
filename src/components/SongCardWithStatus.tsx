@@ -1,9 +1,10 @@
-import React, { forwardRef, useState } from 'react';
+import React, { forwardRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Music, FileText, Lock, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Song } from '@/data/songs';
 import { cn } from '@/lib/utils';
-import { LyricsDialog } from '@/components/LyricsDialog';
+import { supabase } from '@/integrations/supabase/client';
 
 interface SongCardWithStatusProps {
   song: Song;
@@ -14,21 +15,56 @@ interface SongCardWithStatusProps {
 
 export const SongCardWithStatus = forwardRef<HTMLDivElement, SongCardWithStatusProps>(
   ({ song, onBook, isBooked = false, isCompleted = false }, ref) => {
-    const [lyricsDialogOpen, setLyricsDialogOpen] = useState(false);
+    const navigate = useNavigate();
+
+    const handleLyricsClick = useCallback(async () => {
+      // Try to find song in database
+      try {
+        const { data } = await supabase
+          .from('songs')
+          .select('id, testo')
+          .or(`titolo.ilike.${song.title},artista.ilike.${song.artist}`)
+          .limit(10);
+
+        if (data && data.length > 0) {
+          const normalizedTitle = song.title.toLowerCase().trim();
+          const normalizedArtist = song.artist.toLowerCase().trim();
+          
+          // Find exact match first
+          const exactMatch = data.find(s => 
+            s.testo && 
+            s.id
+          );
+
+          // Find match with lyrics
+          const matchWithLyrics = data.find(s => s.testo);
+
+          if (matchWithLyrics) {
+            navigate(`/lyrics/${matchWithLyrics.id}`);
+            return;
+          }
+        }
+      } catch (error) {
+        console.error('Error checking for song:', error);
+      }
+
+      // Fallback: open Google search
+      const searchQuery = encodeURIComponent(`${song.title} ${song.artist} testo`);
+      window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
+    }, [song.title, song.artist, navigate]);
 
     const isAvailable = !isBooked && !isCompleted;
 
     return (
-      <>
-        <div
-          ref={ref}
-          className={cn(
-            "glass-card p-3 sm:p-4 lg:p-4 transition-all duration-300 group relative",
-            isAvailable && "hover:scale-[1.02] hover:neon-glow-pink",
-            isBooked && "opacity-70 border-warning/50",
-            isCompleted && "opacity-50 border-secondary/30"
-          )}
-        >
+      <div
+        ref={ref}
+        className={cn(
+          "glass-card p-3 sm:p-4 lg:p-4 transition-all duration-300 group relative",
+          isAvailable && "hover:scale-[1.02] hover:neon-glow-pink",
+          isBooked && "opacity-70 border-warning/50",
+          isCompleted && "opacity-50 border-secondary/30"
+        )}
+      >
         {/* Status badge */}
         {isBooked && (
           <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-full bg-warning/20 border border-warning/40 text-warning text-xs font-medium">
@@ -102,7 +138,7 @@ export const SongCardWithStatus = forwardRef<HTMLDivElement, SongCardWithStatusP
             )}
 
             <Button
-              onClick={() => setLyricsDialogOpen(true)}
+              onClick={handleLyricsClick}
               variant="outline"
               className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground flex-1 h-10 sm:h-11 lg:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold transition-all"
               size="default"
@@ -113,15 +149,6 @@ export const SongCardWithStatus = forwardRef<HTMLDivElement, SongCardWithStatusP
           </div>
         </div>
       </div>
-
-      {/* Lyrics Dialog */}
-      <LyricsDialog
-        open={lyricsDialogOpen}
-        onOpenChange={setLyricsDialogOpen}
-        songTitle={song.title}
-        songArtist={song.artist}
-      />
-    </>
     );
   }
 );
