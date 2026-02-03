@@ -1,8 +1,9 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Music, MessageCircle, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Song } from '@/data/songs';
-import { getLyricsSearchUrl } from '@/lib/whatsapp';
+import { openLyrics } from '@/lib/lyricsLookup';
 
 interface SongCardProps {
   song: Song;
@@ -11,9 +12,11 @@ interface SongCardProps {
 
 export const SongCard = forwardRef<HTMLDivElement, SongCardProps>(
   ({ song, onBook }, ref) => {
-    const handleLyrics = () => {
-      window.open(getLyricsSearchUrl(song.title, song.artist), '_blank');
-    };
+    const navigate = useNavigate();
+    
+    const handleLyrics = useCallback(async () => {
+      await openLyrics(song.title, song.artist, navigate);
+    }, [song.title, song.artist, navigate]);
 
     return (
       <div

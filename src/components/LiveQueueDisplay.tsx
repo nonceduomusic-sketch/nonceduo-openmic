@@ -1,8 +1,9 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Music, FileText, Users, ChevronDown, ChevronUp, Sparkles, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { getLyricsSearchUrl } from '@/lib/whatsapp';
+import { openLyrics } from '@/lib/lyricsLookup';
 import { VoteButtons } from '@/components/live/VoteButtons';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -38,6 +39,7 @@ export const LiveQueueDisplay: React.FC<LiveQueueDisplayProps> = ({
   className,
   maxVisible = 5 
 }) => {
+  const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [bookerNames, setBookerNames] = useState<Record<string, string>>({});
@@ -119,6 +121,11 @@ export const LiveQueueDisplay: React.FC<LiveQueueDisplayProps> = ({
     fetchBookerNames();
   }, [fetchBookerNames]);
 
+  // Handler for lyrics - must be before early return
+  const handleLyrics = useCallback(async (title: string, artist: string) => {
+    await openLyrics(title, artist, navigate);
+  }, [navigate]);
+
   // Auto-scroll to show newest song when added
   useEffect(() => {
     if (scrollRef.current && isExpanded) {
@@ -129,10 +136,6 @@ export const LiveQueueDisplay: React.FC<LiveQueueDisplayProps> = ({
   if (activeSongs.length === 0) {
     return null;
   }
-
-  const handleLyrics = (title: string, artist: string) => {
-    window.open(getLyricsSearchUrl(title, artist), '_blank');
-  };
 
   return (
     <div className={cn("rounded-xl border bg-card/50 backdrop-blur-sm overflow-hidden", className)}>

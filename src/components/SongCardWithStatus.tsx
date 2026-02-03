@@ -4,7 +4,7 @@ import { Music, FileText, Lock, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Song } from '@/data/songs';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
+import { openLyrics } from '@/lib/lyricsLookup';
 
 interface SongCardWithStatusProps {
   song: Song;
@@ -18,63 +18,7 @@ export const SongCardWithStatus = forwardRef<HTMLDivElement, SongCardWithStatusP
     const navigate = useNavigate();
 
     const handleLyricsClick = useCallback(async () => {
-      const normalizedTitle = song.title.toLowerCase().trim();
-      const normalizedArtist = song.artist.toLowerCase().trim();
-      
-      try {
-        // Try exact match on title using ilike (handles special chars properly)
-        const { data } = await supabase
-          .from('songs')
-          .select('id, titolo, artista, testo')
-          .ilike('titolo', normalizedTitle)
-          .limit(10);
-
-        if (data && data.length > 0) {
-          // Prefer exact title+artist match with lyrics
-          const exactMatch = data.find(s => 
-            s.testo && 
-            s.artista.toLowerCase().trim() === normalizedArtist
-          );
-
-          if (exactMatch) {
-            navigate(`/lyrics/${exactMatch.id}`);
-            return;
-          }
-
-          // Fallback to any match with lyrics
-          const matchWithLyrics = data.find(s => s.testo);
-          if (matchWithLyrics) {
-            navigate(`/lyrics/${matchWithLyrics.id}`);
-            return;
-          }
-        }
-
-        // Second attempt: search by artist
-        const { data: artistData } = await supabase
-          .from('songs')
-          .select('id, titolo, artista, testo')
-          .ilike('artista', normalizedArtist)
-          .limit(20);
-
-        if (artistData && artistData.length > 0) {
-          const partialMatch = artistData.find(s => 
-            s.testo && (
-              s.titolo.toLowerCase().includes(normalizedTitle) ||
-              normalizedTitle.includes(s.titolo.toLowerCase())
-            )
-          );
-          if (partialMatch) {
-            navigate(`/lyrics/${partialMatch.id}`);
-            return;
-          }
-        }
-      } catch (error) {
-        console.error('Error checking for song:', error);
-      }
-
-      // Fallback: open Google search
-      const searchQuery = encodeURIComponent(`${song.title} ${song.artist} testo`);
-      window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
+      await openLyrics(song.title, song.artist, navigate);
     }, [song.title, song.artist, navigate]);
 
     const isAvailable = !isBooked && !isCompleted;

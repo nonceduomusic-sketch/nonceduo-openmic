@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+import { findLyricsUrl } from '@/lib/lyricsLookup';
 
 interface LyricsDialogProps {
   open: boolean;
@@ -17,11 +17,10 @@ interface LyricsDialogProps {
   songArtist: string;
 }
 
-interface SongMatch {
-  id: string;
-  titolo: string;
-  artista: string;
-  testo: string | null;
+interface LyricsResult {
+  type: 'internal' | 'external';
+  url: string;
+  songId?: string;
 }
 
 export const LyricsDialog: React.FC<LyricsDialogProps> = ({
@@ -32,65 +31,30 @@ export const LyricsDialog: React.FC<LyricsDialogProps> = ({
 }) => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [matchedSong, setMatchedSong] = useState<SongMatch | null>(null);
-  const [checked, setChecked] = useState(false);
+  const [lyricsResult, setLyricsResult] = useState<LyricsResult | null>(null);
 
   // Check if song exists in database when dialog opens
   useEffect(() => {
     if (!open) {
-      setMatchedSong(null);
-      setChecked(false);
+      setLyricsResult(null);
       return;
     }
 
     const checkForSong = async () => {
       setLoading(true);
       try {
-        // Normalize search terms
-        const normalizedTitle = songTitle.toLowerCase().trim();
-        const normalizedArtist = songArtist.toLowerCase().trim();
-        
-        // Try exact match first using ilike with proper escaping
-        const { data, error } = await supabase
-          .from('songs')
-          .select('id, titolo, artista, testo')
-          .ilike('titolo', normalizedTitle)
-          .limit(10);
-
-        if (!error && data && data.length > 0) {
-          // Find best match - prefer exact title+artist match
-          const exactMatch = data.find(s => 
-            s.titolo.toLowerCase().trim() === normalizedTitle && 
-            s.artista.toLowerCase().trim() === normalizedArtist
-          );
-
-          if (exactMatch) {
-            setMatchedSong(exactMatch);
-          } else {
-            // Take first match with same title
-            setMatchedSong(data[0]);
-          }
-        } else {
-          // Fallback: search by artist if title didn't match
-          const { data: artistData } = await supabase
-            .from('songs')
-            .select('id, titolo, artista, testo')
-            .ilike('artista', normalizedArtist)
-            .limit(20);
-          
-          if (artistData && artistData.length > 0) {
-            const partialMatch = artistData.find(s => 
-              s.titolo.toLowerCase().includes(normalizedTitle) ||
-              normalizedTitle.includes(s.titolo.toLowerCase())
-            );
-            setMatchedSong(partialMatch || null);
-          }
-        }
+        const result = await findLyricsUrl(songTitle, songArtist);
+        setLyricsResult(result);
       } catch (error) {
         console.error('Error checking for song:', error);
+        // Fallback to external search
+        const searchQuery = encodeURIComponent(`${songTitle} ${songArtist} testo`);
+        setLyricsResult({ 
+          type: 'external', 
+          url: `https://www.google.com/search?q=${searchQuery}` 
+        });
       } finally {
         setLoading(false);
-        setChecked(true);
       }
     };
 
@@ -98,17 +62,21 @@ export const LyricsDialog: React.FC<LyricsDialogProps> = ({
   }, [open, songTitle, songArtist]);
 
   const handleViewLyrics = useCallback(() => {
-    if (matchedSong) {
+    if (lyricsResult?.type === 'internal') {
       onOpenChange(false);
-      navigate(`/lyrics/${matchedSong.id}`);
+      navigate(lyricsResult.url);
     }
-  }, [matchedSong, navigate, onOpenChange]);
+  }, [lyricsResult, navigate, onOpenChange]);
 
   const handleSearchLyrics = useCallback(() => {
-    const searchQuery = encodeURIComponent(`${songTitle} ${songArtist} testo`);
-    window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
+    if (lyricsResult?.type === 'external') {
+      window.open(lyricsResult.url, '_blank');
+    } else {
+      const searchQuery = encodeURIComponent(`${songTitle} ${songArtist} testo`);
+      window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
+    }
     onOpenChange(false);
-  }, [songTitle, songArtist, onOpenChange]);
+  }, [lyricsResult, songTitle, songArtist, onOpenChange]);
 
   const handleSearchChords = useCallback(() => {
     const searchQuery = encodeURIComponent(`${songTitle} ${songArtist} testo e accordi`);
@@ -135,7 +103,7 @@ export const LyricsDialog: React.FC<LyricsDialogProps> = ({
           ) : (
             <>
               {/* Show internal lyrics button if song found in database */}
-              {matchedSong && matchedSong.testo ? (
+              {lyricsResult?.type === 'internal' ? (
                 <Button
                   onClick={handleViewLyrics}
                   className="neon-button-pink h-12 text-base"
