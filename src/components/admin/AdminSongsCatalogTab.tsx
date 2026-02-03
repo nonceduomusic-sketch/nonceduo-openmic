@@ -185,26 +185,21 @@ export const AdminSongsCatalogTab: React.FC = () => {
       return;
     }
 
-    // Escape CSV field properly
+    // Always quote and escape CSV fields for maximum compatibility
     const escapeCSV = (field: string | null): string => {
-      if (!field) return '';
-      // If field contains comma, newline, or quote, wrap in quotes and escape internal quotes
-      if (field.includes(',') || field.includes('\n') || field.includes('"')) {
-        return '"' + field.replace(/"/g, '""') + '"';
-      }
-      return field;
+      if (!field) return '""';
+      // Always wrap in quotes and escape internal quotes by doubling them
+      return '"' + field.replace(/"/g, '""') + '"';
     };
 
     // Create CSV content with BOM for Excel compatibility
     const BOM = '\uFEFF';
     const headers = ['Titolo', 'Artista', 'Testo'];
-    const rows = songs.map((song) => [
-      escapeCSV(song.titolo),
-      escapeCSV(song.artista),
-      escapeCSV(song.testo),
-    ].join(','));
+    const rows = songs.map((song) => 
+      [escapeCSV(song.titolo), escapeCSV(song.artista), escapeCSV(song.testo)].join(';')
+    );
 
-    const csvContent = BOM + [headers.join(','), ...rows].join('\n');
+    const csvContent = BOM + [headers.join(';'), ...rows].join('\n');
 
     // Create and trigger download
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
