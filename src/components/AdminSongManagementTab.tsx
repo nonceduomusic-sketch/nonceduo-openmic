@@ -9,7 +9,8 @@ import {
   AlertTriangle,
   RotateCcw,
   Filter,
-  ListMusic
+  ListMusic,
+  Library
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { AdminLiveQueueTab } from '@/components/admin/AdminLiveQueueTab';
+import { AdminSongsCatalogTab } from '@/components/admin/AdminSongsCatalogTab';
 
 export const AdminSongManagementTab: React.FC = () => {
   const { toast } = useToast();
@@ -52,7 +54,8 @@ export const AdminSongManagementTab: React.FC = () => {
     loading 
   } = useReservations();
   
-  const [activeTab, setActiveTab] = useState<'songs' | 'queue'>('queue');
+  // Default to 'queue' tab (Scaletta Live)
+  const [activeTab, setActiveTab] = useState<'queue' | 'songs' | 'catalog'>('queue');
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<'all' | 'booked' | 'available'>('all');
 
@@ -135,7 +138,6 @@ export const AdminSongManagementTab: React.FC = () => {
   const availableCount = Math.max(0, songs.length - unavailableCount);
 
   const handleCompleteSong = async (reservation: Reservation) => {
-    const previousStatus = reservation.status;
     const success = await completeReservation(reservation.id);
     if (success) {
       toast({
@@ -150,34 +152,6 @@ export const AdminSongManagementTab: React.FC = () => {
               toast({
                 title: 'Ripristinato',
                 description: `"${reservation.song_title}" è di nuovo in coda.`,
-              });
-            }}
-            className="shrink-0"
-          >
-            Annulla
-          </Button>
-        ),
-      });
-    }
-  };
-
-  const handleUnlockSong = async (reservation: Reservation) => {
-    // Delete the reservation to unlock the song
-    const reservationCopy = { ...reservation };
-    const success = await deleteReservation(reservation.id);
-    if (success) {
-      toast({
-        title: 'Canzone sbloccata',
-        description: `"${reservation.song_title}" è ora disponibile.`,
-        action: (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={async () => {
-              await restoreReservation(reservationCopy);
-              toast({
-                title: 'Ripristinato',
-                description: `"${reservationCopy.song_title}" prenotazione ripristinata.`,
               });
             }}
             className="shrink-0"
@@ -237,33 +211,44 @@ export const AdminSongManagementTab: React.FC = () => {
 
   return (
     <div className="space-y-4 pb-24 md:pb-4">
-      {/* Tabs for switching between Songs and Live Queue */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'songs' | 'queue')}>
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="songs" className="flex items-center gap-2">
-            <Music className="w-4 h-4" />
-            <span className="hidden sm:inline">Catalogo</span>
-            <span className="sm:hidden">Canzoni</span>
-          </TabsTrigger>
+      {/* Tabs for switching between Queue, Songs, and Catalog */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'queue' | 'songs' | 'catalog')}>
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="queue" className="flex items-center gap-2">
             <ListMusic className="w-4 h-4" />
-            <span>Scaletta Live</span>
+            <span className="hidden sm:inline">Scaletta</span>
+            <span className="sm:hidden">Live</span>
             {activeReservations.length > 0 && (
               <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-primary/20 text-primary">
                 {activeReservations.length}
               </span>
             )}
           </TabsTrigger>
+          <TabsTrigger value="songs" className="flex items-center gap-2">
+            <Music className="w-4 h-4" />
+            <span className="hidden sm:inline">Prenotazioni</span>
+            <span className="sm:hidden">Prenot.</span>
+          </TabsTrigger>
+          <TabsTrigger value="catalog" className="flex items-center gap-2">
+            <Library className="w-4 h-4" />
+            <span className="hidden sm:inline">Catalogo</span>
+            <span className="sm:hidden">Testi</span>
+          </TabsTrigger>
         </TabsList>
 
-        {/* Songs Catalog Tab */}
+        {/* Live Queue Tab - First/Default */}
+        <TabsContent value="queue" className="mt-4">
+          <AdminLiveQueueTab />
+        </TabsContent>
+
+        {/* Songs/Prenotazioni Tab */}
         <TabsContent value="songs" className="mt-4 space-y-4">
           {/* Header - Compact on mobile */}
           <div className="flex flex-col gap-3">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="font-display text-lg md:text-xl font-bold text-foreground">
-                  Gestione Canzoni
+                  Gestione Prenotazioni
                 </h2>
                 <p className="text-xs md:text-sm text-muted-foreground">
                   {bookedCount} in coda • {completedCount} completate • {availableCount} disponibili
@@ -475,9 +460,9 @@ export const AdminSongManagementTab: React.FC = () => {
           </div>
         </TabsContent>
 
-        {/* Live Queue Tab */}
-        <TabsContent value="queue" className="mt-4">
-          <AdminLiveQueueTab />
+        {/* Catalog Tab - Supabase songs database */}
+        <TabsContent value="catalog" className="mt-4">
+          <AdminSongsCatalogTab />
         </TabsContent>
       </Tabs>
     </div>
