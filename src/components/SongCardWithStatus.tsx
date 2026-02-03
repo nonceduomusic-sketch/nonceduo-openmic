@@ -1,9 +1,9 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useState } from 'react';
 import { Music, FileText, Lock, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Song } from '@/data/songs';
-import { getLyricsSearchUrl } from '@/lib/whatsapp';
 import { cn } from '@/lib/utils';
+import { LyricsDialog } from '@/components/LyricsDialog';
 
 interface SongCardWithStatusProps {
   song: Song;
@@ -14,22 +14,21 @@ interface SongCardWithStatusProps {
 
 export const SongCardWithStatus = forwardRef<HTMLDivElement, SongCardWithStatusProps>(
   ({ song, onBook, isBooked = false, isCompleted = false }, ref) => {
-    const handleLyrics = () => {
-      window.open(getLyricsSearchUrl(song.title, song.artist), '_blank');
-    };
+    const [lyricsDialogOpen, setLyricsDialogOpen] = useState(false);
 
     const isAvailable = !isBooked && !isCompleted;
 
     return (
-      <div
-        ref={ref}
-        className={cn(
-          "glass-card p-3 sm:p-4 lg:p-4 transition-all duration-300 group relative",
-          isAvailable && "hover:scale-[1.02] hover:neon-glow-pink",
-          isBooked && "opacity-70 border-warning/50",
-          isCompleted && "opacity-50 border-secondary/30"
-        )}
-      >
+      <>
+        <div
+          ref={ref}
+          className={cn(
+            "glass-card p-3 sm:p-4 lg:p-4 transition-all duration-300 group relative",
+            isAvailable && "hover:scale-[1.02] hover:neon-glow-pink",
+            isBooked && "opacity-70 border-warning/50",
+            isCompleted && "opacity-50 border-secondary/30"
+          )}
+        >
         {/* Status badge */}
         {isBooked && (
           <div className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-full bg-warning/20 border border-warning/40 text-warning text-xs font-medium">
@@ -103,7 +102,7 @@ export const SongCardWithStatus = forwardRef<HTMLDivElement, SongCardWithStatusP
             )}
 
             <Button
-              onClick={handleLyrics}
+              onClick={() => setLyricsDialogOpen(true)}
               variant="outline"
               className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground flex-1 h-10 sm:h-11 lg:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold transition-all"
               size="default"
@@ -114,6 +113,15 @@ export const SongCardWithStatus = forwardRef<HTMLDivElement, SongCardWithStatusP
           </div>
         </div>
       </div>
+
+      {/* Lyrics Dialog */}
+      <LyricsDialog
+        open={lyricsDialogOpen}
+        onOpenChange={setLyricsDialogOpen}
+        songTitle={song.title}
+        songArtist={song.artist}
+      />
+    </>
     );
   }
 );
