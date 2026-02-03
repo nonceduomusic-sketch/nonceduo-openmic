@@ -1,18 +1,29 @@
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Upload, FileText, CheckCircle2, AlertCircle, RefreshCw, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { ImportDuplicatesDialog } from './ImportDuplicatesDialog';
+
+interface Duplicate {
+  titolo: string;
+  artista: string;
+  duplicateOf: string;
+}
 
 interface ImportResult {
   success: boolean;
   imported?: number;
   errors?: number;
   total?: number;
+  totalRaw?: number;
   errorDetails?: string[];
   count?: number;
+  uniqueCount?: number;
+  duplicatesCount?: number;
+  duplicates?: Duplicate[];
   preview?: Array<{ titolo: string; artista: string }>;
 }
 
@@ -23,6 +34,7 @@ export const AdminSongsImportCard: React.FC = () => {
   const [result, setResult] = useState<ImportResult | null>(null);
   const [csvContent, setCsvContent] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
+  const [showDuplicatesDialog, setShowDuplicatesDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -163,10 +175,29 @@ export const AdminSongsImportCard: React.FC = () => {
 
         {/* Preview result */}
         {result?.preview && !result.imported && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <p className="text-sm font-medium text-primary">
-              ✓ {result.count} canzoni pronte per l'importazione
+              ✓ {result.uniqueCount ?? result.count} canzoni uniche pronte per l'importazione
             </p>
+            
+            {/* Duplicates warning */}
+            {result.duplicatesCount && result.duplicatesCount > 0 && (
+              <div 
+                className="flex items-center justify-between p-3 bg-accent/10 border border-accent/30 rounded-lg cursor-pointer hover:bg-accent/20 transition-colors"
+                onClick={() => setShowDuplicatesDialog(true)}
+              >
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-accent" />
+                  <span className="text-sm">
+                    {result.duplicatesCount} duplicati trovati nel CSV
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  Clicca per vedere →
+                </span>
+              </div>
+            )}
+
             <div className="text-xs text-muted-foreground space-y-1">
               <p>Anteprima:</p>
               {result.preview.map((song, i) => (
@@ -188,7 +219,7 @@ export const AdminSongsImportCard: React.FC = () => {
 
         {/* Import result */}
         {result?.imported !== undefined && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center gap-2">
               {result.errors === 0 ? (
                 <CheckCircle2 className="w-5 h-5 text-primary" />
@@ -200,6 +231,25 @@ export const AdminSongsImportCard: React.FC = () => {
                 {result.errors ? `, ${result.errors} errori` : ''}
               </span>
             </div>
+            
+            {/* Duplicates info after import */}
+            {result.duplicatesCount && result.duplicatesCount > 0 && (
+              <div 
+                className="flex items-center justify-between p-3 bg-muted/50 border rounded-lg cursor-pointer hover:bg-muted transition-colors"
+                onClick={() => setShowDuplicatesDialog(true)}
+              >
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">
+                    {result.duplicatesCount} duplicati nel CSV (saltati)
+                  </span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  Vedi lista →
+                </span>
+              </div>
+            )}
+            
             {result.errorDetails && result.errorDetails.length > 0 && (
               <div className="text-xs text-destructive bg-destructive/10 p-2 rounded">
                 {result.errorDetails.slice(0, 3).map((err, i) => (
@@ -211,7 +261,7 @@ export const AdminSongsImportCard: React.FC = () => {
         )}
 
         {/* Import button */}
-        {csvContent && result?.count && !result.imported && (
+        {csvContent && result?.uniqueCount && !result.imported && (
           <Button 
             onClick={handleImport} 
             disabled={isImporting}
@@ -225,7 +275,7 @@ export const AdminSongsImportCard: React.FC = () => {
             ) : (
               <>
                 <Upload className="w-4 h-4 mr-2" />
-                Importa {result.count} Canzoni
+                Importa {result.uniqueCount} Canzoni
               </>
             )}
           </Button>
@@ -238,6 +288,15 @@ export const AdminSongsImportCard: React.FC = () => {
           </Button>
         )}
       </CardContent>
+
+      {/* Duplicates Dialog */}
+      <ImportDuplicatesDialog
+        open={showDuplicatesDialog}
+        onOpenChange={setShowDuplicatesDialog}
+        duplicates={result?.duplicates ?? []}
+        totalRaw={result?.totalRaw ?? result?.count ?? 0}
+        uniqueCount={result?.uniqueCount ?? result?.imported ?? 0}
+      />
     </Card>
   );
 };
