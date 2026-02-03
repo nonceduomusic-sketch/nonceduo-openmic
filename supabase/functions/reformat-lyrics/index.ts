@@ -48,7 +48,7 @@ ${lyrics}
 
 TESTO RIFORMATTATO (solo il testo, niente commenti o spiegazioni):`;
 
-  const response = await fetch("https://api.lovable.dev/v1/chat/completions", {
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
       Authorization: `Bearer ${LOVABLE_API_KEY}`,
