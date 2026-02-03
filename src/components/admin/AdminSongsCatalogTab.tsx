@@ -11,7 +11,9 @@ import {
   FileText,
   User,
   Calendar,
+  Download,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -175,6 +177,48 @@ export const AdminSongsCatalogTab: React.FC = () => {
     return text.substring(0, maxLength) + '…';
   };
 
+  // Export songs to CSV
+  const handleExportCSV = () => {
+    if (songs.length === 0) {
+      toast.error('Nessuna canzone da esportare');
+      return;
+    }
+
+    // Escape CSV field properly
+    const escapeCSV = (field: string | null): string => {
+      if (!field) return '';
+      // If field contains comma, newline, or quote, wrap in quotes and escape internal quotes
+      if (field.includes(',') || field.includes('\n') || field.includes('"')) {
+        return '"' + field.replace(/"/g, '""') + '"';
+      }
+      return field;
+    };
+
+    // Create CSV content with BOM for Excel compatibility
+    const BOM = '\uFEFF';
+    const headers = ['Titolo', 'Artista', 'Testo'];
+    const rows = songs.map((song) => [
+      escapeCSV(song.titolo),
+      escapeCSV(song.artista),
+      escapeCSV(song.testo),
+    ].join(','));
+
+    const csvContent = BOM + [headers.join(','), ...rows].join('\n');
+
+    // Create and trigger download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `catalogo-canzoni-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success(`Esportate ${songs.length} canzoni in CSV`);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -203,10 +247,16 @@ export const AdminSongsCatalogTab: React.FC = () => {
                 </CardDescription>
               </div>
             </div>
-            <Button onClick={openAddForm} className="neon-button-pink">
-              <Plus className="w-4 h-4 mr-2" />
-              Aggiungi
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={handleExportCSV} variant="outline" className="hidden sm:flex">
+                <Download className="w-4 h-4 mr-2" />
+                Esporta CSV
+              </Button>
+              <Button onClick={openAddForm} className="neon-button-pink">
+                <Plus className="w-4 h-4 mr-2" />
+                Aggiungi
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-0">
