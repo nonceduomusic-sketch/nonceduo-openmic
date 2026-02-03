@@ -51,6 +51,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useSongs, Song, SongInput } from '@/hooks/useSongs';
+import { AdminSongsImportCard } from './AdminSongsImportCard';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -184,6 +185,9 @@ export const AdminSongsCatalogTab: React.FC = () => {
 
   return (
     <div className="space-y-4 pb-24 md:pb-4">
+      {/* Import Card */}
+      <AdminSongsImportCard />
+
       {/* Header */}
       <Card>
         <CardHeader className="pb-3">

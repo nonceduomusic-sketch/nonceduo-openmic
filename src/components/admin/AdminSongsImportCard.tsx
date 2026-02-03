@@ -1,0 +1,243 @@
+import React, { useState, useRef } from 'react';
+import { Upload, FileText, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+
+interface ImportResult {
+  success: boolean;
+  imported?: number;
+  errors?: number;
+  total?: number;
+  errorDetails?: string[];
+  count?: number;
+  preview?: Array<{ titolo: string; artista: string }>;
+}
+
+export const AdminSongsImportCard: React.FC = () => {
+  const [isImporting, setIsImporting] = useState(false);
+  const [isParsing, setIsParsing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [result, setResult] = useState<ImportResult | null>(null);
+  const [csvContent, setCsvContent] = useState<string | null>(null);
+  const [fileName, setFileName] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setFileName(file.name);
+    setResult(null);
+    setIsParsing(true);
+
+    try {
+      const content = await file.text();
+      setCsvContent(content);
+
+      // Parse preview
+      const { data, error } = await supabase.functions.invoke('import-songs', {
+        body: { csvContent: content, action: 'parse' }
+      });
+
+      if (error) throw error;
+
+      setResult(data);
+      toast.success(`File analizzato: ${data.count} canzoni trovate`);
+    } catch (error: any) {
+      console.error('Parse error:', error);
+      toast.error('Errore nella lettura del file');
+      setResult({ success: false, errors: 1, errorDetails: [error.message] });
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  const handleImport = async () => {
+    if (!csvContent) {
+      toast.error('Nessun file selezionato');
+      return;
+    }
+
+    setIsImporting(true);
+    setProgress(10);
+
+    try {
+      setProgress(30);
+      
+      const { data, error } = await supabase.functions.invoke('import-songs', {
+        body: { csvContent, action: 'import' }
+      });
+
+      setProgress(90);
+
+      if (error) throw error;
+
+      setResult(data);
+      setProgress(100);
+
+      if (data.imported > 0) {
+        toast.success(`🎉 Importate ${data.imported} canzoni con successo!`);
+      }
+      if (data.errors > 0) {
+        toast.warning(`${data.errors} canzoni con errori`);
+      }
+    } catch (error: any) {
+      console.error('Import error:', error);
+      toast.error('Errore durante l\'importazione');
+      setResult({ success: false, errors: 1, errorDetails: [error.message] });
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
+  const resetImport = () => {
+    setCsvContent(null);
+    setFileName(null);
+    setResult(null);
+    setProgress(0);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  return (
+    <Card className="border-dashed">
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+            <Upload className="w-5 h-5 text-primary" />
+          </div>
+          <div>
+            <CardTitle className="text-lg">Importa Canzoni da CSV</CardTitle>
+            <CardDescription className="text-xs">
+              Formato: "Titolo – Artista" nella prima colonna, testo nella seconda
+            </CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* File Input */}
+        <div className="flex flex-col gap-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            onChange={handleFileSelect}
+            className="hidden"
+            id="csv-upload"
+          />
+          
+          {!fileName ? (
+            <label
+              htmlFor="csv-upload"
+              className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:border-primary/50 transition-colors"
+            >
+              <FileText className="w-8 h-8 text-muted-foreground mb-2" />
+              <span className="text-sm text-muted-foreground">
+                Clicca per selezionare un file CSV
+              </span>
+            </label>
+          ) : (
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-primary" />
+                <span className="text-sm font-medium">{fileName}</span>
+              </div>
+              <Button variant="ghost" size="sm" onClick={resetImport}>
+                Cambia
+              </Button>
+            </div>
+          )}
+        </div>
+
+        {/* Parsing indicator */}
+        {isParsing && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <RefreshCw className="w-4 h-4 animate-spin" />
+            Analisi del file in corso...
+          </div>
+        )}
+
+        {/* Preview result */}
+        {result?.preview && !result.imported && (
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-primary">
+              ✓ {result.count} canzoni pronte per l'importazione
+            </p>
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>Anteprima:</p>
+              {result.preview.map((song, i) => (
+                <p key={i} className="pl-2">• {song.titolo} – {song.artista}</p>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Progress bar */}
+        {isImporting && (
+          <div className="space-y-2">
+            <Progress value={progress} className="h-2" />
+            <p className="text-xs text-muted-foreground text-center">
+              Importazione in corso... {progress}%
+            </p>
+          </div>
+        )}
+
+        {/* Import result */}
+        {result?.imported !== undefined && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              {result.errors === 0 ? (
+                <CheckCircle2 className="w-5 h-5 text-primary" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-accent" />
+              )}
+              <span className="text-sm font-medium">
+                {result.imported} canzoni importate
+                {result.errors ? `, ${result.errors} errori` : ''}
+              </span>
+            </div>
+            {result.errorDetails && result.errorDetails.length > 0 && (
+              <div className="text-xs text-destructive bg-destructive/10 p-2 rounded">
+                {result.errorDetails.slice(0, 3).map((err, i) => (
+                  <p key={i}>{err}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Import button */}
+        {csvContent && result?.count && !result.imported && (
+          <Button 
+            onClick={handleImport} 
+            disabled={isImporting}
+            className="w-full neon-button-pink"
+          >
+            {isImporting ? (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                Importazione...
+              </>
+            ) : (
+              <>
+                <Upload className="w-4 h-4 mr-2" />
+                Importa {result.count} Canzoni
+              </>
+            )}
+          </Button>
+        )}
+
+        {/* Reset after import */}
+        {result?.imported !== undefined && (
+          <Button variant="outline" onClick={resetImport} className="w-full">
+            Nuovo Import
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
