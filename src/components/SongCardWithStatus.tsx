@@ -18,29 +18,53 @@ export const SongCardWithStatus = forwardRef<HTMLDivElement, SongCardWithStatusP
     const navigate = useNavigate();
 
     const handleLyricsClick = useCallback(async () => {
-      // Try to find song in database
+      const normalizedTitle = song.title.toLowerCase().trim();
+      const normalizedArtist = song.artist.toLowerCase().trim();
+      
       try {
+        // Try exact match on title using ilike (handles special chars properly)
         const { data } = await supabase
           .from('songs')
-          .select('id, testo')
-          .or(`titolo.ilike.${song.title},artista.ilike.${song.artist}`)
+          .select('id, titolo, artista, testo')
+          .ilike('titolo', normalizedTitle)
           .limit(10);
 
         if (data && data.length > 0) {
-          const normalizedTitle = song.title.toLowerCase().trim();
-          const normalizedArtist = song.artist.toLowerCase().trim();
-          
-          // Find exact match first
+          // Prefer exact title+artist match with lyrics
           const exactMatch = data.find(s => 
             s.testo && 
-            s.id
+            s.artista.toLowerCase().trim() === normalizedArtist
           );
 
-          // Find match with lyrics
-          const matchWithLyrics = data.find(s => s.testo);
+          if (exactMatch) {
+            navigate(`/lyrics/${exactMatch.id}`);
+            return;
+          }
 
+          // Fallback to any match with lyrics
+          const matchWithLyrics = data.find(s => s.testo);
           if (matchWithLyrics) {
             navigate(`/lyrics/${matchWithLyrics.id}`);
+            return;
+          }
+        }
+
+        // Second attempt: search by artist
+        const { data: artistData } = await supabase
+          .from('songs')
+          .select('id, titolo, artista, testo')
+          .ilike('artista', normalizedArtist)
+          .limit(20);
+
+        if (artistData && artistData.length > 0) {
+          const partialMatch = artistData.find(s => 
+            s.testo && (
+              s.titolo.toLowerCase().includes(normalizedTitle) ||
+              normalizedTitle.includes(s.titolo.toLowerCase())
+            )
+          );
+          if (partialMatch) {
+            navigate(`/lyrics/${partialMatch.id}`);
             return;
           }
         }

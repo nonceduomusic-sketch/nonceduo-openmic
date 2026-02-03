@@ -46,18 +46,19 @@ export const LyricsDialog: React.FC<LyricsDialogProps> = ({
     const checkForSong = async () => {
       setLoading(true);
       try {
-        // Try to find the song in the database (case-insensitive match)
+        // Normalize search terms
+        const normalizedTitle = songTitle.toLowerCase().trim();
+        const normalizedArtist = songArtist.toLowerCase().trim();
+        
+        // Try exact match first using ilike with proper escaping
         const { data, error } = await supabase
           .from('songs')
           .select('id, titolo, artista, testo')
-          .or(`titolo.ilike.${songTitle},artista.ilike.${songArtist}`)
+          .ilike('titolo', normalizedTitle)
           .limit(10);
 
         if (!error && data && data.length > 0) {
-          // Find exact or close match
-          const normalizedTitle = songTitle.toLowerCase().trim();
-          const normalizedArtist = songArtist.toLowerCase().trim();
-          
+          // Find best match - prefer exact title+artist match
           const exactMatch = data.find(s => 
             s.titolo.toLowerCase().trim() === normalizedTitle && 
             s.artista.toLowerCase().trim() === normalizedArtist
@@ -66,8 +67,19 @@ export const LyricsDialog: React.FC<LyricsDialogProps> = ({
           if (exactMatch) {
             setMatchedSong(exactMatch);
           } else {
-            // Try partial match on title
-            const partialMatch = data.find(s => 
+            // Take first match with same title
+            setMatchedSong(data[0]);
+          }
+        } else {
+          // Fallback: search by artist if title didn't match
+          const { data: artistData } = await supabase
+            .from('songs')
+            .select('id, titolo, artista, testo')
+            .ilike('artista', normalizedArtist)
+            .limit(20);
+          
+          if (artistData && artistData.length > 0) {
+            const partialMatch = artistData.find(s => 
               s.titolo.toLowerCase().includes(normalizedTitle) ||
               normalizedTitle.includes(s.titolo.toLowerCase())
             );
