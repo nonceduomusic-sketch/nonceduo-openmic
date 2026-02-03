@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Home, Music2, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Home, Music2, ExternalLink, Plus, Minus, ChevronUp, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useSongs, Song } from '@/hooks/useSongs';
+import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
 import { cn } from '@/lib/utils';
 
 // Vibrant color palette for backgrounds (Spotify-like)
@@ -22,6 +23,11 @@ const BACKGROUND_COLORS = [
   'from-emerald-500 to-emerald-800',
 ];
 
+// Font size levels for zoom
+const FONT_SIZES = [16, 20, 24, 28, 32];
+const DEFAULT_FONT_SIZE = 20;
+const FONT_SIZE_STORAGE_KEY = 'lyrics-font-size';
+
 // Generate a consistent color based on song ID
 const getColorForSong = (id: string): string => {
   let hash = 0;
@@ -39,6 +45,29 @@ const Lyrics: React.FC = () => {
   const [song, setSong] = useState<Song | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+
+  // Admin settings
+  const { isActive: zoomEnabled } = useFormatActiveCheck('lyrics_zoom');
+  const { isActive: highlightEnabled } = useFormatActiveCheck('lyrics_highlight_arrows');
+
+  // Zoom state (persisted per device)
+  const [fontSize, setFontSize] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(FONT_SIZE_STORAGE_KEY);
+      if (stored) {
+        const parsed = parseInt(stored, 10);
+        if (FONT_SIZES.includes(parsed)) return parsed;
+      }
+    } catch {}
+    return DEFAULT_FONT_SIZE;
+  });
+
+  // Highlight state
+  const [currentLineIndex, setCurrentLineIndex] = useState<number>(-1);
+  const lineRefs = useRef<(HTMLSpanElement | null)[]>([]);
+
+  // Split lyrics into lines
+  const lyricsLines = song?.testo?.split('\n') || [];
 
   useEffect(() => {
     const loadSong = async () => {
@@ -59,6 +88,51 @@ const Lyrics: React.FC = () => {
 
     loadSong();
   }, [id, getSongById]);
+
+  // Persist font size
+  useEffect(() => {
+    try {
+      localStorage.setItem(FONT_SIZE_STORAGE_KEY, fontSize.toString());
+    } catch {}
+  }, [fontSize]);
+
+  // Scroll to highlighted line
+  useEffect(() => {
+    if (currentLineIndex >= 0 && lineRefs.current[currentLineIndex]) {
+      lineRefs.current[currentLineIndex]?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center',
+      });
+    }
+  }, [currentLineIndex]);
+
+  const handleZoomIn = useCallback(() => {
+    setFontSize((prev) => {
+      const currentIndex = FONT_SIZES.indexOf(prev);
+      if (currentIndex < FONT_SIZES.length - 1) {
+        return FONT_SIZES[currentIndex + 1];
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setFontSize((prev) => {
+      const currentIndex = FONT_SIZES.indexOf(prev);
+      if (currentIndex > 0) {
+        return FONT_SIZES[currentIndex - 1];
+      }
+      return prev;
+    });
+  }, []);
+
+  const handleLineUp = useCallback(() => {
+    setCurrentLineIndex((prev) => Math.max(-1, prev - 1));
+  }, []);
+
+  const handleLineDown = useCallback(() => {
+    setCurrentLineIndex((prev) => Math.min(lyricsLines.length - 1, prev + 1));
+  }, [lyricsLines.length]);
 
   const backgroundColor = id ? getColorForSong(id) : BACKGROUND_COLORS[0];
 
@@ -111,6 +185,8 @@ const Lyrics: React.FC = () => {
       </div>
     );
   }
+
+  const showControls = zoomEnabled || highlightEnabled;
 
   return (
     <div className={cn('min-h-screen bg-gradient-to-b', backgroundColor)}>
@@ -167,11 +243,27 @@ const Lyrics: React.FC = () => {
         </div>
 
         {/* Lyrics Content */}
-        <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-2xl">
+        <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-2xl mb-24">
           {song.testo ? (
-            <pre className="whitespace-pre-wrap font-sans text-lg sm:text-xl leading-relaxed text-white">
-              {song.testo}
-            </pre>
+            <div
+              className="whitespace-pre-wrap font-sans leading-relaxed text-white"
+              style={{ fontSize: `${fontSize}px` }}
+            >
+              {lyricsLines.map((line, index) => (
+                <span
+                  key={index}
+                  ref={(el) => (lineRefs.current[index] = el)}
+                  className={cn(
+                    'block py-1 px-2 -mx-2 rounded transition-all duration-300',
+                    currentLineIndex === index && highlightEnabled
+                      ? 'bg-yellow-400/40 font-bold scale-[1.02]'
+                      : ''
+                  )}
+                >
+                  {line || '\u00A0'}
+                </span>
+              ))}
+            </div>
           ) : (
             <div className="text-center py-12">
               <Music2 className="w-12 h-12 text-white/50 mx-auto mb-4" />
@@ -227,6 +319,63 @@ const Lyrics: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* Floating Control Buttons */}
+      {showControls && song.testo && (
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2">
+          <div className="bg-black/60 backdrop-blur-md rounded-xl p-2 shadow-2xl border border-white/20 flex flex-col gap-1">
+            {zoomEnabled && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleZoomIn}
+                  disabled={fontSize >= FONT_SIZES[FONT_SIZES.length - 1]}
+                  className="text-white hover:bg-white/20 h-10 w-10"
+                  title="Ingrandisci testo"
+                >
+                  <Plus className="w-5 h-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleZoomOut}
+                  disabled={fontSize <= FONT_SIZES[0]}
+                  className="text-white hover:bg-white/20 h-10 w-10"
+                  title="Riduci testo"
+                >
+                  <Minus className="w-5 h-5" />
+                </Button>
+              </>
+            )}
+            {highlightEnabled && (
+              <>
+                {zoomEnabled && <div className="h-px bg-white/20 my-1" />}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleLineUp}
+                  disabled={currentLineIndex < 0}
+                  className="text-white hover:bg-white/20 h-10 w-10"
+                  title="Riga precedente"
+                >
+                  <ChevronUp className="w-5 h-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleLineDown}
+                  disabled={currentLineIndex >= lyricsLines.length - 1}
+                  className="text-white hover:bg-white/20 h-10 w-10"
+                  title="Riga successiva"
+                >
+                  <ChevronDown className="w-5 h-5" />
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Bottom Gradient Fade */}
       <div className="h-24 bg-gradient-to-t from-black/50 to-transparent" />

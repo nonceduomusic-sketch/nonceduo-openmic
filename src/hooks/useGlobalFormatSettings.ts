@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export type GlobalFormatKey = 'openmic' | 'dediche' | 'community' | 'voting' | 'show_booker_name' | 'show_live_queue';
+export type GlobalFormatKey = 'openmic' | 'dediche' | 'community' | 'voting' | 'show_booker_name' | 'show_live_queue' | 'lyrics_zoom' | 'lyrics_highlight_arrows';
 
 export interface GlobalFormatSetting {
   format_key: GlobalFormatKey;
@@ -18,6 +18,8 @@ export const useGlobalFormatSettings = () => {
     voting: true,
     show_booker_name: true,
     show_live_queue: true,
+    lyrics_zoom: true,
+    lyrics_highlight_arrows: true,
   });
   const [loading, setLoading] = useState(true);
 
@@ -37,6 +39,8 @@ export const useGlobalFormatSettings = () => {
           voting: true,
           show_booker_name: true,
           show_live_queue: true,
+          lyrics_zoom: true,
+          lyrics_highlight_arrows: true,
         };
         data.forEach((item) => {
           const key = item.format_key as GlobalFormatKey;
@@ -102,6 +106,8 @@ export const useGlobalFormatSettings = () => {
         voting: 'Votazioni',
         show_booker_name: 'Nome prenotante',
         show_live_queue: 'Scaletta Live',
+        lyrics_zoom: 'Zoom Testi',
+        lyrics_highlight_arrows: 'Evidenziatore Testi',
       };
       toast.success(`${formatNames[format]} ${newValue ? 'attivato' : 'disattivato'}`);
       return true;
