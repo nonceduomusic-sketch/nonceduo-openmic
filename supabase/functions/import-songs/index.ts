@@ -13,6 +13,21 @@ interface SongData {
   testo: string;
 }
 
+function normalizeSpaces(input: string): string {
+  return (input ?? "")
+    .toString()
+    .replace(/\u00A0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Must match DB trigger logic generate_song_slug() as closely as possible
+function generateSlug(titolo: string, artista: string): string {
+  const raw = `${normalizeSpaces(titolo)}-${normalizeSpaces(artista)}`;
+  const cleaned = raw.replace(/[^a-zA-Z0-9\s-]/g, "");
+  return cleaned.replace(/\s+/g, "-").toLowerCase();
+}
+
 function parseTwoColumnCsv(csvContent: string): Array<[string, string]> {
   // Minimal CSV parser with:
   // - comma delimiter
@@ -98,7 +113,7 @@ function parseTwoColumnCsv(csvContent: string): Array<[string, string]> {
 }
 
 function splitTitoloArtista(raw: string): { titolo: string; artista: string } | null {
-  const s = raw.replace(/\u00A0/g, " ").trim();
+  const s = normalizeSpaces(raw);
   // Prefer the LAST separator occurrence (titles can contain hyphens)
   const re = /\s[–—-]\s/g;
   let lastIndex = -1;
@@ -129,9 +144,9 @@ function parseCSV(csvContent: string): SongData[] {
     if (!split) continue;
 
     songs.push({
-      titolo: split.titolo,
-      artista: split.artista,
-      testo: (testoRaw ?? "").toString().trim(),
+      titolo: normalizeSpaces(split.titolo),
+      artista: normalizeSpaces(split.artista),
+      testo: normalizeSpaces((testoRaw ?? "").toString()),
     });
   }
 
@@ -159,11 +174,26 @@ serve(async (req) => {
     if (action === 'parse') {
       // Just parse and return count for preview
       const songs = parseCSV(csvContent);
+      const uniqueBySlug = new Map<string, SongData>();
+      for (const s of songs) {
+        const slug = generateSlug(s.titolo, s.artista);
+        const prev = uniqueBySlug.get(slug);
+        if (!prev) {
+          uniqueBySlug.set(slug, s);
+          continue;
+        }
+        // Keep the version with longer lyrics (usually more complete)
+        if ((s.testo?.length ?? 0) > (prev.testo?.length ?? 0)) {
+          uniqueBySlug.set(slug, s);
+        }
+      }
+      const uniqueSongs = Array.from(uniqueBySlug.values());
       console.log(`[import-songs] parse: rows=${songs.length}`);
       return new Response(
         JSON.stringify({ 
           success: true, 
           count: songs.length,
+          uniqueCount: uniqueSongs.length,
           preview: songs.slice(0, 5).map(s => ({ titolo: s.titolo, artista: s.artista }))
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -172,7 +202,26 @@ serve(async (req) => {
 
     if (action === 'import') {
       const songs = parseCSV(csvContent);
-      console.log(`[import-songs] import: rows=${songs.length}`);
+
+      // Deduplicate within the payload to avoid:
+      // - 21000: "ON CONFLICT DO UPDATE command cannot affect row a second time"
+      // - 23505 on songs_slug_key when titolo/artista differ only by punctuation/case/spacing
+      const uniqueBySlug = new Map<string, SongData & { slug: string }>();
+      for (const s of songs) {
+        const slug = generateSlug(s.titolo, s.artista);
+        const prev = uniqueBySlug.get(slug);
+        if (!prev) {
+          uniqueBySlug.set(slug, { ...s, slug });
+          continue;
+        }
+        // Keep the row with the longest lyrics
+        if ((s.testo?.length ?? 0) > (prev.testo?.length ?? 0)) {
+          uniqueBySlug.set(slug, { ...s, slug });
+        }
+      }
+      const uniqueSongs = Array.from(uniqueBySlug.values());
+
+      console.log(`[import-songs] import: rows=${songs.length}, unique=${uniqueSongs.length}`);
       
       let imported = 0;
       let errors = 0;
@@ -180,8 +229,8 @@ serve(async (req) => {
       
       // Batch insert in chunks of 50
       const chunkSize = 50;
-      for (let i = 0; i < songs.length; i += chunkSize) {
-        const chunk = songs.slice(i, i + chunkSize);
+      for (let i = 0; i < uniqueSongs.length; i += chunkSize) {
+        const chunk = uniqueSongs.slice(i, i + chunkSize);
         
         const { data, error } = await supabase
           .from('songs')
@@ -189,10 +238,13 @@ serve(async (req) => {
             chunk.map(song => ({
               titolo: song.titolo,
               artista: song.artista,
-              testo: song.testo
+              testo: song.testo,
+              slug: song.slug,
             })),
             { 
-              onConflict: 'titolo,artista',
+              // Conflict on slug because slug is normalized+unique (see DB trigger generate_song_slug)
+              // This prevents failures when titolo/artista differ only by punctuation/case.
+              onConflict: 'slug',
               ignoreDuplicates: false 
             }
           );
@@ -212,7 +264,8 @@ serve(async (req) => {
           imported,
           errors,
           errorDetails: errorDetails.slice(0, 10),
-          total: songs.length
+          total: uniqueSongs.length,
+          totalRaw: songs.length,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
