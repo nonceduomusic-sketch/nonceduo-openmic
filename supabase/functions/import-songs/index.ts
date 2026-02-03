@@ -174,27 +174,37 @@ serve(async (req) => {
     if (action === 'parse') {
       // Just parse and return count for preview
       const songs = parseCSV(csvContent);
-      const uniqueBySlug = new Map<string, SongData>();
+      const uniqueBySlug = new Map<string, SongData & { slug: string }>();
+      const duplicates: Array<{ titolo: string; artista: string; duplicateOf: string }> = [];
+      
       for (const s of songs) {
         const slug = generateSlug(s.titolo, s.artista);
         const prev = uniqueBySlug.get(slug);
         if (!prev) {
-          uniqueBySlug.set(slug, s);
+          uniqueBySlug.set(slug, { ...s, slug });
           continue;
         }
+        // Track duplicate
+        duplicates.push({
+          titolo: s.titolo,
+          artista: s.artista,
+          duplicateOf: `${prev.titolo} – ${prev.artista}`
+        });
         // Keep the version with longer lyrics (usually more complete)
         if ((s.testo?.length ?? 0) > (prev.testo?.length ?? 0)) {
-          uniqueBySlug.set(slug, s);
+          uniqueBySlug.set(slug, { ...s, slug });
         }
       }
       const uniqueSongs = Array.from(uniqueBySlug.values());
-      console.log(`[import-songs] parse: rows=${songs.length}`);
+      console.log(`[import-songs] parse: rows=${songs.length}, unique=${uniqueSongs.length}, duplicates=${duplicates.length}`);
       return new Response(
         JSON.stringify({ 
           success: true, 
           count: songs.length,
           uniqueCount: uniqueSongs.length,
-          preview: songs.slice(0, 5).map(s => ({ titolo: s.titolo, artista: s.artista }))
+          duplicatesCount: duplicates.length,
+          duplicates: duplicates, // Full list of duplicates
+          preview: uniqueSongs.slice(0, 5).map(s => ({ titolo: s.titolo, artista: s.artista }))
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -207,6 +217,8 @@ serve(async (req) => {
       // - 21000: "ON CONFLICT DO UPDATE command cannot affect row a second time"
       // - 23505 on songs_slug_key when titolo/artista differ only by punctuation/case/spacing
       const uniqueBySlug = new Map<string, SongData & { slug: string }>();
+      const duplicates: Array<{ titolo: string; artista: string; duplicateOf: string }> = [];
+      
       for (const s of songs) {
         const slug = generateSlug(s.titolo, s.artista);
         const prev = uniqueBySlug.get(slug);
@@ -214,6 +226,12 @@ serve(async (req) => {
           uniqueBySlug.set(slug, { ...s, slug });
           continue;
         }
+        // Track duplicate
+        duplicates.push({
+          titolo: s.titolo,
+          artista: s.artista,
+          duplicateOf: `${prev.titolo} – ${prev.artista}`
+        });
         // Keep the row with the longest lyrics
         if ((s.testo?.length ?? 0) > (prev.testo?.length ?? 0)) {
           uniqueBySlug.set(slug, { ...s, slug });
@@ -221,7 +239,7 @@ serve(async (req) => {
       }
       const uniqueSongs = Array.from(uniqueBySlug.values());
 
-      console.log(`[import-songs] import: rows=${songs.length}, unique=${uniqueSongs.length}`);
+      console.log(`[import-songs] import: rows=${songs.length}, unique=${uniqueSongs.length}, duplicates=${duplicates.length}`);
       
       let imported = 0;
       let errors = 0;
@@ -266,6 +284,8 @@ serve(async (req) => {
           errorDetails: errorDetails.slice(0, 10),
           total: uniqueSongs.length,
           totalRaw: songs.length,
+          duplicatesCount: duplicates.length,
+          duplicates: duplicates, // Full list for UI display
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
