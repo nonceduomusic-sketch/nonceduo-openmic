@@ -54,6 +54,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { useSongs, Song, SongInput } from '@/hooks/useSongs';
 import { AdminSongsImportCard } from './AdminSongsImportCard';
+import { LyricsReformatCard } from './LyricsReformatCard';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -300,6 +301,9 @@ export const AdminSongsCatalogTab: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Lyrics Reformat Card */}
+      <LyricsReformatCard />
 
       {/* Songs Table */}
       <Card>
