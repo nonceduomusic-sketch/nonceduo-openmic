@@ -21,6 +21,20 @@ function normalizeSpaces(input: string): string {
     .trim();
 }
 
+// Preserve newlines but normalize other whitespace
+function normalizeLyricsText(input: string): string {
+  return (input ?? "")
+    .toString()
+    .replace(/\u00A0/g, " ")           // Non-breaking spaces → regular spaces
+    .replace(/\r\n/g, "\n")            // Windows CRLF → LF
+    .replace(/\r/g, "\n")              // Old Mac CR → LF
+    .replace(/[ \t]+/g, " ")           // Multiple spaces/tabs → single space (but preserve \n)
+    .replace(/\n /g, "\n")             // Remove leading space after newline
+    .replace(/ \n/g, "\n")             // Remove trailing space before newline
+    .replace(/\n{3,}/g, "\n\n")        // Max 2 consecutive newlines
+    .trim();
+}
+
 // Must match DB trigger logic generate_song_slug() as closely as possible
 function generateSlug(titolo: string, artista: string): string {
   const raw = `${normalizeSpaces(titolo)}-${normalizeSpaces(artista)}`;
@@ -146,7 +160,7 @@ function parseCSV(csvContent: string): SongData[] {
     songs.push({
       titolo: normalizeSpaces(split.titolo),
       artista: normalizeSpaces(split.artista),
-      testo: normalizeSpaces((testoRaw ?? "").toString()),
+      testo: normalizeLyricsText((testoRaw ?? "").toString()), // Preserve newlines!
     });
   }
 
