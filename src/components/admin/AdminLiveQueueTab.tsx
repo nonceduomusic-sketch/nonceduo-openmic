@@ -161,7 +161,7 @@ export const AdminLiveQueueTab: React.FC = () => {
                 <ListMusic className="w-5 h-5 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-lg">Scaletta Live</CardTitle>
+                <CardTitle className="text-lg">Coda Live</CardTitle>
                 <CardDescription className="text-xs">
                   {orderedReservations.length} {orderedReservations.length === 1 ? 'canzone' : 'canzoni'} in coda
                 </CardDescription>
