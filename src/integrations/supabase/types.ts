@@ -348,6 +348,7 @@ export type Database = {
           event_type: string | null
           id: string
           is_active: boolean | null
+          is_consultable_mode: boolean | null
           openmic_current_count: number | null
           openmic_enabled: boolean | null
           openmic_final_limit_enabled: boolean | null
@@ -356,6 +357,7 @@ export type Database = {
           openmic_max_songs: number | null
           pin_code: string | null
           pin_required: boolean | null
+          protect_repertoire: boolean | null
           reopen_active: boolean | null
           reopen_dediche_used: number | null
           reopen_extra_dediche: number | null
@@ -405,6 +407,7 @@ export type Database = {
           event_type?: string | null
           id?: string
           is_active?: boolean | null
+          is_consultable_mode?: boolean | null
           openmic_current_count?: number | null
           openmic_enabled?: boolean | null
           openmic_final_limit_enabled?: boolean | null
@@ -413,6 +416,7 @@ export type Database = {
           openmic_max_songs?: number | null
           pin_code?: string | null
           pin_required?: boolean | null
+          protect_repertoire?: boolean | null
           reopen_active?: boolean | null
           reopen_dediche_used?: number | null
           reopen_extra_dediche?: number | null
@@ -462,6 +466,7 @@ export type Database = {
           event_type?: string | null
           id?: string
           is_active?: boolean | null
+          is_consultable_mode?: boolean | null
           openmic_current_count?: number | null
           openmic_enabled?: boolean | null
           openmic_final_limit_enabled?: boolean | null
@@ -470,6 +475,7 @@ export type Database = {
           openmic_max_songs?: number | null
           pin_code?: string | null
           pin_required?: boolean | null
+          protect_repertoire?: boolean | null
           reopen_active?: boolean | null
           reopen_dediche_used?: number | null
           reopen_extra_dediche?: number | null
@@ -491,6 +497,48 @@ export type Database = {
           user_limit_songs_total?: number | null
           user_limit_total_enabled?: boolean | null
           voting_enabled?: boolean | null
+        }
+        Relationships: []
+      }
+      event_qr_codes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          event_id: string
+          event_type: string
+          id: string
+          is_active: boolean
+          last_used_at: string | null
+          name: string
+          pin_code: string
+          updated_at: string
+          use_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          event_id: string
+          event_type?: string
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          name: string
+          pin_code: string
+          updated_at?: string
+          use_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          event_id?: string
+          event_type?: string
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          name?: string
+          pin_code?: string
+          updated_at?: string
+          use_count?: number
         }
         Relationships: []
       }
@@ -523,6 +571,7 @@ export type Database = {
           expires_at: string | null
           id: string
           is_active: boolean | null
+          is_consultable_mode: boolean | null
           openmic_current_count: number | null
           openmic_enabled: boolean | null
           openmic_final_limit_enabled: boolean | null
@@ -531,6 +580,7 @@ export type Database = {
           openmic_max_songs: number | null
           pin_code: string | null
           pin_enabled: boolean | null
+          protect_repertoire: boolean | null
           reopen_active: boolean | null
           reopen_dediche_used: number | null
           reopen_extra_dediche: number | null
@@ -584,6 +634,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           is_active?: boolean | null
+          is_consultable_mode?: boolean | null
           openmic_current_count?: number | null
           openmic_enabled?: boolean | null
           openmic_final_limit_enabled?: boolean | null
@@ -592,6 +643,7 @@ export type Database = {
           openmic_max_songs?: number | null
           pin_code?: string | null
           pin_enabled?: boolean | null
+          protect_repertoire?: boolean | null
           reopen_active?: boolean | null
           reopen_dediche_used?: number | null
           reopen_extra_dediche?: number | null
@@ -645,6 +697,7 @@ export type Database = {
           expires_at?: string | null
           id?: string
           is_active?: boolean | null
+          is_consultable_mode?: boolean | null
           openmic_current_count?: number | null
           openmic_enabled?: boolean | null
           openmic_final_limit_enabled?: boolean | null
@@ -653,6 +706,7 @@ export type Database = {
           openmic_max_songs?: number | null
           pin_code?: string | null
           pin_enabled?: boolean | null
+          protect_repertoire?: boolean | null
           reopen_active?: boolean | null
           reopen_dediche_used?: number | null
           reopen_extra_dediche?: number | null
@@ -1993,6 +2047,17 @@ export type Database = {
           is_valid: boolean
           live_session_id: string
           protected_formats: string[]
+        }[]
+      }
+      validate_event_qr_pin: {
+        Args: { p_format?: string; p_pin: string }
+        Returns: {
+          event_id: string
+          event_name: string
+          event_type: string
+          is_live: boolean
+          is_valid: boolean
+          qr_name: string
         }[]
       }
       validate_format_pin: {

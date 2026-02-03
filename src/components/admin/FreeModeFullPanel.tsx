@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { 
-  Zap, Play, Square, Music, MessageSquare, Clock, RotateCcw, Trophy, Calendar, Timer, RefreshCw
+  Zap, Play, Square, Music, MessageSquare, Clock, RotateCcw, Trophy, Calendar, Timer, RefreshCw, QrCode
 } from 'lucide-react';
 import { useFreeModeSettings, FreeModeSettings } from '@/hooks/useFreeModeSettings';
 import { useFreeModeScheduler } from '@/hooks/useFreeModeScheduler';
@@ -25,6 +25,7 @@ import { UserLimitsConfig } from './UserLimitsConfig';
 import { EventCountdownBanner } from '@/components/effects/EventCountdownBanner';
 import { PinProtectionCard } from './PinProtectionCard';
 import { ConnectedUsersStatCard } from './ConnectedUsersStatCard';
+import { EventQRCodesManager } from './EventQRCodesManager';
 
 /**
  * Adapter che converte FreeModeSettings nel formato EventBookingRules
@@ -162,7 +163,7 @@ export const FreeModeFullPanel: React.FC = () => {
   // Scheduler per auto-start e auto-end
   const scheduler = useFreeModeScheduler();
 
-  const [activeSection, setActiveSection] = useState<'general' | 'timing' | 'limits' | 'user' | 'pin' | 'reopen' | 'closure'>('general');
+  const [activeSection, setActiveSection] = useState<'general' | 'timing' | 'limits' | 'user' | 'pin' | 'qr' | 'reopen' | 'closure'>('general');
   const [editingName, setEditingName] = useState(false);
   const [tempName, setTempName] = useState(settings?.event_name || 'EVENTO LIVE');
 
@@ -285,12 +286,13 @@ export const FreeModeFullPanel: React.FC = () => {
         
         <CardContent className="space-y-4">
           <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as typeof activeSection)}>
-            <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7 gap-1 h-auto p-1">
+            <TabsList className="grid w-full grid-cols-4 sm:grid-cols-8 gap-1 h-auto p-1">
               <TabsTrigger value="general" className="text-xs py-2">Generale</TabsTrigger>
               <TabsTrigger value="timing" className="text-xs py-2">Tempi</TabsTrigger>
               <TabsTrigger value="limits" className="text-xs py-2">Limiti</TabsTrigger>
               <TabsTrigger value="user" className="text-xs py-2">Utente</TabsTrigger>
               <TabsTrigger value="pin" className="text-xs py-2">PIN</TabsTrigger>
+              <TabsTrigger value="qr" className="text-xs py-2">QR Code</TabsTrigger>
               <TabsTrigger value="reopen" className="text-xs py-2">Riapri</TabsTrigger>
               <TabsTrigger value="closure" className="text-xs py-2">Chiusura</TabsTrigger>
             </TabsList>
@@ -389,6 +391,16 @@ export const FreeModeFullPanel: React.FC = () => {
               {/* Gestione sessioni PIN: mostrala sempre quando l'evento è attivo.
                   La card gestisce internamente stato PIN e permessi (incl. "Sconnetti tutti"). */}
               {settings?.is_active && <PinProtectionCard title="Gestione Sessioni PIN" />}
+            </TabsContent>
+
+            {/* QR CODE TAB - NUOVO */}
+            <TabsContent value="qr" className="mt-4">
+              <EventQRCodesManager 
+                eventId="free-mode"
+                eventType="freemode"
+                eventName={settings?.event_name || 'Evento Libero'}
+                isEventLive={settings?.is_active ?? false}
+              />
             </TabsContent>
 
             <TabsContent value="reopen" className="mt-4">
