@@ -30,6 +30,7 @@ import PromoLocali from "./pages/PromoLocali";
 import PromoEventi from "./pages/PromoEventi";
 import PromoMatrimoni from "./pages/PromoMatrimoni";
 import Collabora from "./pages/Collabora";
+import Lyrics from "./pages/Lyrics";
 
 const queryClient = new QueryClient();
 
@@ -66,6 +67,9 @@ const App = () => (
             <Route path="/app" element={<AppLauncher />} />
             <Route path="/app/openmic" element={<AppOpenMic />} />
             <Route path="/app/dediche" element={<AppDediche />} />
+            
+            {/* Lyrics page - Spotify-like design */}
+            <Route path="/lyrics/:id" element={<Lyrics />} />
 
             {/* Legacy routes (keep existing behavior for now) */}
             <Route path="/openmic/live" element={<OpenMic />} />

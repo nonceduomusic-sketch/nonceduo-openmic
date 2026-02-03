@@ -1632,6 +1632,36 @@ export type Database = {
         }
         Relationships: []
       }
+      songs: {
+        Row: {
+          artista: string
+          created_at: string
+          id: string
+          slug: string | null
+          testo: string | null
+          titolo: string
+          updated_at: string | null
+        }
+        Insert: {
+          artista: string
+          created_at?: string
+          id?: string
+          slug?: string | null
+          testo?: string | null
+          titolo: string
+          updated_at?: string | null
+        }
+        Update: {
+          artista?: string
+          created_at?: string
+          id?: string
+          slug?: string | null
+          testo?: string | null
+          titolo?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       typing_indicators: {
         Row: {
           conversation_id: string
