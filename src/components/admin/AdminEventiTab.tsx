@@ -16,6 +16,7 @@ import {
   Sparkles,
   RotateCcw,
   Trophy,
+  QrCode,
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -59,12 +60,14 @@ import { UserLimitsConfig } from './UserLimitsConfig';
 import { FreeModeFullPanel } from './FreeModeFullPanel';
 import { PinProtectionCard } from './PinProtectionCard';
 import { ConnectedUsersStatCard } from './ConnectedUsersStatCard';
+import { EventQRCodesManager } from './EventQRCodesManager';
 
 /**
  * Tab Eventi Unificato:
  * - Gestisce sia Eventi Programmati che Eventi Liberi
  * - Mostra stato corrente (quale tipo di evento è attivo)
  * - Non possono coesistere: se uno è attivo, l'altro è bloccato
+ * - Ogni evento può avere multipli QR code con PIN univoci
  */
 export const AdminEventiTab: React.FC = () => {
   const { toast } = useToast();
@@ -91,7 +94,7 @@ export const AdminEventiTab: React.FC = () => {
   // Hook per eventi liberi
   const { isActive: isFreeModeActive } = useFreeModeActive();
 
-  const [activeSection, setActiveSection] = useState<'general' | 'timing' | 'limits' | 'user' | 'pin' | 'reopen' | 'closure'>('general');
+  const [activeSection, setActiveSection] = useState<'general' | 'timing' | 'limits' | 'user' | 'pin' | 'qr' | 'reopen' | 'closure'>('general');
   const [isSaving, setIsSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [tempName, setTempName] = useState(rules?.event_name || 'EVENTO LIVE');
@@ -501,14 +504,15 @@ export const AdminEventiTab: React.FC = () => {
                 </CardContent>
               </Card>
 
-              {/* Tabs di configurazione - IDENTICI a Evento Libero */}
+              {/* Tabs di configurazione - IDENTICI a Evento Libero + QR */}
               <Tabs value={activeSection} onValueChange={(v) => setActiveSection(v as typeof activeSection)}>
-                <TabsList className="grid w-full grid-cols-3 sm:grid-cols-7 gap-1 h-auto p-1">
+                <TabsList className="grid w-full grid-cols-4 sm:grid-cols-8 gap-1 h-auto p-1">
                   <TabsTrigger value="general" className="text-xs py-2">Generale</TabsTrigger>
                   <TabsTrigger value="timing" className="text-xs py-2">Tempi</TabsTrigger>
                   <TabsTrigger value="limits" className="text-xs py-2">Limiti</TabsTrigger>
                   <TabsTrigger value="user" className="text-xs py-2">Utente</TabsTrigger>
                   <TabsTrigger value="pin" className="text-xs py-2">PIN</TabsTrigger>
+                  <TabsTrigger value="qr" className="text-xs py-2">QR Code</TabsTrigger>
                   <TabsTrigger value="reopen" className="text-xs py-2">Riapri</TabsTrigger>
                   <TabsTrigger value="closure" className="text-xs py-2">Chiusura</TabsTrigger>
                 </TabsList>
@@ -642,6 +646,16 @@ export const AdminEventiTab: React.FC = () => {
                   {/* Gestione sessioni PIN: mostrala sempre quando l'evento è LIVE.
                       La card gestisce internamente stato PIN e permessi (incl. "Sconnetti tutti"). */}
                   {rules.event_status === 'live' && <PinProtectionCard title="Gestione Sessioni PIN" />}
+                </TabsContent>
+
+                {/* QR CODE TAB - NUOVO */}
+                <TabsContent value="qr" className="mt-4">
+                  <EventQRCodesManager 
+                    eventId={rules.id}
+                    eventType="scheduled"
+                    eventName={rules.event_name || 'Evento'}
+                    isEventLive={rules.event_status === 'live'}
+                  />
                 </TabsContent>
 
                 {/* RIAPRI TAB */}
