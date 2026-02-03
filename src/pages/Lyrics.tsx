@@ -91,6 +91,11 @@ const Lyrics: React.FC = () => {
     return chunks;
   }, [lyricsLines]);
 
+  // Scroll to top on mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [id]);
+
   useEffect(() => {
     const loadSong = async () => {
       if (!id) {
