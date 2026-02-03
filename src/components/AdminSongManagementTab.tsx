@@ -216,8 +216,7 @@ export const AdminSongManagementTab: React.FC = () => {
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="queue" className="flex items-center gap-2">
             <ListMusic className="w-4 h-4" />
-            <span className="hidden sm:inline">Scaletta</span>
-            <span className="sm:hidden">Live</span>
+            <span>Live</span>
             {activeReservations.length > 0 && (
               <span className="ml-1 px-1.5 py-0.5 text-xs rounded-full bg-primary/20 text-primary">
                 {activeReservations.length}
@@ -226,13 +225,11 @@ export const AdminSongManagementTab: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="songs" className="flex items-center gap-2">
             <Music className="w-4 h-4" />
-            <span className="hidden sm:inline">Prenotazioni</span>
-            <span className="sm:hidden">Prenot.</span>
+            <span>Prenota</span>
           </TabsTrigger>
           <TabsTrigger value="catalog" className="flex items-center gap-2">
             <Library className="w-4 h-4" />
-            <span className="hidden sm:inline">Catalogo</span>
-            <span className="sm:hidden">Testi</span>
+            <span>Testi</span>
           </TabsTrigger>
         </TabsList>
 

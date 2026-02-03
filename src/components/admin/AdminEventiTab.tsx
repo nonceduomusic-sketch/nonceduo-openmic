@@ -287,14 +287,14 @@ export const AdminEventiTab: React.FC = () => {
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="freemode" className="flex items-center gap-2">
             <Zap className="w-4 h-4" />
-            <span>Evento Libero</span>
+            <span>Evento Attivo</span>
             {isFreeModeActive && (
               <Badge className="bg-green-500 text-white text-[10px] px-1 py-0">LIVE</Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="scheduled" className="flex items-center gap-2">
             <Calendar className="w-4 h-4" />
-            <span>Programmato</span>
+            <span>Archivio</span>
             {hasLiveScheduledEvent && (
               <Badge className="bg-primary text-primary-foreground text-[10px] px-1 py-0">LIVE</Badge>
             )}
