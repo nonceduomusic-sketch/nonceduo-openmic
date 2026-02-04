@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, Sparkles, ExternalLink } from 'lucide-react';
+import { X, Send, Sparkles, ExternalLink, Minimize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,6 +28,7 @@ interface AssistantChatProps {
   initialFlow?: string;
   initialPrefill?: string;
   onClose: () => void;
+  onMinimize?: () => void;
   onSendMessage: (text: string, senderType: 'user' | 'bot', senderName?: string, metadata?: Record<string, unknown>) => Promise<unknown>;
   onUpdateConversation: (updates: { lead_type?: string; lead_score?: number; flow_path?: string[]; user_name?: string }) => Promise<void>;
   isMobile: boolean;
@@ -40,6 +41,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
   initialFlow,
   initialPrefill,
   onClose,
+  onMinimize,
   onSendMessage,
   onUpdateConversation,
   isMobile,
@@ -534,18 +536,32 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
                 <p className="text-xs text-muted-foreground">Assistente</p>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size={isMobile ? "default" : "icon"}
-              onClick={handleClose}
-              className={cn(
-                "rounded-full hover:bg-muted flex-shrink-0",
-                isMobile && "w-12 h-12 min-w-12"
+            <div className="flex items-center gap-1">
+              {/* Minimize button - mobile only */}
+              {isMobile && onMinimize && (
+                <Button
+                  variant="ghost"
+                  size="default"
+                  onClick={onMinimize}
+                  className="rounded-full hover:bg-muted flex-shrink-0 w-12 h-12 min-w-12"
+                  aria-label="Riduci a icona"
+                >
+                  <Minimize2 className="w-5 h-5" />
+                </Button>
               )}
-              aria-label="Chiudi chat"
-            >
-              <X className={cn(isMobile ? "w-6 h-6" : "w-5 h-5")} />
-            </Button>
+              <Button
+                variant="ghost"
+                size={isMobile ? "default" : "icon"}
+                onClick={handleClose}
+                className={cn(
+                  "rounded-full hover:bg-muted flex-shrink-0",
+                  isMobile && "w-12 h-12 min-w-12"
+                )}
+                aria-label="Chiudi chat"
+              >
+                <X className={cn(isMobile ? "w-6 h-6" : "w-5 h-5")} />
+              </Button>
+            </div>
           </div>
 
           {/* Messages */}

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAssistantWidget } from '@/hooks/useAssistantWidget';
 import { useAssistantContext } from '@/contexts/AssistantContext';
 import { AssistantBubble } from './AssistantBubble';
@@ -26,17 +26,36 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
     updateConversation,
   } = useAssistantWidget(section);
 
+  // Minimized state - chat is "closed" but bubble is tiny & draggable
+  const [isMinimized, setIsMinimized] = useState(false);
+
   // Get external trigger from context
   const { pendingFlow, clearPendingFlow } = useAssistantContext();
 
   // Handle external flow trigger
   useEffect(() => {
     if (pendingFlow && !loading && isEnabled && !isOpen) {
+      setIsMinimized(false);
       open();
       // Clear the pending flow after opening
       clearPendingFlow();
     }
   }, [pendingFlow, loading, isEnabled, isOpen, open, clearPendingFlow]);
+
+  const handleOpen = () => {
+    setIsMinimized(false);
+    open();
+  };
+
+  const handleMinimize = () => {
+    close();
+    setIsMinimized(true);
+  };
+
+  const handleClose = () => {
+    close();
+    setIsMinimized(false);
+  };
 
   // Don't render if loading or not enabled
   if (loading || !isEnabled) {
@@ -51,8 +70,10 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
         showProactive={showProactive}
         isMobile={isMobile}
         welcomeMessage={settings?.welcome_message}
-        onOpen={open}
+        onOpen={handleOpen}
         onDismissProactive={dismissProactive}
+        isMinimized={isMinimized}
+        onMinimize={handleMinimize}
       />
 
       {/* Chat panel */}
@@ -61,7 +82,8 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
         section={section}
         initialFlow={pendingFlow?.flowId}
         initialPrefill={pendingFlow?.prefillText}
-        onClose={close}
+        onClose={handleClose}
+        onMinimize={handleMinimize}
         onSendMessage={sendMessage}
         onUpdateConversation={updateConversation}
         isMobile={isMobile}
