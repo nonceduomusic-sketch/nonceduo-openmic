@@ -1,5 +1,5 @@
 import React from 'react';
-import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown } from 'lucide-react';
+import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown, Play } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -241,6 +241,38 @@ export const AdminFormatsTab: React.FC = () => {
                   id="lyrics-highlight-toggle"
                   checked={globalSettings.lyrics_highlight_arrows}
                   onCheckedChange={() => toggleGlobalFormat('lyrics_highlight_arrows')}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Auto-scroll Testi */}
+          <Card className="border-emerald-500/20 bg-emerald-500/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Play className="w-4 h-4 text-emerald-500" />
+                Auto-Scroll Testi
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Mostra pulsante per scorrimento automatico del testo con velocità regolabile
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="lyrics-autoscroll-toggle" className="text-sm">
+                    {globalSettings.lyrics_auto_scroll ? 'Visibile' : 'Nascosto'}
+                  </Label>
+                  {globalSettings.lyrics_auto_scroll && (
+                    <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 text-xs">
+                      ▶️ Play
+                    </Badge>
+                  )}
+                </div>
+                <Switch
+                  id="lyrics-autoscroll-toggle"
+                  checked={globalSettings.lyrics_auto_scroll}
+                  onCheckedChange={() => toggleGlobalFormat('lyrics_auto_scroll')}
                 />
               </div>
             </CardContent>
