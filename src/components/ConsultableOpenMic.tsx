@@ -112,10 +112,6 @@ export const ConsultableOpenMic: React.FC<ConsultableOpenMicProps> = ({
     return result;
   }, [search, artistFilter, maxSongsToShow, isLimited]);
 
-  // Get unique artists count
-  const uniqueArtists = useMemo(() => {
-    return new Set(songs.map(s => s.artist)).size;
-  }, []);
 
   // Show teaser message when songs are limited and no search active
   const showTeaserMessage = isLimited && !search && artistFilter === 'all';
@@ -169,16 +165,10 @@ export const ConsultableOpenMic: React.FC<ConsultableOpenMicProps> = ({
             </p>
           </div>
 
-          {/* Stats */}
-          <div className="flex items-center gap-4 mb-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1.5">
-              <Music className="w-4 h-4 text-primary" />
-              <span><strong className="text-foreground">{songs.length}</strong> canzoni</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <Mic2 className="w-4 h-4 text-secondary" />
-              <span><strong className="text-foreground">{uniqueArtists}</strong> artisti</span>
-            </div>
+          {/* Tagline - No numbers, just branding */}
+          <div className="flex items-center gap-2 mb-4 text-sm">
+            <Sparkles className="w-4 h-4 text-primary" />
+            <span className="text-muted-foreground">Centinaia di canzoni aggiornate ogni settimana!</span>
           </div>
 
           {/* Search & Filter */}
@@ -191,17 +181,6 @@ export const ConsultableOpenMic: React.FC<ConsultableOpenMicProps> = ({
 
       {/* Song Catalog */}
       <main className="container py-4 pb-8">
-        <div className="mb-4">
-          <p className="text-sm text-muted-foreground">
-            {isLimited && !search && artistFilter === 'all' 
-              ? `Mostrando ${filteredSongs.length} di ${songs.length} canzoni`
-              : filteredSongs.length === songs.length 
-                ? `Mostrando tutte le ${songs.length} canzoni`
-                : `${filteredSongs.length} risultati`}
-          </p>
-        </div>
-
-        {/* Song grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {filteredSongs.map((song, index) => (
             <div
