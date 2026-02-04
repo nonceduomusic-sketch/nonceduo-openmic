@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -12,7 +12,23 @@ export interface AssistantSettings {
   welcome_message: string;
 }
 
+export interface AssistantMessage {
+  id: string;
+  conversation_id: string;
+  sender_type: string;
+  sender_name: string | null;
+  message_text: string;
+  message_type: string;
+  metadata: unknown;
+  is_read: boolean;
+  created_at: string;
+  delivery_status: 'sent' | 'delivered' | 'read';
+}
+
 type Section = 'site' | 'openmic' | 'dediche' | 'community';
+
+const STORAGE_KEY = 'assistant_conversation_id';
+const SESSION_KEY = 'assistant_session_id';
 
 export function useAssistantWidget(currentSection: Section = 'site') {
   const [settings, setSettings] = useState<AssistantSettings | null>(null);
@@ -20,7 +36,20 @@ export function useAssistantWidget(currentSection: Section = 'site') {
   const [showProactive, setShowProactive] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [messages, setMessages] = useState<AssistantMessage[]>([]);
+  const [messagesLoading, setMessagesLoading] = useState(false);
   const isMobile = useIsMobile();
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  // Get or create session ID
+  const getSessionId = useCallback(() => {
+    let sessionId = sessionStorage.getItem(SESSION_KEY);
+    if (!sessionId) {
+      sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      sessionStorage.setItem(SESSION_KEY, sessionId);
+    }
+    return sessionId;
+  }, []);
 
   // Fetch settings
   useEffect(() => {
@@ -48,6 +77,149 @@ export function useAssistantWidget(currentSection: Section = 'site') {
     fetchSettings();
   }, []);
 
+  // Restore existing conversation on mount
+  useEffect(() => {
+    const restoreConversation = async () => {
+      const storedConvId = localStorage.getItem(STORAGE_KEY);
+      if (!storedConvId) return;
+
+      try {
+        // Verify the conversation still exists and is active
+        const { data, error } = await supabase
+          .from('assistant_conversations')
+          .select('id, status')
+          .eq('id', storedConvId)
+          .single();
+
+        if (error || !data) {
+          // Conversation doesn't exist, clear storage
+          localStorage.removeItem(STORAGE_KEY);
+          return;
+        }
+
+        // Only restore if not archived
+        if (data.status !== 'archived') {
+          setConversationId(storedConvId);
+        } else {
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      } catch (err) {
+        console.error('Error restoring conversation:', err);
+        localStorage.removeItem(STORAGE_KEY);
+      }
+    };
+
+    restoreConversation();
+  }, []);
+
+  // Fetch messages when conversation is set
+  useEffect(() => {
+    if (!conversationId) {
+      setMessages([]);
+      return;
+    }
+
+    const fetchMessages = async () => {
+      setMessagesLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('assistant_messages')
+          .select('*')
+          .eq('conversation_id', conversationId)
+          .order('created_at', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching messages:', error);
+          return;
+        }
+
+        setMessages((data || []) as AssistantMessage[]);
+
+        // Mark admin messages as read when user fetches them
+        const unreadAdminMsgs = (data || []).filter(
+          m => m.sender_type === 'admin' && !m.is_read
+        );
+
+        if (unreadAdminMsgs.length > 0) {
+          await supabase
+            .from('assistant_messages')
+            .update({ 
+              is_read: true, 
+              read_at: new Date().toISOString(),
+              delivery_status: 'read' 
+            })
+            .in('id', unreadAdminMsgs.map(m => m.id));
+        }
+      } catch (err) {
+        console.error('Error:', err);
+      } finally {
+        setMessagesLoading(false);
+      }
+    };
+
+    fetchMessages();
+  }, [conversationId]);
+
+  // Realtime subscription for messages
+  useEffect(() => {
+    if (!conversationId) return;
+
+    // Clean up previous channel
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
+
+    const channel = supabase
+      .channel(`user-assistant-chat-${conversationId}-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'assistant_messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        async (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newMsg = payload.new as AssistantMessage;
+            setMessages(prev => {
+              // Avoid duplicates
+              if (prev.some(m => m.id === newMsg.id)) return prev;
+              return [...prev, newMsg];
+            });
+
+            // If admin message, mark as read immediately
+            if (newMsg.sender_type === 'admin' && isOpen) {
+              await supabase
+                .from('assistant_messages')
+                .update({ 
+                  is_read: true, 
+                  read_at: new Date().toISOString(),
+                  delivery_status: 'read' 
+                })
+                .eq('id', newMsg.id);
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            setMessages(prev =>
+              prev.map(m => m.id === payload.new.id ? payload.new as AssistantMessage : m)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setMessages(prev => prev.filter(m => m.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
+      }
+    };
+  }, [conversationId, isOpen]);
+
   // Check if assistant is enabled for current section
   const isEnabled = useCallback(() => {
     if (!settings || !settings.is_enabled) return false;
@@ -72,7 +244,6 @@ export function useAssistantWidget(currentSection: Section = 'site') {
 
     const delay = settings?.proactive_delay_seconds || 5;
     const timer = setTimeout(() => {
-      // Check if user has already interacted (stored in sessionStorage)
       const hasInteracted = sessionStorage.getItem('assistant_interacted');
       if (!hasInteracted) {
         setShowProactive(true);
@@ -90,14 +261,26 @@ export function useAssistantWidget(currentSection: Section = 'site') {
   ) => {
     if (conversationId) return conversationId;
 
-    // Get session ID from header or generate one
-    let sessionId = sessionStorage.getItem('assistant_session_id');
-    if (!sessionId) {
-      sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      sessionStorage.setItem('assistant_session_id', sessionId);
-    }
+    const sessionId = getSessionId();
 
     try {
+      // First, try to find an existing conversation for this session
+      const { data: existing, error: findError } = await supabase
+        .from('assistant_conversations')
+        .select('id, status')
+        .eq('session_id', sessionId)
+        .neq('status', 'archived')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (existing && !findError) {
+        setConversationId(existing.id);
+        localStorage.setItem(STORAGE_KEY, existing.id);
+        return existing.id;
+      }
+
+      // Create new conversation
       const { data, error } = await supabase
         .from('assistant_conversations')
         .insert({
@@ -118,12 +301,13 @@ export function useAssistantWidget(currentSection: Section = 'site') {
       }
 
       setConversationId(data.id);
+      localStorage.setItem(STORAGE_KEY, data.id);
       return data.id;
     } catch (err) {
       console.error('Error:', err);
       return null;
     }
-  }, [conversationId, currentSection]);
+  }, [conversationId, currentSection, getSessionId]);
 
   // Send message
   const sendMessage = useCallback(async (
@@ -148,6 +332,7 @@ export function useAssistantWidget(currentSection: Section = 'site') {
           message_text: text,
           message_type: 'text',
           metadata: metadata || {},
+          delivery_status: 'sent',
         } as never)
         .select()
         .single();
@@ -156,6 +341,12 @@ export function useAssistantWidget(currentSection: Section = 'site') {
         console.error('Error sending message:', error);
         return null;
       }
+
+      // Add message to local state immediately (realtime will also pick it up, but this ensures immediate UI update)
+      setMessages(prev => {
+        if (prev.some(m => m.id === data.id)) return prev;
+        return [...prev, data as AssistantMessage];
+      });
 
       // Update conversation
       await supabase
@@ -166,7 +357,6 @@ export function useAssistantWidget(currentSection: Section = 'site') {
       // Send Telegram notification for user messages
       if (senderType === 'user') {
         try {
-          // Extract song request data from metadata if present
           const songRequest = (metadata as Record<string, unknown>)?.song_request;
           const isComplete = (metadata as Record<string, unknown>)?.isComplete;
           
@@ -182,7 +372,6 @@ export function useAssistantWidget(currentSection: Section = 'site') {
           });
         } catch (telegramErr) {
           console.error('Error sending Telegram notification:', telegramErr);
-          // Don't fail the message send if Telegram fails
         }
       }
 
@@ -238,6 +427,8 @@ export function useAssistantWidget(currentSection: Section = 'site') {
     isOpen,
     showProactive,
     conversationId,
+    messages,
+    messagesLoading,
     isMobile,
     open,
     close,

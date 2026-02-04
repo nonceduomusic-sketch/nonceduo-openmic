@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, Sparkles, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FlowStep, FlowOption, getFlowForSection, getStepById } from './AssistantFlows';
+import type { AssistantMessage } from '@/hooks/useAssistantWidget';
 
 interface Message {
   id: string;
   text: string;
-  sender: 'bot' | 'user';
+  sender: 'bot' | 'user' | 'admin';
   timestamp: Date;
   options?: FlowOption[];
 }
@@ -30,6 +31,7 @@ interface AssistantChatProps {
   onSendMessage: (text: string, senderType: 'user' | 'bot', senderName?: string, metadata?: Record<string, unknown>) => Promise<unknown>;
   onUpdateConversation: (updates: { lead_type?: string; lead_score?: number; flow_path?: string[]; user_name?: string }) => Promise<void>;
   isMobile: boolean;
+  persistedMessages?: AssistantMessage[];
 }
 
 export const AssistantChat: React.FC<AssistantChatProps> = ({
@@ -41,6 +43,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
   onSendMessage,
   onUpdateConversation,
   isMobile,
+  persistedMessages = [],
 }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
@@ -50,6 +53,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
   const [isChatMode, setIsChatMode] = useState(false);
   const [inputMode, setInputMode] = useState<'name' | 'title' | 'artist' | 'free' | null>(null);
   const [songRequestData, setSongRequestData] = useState<SongRequestData>({});
+  const [hasInitialized, setHasInitialized] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -65,9 +69,37 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     }
   };
 
-  // Initialize with first message (or custom flow)
+  // Convert persisted messages to local format and merge with flow messages
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
+    if (!isOpen) return;
+
+    // If we have persisted messages, restore them
+    if (persistedMessages.length > 0 && !hasInitialized) {
+      const restored: Message[] = persistedMessages.map(pm => ({
+        id: pm.id,
+        text: pm.message_text,
+        sender: pm.sender_type as 'bot' | 'user' | 'admin',
+        timestamp: new Date(pm.created_at),
+        options: undefined,
+      }));
+      
+      setMessages(restored);
+      setHasInitialized(true);
+      
+      // Check if user was in chat mode (had a conversation)
+      const hasUserMessages = persistedMessages.some(m => m.sender_type === 'user');
+      const hasAdminMessages = persistedMessages.some(m => m.sender_type === 'admin');
+      
+      if (hasUserMessages || hasAdminMessages) {
+        setIsChatMode(true);
+        setInputMode('free');
+      }
+      
+      return;
+    }
+
+    // Initialize with first flow message only if no persisted messages
+    if (messages.length === 0 && !hasInitialized) {
       if (initialFlow) {
         const targetStep = getStepById(flow, initialFlow);
         if (targetStep) {
@@ -88,6 +120,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
               }
             }
           }, 300);
+          setHasInitialized(true);
           return;
         }
       }
@@ -101,19 +134,56 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
           }
         }, 500);
       }
+      setHasInitialized(true);
     }
-  }, [isOpen, flow, messages.length, initialFlow, initialPrefill]);
+  }, [isOpen, flow, messages.length, initialFlow, initialPrefill, persistedMessages, hasInitialized]);
+
+  // Listen for new admin messages from realtime
+  useEffect(() => {
+    if (persistedMessages.length === 0) return;
+
+    // Find new admin messages not in our local state
+    const localIds = new Set(messages.map(m => m.id));
+    const newAdminMessages = persistedMessages.filter(
+      pm => pm.sender_type === 'admin' && !localIds.has(pm.id)
+    );
+
+    if (newAdminMessages.length > 0) {
+      setMessages(prev => {
+        const updated = [...prev];
+        newAdminMessages.forEach(pm => {
+          if (!updated.some(m => m.id === pm.id)) {
+            updated.push({
+              id: pm.id,
+              text: pm.message_text,
+              sender: 'admin',
+              timestamp: new Date(pm.created_at),
+            });
+          }
+        });
+        // Sort by timestamp
+        updated.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+        return updated;
+      });
+
+      // Enable chat mode when admin responds
+      if (!isChatMode) {
+        setIsChatMode(true);
+        setInputMode('free');
+      }
+    }
+  }, [persistedMessages, messages, isChatMode]);
 
   // Scroll to bottom on new messages
-  useEffect(() => {
+  const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
-      setTimeout(() => {
-        if (scrollRef.current) {
-          scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
-        }
-      }, 100);
+      scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }
-  }, [messages, isTyping]);
+  }, []);
+
+  useEffect(() => {
+    setTimeout(scrollToBottom, 100);
+  }, [messages, isTyping, scrollToBottom]);
 
   // Focus input when input mode is active
   useEffect(() => {
@@ -328,6 +398,12 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     }
   };
 
+  // Reset state when closing
+  const handleClose = () => {
+    // Don't reset - keep state for persistence
+    onClose();
+  };
+
   if (!isOpen) return null;
 
   const showInput = inputMode || isChatMode;
@@ -366,7 +442,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
             <Button
               variant="ghost"
               size="icon"
-              onClick={onClose}
+              onClick={handleClose}
               className="rounded-full hover:bg-muted"
             >
               <X className="w-5 h-5" />
@@ -390,8 +466,14 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
                     "max-w-[85%] rounded-2xl px-4 py-3",
                     message.sender === 'user'
                       ? "bg-primary text-primary-foreground rounded-br-sm"
-                      : "bg-muted text-foreground rounded-bl-sm"
+                      : message.sender === 'admin'
+                        ? "bg-secondary text-secondary-foreground rounded-bl-sm"
+                        : "bg-muted text-foreground rounded-bl-sm"
                   )}>
+                    {/* Admin badge */}
+                    {message.sender === 'admin' && (
+                      <p className="text-[10px] font-semibold mb-1 opacity-80">👤 Staff</p>
+                    )}
                     <p className="text-sm whitespace-pre-line">{message.text}</p>
                     
                     {/* Options buttons */}

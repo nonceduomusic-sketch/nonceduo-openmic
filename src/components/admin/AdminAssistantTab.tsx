@@ -183,6 +183,16 @@ const ChatView: React.FC<{
   const [sending, setSending] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState('');
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when messages change
+  React.useEffect(() => {
+    if (scrollRef.current) {
+      setTimeout(() => {
+        scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }, 100);
+    }
+  }, [messages]);
 
   const handleSend = async () => {
     if (!newMessage.trim() || sending) return;
@@ -384,6 +394,8 @@ const ChatView: React.FC<{
               )}
             </div>
           ))}
+          {/* Scroll anchor */}
+          <div ref={scrollRef} />
         </div>
       </ScrollArea>
 
