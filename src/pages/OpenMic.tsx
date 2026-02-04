@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Mic2, Home, MessageCircle, Users, Music, Settings, ListMusic, Trophy, Sparkles } from 'lucide-react';
 import { songs, Song } from '@/data/songs';
+import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { SongCardWithStatus } from '@/components/SongCardWithStatus';
 import { SearchBar } from '@/components/SearchBar';
 import { ArtistFilter } from '@/components/ArtistFilter';
@@ -100,7 +101,7 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background pb-20 md:pb-0">
       <ConsecutiveUnlockListener />
       <SEO 
         title="Open Mic | Karaoke Live by Non C'è Duo"
@@ -333,6 +334,9 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
           onClose={() => setSelectedSong(null)}
         />
       )}
+
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav variant="openmic" />
     </div>
   );
 };
