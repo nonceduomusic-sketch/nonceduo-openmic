@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export type GlobalFormatKey = 'openmic' | 'dediche' | 'community' | 'voting' | 'show_booker_name' | 'show_live_queue' | 'lyrics_zoom' | 'lyrics_highlight_arrows' | 'lyrics_auto_scroll' | 'catalog_preview';
+export type GlobalFormatKey = 'openmic' | 'dediche' | 'community' | 'voting' | 'show_booker_name' | 'show_live_queue' | 'lyrics_zoom' | 'lyrics_highlight_arrows' | 'lyrics_auto_scroll' | 'catalog_preview' | 'show_upcoming_events';
 
 export interface GlobalFormatSetting {
   format_key: GlobalFormatKey;
@@ -22,6 +22,7 @@ export const useGlobalFormatSettings = () => {
     lyrics_highlight_arrows: true,
     lyrics_auto_scroll: true,
     catalog_preview: false,
+    show_upcoming_events: false,
   });
   const [loading, setLoading] = useState(true);
 
@@ -45,6 +46,7 @@ export const useGlobalFormatSettings = () => {
           lyrics_highlight_arrows: true,
           lyrics_auto_scroll: true,
           catalog_preview: false,
+          show_upcoming_events: false,
         };
         data.forEach((item) => {
           const key = item.format_key as GlobalFormatKey;
@@ -114,6 +116,7 @@ export const useGlobalFormatSettings = () => {
         lyrics_highlight_arrows: 'Evidenziatore Testi',
         lyrics_auto_scroll: 'Auto-scroll Testi',
         catalog_preview: 'Anteprima Catalogo',
+        show_upcoming_events: 'Mostra Eventi in Programma',
       };
       toast.success(`${formatNames[format]} ${newValue ? 'attivato' : 'disattivato'}`);
       return true;
