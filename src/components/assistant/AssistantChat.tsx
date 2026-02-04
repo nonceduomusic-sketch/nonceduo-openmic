@@ -468,15 +468,16 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         className={cn(
           "fixed z-50",
           isMobile 
-            ? "inset-0" 
+            ? "inset-0 supports-[height:100dvh]:h-[100dvh]" 
             : "bottom-4 right-4 w-[380px] h-[550px] rounded-2xl"
         )}
+        style={isMobile ? { height: '100dvh' } : undefined}
       >
         <div className={cn(
           "h-full flex flex-col",
           "bg-background/95 backdrop-blur-xl",
           "border border-border shadow-2xl shadow-black/20",
-          isMobile ? "rounded-none" : "rounded-2xl overflow-hidden"
+          isMobile ? "rounded-none overflow-hidden" : "rounded-2xl overflow-hidden"
         )}>
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-primary/10 to-secondary/10">
@@ -500,7 +501,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
           </div>
 
           {/* Messages */}
-          <ScrollArea className="flex-1 p-4">
+          <ScrollArea className="flex-1 min-h-0 p-4">
             <div className="space-y-4">
               {messages.map((message) => (
                 <motion.div
@@ -587,7 +588,10 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
 
           {/* Input - show when in input mode or chat mode */}
           {showInput && (
-            <div className="p-4 border-t border-border bg-background/50">
+            <div className={cn(
+              "p-4 border-t border-border bg-background",
+              isMobile && "pb-safe sticky bottom-0"
+            )}>
               <div className="flex gap-2">
                 <Input
                   ref={inputRef}
@@ -596,12 +600,13 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
                   onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                   placeholder={getInputPlaceholder()}
                   className="flex-1"
+                  enterKeyHint="send"
                 />
                 <Button
                   onClick={handleSubmit}
                   disabled={!inputValue.trim()}
                   size="icon"
-                  className="bg-primary hover:bg-primary/90"
+                  className="bg-primary hover:bg-primary/90 flex-shrink-0"
                 >
                   <Send className="w-4 h-4" />
                 </Button>
