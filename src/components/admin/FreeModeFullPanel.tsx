@@ -398,25 +398,25 @@ export const FreeModeFullPanel: React.FC = () => {
                       </div>
                     </div>
                     <Switch
-                      checked={(settings as unknown as Record<string, boolean>)?.catalog_preview_enabled ?? false}
+                      checked={settings?.catalog_preview_enabled ?? false}
                       onCheckedChange={(checked) => updateSettings({ catalog_preview_enabled: checked })}
                     />
                   </div>
                   
-                  {(settings as unknown as Record<string, boolean>)?.catalog_preview_enabled && (
+                  {settings?.catalog_preview_enabled && (
                     <div className="ml-4 space-y-3 p-3 rounded-lg bg-muted/30 border">
                       <div className="flex items-center gap-2">
                         <Label className="text-sm min-w-20">Mostra</Label>
                         <Input
                           type="number"
-                          value={(settings as unknown as Record<string, number>)?.catalog_preview_limit_value ?? 30}
+                          value={settings?.catalog_preview_limit_value ?? 30}
                           onChange={(e) => updateSettings({ catalog_preview_limit_value: parseInt(e.target.value) || 30 })}
                           className="w-20 h-8"
                           min={1}
                           max={100}
                         />
                         <select
-                          value={(settings as unknown as Record<string, string>)?.catalog_preview_limit_type ?? 'percent'}
+                          value={settings?.catalog_preview_limit_type ?? 'percent'}
                           onChange={(e) => updateSettings({ catalog_preview_limit_type: e.target.value as 'percent' | 'count' })}
                           className="h-8 px-2 rounded border bg-background text-sm"
                         >
@@ -427,7 +427,7 @@ export const FreeModeFullPanel: React.FC = () => {
                       <div>
                         <Label className="text-xs text-muted-foreground mb-1 block">Messaggio teaser</Label>
                         <Input
-                          value={(settings as unknown as Record<string, string>)?.catalog_preview_message ?? 'e molto altro...'}
+                          value={settings?.catalog_preview_message ?? 'e molto altro...'}
                           onChange={(e) => updateSettings({ catalog_preview_message: e.target.value })}
                           placeholder="e molto altro..."
                           className="h-8 text-sm"
@@ -673,6 +673,7 @@ export const FreeModeFullPanel: React.FC = () => {
             </div>
 
             {/* Format Toggles */}
+            {/* Format Toggles */}
             <div className="space-y-3">
               <Label className="text-sm font-medium">Formati Attivi</Label>
               <div className="grid grid-cols-1 gap-2">
@@ -706,6 +707,92 @@ export const FreeModeFullPanel: React.FC = () => {
                     onCheckedChange={(checked) => handleUpdate({ voting_enabled: checked })}
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Consultable Mode - also visible during live event */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Modalità Consultabile</Label>
+              <p className="text-xs text-muted-foreground">
+                Attiva per permettere agli utenti di sfogliare il catalogo senza poter prenotare
+              </p>
+              <div className="grid grid-cols-1 gap-2">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-accent/10 border border-accent/30">
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-accent" />
+                    <div>
+                      <span className="text-sm">Solo Anteprima</span>
+                      <p className="text-xs text-muted-foreground">Catalogo visibile, prenotazioni bloccate</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings?.is_consultable_mode ?? false}
+                    onCheckedChange={(checked) => updateSettings({ is_consultable_mode: checked })}
+                  />
+                </div>
+                {settings?.is_consultable_mode && (
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border ml-4">
+                    <div className="flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-muted-foreground" />
+                      <div>
+                        <span className="text-sm">Proteggi Testi</span>
+                        <p className="text-xs text-muted-foreground">Nascondi i testi fino all'evento</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={settings?.protect_repertoire ?? true}
+                      onCheckedChange={(checked) => updateSettings({ protect_repertoire: checked })}
+                    />
+                  </div>
+                )}
+                
+                {/* Catalog Preview Limit */}
+                <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/30">
+                  <div className="flex items-center gap-2">
+                    <Eye className="w-4 h-4 text-primary" />
+                    <div>
+                      <span className="text-sm">Mostra Anteprima Catalogo</span>
+                      <p className="text-xs text-muted-foreground">Visibile anche senza eventi attivi</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={settings?.catalog_preview_enabled ?? false}
+                    onCheckedChange={(checked) => updateSettings({ catalog_preview_enabled: checked })}
+                  />
+                </div>
+                
+                {settings?.catalog_preview_enabled && (
+                  <div className="ml-4 space-y-3 p-3 rounded-lg bg-muted/30 border">
+                    <div className="flex items-center gap-2">
+                      <Label className="text-sm min-w-20">Mostra</Label>
+                      <Input
+                        type="number"
+                        value={settings?.catalog_preview_limit_value ?? 30}
+                        onChange={(e) => updateSettings({ catalog_preview_limit_value: parseInt(e.target.value) || 30 })}
+                        className="w-20 h-8"
+                        min={1}
+                        max={100}
+                      />
+                      <select
+                        value={settings?.catalog_preview_limit_type ?? 'percent'}
+                        onChange={(e) => updateSettings({ catalog_preview_limit_type: e.target.value as 'percent' | 'count' })}
+                        className="h-8 px-2 rounded border bg-background text-sm"
+                      >
+                        <option value="percent">% delle canzoni</option>
+                        <option value="count">canzoni</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-1 block">Messaggio teaser</Label>
+                      <Input
+                        value={settings?.catalog_preview_message ?? 'e molto altro...'}
+                        onChange={(e) => updateSettings({ catalog_preview_message: e.target.value })}
+                        placeholder="e molto altro..."
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </TabsContent>
