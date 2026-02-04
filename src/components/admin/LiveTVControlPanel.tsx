@@ -92,15 +92,15 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
     }
   }, [session?.highlight_line]);
 
-  // Auto-scroll effect
+  // Auto-scroll effect - syncs to database so TV follows
   useEffect(() => {
     if (!autoScroll || !lines.length) return;
     
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       setLocalHighlightLine(prev => {
         const next = prev >= lines.length - 1 ? prev : prev + 1;
-        // Sync to database
-        updateSession({ highlight_line: next } as any);
+        // Sync to database for TV (async, fire and forget)
+        updateSession({ highlight_line: next, auto_scroll: true } as any);
         return next;
       });
     }, (6 - scrollSpeed) * 1500);
@@ -132,22 +132,23 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
     setLocalHighlightLine(newLine);
     setAutoScroll(false); // Stop auto-scroll on manual navigation
     
-    // Sync to database for TV
-    await updateSession({ highlight_line: newLine } as any);
+    // Sync to database for TV - mark as manual control
+    await updateSession({ highlight_line: newLine, auto_scroll: false } as any);
   }, [canManage, localHighlightLine, lines.length, updateSession]);
 
   const handleLineClick = useCallback(async (index: number) => {
     if (!canManage) return;
     setLocalHighlightLine(index);
     setAutoScroll(false);
-    await updateSession({ highlight_line: index } as any);
+    // Sync to database - mark as manual control
+    await updateSession({ highlight_line: index, auto_scroll: false } as any);
   }, [canManage, updateSession]);
 
   const handleReset = useCallback(async () => {
     if (!canManage) return;
     setLocalHighlightLine(0);
     setAutoScroll(false);
-    await updateSession({ highlight_line: 0 } as any);
+    await updateSession({ highlight_line: 0, auto_scroll: false } as any);
   }, [canManage, updateSession]);
 
   const handleStop = useCallback(async () => {
@@ -156,12 +157,15 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
     toast.success('Trasmissione interrotta');
   }, [canManage, stopBroadcast]);
 
-  const handleToggleAutoScroll = useCallback(() => {
-    setAutoScroll(prev => !prev);
-    if (!autoScroll) {
+  const handleToggleAutoScroll = useCallback(async () => {
+    const newAutoScroll = !autoScroll;
+    setAutoScroll(newAutoScroll);
+    // Sync auto_scroll state to database so TV knows
+    await updateSession({ auto_scroll: newAutoScroll } as any);
+    if (newAutoScroll) {
       toast.success('Auto-scroll attivato');
     }
-  }, [autoScroll]);
+  }, [autoScroll, updateSession]);
 
   const openTVPage = () => {
     window.open('/trasmetti', '_blank');
