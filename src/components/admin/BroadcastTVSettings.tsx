@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useBroadcast } from '@/hooks/useBroadcast';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   Settings, 
   Eye, 
@@ -479,18 +480,98 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                     Logo
                   </h4>
                   
-                  <div>
-                    <Label htmlFor="tv-logo-url">URL Logo (lascia vuoto per usare il logo predefinito)</Label>
-                    <Input
-                      id="tv-logo-url"
-                      value={settings.tv_logo_url}
-                      onChange={(e) => updateSetting('tv_logo_url', e.target.value)}
-                      placeholder="https://esempio.com/logo.png"
-                      disabled={!canManage}
-                    />
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Inserisci l'URL di un'immagine PNG o JPG
-                    </p>
+                  {/* Logo Upload */}
+                  <div className="space-y-3">
+                    <div>
+                      <Label>Carica Logo</Label>
+                      <div className="mt-2 flex items-center gap-3">
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/jpg,image/webp"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            
+                            // Max 2MB
+                            if (file.size > 2 * 1024 * 1024) {
+                              toast.error('Il file è troppo grande (max 2MB)');
+                              return;
+                            }
+                            
+                            try {
+                              const fileName = `tv-logo-${Date.now()}.${file.name.split('.').pop()}`;
+                              const { data, error } = await supabase.storage
+                                .from('community-images')
+                                .upload(fileName, file, { upsert: true });
+                              
+                              if (error) throw error;
+                              
+                              const { data: { publicUrl } } = supabase.storage
+                                .from('community-images')
+                                .getPublicUrl(fileName);
+                              
+                              updateSetting('tv_logo_url', publicUrl);
+                              toast.success('Logo caricato!');
+                            } catch (err) {
+                              console.error('Upload error:', err);
+                              toast.error('Errore nel caricamento');
+                            }
+                          }}
+                          disabled={!canManage}
+                          className="hidden"
+                          id="logo-upload"
+                        />
+                        <label
+                          htmlFor="logo-upload"
+                          className={cn(
+                            "flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer transition-colors",
+                            "bg-muted/50 hover:bg-muted border-border",
+                            !canManage && "opacity-50 cursor-not-allowed"
+                          )}
+                        >
+                          <Upload className="w-4 h-4" />
+                          <span className="text-sm">Carica immagine</span>
+                        </label>
+                        
+                        {settings.tv_logo_url && (
+                          <div className="flex items-center gap-2">
+                            <img 
+                              src={settings.tv_logo_url} 
+                              alt="Logo preview" 
+                              className="h-10 w-auto object-contain rounded border"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => updateSetting('tv_logo_url', '')}
+                              disabled={!canManage}
+                              className="h-8 w-8"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        PNG, JPG o WebP. Max 2MB.
+                      </p>
+                    </div>
+                    
+                    <div className="text-xs text-muted-foreground">oppure</div>
+                    
+                    <div>
+                      <Label htmlFor="tv-logo-url">URL Logo esterno</Label>
+                      <Input
+                        id="tv-logo-url"
+                        value={settings.tv_logo_url}
+                        onChange={(e) => updateSetting('tv_logo_url', e.target.value)}
+                        placeholder="https://esempio.com/logo.png"
+                        disabled={!canManage}
+                      />
+                    </div>
                   </div>
                 </div>
 
