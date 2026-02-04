@@ -31,6 +31,7 @@ import Installa from "./pages/Installa";
 import PromoLocali from "./pages/PromoLocali";
 import PromoEventi from "./pages/PromoEventi";
 import PromoMatrimoni from "./pages/PromoMatrimoni";
+import PromoFestePiazza from "./pages/PromoFestePiazza";
 import Collabora from "./pages/Collabora";
 import Lyrics from "./pages/Lyrics";
 
@@ -58,6 +59,7 @@ const AppContent = () => (
       <Route path="/collabora" element={<Collabora />} />
       <Route path="/promo/locali" element={<PromoLocali />} />
       <Route path="/promo/eventi" element={<PromoEventi />} />
+      <Route path="/promo/feste-piazza" element={<PromoFestePiazza />} />
       <Route path="/promo/matrimoni" element={<PromoMatrimoni />} />
 
       {/* APP (launcher + live) */}

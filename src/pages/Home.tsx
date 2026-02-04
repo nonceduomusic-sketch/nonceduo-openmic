@@ -198,30 +198,59 @@ const Home: React.FC = () => {
 
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
               {[
-                { icon: MapPin, title: "Locali & Club", description: "Serate live di qualità", color: "primary" },
-                { icon: PartyPopper, title: "Eventi Privati", description: "Feste e cene aziendali", color: "secondary" },
-                { icon: Users, title: "Piazze & Festival", description: "Grandi eventi", color: "accent" },
-                { icon: Heart, title: "Matrimoni", description: "Il tuo giorno speciale", color: "primary" }
+                { icon: MapPin, title: "Locali & Club", description: "Serate live di qualità", color: "primary", link: "/promo/locali" },
+                { icon: PartyPopper, title: "Eventi Privati", description: "Feste e cene aziendali", color: "secondary", link: "/promo/eventi" },
+                { icon: Users, title: "Piazze & Festival", description: "Grandi eventi pubblici", color: "accent", link: "/promo/feste-piazza" },
+                { icon: Heart, title: "Matrimoni", description: "Il tuo giorno speciale", color: "primary", link: "/promo/matrimoni" }
               ].map((service, index) => (
-                <Card 
-                  key={index}
-                  className="group bg-card/80 backdrop-blur-sm border-border hover:border-primary/50 transition-all duration-300 hover:-translate-y-1"
-                >
-                  <CardContent className="p-5 md:p-6">
-                    <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl bg-${service.color}/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                      <service.icon className={`w-6 h-6 md:w-7 md:h-7 text-${service.color}`} />
-                    </div>
-                    <h3 className="font-display text-base md:text-xl font-semibold mb-1 md:mb-2 text-foreground">{service.title}</h3>
-                    <p className="text-muted-foreground text-sm">{service.description}</p>
-                  </CardContent>
-                </Card>
+                <Link key={index} to={service.link}>
+                  <Card 
+                    className="group bg-card/80 backdrop-blur-sm border-border hover:border-primary/50 transition-all duration-300 hover:-translate-y-1 cursor-pointer h-full"
+                  >
+                    <CardContent className="p-5 md:p-6">
+                      <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl bg-${service.color}/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
+                        <service.icon className={`w-6 h-6 md:w-7 md:h-7 text-${service.color}`} />
+                      </div>
+                      <h3 className="font-display text-base md:text-xl font-semibold mb-1 md:mb-2 text-foreground">{service.title}</h3>
+                      <p className="text-muted-foreground text-sm">{service.description}</p>
+                    </CardContent>
+                  </Card>
+                </Link>
               ))}
             </div>
 
-            <div className="mt-10 md:mt-16 p-5 md:p-8 rounded-2xl bg-gradient-to-r from-primary/10 via-accent/10 to-secondary/10 border border-border text-center">
-              <p className="text-base md:text-lg text-foreground">
-                🎤 Non solo musica: <strong>coinvolgiamo il pubblico</strong> con giochi, dediche e momenti interattivi.
-              </p>
+            {/* CTA Collabora - Super Visible */}
+            <div className="mt-10 md:mt-16">
+              <Link to="/collabora">
+                <div className="relative p-6 md:p-10 rounded-2xl bg-gradient-to-r from-primary/20 via-accent/15 to-secondary/20 border-2 border-primary/30 hover:border-primary/60 transition-all duration-300 hover:scale-[1.02] group overflow-hidden">
+                  {/* Animated background glow */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  
+                  <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="text-center md:text-left">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/40 mb-3">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
+                        </span>
+                        <span className="text-xs font-bold text-primary uppercase tracking-wider">Organizzi eventi?</span>
+                      </div>
+                      <h3 className="font-display text-xl md:text-2xl font-bold text-foreground mb-2">
+                        🤝 Collabora con Noi
+                      </h3>
+                      <p className="text-muted-foreground">
+                        Sei un locale, un'azienda, un comitato? Scopri come portarci al tuo prossimo evento!
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0">
+                      <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-primary-foreground font-bold group-hover:gap-3 transition-all">
+                        <span>Scopri di più</span>
+                        <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Link>
             </div>
           </div>
         </section>
