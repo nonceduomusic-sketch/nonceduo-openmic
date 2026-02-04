@@ -256,7 +256,7 @@ export default function Trasmetti() {
             className="relative z-10 flex-1 px-4 md:px-8 py-4 overflow-y-auto"
             style={{ maxHeight: 'calc(100vh - 180px)' }}
           >
-            <div className="max-w-3xl mx-auto bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-8 shadow-2xl">
+            <div className="max-w-3xl mx-auto bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-10 shadow-2xl space-y-4 md:space-y-5">
               {lines.map((line, index) => {
                 const isHighlighted = highlightLine === index;
                 const isPast = index < highlightLine;
@@ -266,9 +266,9 @@ export default function Trasmetti() {
                     key={index}
                     data-line={index}
                     className={cn(
-                      "font-sans leading-relaxed transition-all duration-300 py-1.5 px-3 -mx-3 rounded-lg",
-                      "text-lg sm:text-xl md:text-2xl",
-                      isHighlighted && "bg-yellow-400/30 ring-2 ring-yellow-400/50 scale-[1.01] font-semibold",
+                      "font-sans leading-loose transition-all duration-300 py-3 px-4 -mx-4 rounded-xl",
+                      "text-xl sm:text-2xl md:text-3xl",
+                      isHighlighted && "bg-yellow-400/30 ring-2 ring-yellow-400/50 scale-[1.02] font-bold",
                       isPast && "opacity-40"
                     )}
                   >
