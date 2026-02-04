@@ -58,9 +58,14 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
   // Scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      // Use setTimeout to ensure DOM has updated
+      setTimeout(() => {
+        if (scrollRef.current) {
+          scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        }
+      }, 100);
     }
-  }, [messages]);
+  }, [messages, isTyping]);
 
   const addBotMessage = (text: string, options?: FlowOption[]) => {
     const newMessage: Message = {
@@ -230,7 +235,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
           </div>
 
           {/* Messages */}
-          <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+          <ScrollArea className="flex-1 p-4">
             <div className="space-y-4">
               {messages.map((message) => (
                 <motion.div
@@ -303,6 +308,9 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
                   </div>
                 </motion.div>
               )}
+              
+              {/* Scroll anchor */}
+              <div ref={scrollRef} />
             </div>
           </ScrollArea>
 
