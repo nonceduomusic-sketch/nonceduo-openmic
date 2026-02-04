@@ -278,6 +278,7 @@ export type Database = {
           highlight_line: number | null
           id: string
           is_active: boolean
+          is_broadcasting: boolean | null
           sala_code: string
           sala_name: string
           scroll_position: number | null
@@ -295,6 +296,7 @@ export type Database = {
           tv_show_title: boolean | null
           tv_subtitle: string | null
           tv_title: string | null
+          tv_view_mode: string | null
           updated_at: string | null
           updated_by: string | null
         }
@@ -307,6 +309,7 @@ export type Database = {
           highlight_line?: number | null
           id?: string
           is_active?: boolean
+          is_broadcasting?: boolean | null
           sala_code?: string
           sala_name?: string
           scroll_position?: number | null
@@ -324,6 +327,7 @@ export type Database = {
           tv_show_title?: boolean | null
           tv_subtitle?: string | null
           tv_title?: string | null
+          tv_view_mode?: string | null
           updated_at?: string | null
           updated_by?: string | null
         }
@@ -336,6 +340,7 @@ export type Database = {
           highlight_line?: number | null
           id?: string
           is_active?: boolean
+          is_broadcasting?: boolean | null
           sala_code?: string
           sala_name?: string
           scroll_position?: number | null
@@ -353,6 +358,7 @@ export type Database = {
           tv_show_title?: boolean | null
           tv_subtitle?: string | null
           tv_title?: string | null
+          tv_view_mode?: string | null
           updated_at?: string | null
           updated_by?: string | null
         }

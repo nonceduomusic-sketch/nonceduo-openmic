@@ -15,6 +15,8 @@ import {
   Maximize,
   Monitor,
   Minimize2,
+  Radio,
+  Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -71,9 +73,9 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
   const [localHighlightLine, setLocalHighlightLine] = useState(0);
   const [autoScroll, setAutoScroll] = useState(false);
   const [scrollSpeed, setScrollSpeed] = useState(3);
-  const [fontSize, setFontSize] = useState(100); // percentage
+  const [fontSize, setFontSize] = useState(100);
   const [isFullPreview, setIsFullPreview] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('compact');
+  const [viewMode, setViewMode] = useState<ViewMode>('karaoke');
   const lyricsRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
@@ -86,9 +88,20 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
     showLogo: (session as any)?.tv_show_logo ?? true,
   }), [session]);
 
+  // Is the broadcast currently live on TV?
+  const isBroadcasting = (session as any)?.is_broadcasting ?? false;
+
   const lines = useMemo(() => 
     currentSong?.testo?.split('\n').filter(line => line.trim()) || []
   , [currentSong?.testo]);
+
+  // Sync viewMode from session when it changes
+  useEffect(() => {
+    const sessionViewMode = (session as any)?.tv_view_mode;
+    if (sessionViewMode && ['compact', 'karaoke', 'spotify'].includes(sessionViewMode)) {
+      setViewMode(sessionViewMode as ViewMode);
+    }
+  }, [(session as any)?.tv_view_mode]);
 
   // Fetch current song when it changes
   useEffect(() => {
@@ -128,7 +141,6 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
     const interval = setInterval(async () => {
       setLocalHighlightLine(prev => {
         const next = prev >= lines.length - 1 ? prev : prev + 1;
-        // Sync to database for TV (async, fire and forget)
         updateSession({ highlight_line: next, auto_scroll: true } as any);
         return next;
       });
@@ -159,9 +171,8 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
       : Math.min(lines.length - 1, localHighlightLine + 1);
     
     setLocalHighlightLine(newLine);
-    setAutoScroll(false); // Stop auto-scroll on manual navigation
+    setAutoScroll(false);
     
-    // Sync to database for TV - mark as manual control
     await updateSession({ highlight_line: newLine, auto_scroll: false } as any);
   }, [canManage, localHighlightLine, lines.length, updateSession]);
 
@@ -169,7 +180,6 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
     if (!canManage) return;
     setLocalHighlightLine(index);
     setAutoScroll(false);
-    // Sync to database - mark as manual control
     await updateSession({ highlight_line: index, auto_scroll: false } as any);
   }, [canManage, updateSession]);
 
@@ -180,28 +190,57 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
     await updateSession({ highlight_line: 0, auto_scroll: false } as any);
   }, [canManage, updateSession]);
 
-  const handleStop = useCallback(async () => {
+  // STOP BROADCAST - Returns TV to waiting screen
+  const handleStopBroadcast = useCallback(async () => {
     if (!canManage) return;
-    await stopBroadcast();
-    toast.success('Trasmissione interrotta');
-  }, [canManage, stopBroadcast]);
+    
+    await updateSession({ 
+      is_broadcasting: false,
+      display_mode: 'waiting',
+      current_song_id: null,
+      current_reservation_id: null,
+      highlight_line: 0,
+      auto_scroll: false,
+    } as any);
+    
+    setAutoScroll(false);
+    toast.success('Trasmissione interrotta - TV in attesa');
+  }, [canManage, updateSession]);
+
+  // START BROADCAST - Makes TV show the lyrics with selected style
+  const handleStartBroadcast = useCallback(async () => {
+    if (!canManage || !currentSong) return;
+    
+    // Sync the view mode and start broadcasting
+    await updateSession({ 
+      is_broadcasting: true,
+      tv_view_mode: viewMode,
+    } as any);
+    
+    toast.success(`Trasmissione avviata! Stile: ${viewMode === 'spotify' ? 'Spotify' : viewMode === 'karaoke' ? 'Karaoke' : 'Compatta'}`);
+  }, [canManage, currentSong, viewMode, updateSession]);
 
   const handleToggleAutoScroll = useCallback(async () => {
     const newAutoScroll = !autoScroll;
     setAutoScroll(newAutoScroll);
-    // Sync auto_scroll state to database so TV knows
     await updateSession({ auto_scroll: newAutoScroll } as any);
     if (newAutoScroll) {
       toast.success('Auto-scroll attivato');
     }
   }, [autoScroll, updateSession]);
 
-  const openTVPage = (mode?: 'karaoke' | 'spotify') => {
-    const url = mode ? `/trasmetti?mode=${mode}` : '/trasmetti';
-    window.open(url, '_blank');
+  // Sync view mode to database when changed
+  const handleViewModeChange = useCallback(async (mode: ViewMode) => {
+    setViewMode(mode);
+    // Always sync the view mode, if broadcasting it updates TV immediately
+    await updateSession({ tv_view_mode: mode } as any);
+  }, [updateSession]);
+
+  const openTVPage = () => {
+    window.open('/trasmetti', '_blank');
   };
 
-  // No broadcast active
+  // No song selected - waiting state
   if (session?.display_mode !== 'lyrics' || !currentSong) {
     return (
       <Card>
@@ -218,27 +257,45 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
           <p className="text-muted-foreground text-center py-8">
             Seleziona una canzone dalla scaletta o dal catalogo per iniziare la trasmissione.
           </p>
+          <div className="flex justify-center">
+            <Button variant="outline" size="sm" onClick={openTVPage}>
+              <ExternalLink className="w-4 h-4 mr-2" />
+              Apri Pagina TV
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
   }
 
-  // Full Preview Mode (expanded) - Mobile optimized
+  // Full Preview Mode (expanded)
   if (isFullPreview) {
     return (
-      <Card className="border-green-500/30">
+      <Card className={cn(
+        "border-2",
+        isBroadcasting ? "border-green-500/50" : "border-yellow-500/50"
+      )}>
         <CardContent className="p-0">
           {/* Full TV Replica */}
           <div 
-            className="relative rounded-xl overflow-hidden bg-black"
+            className={cn(
+              "relative rounded-xl overflow-hidden",
+              viewMode === 'spotify' && currentSong 
+                ? `bg-gradient-to-b ${getColorForSong(currentSong.id)}`
+                : viewMode === 'karaoke'
+                  ? "bg-gradient-to-b from-gray-900 via-black to-gray-900"
+                  : "bg-card"
+            )}
             style={{ minHeight: isMobile ? '60vh' : '70vh' }}
           >
-            {/* Ambient background */}
-            <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute inset-0 bg-gradient-to-b from-gray-900/50 via-black to-gray-900/50" />
-              <div className="absolute top-0 left-1/4 w-[200px] md:w-[400px] h-[200px] md:h-[400px] bg-primary/15 rounded-full blur-[100px] md:blur-[150px]" />
-              <div className="absolute bottom-0 right-1/4 w-[150px] md:w-[300px] h-[150px] md:h-[300px] bg-purple-600/10 rounded-full blur-[60px] md:blur-[100px]" />
-            </div>
+            {/* Ambient background for Karaoke mode */}
+            {viewMode === 'karaoke' && (
+              <div className="absolute inset-0 pointer-events-none">
+                <div className="absolute inset-0 bg-gradient-to-b from-gray-900/50 via-black to-gray-900/50" />
+                <div className="absolute top-0 left-1/4 w-[200px] md:w-[400px] h-[200px] md:h-[400px] bg-primary/15 rounded-full blur-[100px] md:blur-[150px]" />
+                <div className="absolute bottom-0 right-1/4 w-[150px] md:w-[300px] h-[150px] md:h-[300px] bg-purple-600/10 rounded-full blur-[60px] md:blur-[100px]" />
+              </div>
+            )}
 
             {/* Header with song info */}
             <div className="relative z-10 px-4 md:px-6 pt-4 md:pt-6 pb-2 md:pb-4">
@@ -256,13 +313,13 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
                   )}
                   <div className="min-w-0 flex-1">
                     <h1 
-                      className="font-bold text-white truncate"
+                      className={cn("font-bold truncate", viewMode === 'compact' ? "text-foreground" : "text-white")}
                       style={{ fontSize: isMobile ? `${Math.max(16, 20 * fontSize / 100)}px` : `${Math.max(18, 28 * fontSize / 100)}px` }}
                     >
                       {currentSong.titolo}
                     </h1>
                     <p 
-                      className="text-white/60 truncate"
+                      className={cn("truncate", viewMode === 'compact' ? "text-muted-foreground" : "text-white/60")}
                       style={{ fontSize: isMobile ? `${Math.max(12, 14 * fontSize / 100)}px` : `${Math.max(14, 18 * fontSize / 100)}px` }}
                     >
                       {currentSong.artista}
@@ -270,15 +327,25 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
                   </div>
                 </div>
                 <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
-                  <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
-                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-500 rounded-full animate-pulse mr-1 md:mr-2" />
-                    {!isMobile && 'LIVE'}
-                  </Badge>
+                  {isBroadcasting ? (
+                    <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
+                      <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-500 rounded-full animate-pulse mr-1 md:mr-2" />
+                      {!isMobile && 'LIVE'}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30 text-xs">
+                      <Eye className="w-3 h-3 mr-1" />
+                      {!isMobile && 'ANTEPRIMA'}
+                    </Badge>
+                  )}
                   <Button
                     variant="outline"
                     size="icon"
                     onClick={() => setIsFullPreview(false)}
-                    className="text-white border-white/20 hover:bg-white/10 h-8 w-8 md:h-9 md:w-9"
+                    className={cn(
+                      "h-8 w-8 md:h-9 md:w-9",
+                      viewMode !== 'compact' && "text-white border-white/20 hover:bg-white/10"
+                    )}
                   >
                     <Minimize2 className="w-4 h-4" />
                   </Button>
@@ -286,78 +353,169 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
               </div>
             </div>
 
-            {/* Lyrics display - Full Spotify style */}
+            {/* Lyrics display based on view mode */}
             <div 
               ref={lyricsRef}
-              className="relative z-10 px-4 md:px-12 overflow-y-auto"
-              style={{ height: isMobile ? 'calc(60vh - 180px)' : 'calc(70vh - 200px)' }}
+              className={cn(
+                "relative z-10 px-4 md:px-12 overflow-y-auto",
+                viewMode === 'spotify' && "px-4 md:px-8"
+              )}
+              style={{ height: isMobile ? 'calc(60vh - 220px)' : 'calc(70vh - 240px)' }}
             >
-              <div className={cn(
-                "max-w-4xl mx-auto text-center",
-                isMobile ? "space-y-3 py-[10vh]" : "space-y-4 md:space-y-6 py-[15vh]"
-              )}>
-                {lines.map((line, index) => {
-                  const isHighlighted = localHighlightLine === index;
-                  const isPast = index < localHighlightLine;
-                  const distanceFromHighlight = Math.abs(index - localHighlightLine);
-                  
-                  // Progressive opacity based on distance
-                  let opacity = 1;
-                  if (isPast) opacity = 0.3;
-                  else if (distanceFromHighlight === 1) opacity = 0.7;
-                  else if (distanceFromHighlight === 2) opacity = 0.5;
-                  else if (distanceFromHighlight > 2) opacity = 0.35;
-                  
-                  const baseFontSize = isMobile 
-                    ? Math.max(14, 18 * fontSize / 100)
-                    : Math.max(16, 24 * fontSize / 100);
-                  const highlightFontSize = baseFontSize * 1.3;
+              {viewMode === 'spotify' ? (
+                /* SPOTIFY STYLE */
+                <div className="max-w-3xl mx-auto bg-black/30 backdrop-blur-sm rounded-2xl p-4 md:p-6">
+                  {lines.map((line, index) => {
+                    const isHighlighted = localHighlightLine === index;
+                    const isPast = index < localHighlightLine;
+                    
+                    return (
+                      <p
+                        key={index}
+                        data-line={index}
+                        onClick={() => handleLineClick(index)}
+                        className={cn(
+                          "font-sans leading-relaxed transition-all duration-300 cursor-pointer py-1.5 px-3 -mx-3 rounded-lg",
+                          isHighlighted && "bg-yellow-400/30 ring-2 ring-yellow-400/50 scale-[1.01] font-semibold",
+                          isPast && "opacity-40",
+                          !isHighlighted && !isPast && "hover:bg-white/10"
+                        )}
+                        style={{ 
+                          fontSize: `${Math.max(14, 18 * fontSize / 100)}px`,
+                          color: 'white'
+                        }}
+                      >
+                        {line || '\u00A0'}
+                      </p>
+                    );
+                  })}
+                </div>
+              ) : viewMode === 'karaoke' ? (
+                /* KARAOKE STYLE */
+                <div className={cn(
+                  "max-w-4xl mx-auto text-center",
+                  isMobile ? "space-y-3 py-[10vh]" : "space-y-4 md:space-y-6 py-[15vh]"
+                )}>
+                  {lines.map((line, index) => {
+                    const isHighlighted = localHighlightLine === index;
+                    const isPast = index < localHighlightLine;
+                    const distanceFromHighlight = Math.abs(index - localHighlightLine);
+                    
+                    let opacity = 1;
+                    if (isPast) opacity = 0.3;
+                    else if (distanceFromHighlight === 1) opacity = 0.7;
+                    else if (distanceFromHighlight === 2) opacity = 0.5;
+                    else if (distanceFromHighlight > 2) opacity = 0.35;
+                    
+                    const baseFontSize = isMobile 
+                      ? Math.max(14, 18 * fontSize / 100)
+                      : Math.max(16, 24 * fontSize / 100);
+                    const highlightFontSize = baseFontSize * 1.3;
 
-                  return (
-                    <p
-                      key={index}
-                      data-line={index}
-                      onClick={() => handleLineClick(index)}
-                      className={cn(
-                        "font-bold leading-relaxed transition-all duration-500 cursor-pointer hover:opacity-100",
-                        isHighlighted && "text-primary scale-105"
-                      )}
-                      style={{
-                        fontSize: isHighlighted ? `${highlightFontSize}px` : `${baseFontSize}px`,
-                        opacity,
-                        color: isHighlighted ? 'hsl(var(--primary))' : 'white',
-                        textShadow: isHighlighted 
-                          ? '0 0 40px hsl(var(--primary) / 0.5), 0 0 80px hsl(var(--primary) / 0.3)'
-                          : 'none',
-                      }}
-                    >
-                      {line || '\u00A0'}
-                    </p>
-                  );
-                })}
-              </div>
+                    return (
+                      <p
+                        key={index}
+                        data-line={index}
+                        onClick={() => handleLineClick(index)}
+                        className={cn(
+                          "font-bold leading-relaxed transition-all duration-500 cursor-pointer hover:opacity-100",
+                          isHighlighted && "text-primary scale-105"
+                        )}
+                        style={{
+                          fontSize: isHighlighted ? `${highlightFontSize}px` : `${baseFontSize}px`,
+                          opacity,
+                          color: isHighlighted ? 'hsl(var(--primary))' : 'white',
+                          textShadow: isHighlighted 
+                            ? '0 0 40px hsl(var(--primary) / 0.5), 0 0 80px hsl(var(--primary) / 0.3)'
+                            : 'none',
+                        }}
+                      >
+                        {line || '\u00A0'}
+                      </p>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* COMPACT STYLE */
+                <div className="max-w-2xl mx-auto space-y-1 py-4">
+                  {lines.map((line, index) => {
+                    const isHighlighted = localHighlightLine === index;
+                    const isPast = index < localHighlightLine;
+                    
+                    return (
+                      <p
+                        key={index}
+                        data-line={index}
+                        onClick={() => handleLineClick(index)}
+                        className={cn(
+                          "leading-relaxed transition-all duration-300 cursor-pointer px-3 py-1.5 rounded",
+                          isHighlighted && "bg-primary/20 text-primary font-semibold",
+                          isPast && "text-muted-foreground",
+                          !isHighlighted && !isPast && "text-foreground hover:bg-muted"
+                        )}
+                        style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px` }}
+                      >
+                        <span className="mr-2 text-xs text-muted-foreground">{index + 1}</span>
+                        {line || '\u00A0'}
+                      </p>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
-            {/* Controls Overlay - Mobile optimized */}
-            <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 bg-gradient-to-t from-black via-black/90 to-transparent">
+            {/* Controls Overlay */}
+            <div className={cn(
+              "absolute bottom-0 left-0 right-0 p-3 md:p-4",
+              viewMode !== 'compact' 
+                ? "bg-gradient-to-t from-black via-black/90 to-transparent"
+                : "bg-gradient-to-t from-background via-background/90 to-transparent"
+            )}>
               {isMobile ? (
-                // Mobile: 2-row layout
                 <div className="space-y-2">
-                  {/* Row 1: Navigation + Auto-scroll */}
+                  {/* Row 1: Start/Stop + Navigation + Auto-scroll */}
                   <div className="flex items-center justify-center gap-2">
+                    {/* Start/Stop Broadcast */}
+                    {isBroadcasting ? (
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleStopBroadcast}
+                        disabled={!canManage}
+                        className="h-10"
+                      >
+                        <Square className="w-4 h-4 mr-1" />
+                        Stop
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={handleStartBroadcast}
+                        disabled={!canManage}
+                        className="h-10 bg-green-600 hover:bg-green-700"
+                      >
+                        <Radio className="w-4 h-4 mr-1" />
+                        Avvia
+                      </Button>
+                    )}
+
                     {/* Navigation */}
-                    <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1">
+                    <div className={cn(
+                      "flex items-center gap-1 rounded-lg p-1",
+                      viewMode !== 'compact' ? "bg-white/10" : "bg-muted"
+                    )}>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => handleLineChange('up')}
                         disabled={!canManage || localHighlightLine === 0}
-                        className="text-white hover:bg-white/20 h-10 w-10"
+                        className={cn("h-10 w-10", viewMode !== 'compact' && "text-white hover:bg-white/20")}
                       >
                         <ChevronUp className="w-5 h-5" />
                       </Button>
                       <div className="px-2 min-w-[50px] text-center">
-                        <span className="text-white font-medium text-sm">
+                        <span className={cn("font-medium text-sm", viewMode !== 'compact' && "text-white")}>
                           {localHighlightLine + 1}/{lines.length}
                         </span>
                       </div>
@@ -366,7 +524,7 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
                         size="icon"
                         onClick={() => handleLineChange('down')}
                         disabled={!canManage || localHighlightLine >= lines.length - 1}
-                        className="text-white hover:bg-white/20 h-10 w-10"
+                        className={cn("h-10 w-10", viewMode !== 'compact' && "text-white hover:bg-white/20")}
                       >
                         <ChevronDown className="w-5 h-5" />
                       </Button>
@@ -378,28 +536,20 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
                       size="icon"
                       onClick={handleToggleAutoScroll}
                       disabled={!canManage}
-                      className={cn("h-10 w-10", !autoScroll && "text-white border-white/20 hover:bg-white/20")}
+                      className={cn("h-10 w-10", !autoScroll && viewMode !== 'compact' && "text-white border-white/20 hover:bg-white/20")}
                     >
                       {autoScroll ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
                     </Button>
-
-                    {/* Reset */}
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={handleReset}
-                      disabled={!canManage}
-                      className="text-white border-white/20 hover:bg-white/20 h-10 w-10"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                    </Button>
                   </div>
 
-                  {/* Row 2: Speed + Zoom + Stop + TV */}
+                  {/* Row 2: Speed + Zoom + Reset + TV */}
                   <div className="flex items-center justify-center gap-2">
                     {/* Speed */}
-                    <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
-                      <Label className="text-xs text-white/70">Vel.</Label>
+                    <div className={cn(
+                      "flex items-center gap-2 rounded-lg px-3 py-2",
+                      viewMode !== 'compact' ? "bg-white/10" : "bg-muted"
+                    )}>
+                      <Label className={cn("text-xs", viewMode !== 'compact' && "text-white/70")}>Vel.</Label>
                       <Slider
                         value={[scrollSpeed]}
                         onValueChange={([v]) => setScrollSpeed(v)}
@@ -412,64 +562,96 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
                     </div>
 
                     {/* Zoom */}
-                    <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1">
+                    <div className={cn(
+                      "flex items-center gap-1 rounded-lg p-1",
+                      viewMode !== 'compact' ? "bg-white/10" : "bg-muted"
+                    )}>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => setFontSize(prev => Math.max(50, prev - 10))}
-                        className="text-white hover:bg-white/20 h-8 w-8"
+                        className={cn("h-8 w-8", viewMode !== 'compact' && "text-white hover:bg-white/20")}
                       >
                         <ZoomOut className="w-4 h-4" />
                       </Button>
-                      <span className="text-xs text-white min-w-[32px] text-center">{fontSize}%</span>
+                      <span className={cn("text-xs min-w-[32px] text-center", viewMode !== 'compact' && "text-white")}>{fontSize}%</span>
                       <Button
                         variant="ghost"
                         size="icon"
                         onClick={() => setFontSize(prev => Math.min(150, prev + 10))}
-                        className="text-white hover:bg-white/20 h-8 w-8"
+                        className={cn("h-8 w-8", viewMode !== 'compact' && "text-white hover:bg-white/20")}
                       >
                         <ZoomIn className="w-4 h-4" />
                       </Button>
                     </div>
 
-                    {/* Stop */}
+                    {/* Reset */}
                     <Button
-                      variant="destructive"
+                      variant="outline"
                       size="icon"
-                      onClick={handleStop}
+                      onClick={handleReset}
                       disabled={!canManage}
-                      className="h-10 w-10"
+                      className={cn("h-10 w-10", viewMode !== 'compact' && "text-white border-white/20 hover:bg-white/20")}
                     >
-                      <Square className="w-4 h-4" />
+                      <RotateCcw className="w-4 h-4" />
                     </Button>
 
                     {/* Open TV */}
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={() => openTVPage()}
-                      className="text-white border-white/20 hover:bg-white/20 h-10 w-10"
+                      onClick={openTVPage}
+                      className={cn("h-10 w-10", viewMode !== 'compact' && "text-white border-white/20 hover:bg-white/20")}
                     >
                       <ExternalLink className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
               ) : (
-                // Desktop: Single row
+                /* Desktop: Single row */
                 <div className="flex flex-wrap items-center justify-center gap-3">
+                  {/* Start/Stop Broadcast */}
+                  {isBroadcasting ? (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={handleStopBroadcast}
+                      disabled={!canManage}
+                    >
+                      <Square className="w-4 h-4 mr-2" />
+                      Stop Trasmissione
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={handleStartBroadcast}
+                      disabled={!canManage}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      <Radio className="w-4 h-4 mr-2" />
+                      Avvia Trasmissione
+                    </Button>
+                  )}
+
+                  <div className={cn("h-6 w-px", viewMode !== 'compact' ? "bg-white/20" : "bg-border")} />
+
                   {/* Navigation */}
-                  <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1">
+                  <div className={cn(
+                    "flex items-center gap-1 rounded-lg p-1",
+                    viewMode !== 'compact' ? "bg-white/10" : "bg-muted"
+                  )}>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => handleLineChange('up')}
                       disabled={!canManage || localHighlightLine === 0}
-                      className="text-white hover:bg-white/20"
+                      className={viewMode !== 'compact' ? "text-white hover:bg-white/20" : ""}
                     >
                       <ChevronUp className="w-5 h-5" />
                     </Button>
                     <div className="px-3 min-w-[70px] text-center">
-                      <span className="text-white font-medium">
+                      <span className={cn("font-medium", viewMode !== 'compact' && "text-white")}>
                         {localHighlightLine + 1}/{lines.length}
                       </span>
                     </div>
@@ -478,7 +660,7 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
                       size="icon"
                       onClick={() => handleLineChange('down')}
                       disabled={!canManage || localHighlightLine >= lines.length - 1}
-                      className="text-white hover:bg-white/20"
+                      className={viewMode !== 'compact' ? "text-white hover:bg-white/20" : ""}
                     >
                       <ChevronDown className="w-5 h-5" />
                     </Button>
@@ -490,15 +672,18 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
                     size="sm"
                     onClick={handleToggleAutoScroll}
                     disabled={!canManage}
-                    className={!autoScroll ? "text-white border-white/20 hover:bg-white/20" : ""}
+                    className={!autoScroll && viewMode !== 'compact' ? "text-white border-white/20 hover:bg-white/20" : ""}
                   >
                     {autoScroll ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
                     Auto
                   </Button>
 
                   {/* Speed */}
-                  <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-1.5">
-                    <Label className="text-xs text-white/70 whitespace-nowrap">Vel.</Label>
+                  <div className={cn(
+                    "flex items-center gap-2 rounded-lg px-3 py-1.5",
+                    viewMode !== 'compact' ? "bg-white/10" : "bg-muted"
+                  )}>
+                    <Label className={cn("text-xs whitespace-nowrap", viewMode !== 'compact' && "text-white/70")}>Vel.</Label>
                     <Slider
                       value={[scrollSpeed]}
                       onValueChange={([v]) => setScrollSpeed(v)}
@@ -511,21 +696,24 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
                   </div>
 
                   {/* Zoom */}
-                  <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1">
+                  <div className={cn(
+                    "flex items-center gap-1 rounded-lg p-1",
+                    viewMode !== 'compact' ? "bg-white/10" : "bg-muted"
+                  )}>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => setFontSize(prev => Math.max(50, prev - 10))}
-                      className="text-white hover:bg-white/20"
+                      className={viewMode !== 'compact' ? "text-white hover:bg-white/20" : ""}
                     >
                       <ZoomOut className="w-4 h-4" />
                     </Button>
-                    <span className="text-xs text-white min-w-[40px] text-center">{fontSize}%</span>
+                    <span className={cn("text-xs min-w-[40px] text-center", viewMode !== 'compact' && "text-white")}>{fontSize}%</span>
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => setFontSize(prev => Math.min(150, prev + 10))}
-                      className="text-white hover:bg-white/20"
+                      className={viewMode !== 'compact' ? "text-white hover:bg-white/20" : ""}
                     >
                       <ZoomIn className="w-4 h-4" />
                     </Button>
@@ -537,28 +725,17 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
                     size="icon"
                     onClick={handleReset}
                     disabled={!canManage}
-                    className="text-white border-white/20 hover:bg-white/20"
+                    className={viewMode !== 'compact' ? "text-white border-white/20 hover:bg-white/20" : ""}
                   >
                     <RotateCcw className="w-4 h-4" />
-                  </Button>
-
-                  {/* Stop */}
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleStop}
-                    disabled={!canManage}
-                  >
-                    <Square className="w-4 h-4 mr-2" />
-                    Stop
                   </Button>
 
                   {/* Open TV */}
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => openTVPage()}
-                    className="text-white border-white/20 hover:bg-white/20"
+                    onClick={openTVPage}
+                    className={viewMode !== 'compact' ? "text-white border-white/20 hover:bg-white/20" : ""}
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
                     TV
@@ -572,19 +749,29 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
     );
   }
 
-  // Compact Mode (default) - Mobile optimized
+  // Compact Mode (default view)
   return (
-    <Card className="border-green-500/30 bg-green-500/5">
+    <Card className={cn(
+      "border-2",
+      isBroadcasting ? "border-green-500/30 bg-green-500/5" : "border-yellow-500/30 bg-yellow-500/5"
+    )}>
       <CardHeader className="pb-3 px-3 md:px-6">
         <div className={cn(
           "flex gap-3",
           isMobile ? "flex-col" : "items-center justify-between flex-wrap"
         )}>
           <div className="flex items-center gap-3">
-            <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-green-500 rounded-full animate-pulse flex-shrink-0" />
+            {isBroadcasting ? (
+              <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-green-500 rounded-full animate-pulse flex-shrink-0" />
+            ) : (
+              <Eye className="w-4 h-4 text-yellow-500 flex-shrink-0" />
+            )}
             <div className="min-w-0 flex-1">
-              <CardTitle className="text-sm md:text-base text-green-600 dark:text-green-400">
-                Trasmissione Live
+              <CardTitle className={cn(
+                "text-sm md:text-base",
+                isBroadcasting ? "text-green-600 dark:text-green-400" : "text-yellow-600 dark:text-yellow-400"
+              )}>
+                {isBroadcasting ? 'Trasmissione Live' : 'Anteprima Trasmissione'}
               </CardTitle>
               <CardDescription className="truncate text-xs md:text-sm">
                 {currentSong.titolo} - {currentSong.artista}
@@ -601,7 +788,7 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
               <Button
                 variant={viewMode === 'compact' ? 'secondary' : 'ghost'}
                 size="sm"
-                onClick={() => setViewMode('compact')}
+                onClick={() => handleViewModeChange('compact')}
                 className="h-7 px-2 text-xs"
               >
                 Compatta
@@ -609,7 +796,7 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
               <Button
                 variant={viewMode === 'karaoke' ? 'secondary' : 'ghost'}
                 size="sm"
-                onClick={() => setViewMode('karaoke')}
+                onClick={() => handleViewModeChange('karaoke')}
                 className="h-7 px-2 text-xs"
               >
                 Karaoke
@@ -617,7 +804,7 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
               <Button
                 variant={viewMode === 'spotify' ? 'secondary' : 'ghost'}
                 size="sm"
-                onClick={() => setViewMode('spotify')}
+                onClick={() => handleViewModeChange('spotify')}
                 className="h-7 px-2 text-xs"
               >
                 Spotify
@@ -636,27 +823,41 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => openTVPage()}
+                onClick={openTVPage}
                 className="h-8 w-8"
               >
                 <ExternalLink className="w-4 h-4" />
               </Button>
-              <Button
-                variant="destructive"
-                size="icon"
-                onClick={handleStop}
-                disabled={!canManage}
-                className="h-8 w-8"
-              >
-                <Square className="w-4 h-4" />
-              </Button>
+              {isBroadcasting ? (
+                <Button
+                  variant="destructive"
+                  size="icon"
+                  onClick={handleStopBroadcast}
+                  disabled={!canManage}
+                  className="h-8 w-8"
+                  title="Stop Trasmissione"
+                >
+                  <Square className="w-4 h-4" />
+                </Button>
+              ) : (
+                <Button
+                  variant="default"
+                  size="icon"
+                  onClick={handleStartBroadcast}
+                  disabled={!canManage}
+                  className="h-8 w-8 bg-green-600 hover:bg-green-700"
+                  title="Avvia Trasmissione"
+                >
+                  <Radio className="w-4 h-4" />
+                </Button>
+              )}
             </div>
           </div>
         </div>
       </CardHeader>
       
       <CardContent className="space-y-3 md:space-y-4 px-3 md:px-6">
-        {/* Controls bar - Mobile optimized */}
+        {/* Controls bar */}
         {isMobile ? (
           <div className="space-y-2">
             {/* Row 1: Navigation + Auto */}
@@ -746,7 +947,6 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
             </div>
           </div>
         ) : (
-          // Desktop: Single row
           <div className="flex flex-wrap items-center gap-3 p-3 bg-muted/50 rounded-lg">
             {/* Navigation */}
             <div className="flex items-center gap-1">
@@ -837,7 +1037,6 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
 
         {/* Preview based on view mode */}
         {viewMode === 'spotify' ? (
-          /* SPOTIFY-style Preview - Colorful background like Lyrics.tsx */
           <div 
             className={cn(
               "relative rounded-xl overflow-hidden cursor-pointer bg-gradient-to-b",
@@ -876,7 +1075,7 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
               </div>
             </div>
 
-            {/* Spotify-style Lyrics - Like Lyrics.tsx */}
+            {/* Spotify-style Lyrics */}
             <div 
               ref={lyricsRef}
               className="relative z-10 px-4 py-4 overflow-y-auto"
@@ -921,7 +1120,6 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
             </div>
           </div>
         ) : viewMode === 'karaoke' ? (
-          /* KARAOKE-style Preview - Dark with ambient glow */
           <div 
             className="relative rounded-xl overflow-hidden bg-gradient-to-b from-gray-900 via-black to-gray-900 cursor-pointer"
             style={{ minHeight: isMobile ? 260 : 320 }}
@@ -1022,7 +1220,6 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
             </div>
           </div>
         ) : (
-          /* COMPACT Preview - Simple text list */
           <div 
             className="relative rounded-lg overflow-hidden border bg-card cursor-pointer"
             onClick={() => setIsFullPreview(true)}
@@ -1044,9 +1241,15 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
                   <p className="font-medium text-xs md:text-sm truncate">{currentSong.titolo}</p>
                   <p className="text-[10px] md:text-xs text-muted-foreground truncate">{currentSong.artista}</p>
                 </div>
-                <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30 text-[10px] md:text-xs px-1.5">
-                  LIVE
-                </Badge>
+                {isBroadcasting ? (
+                  <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30 text-[10px] md:text-xs px-1.5">
+                    LIVE
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30 text-[10px] md:text-xs px-1.5">
+                    ANTEPRIMA
+                  </Badge>
+                )}
               </div>
             </div>
 
@@ -1091,7 +1294,9 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
         )}
 
         <p className="text-[10px] md:text-xs text-muted-foreground text-center">
-          Tocca una riga per saltarci. La TV si sincronizza in tempo reale.
+          {isBroadcasting 
+            ? 'Tocca una riga per saltarci. La TV si sincronizza in tempo reale.'
+            : 'Anteprima attiva. Premi "Avvia Trasmissione" per mandare in onda sulla TV.'}
         </p>
       </CardContent>
     </Card>
