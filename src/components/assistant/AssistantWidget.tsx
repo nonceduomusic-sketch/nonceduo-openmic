@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAssistantWidget } from '@/hooks/useAssistantWidget';
+import { useAssistantContext } from '@/contexts/AssistantContext';
 import { AssistantBubble } from './AssistantBubble';
 import { AssistantChat } from './AssistantChat';
 
@@ -24,6 +25,18 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
     updateConversation,
   } = useAssistantWidget(section);
 
+  // Get external trigger from context
+  const { pendingFlow, clearPendingFlow } = useAssistantContext();
+
+  // Handle external flow trigger
+  useEffect(() => {
+    if (pendingFlow && !loading && isEnabled && !isOpen) {
+      open();
+      // Clear the pending flow after opening
+      clearPendingFlow();
+    }
+  }, [pendingFlow, loading, isEnabled, isOpen, open, clearPendingFlow]);
+
   // Don't render if loading or not enabled
   if (loading || !isEnabled) {
     return null;
@@ -45,6 +58,8 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
       <AssistantChat
         isOpen={isOpen}
         section={section}
+        initialFlow={pendingFlow?.flowId}
+        initialPrefill={pendingFlow?.prefillText}
         onClose={close}
         onSendMessage={sendMessage}
         onUpdateConversation={updateConversation}

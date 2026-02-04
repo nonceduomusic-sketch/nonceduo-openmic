@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Mic2, Home, MessageCircle, Users, Music, Settings, ListMusic, Trophy } from 'lucide-react';
+import { Mic2, Home, MessageCircle, Users, Music, Settings, ListMusic, Trophy, Sparkles } from 'lucide-react';
 import { songs, Song } from '@/data/songs';
 import { SongCardWithStatus } from '@/components/SongCardWithStatus';
 import { SearchBar } from '@/components/SearchBar';
@@ -19,6 +19,7 @@ import { LiveEvent } from '@/hooks/useLiveEvent';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { LeaderboardCard } from '@/components/gamification/LeaderboardCard';
 import { ConsecutiveUnlockListener } from '@/components/ConsecutiveUnlockListener';
+import { useAssistantContext } from '@/contexts/AssistantContext';
 
 interface OpenMicProps {
   /**
@@ -38,6 +39,9 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
   const [artistFilter, setArtistFilter] = useState('all');
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   
+  // Assistant context for triggering song request flow
+  const { triggerFlow } = useAssistantContext();
+  
   // Check if dediche format is active (for showing/hiding chat button)
   const { isActive: isDedicheActive } = useFormatActiveCheck('dediche');
   
@@ -49,6 +53,11 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
   
   // State for queue visibility - closed by default
   const [showQueue, setShowQueue] = useState(false);
+  
+  // Handler for requesting a song via assistant
+  const handleRequestSong = () => {
+    triggerFlow('song_not_found', search.trim() || undefined);
+  };
 
   // Filter songs: exclude completed ones from the main list
   const filteredSongs = useMemo(() => {
@@ -296,8 +305,20 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
                 <p className="text-muted-foreground">
                   Nessuna canzone trovata
                 </p>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-sm text-muted-foreground mt-1 mb-4">
                   Prova a modificare i filtri di ricerca
+                </p>
+                
+                {/* Request song button */}
+                <Button
+                  onClick={handleRequestSong}
+                  className="bg-gradient-to-r from-primary to-secondary hover:opacity-90"
+                >
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Richiedi questa canzone
+                </Button>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Non la trovi? Chiedila a noi!
                 </p>
               </div>
             )}

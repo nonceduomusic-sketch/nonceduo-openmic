@@ -7,6 +7,7 @@ import { SocialAuthProvider } from "@/contexts/SocialAuthContext";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { InstallBanner } from "@/components/InstallBanner";
 import { AssistantProvider } from "@/components/assistant/AssistantProvider";
+import { AssistantContextProvider } from "@/contexts/AssistantContext";
 import Home from "./pages/Home";
 import OpenMic from "./pages/OpenMic";
 import Messages from "./pages/Messages";
@@ -89,13 +90,15 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
       <SocialAuthProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
-            <AppContent />
-          </BrowserRouter>
-        </TooltipProvider>
+        <AssistantContextProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <BrowserRouter>
+              <AppContent />
+            </BrowserRouter>
+          </TooltipProvider>
+        </AssistantContextProvider>
       </SocialAuthProvider>
     </ThemeProvider>
   </QueryClientProvider>
