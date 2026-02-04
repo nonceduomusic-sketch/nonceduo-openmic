@@ -13,13 +13,13 @@ import {
   Mic,
   ExternalLink,
   Maximize,
+  Monitor,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import brandLogoText from '@/assets/brand-logo-text.png';
@@ -42,7 +42,17 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
   const [autoScroll, setAutoScroll] = useState(false);
   const [scrollSpeed, setScrollSpeed] = useState(3);
   const [fontSize, setFontSize] = useState(100); // percentage
+  const [isFullPreview, setIsFullPreview] = useState(false);
   const lyricsRef = useRef<HTMLDivElement>(null);
+
+  // TV Settings from session
+  const tvSettings = useMemo(() => ({
+    title: (session as any)?.tv_title || 'Open Mic',
+    subtitle: (session as any)?.tv_subtitle || 'NonceDuo Live Experience',
+    footer: (session as any)?.tv_footer || 'Powered by NonceDuo',
+    logoUrl: (session as any)?.tv_logo_url || '',
+    showLogo: (session as any)?.tv_show_logo ?? true,
+  }), [session]);
 
   const lines = useMemo(() => 
     currentSong?.testo?.split('\n').filter(line => line.trim()) || []
@@ -123,6 +133,13 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
     await updateSession({ highlight_line: newLine } as any);
   }, [canManage, localHighlightLine, lines.length, updateSession]);
 
+  const handleLineClick = useCallback(async (index: number) => {
+    if (!canManage) return;
+    setLocalHighlightLine(index);
+    setAutoScroll(false);
+    await updateSession({ highlight_line: index } as any);
+  }, [canManage, updateSession]);
+
   const handleReset = useCallback(async () => {
     if (!canManage) return;
     setLocalHighlightLine(0);
@@ -153,7 +170,7 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Mic className="w-4 h-4" />
+            <Monitor className="w-4 h-4" />
             Controllo Trasmissione Live
           </CardTitle>
           <CardDescription>
@@ -169,6 +186,234 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
     );
   }
 
+  // Full Preview Mode (expanded)
+  if (isFullPreview) {
+    return (
+      <Card className="border-green-500/30">
+        <CardContent className="p-0">
+          {/* Full TV Replica */}
+          <div 
+            className="relative rounded-xl overflow-hidden bg-black"
+            style={{ minHeight: '70vh' }}
+          >
+            {/* Ambient background */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute inset-0 bg-gradient-to-b from-gray-900/50 via-black to-gray-900/50" />
+              <div className="absolute top-0 left-1/4 w-[400px] h-[400px] bg-primary/15 rounded-full blur-[150px]" />
+              <div className="absolute bottom-0 right-1/4 w-[300px] h-[300px] bg-purple-600/10 rounded-full blur-[100px]" />
+            </div>
+
+            {/* Header with song info */}
+            <div className="relative z-10 px-6 pt-6 pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  {tvSettings.showLogo && (
+                    <img 
+                      src={tvSettings.logoUrl || brandLogoText} 
+                      alt="Logo" 
+                      className="h-10 md:h-12 w-auto object-contain opacity-80"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = brandLogoText;
+                      }}
+                    />
+                  )}
+                  <div>
+                    <h1 
+                      className="font-bold text-white"
+                      style={{ fontSize: `${Math.max(18, 28 * fontSize / 100)}px` }}
+                    >
+                      {currentSong.titolo}
+                    </h1>
+                    <p 
+                      className="text-white/60"
+                      style={{ fontSize: `${Math.max(14, 18 * fontSize / 100)}px` }}
+                    >
+                      {currentSong.artista}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2" />
+                    LIVE
+                  </Badge>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsFullPreview(false)}
+                    className="text-white border-white/20 hover:bg-white/10"
+                  >
+                    Riduci
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* Lyrics display - Full Spotify style */}
+            <div 
+              ref={lyricsRef}
+              className="relative z-10 px-6 md:px-12 overflow-y-auto"
+              style={{ height: 'calc(70vh - 200px)' }}
+            >
+              <div className="max-w-4xl mx-auto space-y-4 md:space-y-6 text-center py-[15vh]">
+                {lines.map((line, index) => {
+                  const isHighlighted = localHighlightLine === index;
+                  const isPast = index < localHighlightLine;
+                  const distanceFromHighlight = Math.abs(index - localHighlightLine);
+                  
+                  // Progressive opacity based on distance
+                  let opacity = 1;
+                  if (isPast) opacity = 0.3;
+                  else if (distanceFromHighlight === 1) opacity = 0.7;
+                  else if (distanceFromHighlight === 2) opacity = 0.5;
+                  else if (distanceFromHighlight > 2) opacity = 0.35;
+                  
+                  const baseFontSize = Math.max(16, 24 * fontSize / 100);
+                  const highlightFontSize = baseFontSize * 1.3;
+
+                  return (
+                    <p
+                      key={index}
+                      data-line={index}
+                      onClick={() => handleLineClick(index)}
+                      className={cn(
+                        "font-bold leading-relaxed transition-all duration-500 cursor-pointer hover:opacity-100",
+                        isHighlighted && "text-primary scale-105"
+                      )}
+                      style={{
+                        fontSize: isHighlighted ? `${highlightFontSize}px` : `${baseFontSize}px`,
+                        opacity,
+                        color: isHighlighted ? 'hsl(var(--primary))' : 'white',
+                        textShadow: isHighlighted 
+                          ? '0 0 40px hsl(var(--primary) / 0.5), 0 0 80px hsl(var(--primary) / 0.3)'
+                          : 'none',
+                      }}
+                    >
+                      {line || '\u00A0'}
+                    </p>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Controls Overlay */}
+            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/90 to-transparent">
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                {/* Navigation */}
+                <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleLineChange('up')}
+                    disabled={!canManage || localHighlightLine === 0}
+                    className="text-white hover:bg-white/20"
+                  >
+                    <ChevronUp className="w-5 h-5" />
+                  </Button>
+                  <div className="px-3 min-w-[70px] text-center">
+                    <span className="text-white font-medium">
+                      {localHighlightLine + 1}/{lines.length}
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleLineChange('down')}
+                    disabled={!canManage || localHighlightLine >= lines.length - 1}
+                    className="text-white hover:bg-white/20"
+                  >
+                    <ChevronDown className="w-5 h-5" />
+                  </Button>
+                </div>
+
+                {/* Auto-scroll */}
+                <Button
+                  variant={autoScroll ? "destructive" : "outline"}
+                  size="sm"
+                  onClick={handleToggleAutoScroll}
+                  disabled={!canManage}
+                  className={!autoScroll ? "text-white border-white/20 hover:bg-white/20" : ""}
+                >
+                  {autoScroll ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+                  Auto
+                </Button>
+
+                {/* Speed */}
+                <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-1.5">
+                  <Label className="text-xs text-white/70 whitespace-nowrap">Vel.</Label>
+                  <Slider
+                    value={[scrollSpeed]}
+                    onValueChange={([v]) => setScrollSpeed(v)}
+                    min={1}
+                    max={5}
+                    step={1}
+                    className="w-20"
+                    disabled={!canManage}
+                  />
+                </div>
+
+                {/* Zoom */}
+                <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setFontSize(prev => Math.max(50, prev - 10))}
+                    className="text-white hover:bg-white/20"
+                  >
+                    <ZoomOut className="w-4 h-4" />
+                  </Button>
+                  <span className="text-xs text-white min-w-[40px] text-center">{fontSize}%</span>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setFontSize(prev => Math.min(150, prev + 10))}
+                    className="text-white hover:bg-white/20"
+                  >
+                    <ZoomIn className="w-4 h-4" />
+                  </Button>
+                </div>
+
+                {/* Reset */}
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={handleReset}
+                  disabled={!canManage}
+                  className="text-white border-white/20 hover:bg-white/20"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </Button>
+
+                {/* Stop */}
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleStop}
+                  disabled={!canManage}
+                >
+                  <Square className="w-4 h-4 mr-2" />
+                  Stop
+                </Button>
+
+                {/* Open TV */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={openTVPage}
+                  className="text-white border-white/20 hover:bg-white/20"
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  TV
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Compact Mode (default)
   return (
     <Card className="border-green-500/30 bg-green-500/5">
       <CardHeader className="pb-3">
@@ -185,6 +430,14 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFullPreview(true)}
+            >
+              <Maximize className="w-4 h-4 mr-2" />
+              Espandi
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -294,10 +547,11 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
           </Button>
         </div>
 
-        {/* Live Preview - Mini TV View */}
+        {/* Mini TV Preview */}
         <div 
-          className="relative rounded-xl overflow-hidden bg-gradient-to-b from-gray-900 via-black to-gray-900"
-          style={{ minHeight: 300 }}
+          className="relative rounded-xl overflow-hidden bg-gradient-to-b from-gray-900 via-black to-gray-900 cursor-pointer"
+          style={{ minHeight: 280 }}
+          onClick={() => setIsFullPreview(true)}
         >
           {/* Ambient background */}
           <div className="absolute inset-0 pointer-events-none">
@@ -308,11 +562,16 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
           {/* Header */}
           <div className="relative z-10 px-4 pt-4 pb-2">
             <div className="flex items-center gap-3">
-              <img 
-                src={brandLogoText} 
-                alt="Logo" 
-                className="h-6 w-auto object-contain opacity-70"
-              />
+              {tvSettings.showLogo && (
+                <img 
+                  src={tvSettings.logoUrl || brandLogoText} 
+                  alt="Logo" 
+                  className="h-6 w-auto object-contain opacity-70"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = brandLogoText;
+                  }}
+                />
+              )}
               <div>
                 <h3 
                   className="font-bold text-white truncate"
@@ -331,53 +590,49 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
           </div>
 
           {/* Lyrics */}
-          <ScrollArea className="h-[220px]">
-            <div 
-              ref={lyricsRef}
-              className="px-4 py-4 space-y-3 text-center"
-            >
-              {lines.map((line, index) => {
-                const isHighlighted = localHighlightLine === index;
-                const isPast = index < localHighlightLine;
-                const distanceFromHighlight = Math.abs(index - localHighlightLine);
-                
-                return (
-                  <p
-                    key={index}
-                    data-line={index}
-                    onClick={() => {
-                      if (canManage) {
-                        setLocalHighlightLine(index);
-                        setAutoScroll(false);
-                        updateSession({ highlight_line: index } as any);
-                      }
-                    }}
-                    className={cn(
-                      "font-bold leading-relaxed transition-all duration-500 cursor-pointer hover:opacity-100",
-                      isHighlighted && "text-primary scale-105",
-                      isPast && "text-white/30",
-                      !isHighlighted && !isPast && distanceFromHighlight <= 2 && "text-white/70",
-                      !isHighlighted && !isPast && distanceFromHighlight > 2 && "text-white/40"
-                    )}
-                    style={{
-                      fontSize: `${Math.max(10, 14 * fontSize / 100)}px`,
-                      textShadow: isHighlighted 
-                        ? '0 0 30px hsl(var(--primary) / 0.5)'
-                        : 'none',
-                    }}
-                  >
-                    {line || '\u00A0'}
-                  </p>
-                );
-              })}
-            </div>
-          </ScrollArea>
+          <div 
+            ref={lyricsRef}
+            className="px-4 py-4 space-y-3 text-center overflow-y-auto"
+            style={{ maxHeight: 180 }}
+          >
+            {lines.map((line, index) => {
+              const isHighlighted = localHighlightLine === index;
+              const isPast = index < localHighlightLine;
+              const distanceFromHighlight = Math.abs(index - localHighlightLine);
+              
+              return (
+                <p
+                  key={index}
+                  data-line={index}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleLineClick(index);
+                  }}
+                  className={cn(
+                    "font-bold leading-relaxed transition-all duration-500 cursor-pointer hover:opacity-100",
+                    isHighlighted && "text-primary scale-105",
+                    isPast && "text-white/30",
+                    !isHighlighted && !isPast && distanceFromHighlight <= 2 && "text-white/70",
+                    !isHighlighted && !isPast && distanceFromHighlight > 2 && "text-white/40"
+                  )}
+                  style={{
+                    fontSize: `${Math.max(10, 14 * fontSize / 100)}px`,
+                    textShadow: isHighlighted 
+                      ? '0 0 30px hsl(var(--primary) / 0.5)'
+                      : 'none',
+                  }}
+                >
+                  {line || '\u00A0'}
+                </p>
+              );
+            })}
+          </div>
 
           {/* Footer */}
           <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black to-transparent">
             <div className="flex items-center justify-center gap-1.5 text-white/30 text-xs">
               <Mic className="w-3 h-3" />
-              <span>Live Preview</span>
+              <span>Clicca per espandere</span>
             </div>
           </div>
         </div>
