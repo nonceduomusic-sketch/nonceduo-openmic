@@ -21,6 +21,7 @@ import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 import brandLogoText from '@/assets/brand-logo-text.png';
 
 interface TVPreviewDialogProps {
@@ -32,6 +33,7 @@ interface TVPreviewDialogProps {
 export function TVPreviewDialog({ open, onOpenChange, previewSongId }: TVPreviewDialogProps) {
   const { session } = useBroadcast('main');
   const { songs } = useSongs();
+  const isMobile = useIsMobile();
   
   const [selectedSongId, setSelectedSongId] = useState<string>(previewSongId || '');
   const [highlightLine, setHighlightLine] = useState(0);
@@ -159,174 +161,239 @@ export function TVPreviewDialog({ open, onOpenChange, previewSongId }: TVPreview
         className="max-w-[100vw] w-[100vw] h-[100vh] max-h-[100vh] p-0 overflow-hidden bg-black border-0 rounded-none"
         ref={containerRef}
       >
-        {/* Control Bar */}
-        <div className="absolute top-0 left-0 right-0 z-50 p-4 bg-gradient-to-b from-black via-black/90 to-transparent">
-          <div className="flex items-center justify-between gap-4 flex-wrap max-w-7xl mx-auto">
-            {/* Song Selector */}
-            <div className="flex-1 min-w-[200px] max-w-md">
-              <Select value={selectedSongId} onValueChange={setSelectedSongId}>
-                <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                  <SelectValue placeholder="Scegli una canzone..." />
-                </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  {songs.filter(s => s.testo).slice(0, 100).map(song => (
-                    <SelectItem key={song.id} value={song.id}>
-                      {song.titolo} - {song.artista}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        {/* Control Bar - Mobile Optimized */}
+        <div className={cn(
+          "absolute top-0 left-0 right-0 z-50 bg-gradient-to-b from-black via-black/95 to-transparent",
+          isMobile ? "p-3" : "p-4"
+        )}>
+          <div className="max-w-7xl mx-auto space-y-3">
+            {/* Row 1: Song selector + Close */}
+            <div className="flex items-center gap-2">
+              <div className="flex-1 min-w-0">
+                <Select value={selectedSongId} onValueChange={setSelectedSongId}>
+                  <SelectTrigger className={cn(
+                    "bg-white/10 border-white/20 text-white",
+                    isMobile && "h-12 text-base"
+                  )}>
+                    <SelectValue placeholder="Scegli una canzone..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[50vh]">
+                    {songs.filter(s => s.testo).slice(0, 100).map(song => (
+                      <SelectItem key={song.id} value={song.id} className={isMobile ? "py-3" : ""}>
+                        {song.titolo} - {song.artista}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {!isMobile && (
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={toggleFullscreen}
+                  className="border-white/20 text-white hover:bg-white/10"
+                >
+                  {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => onOpenChange(false)}
+                className={cn(
+                  "text-white hover:bg-white/20",
+                  isMobile && "h-12 w-12"
+                )}
+              >
+                <X className={isMobile ? "w-6 h-6" : "w-5 h-5"} />
+              </Button>
             </div>
 
+            {/* Row 2: Controls - only when song selected */}
             {selectedSong && (
-              <>
-                {/* Navigation */}
-                <div className="flex items-center gap-2">
+              <div className={cn(
+                "flex items-center justify-between gap-2",
+                isMobile && "flex-wrap"
+              )}>
+                {/* Navigation - Large touch targets on mobile */}
+                <div className="flex items-center gap-1">
                   <Button
                     variant="outline"
-                    size="icon"
+                    size={isMobile ? "default" : "icon"}
                     onClick={() => { setHighlightLine(Math.max(0, highlightLine - 1)); setAutoScroll(false); }}
-                    className="border-white/20 text-white hover:bg-white/10"
+                    className={cn(
+                      "border-white/20 text-white hover:bg-white/10",
+                      isMobile && "h-12 w-12"
+                    )}
                   >
-                    <ChevronUp className="w-4 h-4" />
+                    <ChevronUp className={isMobile ? "w-6 h-6" : "w-4 h-4"} />
                   </Button>
-                  <span className="text-white/60 text-sm w-16 text-center">
+                  <span className={cn(
+                    "text-white/60 text-center",
+                    isMobile ? "text-base min-w-[60px]" : "text-sm w-16"
+                  )}>
                     {highlightLine + 1}/{lines.length}
                   </span>
                   <Button
                     variant="outline"
-                    size="icon"
+                    size={isMobile ? "default" : "icon"}
                     onClick={() => { setHighlightLine(Math.min(lines.length - 1, highlightLine + 1)); setAutoScroll(false); }}
-                    className="border-white/20 text-white hover:bg-white/10"
+                    className={cn(
+                      "border-white/20 text-white hover:bg-white/10",
+                      isMobile && "h-12 w-12"
+                    )}
                   >
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown className={isMobile ? "w-6 h-6" : "w-4 h-4"} />
                   </Button>
                 </div>
 
-                {/* Auto-scroll */}
-                <div className="flex items-center gap-2">
+                {/* Auto-scroll + Reset */}
+                <div className="flex items-center gap-1">
                   <Button
                     variant={autoScroll ? "destructive" : "outline"}
-                    size="sm"
+                    size={isMobile ? "default" : "sm"}
                     onClick={() => setAutoScroll(!autoScroll)}
                     className={cn(
-                      !autoScroll && "border-white/20 text-white hover:bg-white/10"
+                      !autoScroll && "border-white/20 text-white hover:bg-white/10",
+                      isMobile && "h-12 px-4"
                     )}
                   >
-                    {autoScroll ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
-                    Auto
+                    {autoScroll ? <Pause className="w-5 h-5 mr-1" /> : <Play className="w-5 h-5 mr-1" />}
+                    {!isMobile && "Auto"}
                   </Button>
                   <Button
                     variant="outline"
-                    size="icon"
+                    size={isMobile ? "default" : "icon"}
                     onClick={() => { setHighlightLine(0); setAutoScroll(false); }}
-                    className="border-white/20 text-white hover:bg-white/10"
+                    className={cn(
+                      "border-white/20 text-white hover:bg-white/10",
+                      isMobile && "h-12 w-12"
+                    )}
                   >
-                    <RotateCcw className="w-4 h-4" />
+                    <RotateCcw className={isMobile ? "w-5 h-5" : "w-4 h-4"} />
                   </Button>
                 </div>
 
-                {/* Speed */}
-                <div className="flex items-center gap-2 min-w-[120px]">
-                  <Label className="text-white/60 text-xs whitespace-nowrap">Velocità</Label>
-                  <Slider
-                    value={[scrollSpeed]}
-                    onValueChange={([v]) => setScrollSpeed(v)}
-                    min={1}
-                    max={5}
-                    step={1}
-                    className="w-20"
-                  />
-                </div>
+                {/* Speed - Hidden on mobile to save space */}
+                {!isMobile && (
+                  <div className="flex items-center gap-2 min-w-[120px]">
+                    <Label className="text-white/60 text-xs whitespace-nowrap">Velocità</Label>
+                    <Slider
+                      value={[scrollSpeed]}
+                      onValueChange={([v]) => setScrollSpeed(v)}
+                      min={1}
+                      max={5}
+                      step={1}
+                      className="w-20"
+                    />
+                  </div>
+                )}
 
                 {/* Zoom */}
                 <div className="flex items-center gap-1">
                   <Button
                     variant="outline"
-                    size="icon"
+                    size={isMobile ? "default" : "icon"}
                     onClick={() => setFontSize(prev => Math.max(50, prev - 10))}
-                    className="border-white/20 text-white hover:bg-white/10"
+                    className={cn(
+                      "border-white/20 text-white hover:bg-white/10",
+                      isMobile && "h-12 w-12"
+                    )}
                   >
-                    <ZoomOut className="w-4 h-4" />
+                    <ZoomOut className={isMobile ? "w-5 h-5" : "w-4 h-4"} />
                   </Button>
-                  <span className="text-white/60 text-xs min-w-[40px] text-center">{fontSize}%</span>
+                  <span className={cn(
+                    "text-white/60 text-center",
+                    isMobile ? "text-sm min-w-[36px]" : "text-xs min-w-[40px]"
+                  )}>{fontSize}%</span>
                   <Button
                     variant="outline"
-                    size="icon"
+                    size={isMobile ? "default" : "icon"}
                     onClick={() => setFontSize(prev => Math.min(200, prev + 10))}
-                    className="border-white/20 text-white hover:bg-white/10"
+                    className={cn(
+                      "border-white/20 text-white hover:bg-white/10",
+                      isMobile && "h-12 w-12"
+                    )}
                   >
-                    <ZoomIn className="w-4 h-4" />
+                    <ZoomIn className={isMobile ? "w-5 h-5" : "w-4 h-4"} />
                   </Button>
                 </div>
-              </>
+              </div>
             )}
-
-            {/* Fullscreen & Close */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={toggleFullscreen}
-                className="border-white/20 text-white hover:bg-white/10"
-              >
-                {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => onOpenChange(false)}
-                className="text-white hover:bg-white/20"
-              >
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
           </div>
         </div>
 
         {/* Preview Content */}
-        <div className="h-full flex flex-col bg-gradient-to-b from-gray-900 via-black to-gray-900 pt-20">
+        <div className={cn(
+          "h-full flex flex-col bg-gradient-to-b from-gray-900 via-black to-gray-900",
+          isMobile ? "pt-32" : "pt-24",
+          selectedSong && (isMobile ? "pt-40" : "pt-28")
+        )}>
           {/* Lyrics Preview - Spotify Karaoke Style */}
           <div className="flex-1 overflow-hidden relative">
             {!selectedSong ? (
-              <div className="h-full flex flex-col items-center justify-center text-white/50 gap-4">
-                <Mic className="w-16 h-16 opacity-30" />
-                <p className="text-lg">Seleziona una canzone per vedere l'anteprima</p>
-                <p className="text-sm">Usa le frecce ↑↓ per navigare, Spazio per auto-scroll</p>
+              <div className="h-full flex flex-col items-center justify-center text-white/50 gap-4 px-6 text-center">
+                <Mic className={isMobile ? "w-12 h-12 opacity-30" : "w-16 h-16 opacity-30"} />
+                <p className={isMobile ? "text-base" : "text-lg"}>
+                  Seleziona una canzone per vedere l'anteprima
+                </p>
+                {!isMobile && (
+                  <p className="text-sm">Usa le frecce ↑↓ per navigare, Spazio per auto-scroll</p>
+                )}
               </div>
             ) : !selectedSong.testo ? (
-              <div className="h-full flex items-center justify-center text-white/50">
+              <div className="h-full flex items-center justify-center text-white/50 px-6 text-center">
                 Questa canzone non ha testo
               </div>
             ) : (
               <>
                 {/* Ambient background */}
                 <div className="absolute inset-0 pointer-events-none">
-                  <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary/15 rounded-full blur-[200px]" />
-                  <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-500/10 rounded-full blur-[150px]" />
+                  <div className={cn(
+                    "absolute top-0 left-1/4 rounded-full bg-primary/15",
+                    isMobile ? "w-[300px] h-[300px] blur-[100px]" : "w-[600px] h-[600px] blur-[200px]"
+                  )} />
+                  <div className={cn(
+                    "absolute bottom-0 right-1/4 rounded-full bg-purple-500/10",
+                    isMobile ? "w-[250px] h-[250px] blur-[80px]" : "w-[500px] h-[500px] blur-[150px]"
+                  )} />
                 </div>
 
-                {/* Header */}
-                <div className="relative z-10 px-8 py-6">
-                  <div className="flex items-center gap-6 max-w-5xl mx-auto">
-                    <img 
-                      src={tvSettings.logoUrl || brandLogoText} 
-                      alt="Logo" 
-                      className="h-14 md:h-20 w-auto object-contain opacity-80"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = brandLogoText;
-                      }}
-                    />
-                    <div>
+                {/* Header - Compact on mobile */}
+                <div className={cn(
+                  "relative z-10",
+                  isMobile ? "px-4 py-3" : "px-8 py-6"
+                )}>
+                  <div className={cn(
+                    "flex items-center max-w-5xl mx-auto",
+                    isMobile ? "gap-3" : "gap-6"
+                  )}>
+                    {!isMobile && (
+                      <img 
+                        src={tvSettings.logoUrl || brandLogoText} 
+                        alt="Logo" 
+                        className="h-14 md:h-20 w-auto object-contain opacity-80"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = brandLogoText;
+                        }}
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
                       <h1 
-                        className="font-bold text-white tracking-tight"
-                        style={{ fontSize: `${Math.max(24, 48 * fontSize / 100)}px` }}
+                        className="font-bold text-white tracking-tight truncate"
+                        style={{ fontSize: isMobile 
+                          ? `${Math.max(18, 24 * fontSize / 100)}px`
+                          : `${Math.max(24, 48 * fontSize / 100)}px` 
+                        }}
                       >
                         {selectedSong.titolo}
                       </h1>
                       <p 
-                        className="text-white/60 mt-1 font-light"
-                        style={{ fontSize: `${Math.max(16, 24 * fontSize / 100)}px` }}
+                        className="text-white/60 font-light truncate"
+                        style={{ fontSize: isMobile
+                          ? `${Math.max(14, 16 * fontSize / 100)}px`
+                          : `${Math.max(16, 24 * fontSize / 100)}px` 
+                        }}
                       >
                         {selectedSong.artista}
                       </p>
@@ -335,11 +402,22 @@ export function TVPreviewDialog({ open, onOpenChange, previewSongId }: TVPreview
                 </div>
 
                 {/* Lyrics */}
-                <ScrollArea className="flex-1" style={{ height: 'calc(100vh - 280px)' }}>
+                <ScrollArea 
+                  className="flex-1" 
+                  style={{ height: isMobile ? 'calc(100vh - 260px)' : 'calc(100vh - 280px)' }}
+                >
                   <div 
                     ref={lyricsRef}
-                    className="px-8 md:px-16 lg:px-24 py-8 space-y-6 md:space-y-8 text-center max-w-5xl mx-auto"
-                    style={{ paddingTop: '10vh', paddingBottom: '30vh' }}
+                    className={cn(
+                      "text-center max-w-5xl mx-auto",
+                      isMobile 
+                        ? "px-4 py-4 space-y-5" 
+                        : "px-8 md:px-16 lg:px-24 py-8 space-y-6 md:space-y-8"
+                    )}
+                    style={{ 
+                      paddingTop: isMobile ? '5vh' : '10vh', 
+                      paddingBottom: isMobile ? '20vh' : '30vh' 
+                    }}
                   >
                     {lines.map((line, index) => {
                       const isHighlighted = highlightLine === index;
@@ -353,12 +431,10 @@ export function TVPreviewDialog({ open, onOpenChange, previewSongId }: TVPreview
                       else if (distanceFromHighlight === 2) opacity = 0.5;
                       else if (distanceFromHighlight > 2) opacity = 0.35;
                       
-                      // Dynamic font size
-                      const baseFontSize = isHighlighted 
-                        ? 48 
-                        : distanceFromHighlight <= 1 
-                          ? 36
-                          : 28;
+                      // Dynamic font size - appropriate for mobile
+                      const baseFontSize = isMobile
+                        ? (isHighlighted ? 22 : distanceFromHighlight <= 1 ? 18 : 16)
+                        : (isHighlighted ? 48 : distanceFromHighlight <= 1 ? 36 : 28);
                       
                       return (
                         <p
@@ -369,17 +445,20 @@ export function TVPreviewDialog({ open, onOpenChange, previewSongId }: TVPreview
                             setAutoScroll(false);
                           }}
                           className={cn(
-                            "font-bold leading-relaxed transition-all duration-700 ease-out cursor-pointer",
+                            "font-bold leading-loose transition-all duration-500 ease-out cursor-pointer",
                             "font-sans tracking-wide hover:opacity-100",
-                            isHighlighted && "text-primary scale-105"
+                            isMobile && "py-1",
+                            isHighlighted && "text-primary"
                           )}
                           style={{
                             fontSize: `${Math.max(14, baseFontSize * fontSize / 100)}px`,
                             opacity,
                             textShadow: isHighlighted 
-                              ? '0 0 60px hsl(var(--primary) / 0.6), 0 0 120px hsl(var(--primary) / 0.3)'
+                              ? isMobile
+                                ? '0 0 30px hsl(var(--primary) / 0.5)'
+                                : '0 0 60px hsl(var(--primary) / 0.6), 0 0 120px hsl(var(--primary) / 0.3)'
                               : 'none',
-                            transform: isHighlighted ? 'scale(1.05)' : 'scale(1)',
+                            transform: isHighlighted ? (isMobile ? 'scale(1.02)' : 'scale(1.05)') : 'scale(1)',
                           }}
                         >
                           {line || '\u00A0'}
@@ -389,9 +468,15 @@ export function TVPreviewDialog({ open, onOpenChange, previewSongId }: TVPreview
                   </div>
                 </ScrollArea>
 
-                {/* Footer */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none">
-                  <p className="text-center text-white/30 text-sm">{tvSettings.footer}</p>
+                {/* Footer - Smaller on mobile */}
+                <div className={cn(
+                  "absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none",
+                  isMobile ? "p-2" : "p-4"
+                )}>
+                  <p className={cn(
+                    "text-center text-white/30",
+                    isMobile ? "text-xs" : "text-sm"
+                  )}>{tvSettings.footer}</p>
                 </div>
               </>
             )}
