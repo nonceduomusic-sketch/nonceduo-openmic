@@ -122,7 +122,9 @@ export default function Trasmetti() {
   useEffect(() => {
     const generateQR = async () => {
       try {
-        const qrDestination = tvSettings.qrUrl || `${window.location.origin}/app`;
+        // Default to nonceduo.com if no custom URL is set
+        const qrDestination = tvSettings.qrUrl || 'https://nonceduo.com';
+        // If it's already a full URL, use it; otherwise prepend origin
         const fullUrl = qrDestination.startsWith('http') 
           ? qrDestination 
           : `${window.location.origin}${qrDestination.startsWith('/') ? '' : '/'}${qrDestination}`;

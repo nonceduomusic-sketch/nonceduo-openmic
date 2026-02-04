@@ -502,16 +502,16 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                   </h4>
                   
                   <div>
-                    <Label htmlFor="tv-qr-url">Destinazione QR Code (lascia vuoto per /app)</Label>
+                    <Label htmlFor="tv-qr-url">Destinazione QR Code</Label>
                     <Input
                       id="tv-qr-url"
                       value={settings.tv_qr_url}
                       onChange={(e) => updateSetting('tv_qr_url', e.target.value)}
-                      placeholder="https://esempio.com oppure /pagina"
+                      placeholder="https://nonceduo.com"
                       disabled={!canManage}
                     />
                     <p className="text-xs text-muted-foreground mt-1">
-                      Lascia vuoto per usare la pagina prenotazioni predefinita (/app)
+                      Default: https://nonceduo.com - Puoi inserire qualsiasi URL
                     </p>
                   </div>
                 </div>
