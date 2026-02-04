@@ -23,7 +23,7 @@ export const AssistantBubble: React.FC<AssistantBubbleProps> = ({
   if (isOpen) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-3">
+    <div className="fixed right-4 z-[60] flex flex-col items-end gap-3 bottom-20 md:bottom-4">
       {/* Proactive message - Mini card on desktop, tooltip on mobile */}
       <AnimatePresence>
         {showProactive && (

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { safeGetItem, safeRemoveItem, safeSetItem } from '@/lib/safeStorage';
 
 export interface AssistantSettings {
   is_enabled: boolean;
@@ -40,6 +41,7 @@ export function useAssistantWidget(currentSection: Section = 'site') {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const isMobile = useIsMobile();
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
 
   const callAssistantUserApi = useCallback(
     async <T,>(action: string, data: Record<string, unknown>): Promise<T> => {
@@ -62,14 +64,18 @@ export function useAssistantWidget(currentSection: Section = 'site') {
 
   // Get or create session ID
   const getSessionId = useCallback(() => {
-    // Keep stable across refresh + (best-effort) across tabs
-    let sessionId = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
+    // Keep stable across refresh + (best-effort) across tabs.
+    // Some browsers can throw on storage access (e.g. iOS Safari private mode).
+    if (sessionIdRef.current) return sessionIdRef.current;
+
+    let sessionId = safeGetItem('session', SESSION_KEY) || safeGetItem('local', SESSION_KEY);
     if (!sessionId) {
-      sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      sessionId = `session_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
     }
 
-    sessionStorage.setItem(SESSION_KEY, sessionId);
-    localStorage.setItem(SESSION_KEY, sessionId);
+    sessionIdRef.current = sessionId;
+    safeSetItem('session', SESSION_KEY, sessionId);
+    safeSetItem('local', SESSION_KEY, sessionId);
     return sessionId;
   }, []);
 
@@ -102,7 +108,7 @@ export function useAssistantWidget(currentSection: Section = 'site') {
   // Restore existing conversation on mount
   useEffect(() => {
     const restoreConversation = async () => {
-      const storedConvId = localStorage.getItem(STORAGE_KEY);
+      const storedConvId = safeGetItem('local', STORAGE_KEY);
       if (!storedConvId) return;
 
       try {
@@ -114,9 +120,9 @@ export function useAssistantWidget(currentSection: Section = 'site') {
 
         if (restored?.conversation_id) {
           setConversationId(restored.conversation_id);
-          localStorage.setItem(STORAGE_KEY, restored.conversation_id);
+          safeSetItem('local', STORAGE_KEY, restored.conversation_id);
         } else {
-          localStorage.removeItem(STORAGE_KEY);
+          safeRemoveItem('local', STORAGE_KEY);
         }
       } catch (err) {
         console.error('Error restoring conversation:', err);
@@ -207,7 +213,7 @@ export function useAssistantWidget(currentSection: Section = 'site') {
 
     const delay = settings?.proactive_delay_seconds || 5;
     const timer = setTimeout(() => {
-      const hasInteracted = sessionStorage.getItem('assistant_interacted');
+      const hasInteracted = safeGetItem('session', 'assistant_interacted');
       if (!hasInteracted) {
         setShowProactive(true);
       }
@@ -235,7 +241,7 @@ export function useAssistantWidget(currentSection: Section = 'site') {
         );
         if (restored?.conversation_id) {
           setConversationId(restored.conversation_id);
-          localStorage.setItem(STORAGE_KEY, restored.conversation_id);
+          safeSetItem('local', STORAGE_KEY, restored.conversation_id);
           return restored.conversation_id;
         }
       } catch (restoreErr) {
@@ -264,7 +270,7 @@ export function useAssistantWidget(currentSection: Section = 'site') {
       }
 
       setConversationId(data.id);
-      localStorage.setItem(STORAGE_KEY, data.id);
+      safeSetItem('local', STORAGE_KEY, data.id);
       return data.id;
     } catch (err) {
       console.error('Error:', err);
@@ -371,7 +377,7 @@ export function useAssistantWidget(currentSection: Section = 'site') {
   const open = useCallback(() => {
     setIsOpen(true);
     setShowProactive(false);
-    sessionStorage.setItem('assistant_interacted', 'true');
+    safeSetItem('session', 'assistant_interacted', 'true');
   }, []);
 
   const close = useCallback(() => {
@@ -380,7 +386,7 @@ export function useAssistantWidget(currentSection: Section = 'site') {
 
   const dismissProactive = useCallback(() => {
     setShowProactive(false);
-    sessionStorage.setItem('assistant_interacted', 'true');
+    safeSetItem('session', 'assistant_interacted', 'true');
   }, []);
 
   return {
