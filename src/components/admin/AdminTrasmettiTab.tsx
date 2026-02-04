@@ -50,6 +50,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { BroadcastTVSettings } from './BroadcastTVSettings';
 
 interface AdminTrasmettiTabProps {
   canManage?: boolean;
@@ -188,10 +189,10 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
 
       {/* Main content tabs */}
       <Tabs defaultValue="queue" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="queue">
             <List className="w-4 h-4 mr-2" />
-            Scaletta Live
+            <span className="hidden sm:inline">Scaletta</span> Live
           </TabsTrigger>
           <TabsTrigger value="catalog">
             <Search className="w-4 h-4 mr-2" />
@@ -199,7 +200,11 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
           </TabsTrigger>
           <TabsTrigger value="setlists">
             <FolderOpen className="w-4 h-4 mr-2" />
-            Le Mie Scalette
+            <span className="hidden sm:inline">Le Mie</span> Scalette
+          </TabsTrigger>
+          <TabsTrigger value="tv-settings">
+            <Settings className="w-4 h-4 mr-2" />
+            <span className="hidden sm:inline">Impostazioni</span> TV
           </TabsTrigger>
         </TabsList>
 
@@ -495,6 +500,11 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* TV Settings Tab */}
+        <TabsContent value="tv-settings" className="space-y-4">
+          <BroadcastTVSettings canManage={canManage} />
         </TabsContent>
       </Tabs>
 
