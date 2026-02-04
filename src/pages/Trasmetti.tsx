@@ -131,8 +131,8 @@ export default function Trasmetti() {
           width: 280,
           margin: 2,
           color: {
-            dark: '#ffffff',
-            light: '#00000000',
+            dark: '#000000',
+            light: '#ffffff',
           },
           errorCorrectionLevel: 'M',
         });
