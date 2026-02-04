@@ -155,7 +155,7 @@ export const openMicFlow: FlowStep[] = [
   },
   {
     id: 'song_request',
-    message: 'Ottimo! 🎵 Scrivi il nome della canzone e dell\'artista.\n\nSe possiamo la inseriremo subito nella scaletta, altrimenti la prepareremo per i prossimi eventi!',
+    message: '🎵 **Richiedi una canzone!**\n\nScrivi nel messaggio:\n• 📝 **Il tuo nome** (per riconoscerti)\n• 🎤 **Titolo della canzone**\n• 👤 **Artista o band**\n\nSe possiamo la inseriamo subito, altrimenti la prepariamo per i prossimi eventi!',
     options: [
       { id: 'write', label: 'Scrivi la richiesta', emoji: '✍️', action: 'chat', isFinal: true } as FlowOption,
     ],
