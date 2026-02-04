@@ -24,6 +24,7 @@ import {
   Database,
   SlidersHorizontal,
   Image,
+  Tv,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AdminSectionKey } from "@/hooks/useAdminSectionAccess";
@@ -38,6 +39,7 @@ export type AdminMainTab =
   | "songs"
   | "formats"
   | "grafiche"
+  | "trasmetti"
   | "notifiche-live"
   | "assistant"
   | "operators"
@@ -65,6 +67,7 @@ const ITEMS: Item[] = [
   { key: "notifications", label: "Centro", icon: Bell, group: "Live", description: "Dashboard in tempo reale" },
   { key: "event", label: "Eventi", icon: Calendar, group: "Live", description: "Eventi liberi e programmati" },
   { key: "formats", label: "Formati", icon: SlidersHorizontal, group: "Live", description: "Toggle e votazioni" },
+  { key: "trasmetti", label: "Trasmetti", icon: Tv, group: "Live", description: "Karaoke TV broadcast" },
   { key: "notifiche-live", label: "Notifiche Live", icon: Send, group: "Live", description: "Email e Telegram" },
   { key: "grafiche", label: "Grafiche", icon: Image, group: "Live", description: "Locandine e storie" },
   
@@ -110,10 +113,12 @@ export function AdminSidebar({
       if (key === "notifications") return !operatorAccess.canViewCentro;
       if (key === "openmic") return !operatorAccess.canViewOpenmic;
       if (key === "dediche") return !operatorAccess.canViewDediche;
-      // Operators never see these sections
-      if (["event", "formats", "grafiche", "songs", "community", "assistant", "settings", "staff", "permissions", "audit"].includes(key)) {
+      // Operators never see these sections unless given trasmetti permission
+      if (["event", "formats", "grafiche", "songs", "community", "assistant", "settings", "staff", "permissions", "audit", "notifiche-live"].includes(key)) {
         return true;
       }
+      // Trasmetti can be enabled for operators via permission
+      if (key === "trasmetti") return true; // Operators need explicit permission
       return false;
     }
     
@@ -128,6 +133,8 @@ export function AdminSidebar({
     if (key === "audit") return !isOwner;
     // Assistant is owner/admin only
     if (key === "assistant") return !isOwner && !access.openmic;
+    // Trasmetti available to all staff
+    if (key === "trasmetti") return false;
     return false;
   };
 

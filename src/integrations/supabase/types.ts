@@ -268,6 +268,144 @@ export type Database = {
         }
         Relationships: []
       }
+      broadcast_sessions: {
+        Row: {
+          auto_scroll: boolean | null
+          created_at: string | null
+          current_reservation_id: string | null
+          current_song_id: string | null
+          display_mode: string
+          highlight_line: number | null
+          id: string
+          is_active: boolean
+          sala_code: string
+          sala_name: string
+          scroll_position: number | null
+          scroll_speed: number | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          auto_scroll?: boolean | null
+          created_at?: string | null
+          current_reservation_id?: string | null
+          current_song_id?: string | null
+          display_mode?: string
+          highlight_line?: number | null
+          id?: string
+          is_active?: boolean
+          sala_code?: string
+          sala_name?: string
+          scroll_position?: number | null
+          scroll_speed?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          auto_scroll?: boolean | null
+          created_at?: string | null
+          current_reservation_id?: string | null
+          current_song_id?: string | null
+          display_mode?: string
+          highlight_line?: number | null
+          id?: string
+          is_active?: boolean
+          sala_code?: string
+          sala_name?: string
+          scroll_position?: number | null
+          scroll_speed?: number | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcast_sessions_current_reservation_id_fkey"
+            columns: ["current_reservation_id"]
+            isOneToOne: false
+            referencedRelation: "reservations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broadcast_sessions_current_song_id_fkey"
+            columns: ["current_song_id"]
+            isOneToOne: false
+            referencedRelation: "songs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broadcast_setlist_songs: {
+        Row: {
+          created_at: string | null
+          id: string
+          notes: string | null
+          position: number
+          setlist_id: string
+          song_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          position?: number
+          setlist_id: string
+          song_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          position?: number
+          setlist_id?: string
+          song_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcast_setlist_songs_setlist_id_fkey"
+            columns: ["setlist_id"]
+            isOneToOne: false
+            referencedRelation: "broadcast_setlists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broadcast_setlist_songs_song_id_fkey"
+            columns: ["song_id"]
+            isOneToOne: false
+            referencedRelation: "songs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broadcast_setlists: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          description: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       chat_invite_links: {
         Row: {
           conversation_id: string
