@@ -211,9 +211,10 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
   const handleStartBroadcast = useCallback(async () => {
     if (!canManage || !currentSong) return;
     
-    // Sync the view mode and start broadcasting
+    // Sync the view mode, set display_mode to lyrics, and start broadcasting
     await updateSession({ 
       is_broadcasting: true,
+      display_mode: 'lyrics',
       tv_view_mode: viewMode,
     } as any);
     
