@@ -32,7 +32,25 @@ export const mainFlow: FlowStep[] = [
       { id: 'privato', label: 'Festa privata', emoji: '🎉', description: 'Compleanno, aziendale, ecc.', nextStep: 'privato_type', leadType: 'privato', leadScore: 70 },
       { id: 'pubblico', label: 'Evento pubblico', emoji: '🏘️', description: 'Sagra, piazza, festival', nextStep: 'pubblico_type', leadType: 'pubblico', leadScore: 75 },
       { id: 'curioso', label: 'Solo curiosando', emoji: '👀', description: 'Voglio capire chi siete', nextStep: 'curioso_choice', leadType: 'curioso', leadScore: 20 },
+      { id: 'chat_operator', label: 'Parla con noi', emoji: '💬', description: 'Scrivi direttamente', nextStep: 'operator_chat_start', leadType: 'direct_chat', leadScore: 60 },
     ],
+  },
+  // Direct operator chat flow
+  {
+    id: 'operator_chat_start',
+    message: '💬 **Perfetto!**\n\nPrima di iniziare, come ti chiami?',
+    options: [
+      { id: 'input_name', label: 'Scrivi il tuo nome', emoji: '✍️', action: 'input', inputField: 'name', nextStep: 'operator_chat_ready' } as FlowOption,
+    ],
+    inputMode: 'name',
+  },
+  {
+    id: 'operator_chat_ready',
+    message: '✅ **Ora puoi scriverci!**\n\nScrivi pure il tuo messaggio qui sotto. Ti risponderemo il prima possibile! 📱',
+    options: [
+      { id: 'start_chat', label: 'Inizia a scrivere', emoji: '✍️', action: 'chat', isFinal: true } as FlowOption,
+    ],
+    isFinal: true,
   },
   // Locale flow
   {
