@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Mic2, Home, Music, Eye, Lock, Search, ChevronLeft, Sparkles } from 'lucide-react';
+import { Mic2, Music, Eye, Lock, Search, ChevronLeft, Sparkles, Calendar } from 'lucide-react';
 import { songs, Song } from '@/data/songs';
 import { SearchBar } from '@/components/SearchBar';
 import { ArtistFilter } from '@/components/ArtistFilter';
@@ -11,6 +11,10 @@ import { SEO } from '@/components/SEO';
 import { LyricsDialog } from '@/components/LyricsDialog';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { cn } from '@/lib/utils';
+import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
+import { useLiveEvent } from '@/hooks/useLiveEvent';
+import { format } from 'date-fns';
+import { it } from 'date-fns/locale';
 
 interface ConsultableOpenMicProps {
   eventName?: string;
@@ -56,12 +60,15 @@ export const ConsultableOpenMic: React.FC<ConsultableOpenMicProps> = ({
   message,
   limitType,
   limitValue,
-  previewMessage = 'e molto altro... vienilo a scoprire partecipando ai nostri eventi!',
-  showUpcomingEvents = false,
+  previewMessage = 'e molto altro... vieni a scoprirlo partecipando ai nostri eventi!',
 }) => {
   const [search, setSearch] = useState('');
   const [artistFilter, setArtistFilter] = useState('all');
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  
+  // Get upcoming events and setting for showing them
+  const { upcomingEvents } = useLiveEvent();
+  const { isActive: showUpcomingEvents } = useFormatActiveCheck('show_upcoming_events');
 
   // Calculate how many songs to show
   const maxSongsToShow = useMemo(() => {
@@ -251,13 +258,48 @@ export const ConsultableOpenMic: React.FC<ConsultableOpenMicProps> = ({
                   {previewMessage}
                 </p>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Il catalogo completo include <strong>{songs.length} canzoni</strong> di <strong>{uniqueArtists} artisti</strong>
+                  Centinaia di canzoni aggiornate ogni settimana!
                 </p>
                 <Link to="/">
                   <Button className="neon-button-cyan">
                     Scopri i prossimi eventi
                   </Button>
                 </Link>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Upcoming Events Section */}
+        {showUpcomingEvents && upcomingEvents.length > 0 && (
+          <div className="mt-8">
+            <Card className="glass-card border-secondary/30">
+              <CardContent className="py-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Calendar className="w-5 h-5 text-secondary" />
+                  <h3 className="font-display font-bold text-foreground">Prossimi Eventi</h3>
+                </div>
+                <div className="space-y-3">
+                  {upcomingEvents.map((event) => (
+                    <div 
+                      key={event.id} 
+                      className="p-3 rounded-lg bg-muted/30 border border-border/50 flex items-center justify-between"
+                    >
+                      <div>
+                        <p className="font-medium text-foreground">{event.event_name}</p>
+                        {event.event_date && (
+                          <p className="text-sm text-muted-foreground">
+                            {format(new Date(event.event_date), "EEEE d MMMM", { locale: it })}
+                            {event.event_start_time && ` • ${event.event_start_time.slice(0, 5)}`}
+                          </p>
+                        )}
+                      </div>
+                      <Badge variant="outline" className="text-secondary border-secondary/50">
+                        In programma
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
               </CardContent>
             </Card>
           </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown, Play } from 'lucide-react';
+import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown, Play, Calendar, Eye } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -273,6 +273,46 @@ export const AdminFormatsTab: React.FC = () => {
                   id="lyrics-autoscroll-toggle"
                   checked={globalSettings.lyrics_auto_scroll}
                   onCheckedChange={() => toggleGlobalFormat('lyrics_auto_scroll')}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Separator for Preview section */}
+          <Separator className="my-6" />
+          
+          <div className="flex items-center gap-2 mb-4">
+            <Eye className="w-4 h-4 text-muted-foreground" />
+            <h3 className="text-sm font-medium text-muted-foreground">Anteprima Pubblica</h3>
+          </div>
+
+          {/* Mostra Eventi in Programma */}
+          <Card className="border-cyan-500/20 bg-cyan-500/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Calendar className="w-4 h-4 text-cyan-500" />
+                Mostra Eventi in Programma
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Nella pagina anteprima catalogo, mostra gli eventi programmati con data e ora
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="upcoming-events-toggle" className="text-sm">
+                    {globalSettings.show_upcoming_events ? 'Visibili' : 'Nascosti'}
+                  </Label>
+                  {globalSettings.show_upcoming_events && (
+                    <Badge variant="outline" className="text-cyan-500 border-cyan-500/30 text-xs">
+                      📅 Pubblico
+                    </Badge>
+                  )}
+                </div>
+                <Switch
+                  id="upcoming-events-toggle"
+                  checked={globalSettings.show_upcoming_events}
+                  onCheckedChange={() => toggleGlobalFormat('show_upcoming_events')}
                 />
               </div>
             </CardContent>
