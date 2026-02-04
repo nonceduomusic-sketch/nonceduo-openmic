@@ -250,28 +250,23 @@ export function useAssistantWidget(currentSection: Section = 'site') {
       }
 
       // Create new conversation
-      const { data, error } = await supabase
-        .from('assistant_conversations')
-        .insert({
-          session_id: sessionId,
-          source_section: currentSection,
-          source_url: window.location.href,
-          user_name: userName,
-          user_email: userEmail,
-          lead_type: leadType,
-          status: 'active',
-        })
-        .select()
-        .single();
+      const created = await callAssistantUserApi<{ conversation_id: string | null }>('createConversation', {
+        session_id: sessionId,
+        source_section: currentSection,
+        source_url: window.location.href,
+        user_name: userName,
+        user_email: userEmail,
+        lead_type: leadType,
+      });
 
-      if (error) {
-        console.error('Error creating conversation:', error);
+      if (!created?.conversation_id) {
+        console.error('Error creating conversation: missing conversation_id');
         return null;
       }
 
-      setConversationId(data.id);
-      safeSetItem('local', STORAGE_KEY, data.id);
-      return data.id;
+      setConversationId(created.conversation_id);
+      safeSetItem('local', STORAGE_KEY, created.conversation_id);
+      return created.conversation_id;
     } catch (err) {
       console.error('Error:', err);
       return null;
@@ -292,36 +287,27 @@ export function useAssistantWidget(currentSection: Section = 'site') {
     if (!convId) return null;
 
     try {
-      const { data, error } = await supabase
-        .from('assistant_messages')
-        .insert({
-          conversation_id: convId,
-          sender_type: senderType,
-          sender_name: senderName || (senderType === 'bot' ? 'Assistente' : 'Visitatore'),
-          message_text: text,
-          message_type: 'text',
-          metadata: metadata || {},
-          delivery_status: 'sent',
-        } as never)
-        .select()
-        .single();
+      const sessionId = getSessionId();
+      const res = await callAssistantUserApi<{ message: AssistantMessage }>('sendMessage', {
+        session_id: sessionId,
+        conversation_id: convId,
+        sender_type: senderType,
+        sender_name: senderName || (senderType === 'bot' ? 'Assistente' : 'Visitatore'),
+        message_text: text,
+        metadata: metadata || {},
+      });
 
-      if (error) {
-        console.error('Error sending message:', error);
+      const saved = res?.message;
+      if (!saved?.id) {
+        console.error('Error sending message: missing saved message');
         return null;
       }
 
-      // Add message to local state immediately (realtime will also pick it up, but this ensures immediate UI update)
+      // Add message to local state immediately
       setMessages(prev => {
-        if (prev.some(m => m.id === data.id)) return prev;
-        return [...prev, data as AssistantMessage];
+        if (prev.some(m => m.id === saved.id)) return prev;
+        return [...prev, saved];
       });
-
-      // Update conversation
-      await supabase
-        .from('assistant_conversations')
-        .update({ updated_at: new Date().toISOString() })
-        .eq('id', convId);
 
       // Send Telegram notification for user messages
       if (senderType === 'user') {
@@ -344,12 +330,12 @@ export function useAssistantWidget(currentSection: Section = 'site') {
         }
       }
 
-      return data;
+      return saved;
     } catch (err) {
       console.error('Error:', err);
       return null;
     }
-  }, [conversationId, getOrCreateConversation, currentSection]);
+  }, [conversationId, getOrCreateConversation, currentSection, callAssistantUserApi, getSessionId]);
 
   // Update conversation with lead info
   const updateConversation = useCallback(async (updates: {
@@ -362,17 +348,16 @@ export function useAssistantWidget(currentSection: Section = 'site') {
     if (!conversationId) return;
 
     try {
-      await supabase
-        .from('assistant_conversations')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', conversationId);
+      const sessionId = getSessionId();
+      await callAssistantUserApi<{ ok: boolean }>('updateConversation', {
+        session_id: sessionId,
+        conversation_id: conversationId,
+        updates,
+      });
     } catch (err) {
       console.error('Error updating conversation:', err);
     }
-  }, [conversationId]);
+  }, [conversationId, callAssistantUserApi, getSessionId]);
 
   const open = useCallback(() => {
     setIsOpen(true);
