@@ -49,6 +49,7 @@ import { AdminGraficheTab } from '@/components/admin/AdminGraficheTab';
 import { AdminOperatorsTab } from '@/components/admin/AdminOperatorsTab';
 import { AdminNotificheLiveTab } from '@/components/admin/AdminNotificheLiveTab';
 import { AdminAssistantTab } from '@/components/admin/AdminAssistantTab';
+import { AdminTrasmettiTab } from '@/components/admin/AdminTrasmettiTab';
 import { AdminSidebar, type AdminMainTab } from '@/components/admin/AdminSidebar';
 import {
   AlertDialog,
@@ -954,6 +955,11 @@ export const AdminDashboard: React.FC = () => {
               <p className="text-muted-foreground">Solo l'Owner può gestire l'Assistente</p>
             </div>
           )
+        ) : mainTab === 'trasmetti' ? (
+          <AdminTrasmettiTab 
+            canManage={staffRole === 'owner' || staffRole === 'admin' || staffRole === 'moderator'}
+            canFull={staffRole === 'owner' || staffRole === 'admin'}
+          />
         ) : mainTab === 'notifications' ? (
           <LiveCentroTab 
             onNavigate={(tab, subTab) => {

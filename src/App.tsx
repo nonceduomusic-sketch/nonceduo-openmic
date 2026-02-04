@@ -34,6 +34,7 @@ import PromoMatrimoni from "./pages/PromoMatrimoni";
 import PromoFestePiazza from "./pages/PromoFestePiazza";
 import Collabora from "./pages/Collabora";
 import Lyrics from "./pages/Lyrics";
+import Trasmetti from "./pages/Trasmetti";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,10 @@ const AppContent = () => (
       
       {/* Lyrics page - Spotify-like design */}
       <Route path="/lyrics/:id" element={<Lyrics />} />
+      
+      {/* Trasmetti - TV broadcast page for karaoke */}
+      <Route path="/trasmetti" element={<Trasmetti />} />
+      <Route path="/trasmetti/:salaCode" element={<Trasmetti />} />
 
       {/* Legacy routes (keep existing behavior for now) */}
       <Route path="/openmic/live" element={<OpenMic />} />
