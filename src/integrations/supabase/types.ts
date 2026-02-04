@@ -74,6 +74,149 @@ export type Database = {
         }
         Relationships: []
       }
+      assistant_conversations: {
+        Row: {
+          created_at: string | null
+          flow_path: string[] | null
+          id: string
+          lead_score: number | null
+          lead_type: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          session_id: string | null
+          source_section: string
+          source_url: string | null
+          status: string
+          updated_at: string | null
+          user_email: string | null
+          user_id: string | null
+          user_name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          flow_path?: string[] | null
+          id?: string
+          lead_score?: number | null
+          lead_type?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          session_id?: string | null
+          source_section?: string
+          source_url?: string | null
+          status?: string
+          updated_at?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          flow_path?: string[] | null
+          id?: string
+          lead_score?: number | null
+          lead_type?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          session_id?: string | null
+          source_section?: string
+          source_url?: string | null
+          status?: string
+          updated_at?: string | null
+          user_email?: string | null
+          user_id?: string | null
+          user_name?: string | null
+        }
+        Relationships: []
+      }
+      assistant_messages: {
+        Row: {
+          conversation_id: string
+          created_at: string | null
+          id: string
+          is_read: boolean | null
+          message_text: string
+          message_type: string
+          metadata: Json | null
+          read_at: string | null
+          sender_name: string | null
+          sender_type: string
+          sender_user_id: string | null
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message_text: string
+          message_type?: string
+          metadata?: Json | null
+          read_at?: string | null
+          sender_name?: string | null
+          sender_type: string
+          sender_user_id?: string | null
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string | null
+          id?: string
+          is_read?: boolean | null
+          message_text?: string
+          message_type?: string
+          metadata?: Json | null
+          read_at?: string | null
+          sender_name?: string | null
+          sender_type?: string
+          sender_user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assistant_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "assistant_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      assistant_settings: {
+        Row: {
+          enabled_on_community: boolean
+          enabled_on_dediche: boolean
+          enabled_on_openmic: boolean
+          enabled_on_site: boolean
+          id: string
+          is_enabled: boolean
+          proactive_delay_seconds: number
+          updated_at: string | null
+          updated_by: string | null
+          welcome_message: string
+        }
+        Insert: {
+          enabled_on_community?: boolean
+          enabled_on_dediche?: boolean
+          enabled_on_openmic?: boolean
+          enabled_on_site?: boolean
+          id?: string
+          is_enabled?: boolean
+          proactive_delay_seconds?: number
+          updated_at?: string | null
+          updated_by?: string | null
+          welcome_message?: string
+        }
+        Update: {
+          enabled_on_community?: boolean
+          enabled_on_dediche?: boolean
+          enabled_on_openmic?: boolean
+          enabled_on_site?: boolean
+          id?: string
+          is_enabled?: boolean
+          proactive_delay_seconds?: number
+          updated_at?: string | null
+          updated_by?: string | null
+          welcome_message?: string
+        }
+        Relationships: []
+      }
       blocked_users: {
         Row: {
           blocked_at: string | null
