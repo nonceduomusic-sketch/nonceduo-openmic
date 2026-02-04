@@ -41,13 +41,35 @@ export function useAssistantWidget(currentSection: Section = 'site') {
   const isMobile = useIsMobile();
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
+  const callAssistantUserApi = useCallback(
+    async <T,>(action: string, data: Record<string, unknown>): Promise<T> => {
+      const res = await supabase.functions.invoke('assistant-user-chat', {
+        body: { action, ...data },
+      });
+
+      if (res.error) {
+        throw new Error(res.error.message);
+      }
+
+      if ((res.data as any)?.error) {
+        throw new Error((res.data as any).error);
+      }
+
+      return res.data as T;
+    },
+    []
+  );
+
   // Get or create session ID
   const getSessionId = useCallback(() => {
-    let sessionId = sessionStorage.getItem(SESSION_KEY);
+    // Keep stable across refresh + (best-effort) across tabs
+    let sessionId = sessionStorage.getItem(SESSION_KEY) || localStorage.getItem(SESSION_KEY);
     if (!sessionId) {
       sessionId = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      sessionStorage.setItem(SESSION_KEY, sessionId);
     }
+
+    sessionStorage.setItem(SESSION_KEY, sessionId);
+    localStorage.setItem(SESSION_KEY, sessionId);
     return sessionId;
   }, []);
 
@@ -84,141 +106,82 @@ export function useAssistantWidget(currentSection: Section = 'site') {
       if (!storedConvId) return;
 
       try {
-        // Verify the conversation still exists and is active
-        const { data, error } = await supabase
-          .from('assistant_conversations')
-          .select('id, status')
-          .eq('id', storedConvId)
-          .single();
+        const sessionId = getSessionId();
+        const restored = await callAssistantUserApi<{ conversation_id: string | null }>(
+          'restoreConversation',
+          { session_id: sessionId, conversation_id: storedConvId }
+        );
 
-        if (error || !data) {
-          // Conversation doesn't exist, clear storage
-          localStorage.removeItem(STORAGE_KEY);
-          return;
-        }
-
-        // Only restore if not archived
-        if (data.status !== 'archived') {
-          setConversationId(storedConvId);
+        if (restored?.conversation_id) {
+          setConversationId(restored.conversation_id);
+          localStorage.setItem(STORAGE_KEY, restored.conversation_id);
         } else {
           localStorage.removeItem(STORAGE_KEY);
         }
       } catch (err) {
         console.error('Error restoring conversation:', err);
-        localStorage.removeItem(STORAGE_KEY);
+        // Keep localStorage intact on transient errors; we'll retry when user opens the widget.
       }
     };
 
     restoreConversation();
-  }, []);
+  }, [callAssistantUserApi, getSessionId]);
 
-  // Fetch messages when conversation is set
+  const fetchMessages = useCallback(
+    async (opts?: { markRead?: boolean }) => {
+      if (!conversationId) {
+        setMessages([]);
+        return;
+      }
+
+      setMessagesLoading(true);
+      try {
+        const sessionId = getSessionId();
+        const res = await callAssistantUserApi<{ messages: AssistantMessage[] }>('fetchMessages', {
+          session_id: sessionId,
+          conversation_id: conversationId,
+          mark_read: opts?.markRead ?? false,
+        });
+
+        setMessages((res?.messages || []) as AssistantMessage[]);
+      } catch (err) {
+        console.error('Error fetching messages (assistant-user-chat):', err);
+      } finally {
+        setMessagesLoading(false);
+      }
+    },
+    [callAssistantUserApi, conversationId, getSessionId]
+  );
+
+  // Initial fetch + when open state changes (read receipts)
   useEffect(() => {
     if (!conversationId) {
       setMessages([]);
       return;
     }
+    fetchMessages({ markRead: isOpen });
+  }, [conversationId, isOpen, fetchMessages]);
 
-    const fetchMessages = async () => {
-      setMessagesLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('assistant_messages')
-          .select('*')
-          .eq('conversation_id', conversationId)
-          .order('created_at', { ascending: true });
-
-        if (error) {
-          console.error('Error fetching messages:', error);
-          return;
-        }
-
-        setMessages((data || []) as AssistantMessage[]);
-
-        // Mark admin messages as read when user fetches them
-        const unreadAdminMsgs = (data || []).filter(
-          m => m.sender_type === 'admin' && !m.is_read
-        );
-
-        if (unreadAdminMsgs.length > 0) {
-          await supabase
-            .from('assistant_messages')
-            .update({ 
-              is_read: true, 
-              read_at: new Date().toISOString(),
-              delivery_status: 'read' 
-            })
-            .in('id', unreadAdminMsgs.map(m => m.id));
-        }
-      } catch (err) {
-        console.error('Error:', err);
-      } finally {
-        setMessagesLoading(false);
-      }
-    };
-
-    fetchMessages();
-  }, [conversationId]);
-
-  // Realtime subscription for messages
+  // Polling while open (Realtime is unreliable for session-based access)
   useEffect(() => {
-    if (!conversationId) return;
+    if (!conversationId || !isOpen) return;
 
-    // Clean up previous channel
+    const interval = setInterval(() => {
+      fetchMessages({ markRead: true });
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [conversationId, isOpen, fetchMessages]);
+
+  // NOTE: we intentionally avoid relying on Realtime here.
+  // For anonymous/session-based access, Realtime filters can be unreliable.
+  // Polling above is the source of truth.
+  useEffect(() => {
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
     }
-
-    const channel = supabase
-      .channel(`user-assistant-chat-${conversationId}-${Date.now()}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'assistant_messages',
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        async (payload) => {
-          if (payload.eventType === 'INSERT') {
-            const newMsg = payload.new as AssistantMessage;
-            setMessages(prev => {
-              // Avoid duplicates
-              if (prev.some(m => m.id === newMsg.id)) return prev;
-              return [...prev, newMsg];
-            });
-
-            // If admin message, mark as read immediately
-            if (newMsg.sender_type === 'admin' && isOpen) {
-              await supabase
-                .from('assistant_messages')
-                .update({ 
-                  is_read: true, 
-                  read_at: new Date().toISOString(),
-                  delivery_status: 'read' 
-                })
-                .eq('id', newMsg.id);
-            }
-          } else if (payload.eventType === 'UPDATE') {
-            setMessages(prev =>
-              prev.map(m => m.id === payload.new.id ? payload.new as AssistantMessage : m)
-            );
-          } else if (payload.eventType === 'DELETE') {
-            setMessages(prev => prev.filter(m => m.id !== payload.old.id));
-          }
-        }
-      )
-      .subscribe();
-
-    channelRef.current = channel;
-
-    return () => {
-      if (channelRef.current) {
-        supabase.removeChannel(channelRef.current);
-        channelRef.current = null;
-      }
-    };
-  }, [conversationId, isOpen]);
+  }, [conversationId]);
 
   // Check if assistant is enabled for current section
   const isEnabled = useCallback(() => {
@@ -264,20 +227,20 @@ export function useAssistantWidget(currentSection: Section = 'site') {
     const sessionId = getSessionId();
 
     try {
-      // First, try to find an existing conversation for this session
-      const { data: existing, error: findError } = await supabase
-        .from('assistant_conversations')
-        .select('id, status')
-        .eq('session_id', sessionId)
-        .neq('status', 'archived')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (existing && !findError) {
-        setConversationId(existing.id);
-        localStorage.setItem(STORAGE_KEY, existing.id);
-        return existing.id;
+      // Session-based restore via backend (reliable for anonymous users)
+      try {
+        const restored = await callAssistantUserApi<{ conversation_id: string | null }>(
+          'restoreConversation',
+          { session_id: sessionId }
+        );
+        if (restored?.conversation_id) {
+          setConversationId(restored.conversation_id);
+          localStorage.setItem(STORAGE_KEY, restored.conversation_id);
+          return restored.conversation_id;
+        }
+      } catch (restoreErr) {
+        // Non-fatal: we'll create a new conversation if restore fails
+        console.warn('[assistant] restoreConversation failed, creating new:', restoreErr);
       }
 
       // Create new conversation
@@ -307,7 +270,7 @@ export function useAssistantWidget(currentSection: Section = 'site') {
       console.error('Error:', err);
       return null;
     }
-  }, [conversationId, currentSection, getSessionId]);
+  }, [conversationId, currentSection, getSessionId, callAssistantUserApi]);
 
   // Send message
   const sendMessage = useCallback(async (
