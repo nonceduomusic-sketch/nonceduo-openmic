@@ -4,10 +4,20 @@ import { AssistantWidget } from './AssistantWidget';
 
 // Map routes to sections
 const getSectionFromPath = (pathname: string): 'site' | 'openmic' | 'dediche' | 'community' => {
-  if (pathname.includes('/app/openmic') || pathname.includes('/openmic/live')) {
+  // Open Mic: landing + app + legacy live
+  if (
+    pathname.startsWith('/openmic') ||
+    pathname.includes('/app/openmic') ||
+    pathname.includes('/openmic/live')
+  ) {
     return 'openmic';
   }
-  if (pathname.includes('/app/dediche') || pathname.includes('/messaggi')) {
+  // Dediche: landing + app + legacy live
+  if (
+    pathname.startsWith('/messaggi') ||
+    pathname.includes('/app/dediche') ||
+    pathname.includes('/messaggi/live')
+  ) {
     return 'dediche';
   }
   if (pathname.includes('/social')) {
