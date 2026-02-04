@@ -163,12 +163,29 @@ export function useAssistantWidget(currentSection: Section = 'site') {
         .update({ updated_at: new Date().toISOString() })
         .eq('id', convId);
 
+      // Send Telegram notification for user messages
+      if (senderType === 'user') {
+        try {
+          await supabase.functions.invoke('assistant-telegram', {
+            body: {
+              conversationId: convId,
+              messageText: text,
+              userName: senderName || 'Visitatore',
+              sourceSection: currentSection,
+            },
+          });
+        } catch (telegramErr) {
+          console.error('Error sending Telegram notification:', telegramErr);
+          // Don't fail the message send if Telegram fails
+        }
+      }
+
       return data;
     } catch (err) {
       console.error('Error:', err);
       return null;
     }
-  }, [conversationId, getOrCreateConversation]);
+  }, [conversationId, getOrCreateConversation, currentSection]);
 
   // Update conversation with lead info
   const updateConversation = useCallback(async (updates: {
