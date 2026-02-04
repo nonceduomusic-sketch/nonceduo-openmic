@@ -66,6 +66,9 @@ export interface FreeModeSettings {
   user_limit_interval_minutes: number | null;
   user_limit_consecutive_songs: number | null;
   user_limit_cooldown_message: string;
+  // Consultable mode
+  is_consultable_mode: boolean;
+  protect_repertoire: boolean;
 }
 
 export const useFreeModeSettings = () => {

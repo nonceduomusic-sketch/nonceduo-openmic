@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { 
-  Zap, Play, Square, Music, MessageSquare, Clock, RotateCcw, Trophy, Calendar, Timer, RefreshCw, QrCode
+  Zap, Play, Square, Music, MessageSquare, Clock, RotateCcw, Trophy, Calendar, Timer, RefreshCw, QrCode, Eye, BookOpen
 } from 'lucide-react';
 import { useFreeModeSettings, FreeModeSettings } from '@/hooks/useFreeModeSettings';
 import { useFreeModeScheduler } from '@/hooks/useFreeModeScheduler';
@@ -349,6 +349,44 @@ export const FreeModeFullPanel: React.FC = () => {
                       onCheckedChange={(checked) => handleUpdate({ voting_enabled: checked })}
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* Consultable Mode */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Modalità Consultabile</Label>
+                <p className="text-xs text-muted-foreground">
+                  Attiva per permettere agli utenti di sfogliare il catalogo senza poter prenotare
+                </p>
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-accent/10 border border-accent/30">
+                    <div className="flex items-center gap-2">
+                      <Eye className="w-4 h-4 text-accent" />
+                      <div>
+                        <span className="text-sm">Solo Anteprima</span>
+                        <p className="text-xs text-muted-foreground">Catalogo visibile, prenotazioni bloccate</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={settings?.is_consultable_mode ?? false}
+                      onCheckedChange={(checked) => updateSettings({ is_consultable_mode: checked })}
+                    />
+                  </div>
+                  {settings?.is_consultable_mode && (
+                    <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border ml-4">
+                      <div className="flex items-center gap-2">
+                        <BookOpen className="w-4 h-4 text-muted-foreground" />
+                        <div>
+                          <span className="text-sm">Proteggi Testi</span>
+                          <p className="text-xs text-muted-foreground">Nascondi i testi fino all'evento</p>
+                        </div>
+                      </div>
+                      <Switch
+                        checked={settings?.protect_repertoire ?? true}
+                        onCheckedChange={(checked) => updateSettings({ protect_repertoire: checked })}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </TabsContent>
