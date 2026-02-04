@@ -145,7 +145,7 @@ const PromoMatrimoni: React.FC = () => {
         <PromoGallery variant="matrimoni" />
 
         {/* Formats - matrimoni focused */}
-        <PromoFormats variant="matrimoni" showBand={true} showOpenMic={true} showDediche={true} />
+        <PromoFormats variant="matrimoni" showDuo={true} showBand={true} showOpenMic={true} showDediche={true} />
 
         {/* Features */}
         <PromoFeatures

@@ -115,7 +115,7 @@ const PromoEventi: React.FC = () => {
         <PromoGallery variant="eventi" />
 
         {/* Formats */}
-        <PromoFormats variant="eventi" showBand={true} showOpenMic={true} showDediche={true} />
+        <PromoFormats variant="eventi" showDuo={true} showBand={true} showOpenMic={true} showDediche={true} />
 
         {/* Features */}
         <PromoFeatures
