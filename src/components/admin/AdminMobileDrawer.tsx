@@ -18,6 +18,7 @@ import {
   Settings,
   Shield,
   SlidersHorizontal,
+  Tv,
   Users,
 } from "lucide-react";
 import {
@@ -48,6 +49,7 @@ const MENU_ITEMS: MenuItem[] = [
   { key: "notifications", label: "Centro", icon: Bell, group: "Live" },
   { key: "event", label: "Eventi", icon: Calendar, group: "Live" },
   { key: "formats", label: "Formati", icon: SlidersHorizontal, group: "Live" },
+  { key: "trasmetti", label: "Trasmetti", icon: Tv, group: "Live" },
   { key: "notifiche-live", label: "Notifiche Live", icon: Send, group: "Live" },
   { key: "grafiche", label: "Grafiche", icon: Image, group: "Live" },
 
