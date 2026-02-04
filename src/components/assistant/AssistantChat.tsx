@@ -458,6 +458,14 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
   // Desktop: manteniamo la logica guidata, ma permettiamo comunque chat libera se attivata.
   const showInput = Boolean(inputMode) || isChatMode || isMobile;
 
+  // Handle swipe-down to close on mobile
+  const handleDragEnd = (_: any, info: { offset: { y: number }; velocity: { y: number } }) => {
+    // If dragged down more than 100px or with high velocity, close
+    if (info.offset.y > 100 || info.velocity.y > 500) {
+      handleClose();
+    }
+  };
+
   return (
     <AnimatePresence>
       <motion.div
@@ -465,38 +473,51 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 100, scale: 0.9 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        drag={isMobile ? 'y' : false}
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={{ top: 0, bottom: 0.5 }}
+        onDragEnd={isMobile ? handleDragEnd : undefined}
         className={cn(
-          "fixed z-50",
+          "fixed z-[100]",
           isMobile 
-            ? "inset-0 supports-[height:100dvh]:h-[100dvh]" 
+            ? "inset-0" 
             : "bottom-4 right-4 w-[380px] h-[550px] rounded-2xl"
         )}
-        style={isMobile ? { height: '100dvh' } : undefined}
+        style={isMobile ? { height: '100dvh', minHeight: '-webkit-fill-available' } : undefined}
       >
         <div className={cn(
           "h-full flex flex-col",
-          "bg-background/95 backdrop-blur-xl",
+          "bg-background backdrop-blur-xl",
           "border border-border shadow-2xl shadow-black/20",
           isMobile ? "rounded-none overflow-hidden" : "rounded-2xl overflow-hidden"
         )}>
-          {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-border bg-gradient-to-r from-primary/10 to-secondary/10">
+          {/* Header - enlarged touch targets on mobile, with safe area padding */}
+          <div className={cn(
+            "flex items-center justify-between border-b border-border bg-gradient-to-r from-primary/10 to-secondary/10 flex-shrink-0",
+            isMobile ? "px-3 py-3" : "p-4"
+          )}
+          style={isMobile ? { paddingTop: 'max(12px, env(safe-area-inset-top, 12px))' } : undefined}
+          >
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center flex-shrink-0">
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
-              <div>
-                <h3 className="font-display font-semibold text-foreground">Non c'è Duo</h3>
+              <div className="min-w-0">
+                <h3 className="font-display font-semibold text-foreground truncate">Non c'è Duo</h3>
                 <p className="text-xs text-muted-foreground">Assistente</p>
               </div>
             </div>
             <Button
               variant="ghost"
-              size="icon"
+              size={isMobile ? "default" : "icon"}
               onClick={handleClose}
-              className="rounded-full hover:bg-muted"
+              className={cn(
+                "rounded-full hover:bg-muted flex-shrink-0",
+                isMobile && "w-12 h-12 min-w-12"
+              )}
+              aria-label="Chiudi chat"
             >
-              <X className="w-5 h-5" />
+              <X className={cn(isMobile ? "w-6 h-6" : "w-5 h-5")} />
             </Button>
           </div>
 
