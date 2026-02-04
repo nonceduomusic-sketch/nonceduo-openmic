@@ -166,12 +166,18 @@ export function useAssistantWidget(currentSection: Section = 'site') {
       // Send Telegram notification for user messages
       if (senderType === 'user') {
         try {
+          // Extract song request data from metadata if present
+          const songRequest = (metadata as Record<string, unknown>)?.song_request;
+          const isComplete = (metadata as Record<string, unknown>)?.isComplete;
+          
           await supabase.functions.invoke('assistant-telegram', {
             body: {
               conversationId: convId,
               messageText: text,
               userName: senderName || 'Visitatore',
               sourceSection: currentSection,
+              songRequest: songRequest || null,
+              isComplete: isComplete || false,
             },
           });
         } catch (telegramErr) {

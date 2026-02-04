@@ -283,11 +283,12 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     } else if (inputMode === 'artist') {
       setIsTyping(true);
       setInputMode(null);
-      // Final step - send complete song request
+      // Final step - send complete song request with special flag for Telegram
       const fullRequest = `📝 Richiesta canzone:\n👤 Nome: ${newData.name}\n🎵 Titolo: ${newData.title}\n🎤 Artista: ${newData.artist || 'Non specificato'}`;
       await onSendMessage(fullRequest, 'user', newData.name, {
         type: 'song_request_complete',
-        song_request: newData
+        song_request: newData,
+        isComplete: true // Flag for structured Telegram notification
       });
       
       setTimeout(() => {
