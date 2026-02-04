@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { SEO } from '@/components/SEO';
 import { 
   Mic2, 
-  MessageSquare, 
+  MessageSquare,
   Music, 
   AlertCircle, 
   CheckCircle2, 
@@ -43,6 +43,9 @@ const hashPinLight = (pin: string): string => {
 
 const EventoLive: React.FC = () => {
   const { linkCode } = useParams<{ linkCode: string }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  
   const [session, setSession] = useState<EventSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -51,6 +54,10 @@ const EventoLive: React.FC = () => {
   const [isValidating, setIsValidating] = useState(false);
   const [isValid, setIsValid] = useState(false);
   const [validatedFormats, setValidatedFormats] = useState<string[]>([]);
+  const [autoValidating, setAutoValidating] = useState(false);
+
+  // Get PIN from URL query param for auto-login
+  const urlPin = searchParams.get('pin');
 
   const fetchSession = useCallback(async () => {
     if (!linkCode) {
@@ -123,20 +130,18 @@ const EventoLive: React.FC = () => {
     };
   }, [linkCode, fetchSession]);
 
-  const handleValidatePin = async () => {
-    if (!session || !pin.trim()) return;
-
-    setIsValidating(true);
+  // Core PIN validation logic (used by both manual and auto-login)
+  const validatePinAndCreateSession = async (inputPin: string): Promise<boolean> => {
+    if (!session) return false;
     
-    const inputPin = pin.toUpperCase().trim();
+    const cleanPin = inputPin.toUpperCase().trim();
     
     try {
       // Use secure RPC to validate PIN - this also creates the session if valid
-      // Never compare PIN client-side as it exposes the code
       const { data: token, error } = await supabase.rpc('create_pin_session', {
         p_live_session_id: session.id,
         p_format: session.protected_formats?.[0] || 'openmic',
-        p_pin_code: inputPin,
+        p_pin_code: cleanPin,
         p_device_fingerprint: navigator.userAgent.substring(0, 100),
       });
       
@@ -147,23 +152,62 @@ const EventoLive: React.FC = () => {
         const storedSession = {
           token: token as string,
           liveSessionId: session.id,
-          pinCodeHash: hashPinLight(inputPin),
+          pinCodeHash: hashPinLight(cleanPin),
           createdAt: new Date().toISOString(),
         };
         localStorage.setItem('ncd_pin_sessions_v2', JSON.stringify(storedSession));
 
         setIsValid(true);
         setValidatedFormats(session.protected_formats);
-        toast.success('PIN corretto! Ora puoi accedere.');
-      } else {
-        toast.error('PIN non valido - chiedi il codice al performer o al locale');
+        return true;
       }
+      return false;
     } catch (error) {
       console.error('Error validating PIN:', error);
-      toast.error('Errore durante la validazione. Riprova.');
-    } finally {
-      setIsValidating(false);
+      return false;
     }
+  };
+
+  // Auto-login with PIN from URL
+  useEffect(() => {
+    if (!urlPin || !session || isValid || autoValidating) return;
+    
+    const autoLogin = async () => {
+      setAutoValidating(true);
+      const success = await validatePinAndCreateSession(urlPin);
+      
+      if (success) {
+        toast.success('Accesso automatico riuscito!');
+        // Clean URL by removing pin param
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('pin');
+        const newSearch = newParams.toString();
+        navigate(
+          { pathname: window.location.pathname, search: newSearch ? `?${newSearch}` : '' },
+          { replace: true }
+        );
+      } else {
+        // PIN from URL was invalid, show manual entry
+        toast.error('PIN non valido - inseriscilo manualmente');
+      }
+      setAutoValidating(false);
+    };
+    
+    autoLogin();
+  }, [urlPin, session, isValid, autoValidating, searchParams, navigate]);
+
+  const handleValidatePin = async () => {
+    if (!session || !pin.trim()) return;
+
+    setIsValidating(true);
+    const success = await validatePinAndCreateSession(pin);
+    
+    if (success) {
+      toast.success('PIN corretto! Ora puoi accedere.');
+    } else {
+      toast.error('PIN non valido - chiedi il codice al performer o al locale');
+    }
+    setIsValidating(false);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -172,10 +216,13 @@ const EventoLive: React.FC = () => {
     }
   };
 
-  if (loading) {
+  if (loading || autoValidating) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center flex-col gap-4">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        {autoValidating && (
+          <p className="text-muted-foreground text-sm animate-pulse">Accesso automatico in corso...</p>
+        )}
       </div>
     );
   }

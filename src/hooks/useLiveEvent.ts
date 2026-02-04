@@ -81,6 +81,11 @@ export interface FreeModeState {
   // Consultable mode
   isConsultableMode: boolean;
   protectRepertoire: boolean;
+  // Catalog preview
+  catalogPreviewEnabled: boolean;
+  catalogPreviewLimitType: 'percent' | 'count';
+  catalogPreviewLimitValue: number;
+  catalogPreviewMessage: string;
 }
 
 export type EventState = 
@@ -88,7 +93,16 @@ export type EventState =
   | { type: 'live'; event: LiveEvent }
   | { type: 'freemode'; formats: FreeModeState }
   | { type: 'upcoming'; events: UpcomingEvent[] }
+  | { type: 'preview'; previewSettings: CatalogPreviewSettings }
   | { type: 'none' };
+
+export interface CatalogPreviewSettings {
+  enabled: boolean;
+  limitType: 'percent' | 'count';
+  limitValue: number;
+  message: string;
+  protectRepertoire: boolean;
+}
 
 /**
  * Hook per gestire lo stato evento lato utente.
@@ -134,6 +148,10 @@ export const useLiveEvent = () => {
     endMode: 'manual',
     isConsultableMode: false,
     protectRepertoire: true,
+    catalogPreviewEnabled: false,
+    catalogPreviewLimitType: 'percent',
+    catalogPreviewLimitValue: 30,
+    catalogPreviewMessage: 'e molto altro... vienilo a scoprire partecipando ai nostri eventi!',
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -212,6 +230,10 @@ export const useLiveEvent = () => {
           endMode: 'manual',
           isConsultableMode: false,
           protectRepertoire: true,
+          catalogPreviewEnabled: false,
+          catalogPreviewLimitType: 'percent',
+          catalogPreviewLimitValue: 30,
+          catalogPreviewMessage: 'e molto altro... vienilo a scoprire partecipando ai nostri eventi!',
         });
       } else {
         setLiveEvent(null);
@@ -261,6 +283,10 @@ export const useLiveEvent = () => {
           endMode: freeModeData?.end_mode ?? 'manual',
           isConsultableMode: freeModeData?.is_consultable_mode ?? false,
           protectRepertoire: freeModeData?.protect_repertoire ?? true,
+          catalogPreviewEnabled: (freeModeData as Record<string, unknown>)?.catalog_preview_enabled as boolean ?? false,
+          catalogPreviewLimitType: ((freeModeData as Record<string, unknown>)?.catalog_preview_limit_type as 'percent' | 'count') ?? 'percent',
+          catalogPreviewLimitValue: (freeModeData as Record<string, unknown>)?.catalog_preview_limit_value as number ?? 30,
+          catalogPreviewMessage: (freeModeData as Record<string, unknown>)?.catalog_preview_message as string ?? 'e molto altro... vienilo a scoprire partecipando ai nostri eventi!',
         });
 
         // Only fetch upcoming events if not in free mode
@@ -341,6 +367,19 @@ export const useLiveEvent = () => {
     if (liveEvent) return { type: 'live', event: liveEvent };
     if (freeMode.active) return { type: 'freemode', formats: freeMode };
     if (upcomingEvents.length > 0) return { type: 'upcoming', events: upcomingEvents };
+    // Show catalog preview if enabled (even without events)
+    if (freeMode.catalogPreviewEnabled || freeMode.isConsultableMode) {
+      return { 
+        type: 'preview', 
+        previewSettings: {
+          enabled: true,
+          limitType: freeMode.catalogPreviewLimitType,
+          limitValue: freeMode.catalogPreviewLimitValue,
+          message: freeMode.catalogPreviewMessage,
+          protectRepertoire: freeMode.protectRepertoire,
+        }
+      };
+    }
     return { type: 'none' };
   }, [loading, liveEvent, freeMode, upcomingEvents]);
 

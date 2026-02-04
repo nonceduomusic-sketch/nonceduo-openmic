@@ -387,6 +387,54 @@ export const FreeModeFullPanel: React.FC = () => {
                       />
                     </div>
                   )}
+                  
+                  {/* Catalog Preview Limit */}
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/30">
+                    <div className="flex items-center gap-2">
+                      <Eye className="w-4 h-4 text-primary" />
+                      <div>
+                        <span className="text-sm">Mostra Anteprima Catalogo</span>
+                        <p className="text-xs text-muted-foreground">Visibile anche senza eventi attivi</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={(settings as unknown as Record<string, boolean>)?.catalog_preview_enabled ?? false}
+                      onCheckedChange={(checked) => updateSettings({ catalog_preview_enabled: checked })}
+                    />
+                  </div>
+                  
+                  {(settings as unknown as Record<string, boolean>)?.catalog_preview_enabled && (
+                    <div className="ml-4 space-y-3 p-3 rounded-lg bg-muted/30 border">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-sm min-w-20">Mostra</Label>
+                        <Input
+                          type="number"
+                          value={(settings as unknown as Record<string, number>)?.catalog_preview_limit_value ?? 30}
+                          onChange={(e) => updateSettings({ catalog_preview_limit_value: parseInt(e.target.value) || 30 })}
+                          className="w-20 h-8"
+                          min={1}
+                          max={100}
+                        />
+                        <select
+                          value={(settings as unknown as Record<string, string>)?.catalog_preview_limit_type ?? 'percent'}
+                          onChange={(e) => updateSettings({ catalog_preview_limit_type: e.target.value as 'percent' | 'count' })}
+                          className="h-8 px-2 rounded border bg-background text-sm"
+                        >
+                          <option value="percent">% delle canzoni</option>
+                          <option value="count">canzoni</option>
+                        </select>
+                      </div>
+                      <div>
+                        <Label className="text-xs text-muted-foreground mb-1 block">Messaggio teaser</Label>
+                        <Input
+                          value={(settings as unknown as Record<string, string>)?.catalog_preview_message ?? 'e molto altro...'}
+                          onChange={(e) => updateSettings({ catalog_preview_message: e.target.value })}
+                          placeholder="e molto altro..."
+                          className="h-8 text-sm"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </TabsContent>

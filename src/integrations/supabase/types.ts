@@ -491,6 +491,10 @@ export type Database = {
         Row: {
           booking_closes_at: string | null
           booking_opens_at: string | null
+          catalog_preview_enabled: boolean | null
+          catalog_preview_limit_type: string | null
+          catalog_preview_limit_value: number | null
+          catalog_preview_message: string | null
           close_minutes_before_end: number | null
           closure_message: string | null
           closure_mode: string | null
@@ -550,6 +554,10 @@ export type Database = {
         Insert: {
           booking_closes_at?: string | null
           booking_opens_at?: string | null
+          catalog_preview_enabled?: boolean | null
+          catalog_preview_limit_type?: string | null
+          catalog_preview_limit_value?: number | null
+          catalog_preview_message?: string | null
           close_minutes_before_end?: number | null
           closure_message?: string | null
           closure_mode?: string | null
@@ -609,6 +617,10 @@ export type Database = {
         Update: {
           booking_closes_at?: string | null
           booking_opens_at?: string | null
+          catalog_preview_enabled?: boolean | null
+          catalog_preview_limit_type?: string | null
+          catalog_preview_limit_value?: number | null
+          catalog_preview_message?: string | null
           close_minutes_before_end?: number | null
           closure_message?: string | null
           closure_mode?: string | null
@@ -713,6 +725,10 @@ export type Database = {
         Row: {
           booking_closes_at: string | null
           booking_opens_at: string | null
+          catalog_preview_enabled: boolean | null
+          catalog_preview_limit_type: string | null
+          catalog_preview_limit_value: number | null
+          catalog_preview_message: string | null
           close_minutes_before_end: number | null
           closure_message: string | null
           closure_mode: string | null
@@ -776,6 +792,10 @@ export type Database = {
         Insert: {
           booking_closes_at?: string | null
           booking_opens_at?: string | null
+          catalog_preview_enabled?: boolean | null
+          catalog_preview_limit_type?: string | null
+          catalog_preview_limit_value?: number | null
+          catalog_preview_message?: string | null
           close_minutes_before_end?: number | null
           closure_message?: string | null
           closure_mode?: string | null
@@ -839,6 +859,10 @@ export type Database = {
         Update: {
           booking_closes_at?: string | null
           booking_opens_at?: string | null
+          catalog_preview_enabled?: boolean | null
+          catalog_preview_limit_type?: string | null
+          catalog_preview_limit_value?: number | null
+          catalog_preview_message?: string | null
           close_minutes_before_end?: number | null
           closure_message?: string | null
           closure_mode?: string | null
