@@ -105,6 +105,8 @@ export function AdminSidebar({
     canViewCentro: boolean;
     canViewOpenmic: boolean;
     canViewDediche: boolean;
+    canViewAssistente: boolean;
+    canViewTrasmetti: boolean;
   };
 }) {
   const isBlocked = (key: AdminMainTab) => {
@@ -113,12 +115,12 @@ export function AdminSidebar({
       if (key === "notifications") return !operatorAccess.canViewCentro;
       if (key === "openmic") return !operatorAccess.canViewOpenmic;
       if (key === "dediche") return !operatorAccess.canViewDediche;
-      // Operators never see these sections unless given trasmetti permission
-      if (["event", "formats", "grafiche", "songs", "community", "assistant", "settings", "staff", "permissions", "audit", "notifiche-live"].includes(key)) {
+      if (key === "assistant") return !operatorAccess.canViewAssistente;
+      if (key === "trasmetti") return !operatorAccess.canViewTrasmetti;
+      // Operators never see these sections
+      if (["event", "formats", "grafiche", "songs", "community", "settings", "staff", "permissions", "audit", "notifiche-live", "operators"].includes(key)) {
         return true;
       }
-      // Trasmetti can be enabled for operators via permission
-      if (key === "trasmetti") return true; // Operators need explicit permission
       return false;
     }
     
@@ -140,9 +142,15 @@ export function AdminSidebar({
 
   // Filter items based on visibility
   const visibleItems = ITEMS.filter((item) => {
-    // Operators only see Centro, Open Mic, Dediche
-    if (isOperator) {
-      return ["notifications", "openmic", "dediche"].includes(item.key);
+    // Operators see sections based on their permissions
+    if (isOperator && operatorAccess) {
+      if (item.key === "notifications") return operatorAccess.canViewCentro;
+      if (item.key === "openmic") return operatorAccess.canViewOpenmic;
+      if (item.key === "dediche") return operatorAccess.canViewDediche;
+      if (item.key === "assistant") return operatorAccess.canViewAssistente;
+      if (item.key === "trasmetti") return operatorAccess.canViewTrasmetti;
+      // Hide everything else for operators
+      return false;
     }
     // Owner-only tabs hidden from non-owners
     if (item.key === "staff" && !isOwner) return false;
