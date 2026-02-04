@@ -37,7 +37,8 @@ export default function Trasmetti() {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [highlightLine, setHighlightLine] = useState(0);
-  const [autoScroll, setAutoScroll] = useState(true);
+  // Track if admin is controlling manually (based on session auto_scroll)
+  const isAdminControlled = session?.auto_scroll === false;
   const lyricsRef = useRef<HTMLDivElement>(null);
 
   // Extract TV settings from session with defaults
@@ -79,37 +80,24 @@ export default function Trasmetti() {
 
       if (data) {
         setCurrentSong(data);
-        setHighlightLine(0);
-        setAutoScroll(true);
+        // Reset to the line from session (admin's control)
+        setHighlightLine(session.highlight_line || 0);
       }
     };
 
     fetchSong();
   }, [session?.current_song_id]);
 
-  // Sync highlight line from session (realtime updates from admin)
+  // CRITICAL: Always sync highlight line from session (admin controls via database)
+  // This is the source of truth - no local auto-scroll that could desync
   useEffect(() => {
     if (session?.highlight_line !== undefined && session?.highlight_line !== null) {
       setHighlightLine(session.highlight_line);
     }
   }, [session?.highlight_line]);
 
-  // Auto-scroll effect - only when admin hasn't set manual control
-  useEffect(() => {
-    if (!autoScroll || !lines.length || session?.display_mode !== 'lyrics') return;
-    
-    const speed = tvSettings.scrollSpeed || 3;
-    const interval = setInterval(() => {
-      setHighlightLine(prev => {
-        if (prev >= lines.length - 1) {
-          return prev; // Stay at last line
-        }
-        return prev + 1;
-      });
-    }, (6 - speed) * 2000); // Adjust timing based on speed
-
-    return () => clearInterval(interval);
-  }, [autoScroll, lines.length, tvSettings.scrollSpeed, session?.display_mode]);
+  // Auto-scroll is now fully controlled by admin via session.auto_scroll
+  // The TV just follows what's in the database - no local auto-scroll logic
 
   // Scroll highlighted line into view
   useEffect(() => {
