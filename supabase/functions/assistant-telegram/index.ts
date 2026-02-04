@@ -21,9 +21,9 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { conversationId, messageText, userName, sourceSection } = await req.json();
+    const { conversationId, messageText, userName, sourceSection, songRequest, isComplete } = await req.json();
 
-    console.log('Received notification request:', { conversationId, userName, sourceSection });
+    console.log('Received notification request:', { conversationId, userName, sourceSection, isComplete });
 
     // Get assistant settings
     const { data: settings, error: settingsError } = await supabase
@@ -64,6 +64,15 @@ serve(async (req) => {
       });
     }
 
+    // Get message count for this conversation to determine if this is first message
+    const { count } = await supabase
+      .from('assistant_messages')
+      .select('*', { count: 'exact', head: true })
+      .eq('conversation_id', conversationId)
+      .eq('sender_type', 'user');
+
+    const isFirstMessage = (count || 0) <= 1;
+
     // Format message with clear section identification
     const sectionLabels: Record<string, { emoji: string; name: string }> = {
       'site': { emoji: '🌐', name: 'SITO GENERALE' },
@@ -74,17 +83,47 @@ serve(async (req) => {
 
     const section = sectionLabels[sourceSection?.toLowerCase()] || { emoji: '💬', name: 'SITO' };
     
-    const telegramMessage = `🆘 *RICHIESTA ASSISTENZA*
+    let telegramMessage: string;
+
+    // If it's a complete song request, send a nicely formatted message
+    if (isComplete && songRequest) {
+      telegramMessage = `🎵 *RICHIESTA CANZONE*
+━━━━━━━━━━━━━━━━━━
+${section.emoji} *Provenienza:* ${section.name}
+━━━━━━━━━━━━━━━━━━
+
+👤 *Utente:* ${songRequest.name || userName || 'Anonimo'}
+🎵 *Titolo:* ${songRequest.title || 'Non specificato'}
+🎤 *Artista:* ${songRequest.artist || 'Non specificato'}
+
+⏰ ${new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}
+
+💬 _Rispondi dal pannello Admin → Assistente_`;
+    } else if (isFirstMessage) {
+      // First message from a new conversation
+      telegramMessage = `🆕 *NUOVA CONVERSAZIONE*
 ━━━━━━━━━━━━━━━━━━
 ${section.emoji} *Provenienza:* ${section.name}
 ━━━━━━━━━━━━━━━━━━
 
 👤 *Utente:* ${userName || 'Visitatore anonimo'}
 
-💬 *Messaggio:*
+💬 *Primo messaggio:*
+"${messageText}"
+
+⏰ ${new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}
+
+📱 _Rispondi dal pannello Admin → Assistente_`;
+    } else {
+      // Follow-up messages - shorter format
+      telegramMessage = `💬 *NUOVO MESSAGGIO*
+${section.emoji} ${section.name}
+
+👤 ${userName || 'Visitatore'}:
 "${messageText}"
 
 ⏰ ${new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}`;
+    }
 
     // Send to Telegram
     const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
