@@ -1,17 +1,27 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Mic2, MessageSquareHeart, Music } from 'lucide-react';
+import { Mic2, MessageSquareHeart, Music, Guitar, Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface PromoFormatsProps {
+  showDuo?: boolean;
   showOpenMic?: boolean;
   showDediche?: boolean;
   showBand?: boolean;
-  variant?: 'locali' | 'eventi' | 'matrimoni';
+  variant?: 'locali' | 'eventi' | 'matrimoni' | 'piazza';
   className?: string;
 }
 
 const formats = [
+  {
+    key: 'duo',
+    icon: Guitar,
+    title: 'Non c\'è Duo',
+    description: 'Il cuore del progetto: voce e chitarra che riempiono qualsiasi spazio. Eleganza, emozione e repertorio vastissimo in formato acustico.',
+    color: 'gold',
+    highlight: '❤️ Il nostro cuore pulsante',
+    featured: true,
+  },
   {
     key: 'openmic',
     icon: Mic2,
@@ -39,27 +49,38 @@ const formats = [
 ];
 
 const colorStyles = {
+  gold: {
+    bg: 'bg-amber-500/10',
+    border: 'border-amber-500/40 hover:border-amber-500/70',
+    icon: 'text-amber-500',
+    highlight: 'bg-amber-500/20 text-amber-600',
+    glow: 'shadow-amber-500/20',
+  },
   pink: {
     bg: 'bg-primary/10',
     border: 'border-primary/30 hover:border-primary/50',
     icon: 'text-primary',
     highlight: 'bg-primary/20 text-primary',
+    glow: '',
   },
   cyan: {
     bg: 'bg-secondary/10',
     border: 'border-secondary/30 hover:border-secondary/50',
     icon: 'text-secondary',
     highlight: 'bg-secondary/20 text-secondary',
+    glow: '',
   },
   purple: {
     bg: 'bg-accent/10',
     border: 'border-accent/30 hover:border-accent/50',
     icon: 'text-accent',
     highlight: 'bg-accent/20 text-accent',
+    glow: '',
   },
 };
 
 export const PromoFormats: React.FC<PromoFormatsProps> = ({
+  showDuo = true,
   showOpenMic = true,
   showDediche = true,
   showBand = true,
@@ -67,6 +88,7 @@ export const PromoFormats: React.FC<PromoFormatsProps> = ({
   className,
 }) => {
   const visibleFormats = formats.filter((f) => {
+    if (f.key === 'duo') return showDuo;
     if (f.key === 'openmic') return showOpenMic;
     if (f.key === 'dediche') return showDediche;
     if (f.key === 'band') return showBand;
@@ -77,6 +99,7 @@ export const PromoFormats: React.FC<PromoFormatsProps> = ({
     locali: 'I Nostri Format Interattivi',
     eventi: 'Esperienze Uniche per i Tuoi Ospiti',
     matrimoni: 'Momenti Indimenticabili',
+    piazza: 'Le Nostre Formule',
   };
 
   return (
@@ -94,10 +117,16 @@ export const PromoFormats: React.FC<PromoFormatsProps> = ({
           </h2>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
+        <div className={cn(
+          "grid gap-6 max-w-6xl mx-auto",
+          visibleFormats.length === 4 ? "md:grid-cols-2 lg:grid-cols-4" : 
+          visibleFormats.length === 3 ? "md:grid-cols-2 lg:grid-cols-3" : 
+          "md:grid-cols-2"
+        )}>
           {visibleFormats.map((format, index) => {
             const style = colorStyles[format.color as keyof typeof colorStyles];
             const Icon = format.icon;
+            const isFeatured = 'featured' in format && format.featured;
             
             return (
               <motion.div
@@ -105,22 +134,34 @@ export const PromoFormats: React.FC<PromoFormatsProps> = ({
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: index * 0.15, duration: 0.5 }}
+                transition={{ delay: index * 0.1, duration: 0.5 }}
                 className={cn(
-                  "relative p-8 rounded-3xl bg-card border-2 transition-all duration-300",
-                  style.border
+                  "relative p-6 md:p-8 rounded-3xl bg-card border-2 transition-all duration-300 hover:-translate-y-1",
+                  style.border,
+                  isFeatured && "ring-2 ring-amber-500/30 shadow-lg",
+                  isFeatured && style.glow
                 )}
               >
+                {/* Featured badge */}
+                {isFeatured && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-500 text-white text-xs font-bold shadow-lg">
+                      <Heart className="w-3 h-3 fill-current" />
+                      IL CUORE
+                    </span>
+                  </div>
+                )}
+                
                 {/* Icon */}
-                <div className={cn("w-16 h-16 rounded-2xl flex items-center justify-center mb-6", style.bg)}>
-                  <Icon className={cn("w-8 h-8", style.icon)} />
+                <div className={cn("w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center mb-5", style.bg)}>
+                  <Icon className={cn("w-7 h-7 md:w-8 md:h-8", style.icon)} />
                 </div>
 
                 {/* Content */}
-                <h3 className="font-display text-2xl font-bold text-foreground mb-3">
+                <h3 className="font-display text-xl md:text-2xl font-bold text-foreground mb-3">
                   {format.title}
                 </h3>
-                <p className="text-muted-foreground leading-relaxed mb-4">
+                <p className="text-muted-foreground leading-relaxed mb-4 text-sm md:text-base">
                   {format.description}
                 </p>
 
