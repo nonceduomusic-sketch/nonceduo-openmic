@@ -35,6 +35,8 @@ interface LiveTVControlPanelProps {
   canManage?: boolean;
 }
 
+type ViewMode = 'compact' | 'spotify';
+
 export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps) {
   const { session, updateSession, stopBroadcast } = useBroadcast('main');
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
@@ -43,6 +45,7 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
   const [scrollSpeed, setScrollSpeed] = useState(3);
   const [fontSize, setFontSize] = useState(100); // percentage
   const [isFullPreview, setIsFullPreview] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('spotify');
   const lyricsRef = useRef<HTMLDivElement>(null);
 
   // TV Settings from session
@@ -430,6 +433,25 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* View Mode Toggle */}
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === 'compact' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('compact')}
+                className="h-7 px-2 text-xs"
+              >
+                Compatta
+              </Button>
+              <Button
+                variant={viewMode === 'spotify' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('spotify')}
+                className="h-7 px-2 text-xs"
+              >
+                Spotify
+              </Button>
+            </div>
             <Button
               variant="outline"
               size="sm"
@@ -547,95 +569,173 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
           </Button>
         </div>
 
-        {/* Mini TV Preview */}
-        <div 
-          className="relative rounded-xl overflow-hidden bg-gradient-to-b from-gray-900 via-black to-gray-900 cursor-pointer"
-          style={{ minHeight: 280 }}
-          onClick={() => setIsFullPreview(true)}
-        >
-          {/* Ambient background */}
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="absolute top-0 left-1/4 w-48 h-48 bg-primary/20 rounded-full blur-[80px]" />
-            <div className="absolute bottom-0 right-1/4 w-40 h-40 bg-purple-500/15 rounded-full blur-[60px]" />
-          </div>
+        {/* Preview based on view mode */}
+        {viewMode === 'spotify' ? (
+          /* Spotify-style Preview */
+          <div 
+            className="relative rounded-xl overflow-hidden bg-gradient-to-b from-gray-900 via-black to-gray-900 cursor-pointer"
+            style={{ minHeight: 320 }}
+            onClick={() => setIsFullPreview(true)}
+          >
+            {/* Ambient background */}
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute top-0 left-1/4 w-48 h-48 bg-primary/20 rounded-full blur-[80px]" />
+              <div className="absolute bottom-0 right-1/4 w-40 h-40 bg-purple-500/15 rounded-full blur-[60px]" />
+            </div>
 
-          {/* Header */}
-          <div className="relative z-10 px-4 pt-4 pb-2">
-            <div className="flex items-center gap-3">
-              {tvSettings.showLogo && (
-                <img 
-                  src={tvSettings.logoUrl || brandLogoText} 
-                  alt="Logo" 
-                  className="h-6 w-auto object-contain opacity-70"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = brandLogoText;
-                  }}
-                />
-              )}
-              <div>
-                <h3 
-                  className="font-bold text-white truncate"
-                  style={{ fontSize: `${Math.max(12, 16 * fontSize / 100)}px` }}
-                >
-                  {currentSong.titolo}
-                </h3>
-                <p 
-                  className="text-white/60 truncate"
-                  style={{ fontSize: `${Math.max(10, 12 * fontSize / 100)}px` }}
-                >
-                  {currentSong.artista}
-                </p>
+            {/* Header */}
+            <div className="relative z-10 px-4 pt-4 pb-2">
+              <div className="flex items-center gap-3">
+                {tvSettings.showLogo && (
+                  <img 
+                    src={tvSettings.logoUrl || brandLogoText} 
+                    alt="Logo" 
+                    className="h-6 w-auto object-contain opacity-70"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = brandLogoText;
+                    }}
+                  />
+                )}
+                <div>
+                  <h3 
+                    className="font-bold text-white truncate"
+                    style={{ fontSize: `${Math.max(14, 18 * fontSize / 100)}px` }}
+                  >
+                    {currentSong.titolo}
+                  </h3>
+                  <p 
+                    className="text-white/60 truncate"
+                    style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px` }}
+                  >
+                    {currentSong.artista}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Spotify-style Lyrics */}
+            <div 
+              ref={lyricsRef}
+              className="px-6 py-6 space-y-4 text-center overflow-y-auto"
+              style={{ maxHeight: 220 }}
+            >
+              {lines.map((line, index) => {
+                const isHighlighted = localHighlightLine === index;
+                const isPast = index < localHighlightLine;
+                const distanceFromHighlight = Math.abs(index - localHighlightLine);
+                
+                let opacity = 1;
+                if (isPast) opacity = 0.3;
+                else if (distanceFromHighlight === 1) opacity = 0.7;
+                else if (distanceFromHighlight === 2) opacity = 0.5;
+                else if (distanceFromHighlight > 2) opacity = 0.35;
+
+                const baseFontSize = Math.max(14, 18 * fontSize / 100);
+                const highlightFontSize = baseFontSize * 1.25;
+
+                return (
+                  <p
+                    key={index}
+                    data-line={index}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleLineClick(index);
+                    }}
+                    className={cn(
+                      "font-bold leading-relaxed transition-all duration-500 cursor-pointer hover:opacity-100",
+                      isHighlighted && "scale-105"
+                    )}
+                    style={{
+                      fontSize: isHighlighted ? `${highlightFontSize}px` : `${baseFontSize}px`,
+                      opacity,
+                      color: isHighlighted ? 'hsl(var(--primary))' : 'white',
+                      textShadow: isHighlighted 
+                        ? '0 0 40px hsl(var(--primary) / 0.5), 0 0 80px hsl(var(--primary) / 0.3)'
+                        : 'none',
+                    }}
+                  >
+                    {line || '\u00A0'}
+                  </p>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black to-transparent">
+              <div className="flex items-center justify-center gap-1.5 text-white/30 text-xs">
+                <Mic className="w-3 h-3" />
+                <span>Clicca per espandere</span>
               </div>
             </div>
           </div>
-
-          {/* Lyrics */}
+        ) : (
+          /* Compact Preview */
           <div 
-            ref={lyricsRef}
-            className="px-4 py-4 space-y-3 text-center overflow-y-auto"
-            style={{ maxHeight: 180 }}
+            className="relative rounded-lg overflow-hidden border bg-card cursor-pointer"
+            onClick={() => setIsFullPreview(true)}
           >
-            {lines.map((line, index) => {
-              const isHighlighted = localHighlightLine === index;
-              const isPast = index < localHighlightLine;
-              const distanceFromHighlight = Math.abs(index - localHighlightLine);
-              
-              return (
-                <p
-                  key={index}
-                  data-line={index}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleLineClick(index);
-                  }}
-                  className={cn(
-                    "font-bold leading-relaxed transition-all duration-500 cursor-pointer hover:opacity-100",
-                    isHighlighted && "text-primary scale-105",
-                    isPast && "text-white/30",
-                    !isHighlighted && !isPast && distanceFromHighlight <= 2 && "text-white/70",
-                    !isHighlighted && !isPast && distanceFromHighlight > 2 && "text-white/40"
-                  )}
-                  style={{
-                    fontSize: `${Math.max(10, 14 * fontSize / 100)}px`,
-                    textShadow: isHighlighted 
-                      ? '0 0 30px hsl(var(--primary) / 0.5)'
-                      : 'none',
-                  }}
-                >
-                  {line || '\u00A0'}
-                </p>
-              );
-            })}
-          </div>
+            {/* Header */}
+            <div className="p-3 border-b bg-muted/30">
+              <div className="flex items-center gap-2">
+                {tvSettings.showLogo && (
+                  <img 
+                    src={tvSettings.logoUrl || brandLogoText} 
+                    alt="Logo" 
+                    className="h-5 w-auto object-contain"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = brandLogoText;
+                    }}
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm truncate">{currentSong.titolo}</p>
+                  <p className="text-xs text-muted-foreground truncate">{currentSong.artista}</p>
+                </div>
+                <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30 text-xs">
+                  LIVE
+                </Badge>
+              </div>
+            </div>
 
-          {/* Footer */}
-          <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black to-transparent">
-            <div className="flex items-center justify-center gap-1.5 text-white/30 text-xs">
-              <Mic className="w-3 h-3" />
-              <span>Clicca per espandere</span>
+            {/* Compact Lyrics List */}
+            <div 
+              ref={lyricsRef}
+              className="p-3 space-y-1.5 overflow-y-auto"
+              style={{ maxHeight: 200 }}
+            >
+              {lines.map((line, index) => {
+                const isHighlighted = localHighlightLine === index;
+                const isPast = index < localHighlightLine;
+                
+                return (
+                  <p
+                    key={index}
+                    data-line={index}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleLineClick(index);
+                    }}
+                    className={cn(
+                      "text-sm leading-relaxed transition-all duration-300 cursor-pointer px-2 py-1 rounded",
+                      isHighlighted && "bg-primary/20 text-primary font-semibold",
+                      isPast && "text-muted-foreground",
+                      !isHighlighted && !isPast && "text-foreground hover:bg-muted"
+                    )}
+                    style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px` }}
+                  >
+                    <span className="mr-2 text-xs text-muted-foreground">{index + 1}</span>
+                    {line || '\u00A0'}
+                  </p>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div className="p-2 border-t bg-muted/20 text-center">
+              <span className="text-xs text-muted-foreground">Clicca per espandere</span>
             </div>
           </div>
-        </div>
+        )}
 
         <p className="text-xs text-muted-foreground text-center">
           Clicca su una riga per saltarci direttamente. La TV si sincronizza in tempo reale.
