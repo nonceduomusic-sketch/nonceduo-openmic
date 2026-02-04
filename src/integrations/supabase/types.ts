@@ -186,7 +186,13 @@ export type Database = {
           enabled_on_site: boolean
           id: string
           is_enabled: boolean
+          notify_community: boolean | null
+          notify_dediche: boolean | null
+          notify_openmic: boolean | null
+          notify_site: boolean | null
           proactive_delay_seconds: number
+          telegram_chat_id: string | null
+          telegram_enabled: boolean | null
           updated_at: string | null
           updated_by: string | null
           welcome_message: string
@@ -198,7 +204,13 @@ export type Database = {
           enabled_on_site?: boolean
           id?: string
           is_enabled?: boolean
+          notify_community?: boolean | null
+          notify_dediche?: boolean | null
+          notify_openmic?: boolean | null
+          notify_site?: boolean | null
           proactive_delay_seconds?: number
+          telegram_chat_id?: string | null
+          telegram_enabled?: boolean | null
           updated_at?: string | null
           updated_by?: string | null
           welcome_message?: string
@@ -210,7 +222,13 @@ export type Database = {
           enabled_on_site?: boolean
           id?: string
           is_enabled?: boolean
+          notify_community?: boolean | null
+          notify_dediche?: boolean | null
+          notify_openmic?: boolean | null
+          notify_site?: boolean | null
           proactive_delay_seconds?: number
+          telegram_chat_id?: string | null
+          telegram_enabled?: boolean | null
           updated_at?: string | null
           updated_by?: string | null
           welcome_message?: string

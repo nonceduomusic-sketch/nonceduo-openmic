@@ -12,6 +12,13 @@ export interface AssistantSettings {
   proactive_delay_seconds: number;
   welcome_message: string;
   updated_at: string;
+  // Telegram notifications
+  telegram_enabled: boolean;
+  telegram_chat_id: string;
+  notify_site: boolean;
+  notify_openmic: boolean;
+  notify_dediche: boolean;
+  notify_community: boolean;
 }
 
 export function useAssistantSettings() {
