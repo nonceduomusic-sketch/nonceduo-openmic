@@ -54,38 +54,23 @@ type OperatorUser = {
   display_name: string | null;
   role: string;
   permissions: {
-    view_centro: boolean;
-    view_openmic: boolean;
-    view_dediche: boolean;
-    openmic_manage: boolean;
-    dediche_manage: boolean;
-    // Assistente (3 livelli)
+    centro_view: boolean;
+    openmic_view: boolean;
+    openmic_partial: boolean;
+    openmic_full: boolean;
+    dediche_view: boolean;
+    dediche_partial: boolean;
+    dediche_full: boolean;
     assistente_view: boolean;
     assistente_manage: boolean;
     assistente_full: boolean;
-    // Trasmetti (3 livelli)
     trasmetti_view: boolean;
     trasmetti_manage: boolean;
     trasmetti_full: boolean;
   };
 };
 
-// Permission IDs from the database
-const OPERATOR_PERMISSIONS = [
-  "operator.view_centro",
-  "operator.view_openmic",
-  "operator.view_dediche",
-  "operator.openmic_readonly",
-  "operator.openmic_manage",
-  "operator.dediche_readonly",
-  "operator.dediche_manage",
-  "operator.assistente_view",
-  "operator.assistente_manage",
-  "operator.assistente_full",
-  "operator.trasmetti_view",
-  "operator.trasmetti_manage",
-  "operator.trasmetti_full",
-] as const;
+type PermissionLevel = 'none' | 'view' | 'partial' | 'full';
 
 export function AdminOperatorsTab() {
   const { toast } = useToast();
@@ -99,8 +84,6 @@ export function AdminOperatorsTab() {
   const [newOperatorPassword, setNewOperatorPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
-  
-  // Edit credentials
   const [editUsername, setEditUsername] = useState("");
   const [editPassword, setEditPassword] = useState("");
   const [showEditPassword, setShowEditPassword] = useState(false);
@@ -110,7 +93,6 @@ export function AdminOperatorsTab() {
   const { data: operators = [], isLoading, refetch } = useQuery({
     queryKey: ["operators"],
     queryFn: async () => {
-      // Get all users with operator role
       const { data: roleData, error: roleError } = await supabase
         .from("user_roles")
         .select("user_id, role")
@@ -121,7 +103,6 @@ export function AdminOperatorsTab() {
 
       const userIds = roleData.map((r) => r.user_id);
 
-      // Get profiles
       const { data: profiles, error: profileError } = await supabase
         .from("profiles")
         .select("user_id, display_name, username")
@@ -129,7 +110,6 @@ export function AdminOperatorsTab() {
 
       if (profileError) throw profileError;
 
-      // Get user permissions
       const { data: userPerms, error: permError } = await supabase
         .from("user_permissions")
         .select("user_id, permission_id, granted, permissions(name)")
@@ -137,20 +117,10 @@ export function AdminOperatorsTab() {
 
       if (permError) throw permError;
 
-      // Get all operator permission IDs
-      const { data: allPerms } = await supabase
-        .from("permissions")
-        .select("id, name")
-        .like("name", "operator.%");
-
-      const permMap = new Map(allPerms?.map((p) => [p.name, p.id]) || []);
-
-      // Build operator list with permissions
       const result: OperatorUser[] = roleData.map((role) => {
         const profile = profiles?.find((p) => p.user_id === role.user_id);
         const perms = userPerms?.filter((p) => p.user_id === role.user_id) || [];
 
-        // Check individual permissions
         const hasPermission = (name: string) => {
           const userPerm = perms.find((p) => (p.permissions as any)?.name === name);
           return userPerm?.granted ?? false;
@@ -162,16 +132,16 @@ export function AdminOperatorsTab() {
           display_name: profile?.display_name,
           role: role.role,
           permissions: {
-            view_centro: hasPermission("operator.view_centro"),
-            view_openmic: hasPermission("operator.view_openmic"),
-            view_dediche: hasPermission("operator.view_dediche"),
-            openmic_manage: hasPermission("operator.openmic_manage"),
-            dediche_manage: hasPermission("operator.dediche_manage"),
-            // Assistente
+            centro_view: hasPermission("operator.centro_view") || hasPermission("operator.view_centro"),
+            openmic_view: hasPermission("operator.openmic_view") || hasPermission("operator.view_openmic"),
+            openmic_partial: hasPermission("operator.openmic_partial") || hasPermission("operator.openmic_manage"),
+            openmic_full: hasPermission("operator.openmic_full"),
+            dediche_view: hasPermission("operator.dediche_view") || hasPermission("operator.view_dediche"),
+            dediche_partial: hasPermission("operator.dediche_partial") || hasPermission("operator.dediche_manage"),
+            dediche_full: hasPermission("operator.dediche_full"),
             assistente_view: hasPermission("operator.assistente_view"),
             assistente_manage: hasPermission("operator.assistente_manage"),
             assistente_full: hasPermission("operator.assistente_full"),
-            // Trasmetti
             trasmetti_view: hasPermission("operator.trasmetti_view"),
             trasmetti_manage: hasPermission("operator.trasmetti_manage"),
             trasmetti_full: hasPermission("operator.trasmetti_full"),
@@ -194,7 +164,6 @@ export function AdminOperatorsTab() {
       permissionName: string;
       granted: boolean;
     }) => {
-      // Get permission ID
       const { data: perm } = await supabase
         .from("permissions")
         .select("id")
@@ -203,7 +172,6 @@ export function AdminOperatorsTab() {
 
       if (!perm) throw new Error("Permission not found");
 
-      // Upsert user_permissions
       const { error } = await supabase.from("user_permissions").upsert(
         {
           user_id: userId,
@@ -225,7 +193,6 @@ export function AdminOperatorsTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["operators"] });
-      toast({ title: "Permesso aggiornato" });
     },
     onError: (err: any) => {
       toast({
@@ -236,24 +203,22 @@ export function AdminOperatorsTab() {
     },
   });
 
-  // Handle permission toggle
   const handlePermissionToggle = (
     operator: OperatorUser,
     permKey: keyof OperatorUser["permissions"],
     value: boolean
   ) => {
-    // Map UI key to database permission name
     const permMap: Record<string, string> = {
-      view_centro: "operator.view_centro",
-      view_openmic: "operator.view_openmic",
-      view_dediche: "operator.view_dediche",
-      openmic_manage: "operator.openmic_manage",
-      dediche_manage: "operator.dediche_manage",
-      // Assistente
+      centro_view: "operator.centro_view",
+      openmic_view: "operator.openmic_view",
+      openmic_partial: "operator.openmic_partial",
+      openmic_full: "operator.openmic_full",
+      dediche_view: "operator.dediche_view",
+      dediche_partial: "operator.dediche_partial",
+      dediche_full: "operator.dediche_full",
       assistente_view: "operator.assistente_view",
       assistente_manage: "operator.assistente_manage",
       assistente_full: "operator.assistente_full",
-      // Trasmetti
       trasmetti_view: "operator.trasmetti_view",
       trasmetti_manage: "operator.trasmetti_manage",
       trasmetti_full: "operator.trasmetti_full",
@@ -262,12 +227,6 @@ export function AdminOperatorsTab() {
     const permName = permMap[permKey];
     if (!permName) return;
 
-    // If enabling "manage", also ensure view is enabled
-    if (value && permKey.includes("_manage")) {
-      const viewKey = permKey.replace("_manage", "").replace("openmic", "view_openmic").replace("dediche", "view_dediche");
-      // This is simplified; in production, you'd chain the mutations
-    }
-
     updatePermission.mutate({
       userId: operator.user_id,
       permissionName: permName,
@@ -275,56 +234,84 @@ export function AdminOperatorsTab() {
     });
   };
 
+  // Helper to set permission level for a section
+  const setPermissionLevel = (operator: OperatorUser, section: string, level: PermissionLevel) => {
+    const permKeys: Record<string, (keyof OperatorUser["permissions"])[]> = {
+      centro: ['centro_view'],
+      openmic: ['openmic_view', 'openmic_partial', 'openmic_full'],
+      dediche: ['dediche_view', 'dediche_partial', 'dediche_full'],
+      assistente: ['assistente_view', 'assistente_manage', 'assistente_full'],
+      trasmetti: ['trasmetti_view', 'trasmetti_manage', 'trasmetti_full'],
+    };
+
+    const keys = permKeys[section] || [];
+    const grants: Record<PermissionLevel, boolean[]> = {
+      none: [false, false, false],
+      view: [true, false, false],
+      partial: [true, true, false],
+      full: [true, true, true],
+    };
+
+    const values = grants[level] || [false, false, false];
+    keys.forEach((key, idx) => {
+      handlePermissionToggle(operator, key, values[idx] ?? false);
+    });
+  };
+
+  // Helper to get current permission level
+  const getPermissionLevel = (operator: OperatorUser, section: string): PermissionLevel => {
+    const p = operator.permissions;
+    switch (section) {
+      case 'centro':
+        return p.centro_view ? 'view' : 'none';
+      case 'openmic':
+        if (p.openmic_full) return 'full';
+        if (p.openmic_partial) return 'partial';
+        if (p.openmic_view) return 'view';
+        return 'none';
+      case 'dediche':
+        if (p.dediche_full) return 'full';
+        if (p.dediche_partial) return 'partial';
+        if (p.dediche_view) return 'view';
+        return 'none';
+      case 'assistente':
+        if (p.assistente_full) return 'full';
+        if (p.assistente_manage) return 'partial';
+        if (p.assistente_view) return 'view';
+        return 'none';
+      case 'trasmetti':
+        if (p.trasmetti_full) return 'full';
+        if (p.trasmetti_manage) return 'partial';
+        if (p.trasmetti_view) return 'view';
+        return 'none';
+      default:
+        return 'none';
+    }
+  };
+
   // Create new operator
   const handleCreateOperator = async () => {
     if (!newOperatorUsername || !newOperatorPassword) {
-      toast({
-        title: "Dati mancanti",
-        description: "Inserisci username e password",
-        variant: "destructive",
-      });
+      toast({ title: "Dati mancanti", description: "Inserisci username e password", variant: "destructive" });
       return;
     }
-
     if (newOperatorUsername.length < 3) {
-      toast({
-        title: "Username troppo corto",
-        description: "L'username deve avere almeno 3 caratteri",
-        variant: "destructive",
-      });
+      toast({ title: "Username troppo corto", description: "Min 3 caratteri", variant: "destructive" });
       return;
     }
-
     if (newOperatorPassword.length < 6) {
-      toast({
-        title: "Password troppo corta",
-        description: "La password deve avere almeno 6 caratteri",
-        variant: "destructive",
-      });
+      toast({ title: "Password troppo corta", description: "Min 6 caratteri", variant: "destructive" });
       return;
     }
 
     setIsCreating(true);
     try {
-      // Use admin function to create user (same as staff)
       const { data, error } = await supabase.functions.invoke("admin-credentials-update", {
-        body: {
-          action: "create",
-          username: newOperatorUsername.trim().toLowerCase(),
-          password: newOperatorPassword,
-          role: "operator",
-        },
+        body: { action: "create", username: newOperatorUsername.trim().toLowerCase(), password: newOperatorPassword, role: "operator" },
       });
-
       if (error) throw error;
 
-      adminAuditLog({
-        action: "operator.create",
-        section: "operators",
-        entity: "user",
-        metadata: { username: newOperatorUsername },
-      });
-
+      adminAuditLog({ action: "operator.create", section: "operators", entity: "user", metadata: { username: newOperatorUsername } });
       toast({ title: "Operatore creato", description: newOperatorUsername });
       setShowCreateDialog(false);
       setNewOperatorUsername("");
@@ -332,94 +319,44 @@ export function AdminOperatorsTab() {
       setShowPassword(false);
       refetch();
     } catch (err: any) {
-      toast({
-        title: "Errore creazione",
-        description: err.message,
-        variant: "destructive",
-      });
+      toast({ title: "Errore creazione", description: err.message, variant: "destructive" });
     } finally {
       setIsCreating(false);
     }
   };
 
-  // Delete operator - using edge function for full cleanup
+  // Delete operator
   const handleDeleteOperator = async (userId: string) => {
     try {
-      // Find the operator's username from our local data
       const operator = operators.find(op => op.user_id === userId);
       if (!operator) {
-        toast({
-          title: "Errore",
-          description: "Operatore non trovato",
-          variant: "destructive",
-        });
+        toast({ title: "Errore", description: "Operatore non trovato", variant: "destructive" });
         return;
       }
-
       const username = operator.display_name || operator.email;
-      
-      // Call edge function to do full cleanup
-      const { data, error } = await supabase.functions.invoke("admin-credentials-update", {
-        body: {
-          action: "deleteOperator",
-          username: username,
-        },
+      const { error } = await supabase.functions.invoke("admin-credentials-update", {
+        body: { action: "deleteOperator", username },
       });
-
       if (error) throw error;
 
-      adminAuditLog({
-        action: "operator.delete",
-        section: "operators",
-        entity: "user",
-        entity_id: userId,
-        metadata: { username },
-      });
-
-      toast({ title: "Operatore eliminato completamente" });
+      adminAuditLog({ action: "operator.delete", section: "operators", entity: "user", entity_id: userId, metadata: { username } });
+      toast({ title: "Operatore eliminato" });
       setShowDeleteDialog(null);
       refetch();
     } catch (err: any) {
-      toast({
-        title: "Errore",
-        description: err.message,
-        variant: "destructive",
-      });
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
     }
   };
 
-  // Edit operator credentials
+  // Edit credentials
   const handleEditCredentials = async () => {
     if (!editingOperator) return;
-
     const originalUsername = editingOperator.display_name || editingOperator.email;
     const usernameChanged = editUsername.trim() && editUsername.trim() !== originalUsername;
     const passwordChanged = editPassword.trim().length > 0;
 
     if (!usernameChanged && !passwordChanged) {
-      toast({
-        title: "Nessuna modifica",
-        description: "Modifica almeno username o password",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (usernameChanged && editUsername.trim().length < 3) {
-      toast({
-        title: "Username troppo corto",
-        description: "L'username deve avere almeno 3 caratteri",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (passwordChanged && editPassword.length < 6) {
-      toast({
-        title: "Password troppo corta",
-        description: "La password deve avere almeno 6 caratteri",
-        variant: "destructive",
-      });
+      toast({ title: "Nessuna modifica", description: "Modifica almeno username o password", variant: "destructive" });
       return;
     }
 
@@ -433,35 +370,17 @@ export function AdminOperatorsTab() {
           password: passwordChanged ? editPassword : undefined,
         },
       });
-
       if (error) throw error;
       if (!data?.success) throw new Error(data?.error || "Errore");
 
-      const changes = [];
-      if (usernameChanged) changes.push("username");
-      if (passwordChanged) changes.push("password");
-
-      adminAuditLog({
-        action: "operator.credentials_update",
-        section: "operators",
-        entity: "user",
-        entity_id: editingOperator.user_id,
-        metadata: { changes, newUsername: usernameChanged ? editUsername : undefined },
-      });
-
-      toast({ title: "Credenziali aggiornate", description: changes.join(", ") });
+      toast({ title: "Credenziali aggiornate" });
       setShowEditDialog(false);
       setEditingOperator(null);
       setEditUsername("");
       setEditPassword("");
-      setShowEditPassword(false);
       refetch();
     } catch (err: any) {
-      toast({
-        title: "Errore",
-        description: err.message,
-        variant: "destructive",
-      });
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
     } finally {
       setIsEditing(false);
     }
@@ -478,14 +397,14 @@ export function AdminOperatorsTab() {
   return (
     <div className="space-y-6 p-4 md:p-6 max-w-4xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2">
             <Shield className="w-5 h-5 text-primary" />
             Gestione Operatori
           </h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Gli operatori possono gestire Open Mic e Dediche durante gli eventi, senza accesso a funzioni distruttive.
+            Configura i permessi per ogni operatore su 5 sezioni.
           </p>
         </div>
         <Button onClick={() => setShowCreateDialog(true)} size="sm" className="gap-2">
@@ -500,9 +419,7 @@ export function AdminOperatorsTab() {
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <User className="w-12 h-12 text-muted-foreground/50 mb-4" />
             <h3 className="font-medium mb-1">Nessun operatore</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Crea il primo operatore per gestire gli eventi dal vivo
-            </p>
+            <p className="text-sm text-muted-foreground mb-4">Crea il primo operatore per gestire gli eventi</p>
             <Button onClick={() => setShowCreateDialog(true)} variant="outline" size="sm">
               <Plus className="w-4 h-4 mr-2" />
               Crea Operatore
@@ -512,20 +429,10 @@ export function AdminOperatorsTab() {
       ) : (
         <div className="space-y-3">
           {operators.map((operator) => (
-            <Card
-              key={operator.user_id}
-              className={cn(
-                "transition-all",
-                expandedUserId === operator.user_id && "ring-2 ring-primary/20"
-              )}
-            >
+            <Card key={operator.user_id} className={cn("transition-all", expandedUserId === operator.user_id && "ring-2 ring-primary/20")}>
               <CardHeader
                 className="cursor-pointer py-4"
-                onClick={() =>
-                  setExpandedUserId(
-                    expandedUserId === operator.user_id ? null : operator.user_id
-                  )
-                }
+                onClick={() => setExpandedUserId(expandedUserId === operator.user_id ? null : operator.user_id)}
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -533,47 +440,19 @@ export function AdminOperatorsTab() {
                       <User className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <CardTitle className="text-base">
-                        {operator.display_name || operator.email}
-                      </CardTitle>
-                      <CardDescription className="text-xs">
-                        {operator.email}
-                      </CardDescription>
+                      <CardTitle className="text-base">{operator.display_name || operator.email}</CardTitle>
+                      <CardDescription className="text-xs">{operator.email}</CardDescription>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="flex gap-1 flex-wrap">
-                      {operator.permissions.view_centro && (
-                        <Badge variant="secondary" className="text-[10px] px-1.5">
-                          <Bell className="w-3 h-3" />
-                        </Badge>
-                      )}
-                      {operator.permissions.view_openmic && (
-                        <Badge variant="secondary" className="text-[10px] px-1.5">
-                          <Music className="w-3 h-3" />
-                        </Badge>
-                      )}
-                      {operator.permissions.view_dediche && (
-                        <Badge variant="secondary" className="text-[10px] px-1.5">
-                          <MessageSquare className="w-3 h-3" />
-                        </Badge>
-                      )}
-                      {(operator.permissions.assistente_view || operator.permissions.assistente_manage || operator.permissions.assistente_full) && (
-                        <Badge variant="secondary" className="text-[10px] px-1.5">
-                          <Bot className="w-3 h-3" />
-                        </Badge>
-                      )}
-                      {(operator.permissions.trasmetti_view || operator.permissions.trasmetti_manage || operator.permissions.trasmetti_full) && (
-                        <Badge variant="secondary" className="text-[10px] px-1.5">
-                          <Tv className="w-3 h-3" />
-                        </Badge>
-                      )}
+                      {operator.permissions.centro_view && <Badge variant="secondary" className="text-[10px] px-1.5"><Bell className="w-3 h-3" /></Badge>}
+                      {(operator.permissions.openmic_view || operator.permissions.openmic_partial || operator.permissions.openmic_full) && <Badge variant="secondary" className="text-[10px] px-1.5"><Music className="w-3 h-3" /></Badge>}
+                      {(operator.permissions.dediche_view || operator.permissions.dediche_partial || operator.permissions.dediche_full) && <Badge variant="secondary" className="text-[10px] px-1.5"><MessageSquare className="w-3 h-3" /></Badge>}
+                      {(operator.permissions.assistente_view || operator.permissions.assistente_manage || operator.permissions.assistente_full) && <Badge variant="secondary" className="text-[10px] px-1.5"><Bot className="w-3 h-3" /></Badge>}
+                      {(operator.permissions.trasmetti_view || operator.permissions.trasmetti_manage || operator.permissions.trasmetti_full) && <Badge variant="secondary" className="text-[10px] px-1.5"><Tv className="w-3 h-3" /></Badge>}
                     </div>
-                    {expandedUserId === operator.user_id ? (
-                      <ChevronUp className="w-4 h-4 text-muted-foreground" />
-                    ) : (
-                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                    )}
+                    {expandedUserId === operator.user_id ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
                   </div>
                 </div>
               </CardHeader>
@@ -582,285 +461,109 @@ export function AdminOperatorsTab() {
                 <CardContent className="pt-0 space-y-6">
                   <Separator />
 
-                  {/* Section Visibility */}
-                  <div>
-                    <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
-                      <Eye className="w-4 h-4" />
-                      Sezioni Visibili
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                      {/* Centro */}
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                        <div className="flex items-center gap-2">
-                          <Bell className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm">Centro</span>
-                        </div>
-                        <Switch
-                          checked={operator.permissions.view_centro}
-                          onCheckedChange={(v) =>
-                            handlePermissionToggle(operator, "view_centro", v)
-                          }
-                        />
-                      </div>
-                      {/* Open Mic */}
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                        <div className="flex items-center gap-2">
-                          <Music className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm">Open Mic</span>
-                        </div>
-                        <Switch
-                          checked={operator.permissions.view_openmic}
-                          onCheckedChange={(v) =>
-                            handlePermissionToggle(operator, "view_openmic", v)
-                          }
-                        />
-                      </div>
-                      {/* Dediche */}
-                      <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                        <div className="flex items-center gap-2">
-                          <MessageSquare className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-sm">Dediche</span>
-                        </div>
-                        <Switch
-                          checked={operator.permissions.view_dediche}
-                          onCheckedChange={(v) =>
-                            handlePermissionToggle(operator, "view_dediche", v)
-                          }
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Levels */}
                   <div>
                     <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
                       <Settings2 className="w-4 h-4" />
-                      Livello Operatività
+                      Permessi per Sezione
                     </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {/* Open Mic actions */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {/* Centro */}
+                      <div className="p-4 rounded-lg border space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Bell className="w-4 h-4 text-primary" />
+                          <span className="font-medium text-sm">Centro</span>
+                        </div>
+                        <div className="flex items-center justify-between pl-6">
+                          <span className="text-sm text-muted-foreground">Accesso</span>
+                          <Switch checked={operator.permissions.centro_view} onCheckedChange={(v) => handlePermissionToggle(operator, "centro_view", v)} />
+                        </div>
+                      </div>
+
+                      {/* Open Mic */}
                       <div className="p-4 rounded-lg border space-y-3">
                         <div className="flex items-center gap-2">
                           <Music className="w-4 h-4 text-primary" />
                           <span className="font-medium text-sm">Open Mic</span>
                         </div>
                         <div className="space-y-2 pl-6">
-                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="radio"
-                              name={`openmic-${operator.user_id}`}
-                              checked={!operator.permissions.openmic_manage}
-                              onChange={() =>
-                                handlePermissionToggle(operator, "openmic_manage", false)
-                              }
-                              className="accent-primary"
-                            />
-                            Solo visualizzazione
-                          </Label>
-                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="radio"
-                              name={`openmic-${operator.user_id}`}
-                              checked={operator.permissions.openmic_manage}
-                              onChange={() =>
-                                handlePermissionToggle(operator, "openmic_manage", true)
-                              }
-                              className="accent-primary"
-                            />
-                            Gestione completa (coda)
-                          </Label>
+                          {(['none', 'view', 'partial', 'full'] as PermissionLevel[]).map(level => (
+                            <Label key={level} className="flex items-center gap-2 text-sm cursor-pointer">
+                              <input type="radio" name={`openmic-${operator.user_id}`} checked={getPermissionLevel(operator, 'openmic') === level} onChange={() => setPermissionLevel(operator, 'openmic', level)} className="accent-primary" />
+                              {level === 'none' && 'Nessun accesso'}
+                              {level === 'view' && 'Solo visualizzazione'}
+                              {level === 'partial' && 'Gestione parziale'}
+                              {level === 'full' && 'Gestione completa'}
+                            </Label>
+                          ))}
                         </div>
                       </div>
 
-                      {/* Dediche actions */}
+                      {/* Dediche */}
                       <div className="p-4 rounded-lg border space-y-3">
                         <div className="flex items-center gap-2">
                           <MessageSquare className="w-4 h-4 text-primary" />
                           <span className="font-medium text-sm">Dediche</span>
                         </div>
                         <div className="space-y-2 pl-6">
-                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="radio"
-                              name={`dediche-${operator.user_id}`}
-                              checked={!operator.permissions.dediche_manage}
-                              onChange={() =>
-                                handlePermissionToggle(operator, "dediche_manage", false)
-                              }
-                              className="accent-primary"
-                            />
-                            Solo lettura
-                          </Label>
-                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="radio"
-                              name={`dediche-${operator.user_id}`}
-                              checked={operator.permissions.dediche_manage}
-                              onChange={() =>
-                                handlePermissionToggle(operator, "dediche_manage", true)
-                              }
-                              className="accent-primary"
-                            />
-                            Gestione completa (risposte)
-                          </Label>
+                          {(['none', 'view', 'partial', 'full'] as PermissionLevel[]).map(level => (
+                            <Label key={level} className="flex items-center gap-2 text-sm cursor-pointer">
+                              <input type="radio" name={`dediche-${operator.user_id}`} checked={getPermissionLevel(operator, 'dediche') === level} onChange={() => setPermissionLevel(operator, 'dediche', level)} className="accent-primary" />
+                              {level === 'none' && 'Nessun accesso'}
+                              {level === 'view' && 'Solo visualizzazione'}
+                              {level === 'partial' && 'Gestione parziale'}
+                              {level === 'full' && 'Gestione completa'}
+                            </Label>
+                          ))}
                         </div>
                       </div>
 
-                      {/* Assistente actions - 3 livelli */}
+                      {/* Assistente */}
                       <div className="p-4 rounded-lg border space-y-3">
                         <div className="flex items-center gap-2">
                           <Bot className="w-4 h-4 text-primary" />
                           <span className="font-medium text-sm">Assistente</span>
                         </div>
                         <div className="space-y-2 pl-6">
-                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="radio"
-                              name={`assistente-${operator.user_id}`}
-                              checked={!operator.permissions.assistente_view && !operator.permissions.assistente_manage && !operator.permissions.assistente_full}
-                              onChange={() => {
-                                handlePermissionToggle(operator, "assistente_view", false);
-                                handlePermissionToggle(operator, "assistente_manage", false);
-                                handlePermissionToggle(operator, "assistente_full", false);
-                              }}
-                              className="accent-primary"
-                            />
-                            Nessun accesso
-                          </Label>
-                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="radio"
-                              name={`assistente-${operator.user_id}`}
-                              checked={operator.permissions.assistente_view && !operator.permissions.assistente_manage && !operator.permissions.assistente_full}
-                              onChange={() => {
-                                handlePermissionToggle(operator, "assistente_view", true);
-                                handlePermissionToggle(operator, "assistente_manage", false);
-                                handlePermissionToggle(operator, "assistente_full", false);
-                              }}
-                              className="accent-primary"
-                            />
-                            Solo visualizzazione
-                          </Label>
-                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="radio"
-                              name={`assistente-${operator.user_id}`}
-                              checked={operator.permissions.assistente_manage && !operator.permissions.assistente_full}
-                              onChange={() => {
-                                handlePermissionToggle(operator, "assistente_view", true);
-                                handlePermissionToggle(operator, "assistente_manage", true);
-                                handlePermissionToggle(operator, "assistente_full", false);
-                              }}
-                              className="accent-primary"
-                            />
-                            Gestione (no elimina)
-                          </Label>
-                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="radio"
-                              name={`assistente-${operator.user_id}`}
-                              checked={operator.permissions.assistente_full}
-                              onChange={() => {
-                                handlePermissionToggle(operator, "assistente_view", true);
-                                handlePermissionToggle(operator, "assistente_manage", true);
-                                handlePermissionToggle(operator, "assistente_full", true);
-                              }}
-                              className="accent-primary"
-                            />
-                            Controllo completo
-                          </Label>
+                          {(['none', 'view', 'partial', 'full'] as PermissionLevel[]).map(level => (
+                            <Label key={level} className="flex items-center gap-2 text-sm cursor-pointer">
+                              <input type="radio" name={`assistente-${operator.user_id}`} checked={getPermissionLevel(operator, 'assistente') === level} onChange={() => setPermissionLevel(operator, 'assistente', level)} className="accent-primary" />
+                              {level === 'none' && 'Nessun accesso'}
+                              {level === 'view' && 'Solo visualizzazione'}
+                              {level === 'partial' && 'Gestione parziale'}
+                              {level === 'full' && 'Gestione completa'}
+                            </Label>
+                          ))}
                         </div>
                       </div>
 
-                      {/* Trasmetti actions - 3 livelli */}
+                      {/* Trasmetti */}
                       <div className="p-4 rounded-lg border space-y-3">
                         <div className="flex items-center gap-2">
                           <Tv className="w-4 h-4 text-primary" />
                           <span className="font-medium text-sm">Trasmetti</span>
                         </div>
                         <div className="space-y-2 pl-6">
-                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="radio"
-                              name={`trasmetti-${operator.user_id}`}
-                              checked={!operator.permissions.trasmetti_view && !operator.permissions.trasmetti_manage && !operator.permissions.trasmetti_full}
-                              onChange={() => {
-                                handlePermissionToggle(operator, "trasmetti_view", false);
-                                handlePermissionToggle(operator, "trasmetti_manage", false);
-                                handlePermissionToggle(operator, "trasmetti_full", false);
-                              }}
-                              className="accent-primary"
-                            />
-                            Nessun accesso
-                          </Label>
-                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="radio"
-                              name={`trasmetti-${operator.user_id}`}
-                              checked={operator.permissions.trasmetti_view && !operator.permissions.trasmetti_manage && !operator.permissions.trasmetti_full}
-                              onChange={() => {
-                                handlePermissionToggle(operator, "trasmetti_view", true);
-                                handlePermissionToggle(operator, "trasmetti_manage", false);
-                                handlePermissionToggle(operator, "trasmetti_full", false);
-                              }}
-                              className="accent-primary"
-                            />
-                            Solo visualizzazione
-                          </Label>
-                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="radio"
-                              name={`trasmetti-${operator.user_id}`}
-                              checked={operator.permissions.trasmetti_manage && !operator.permissions.trasmetti_full}
-                              onChange={() => {
-                                handlePermissionToggle(operator, "trasmetti_view", true);
-                                handlePermissionToggle(operator, "trasmetti_manage", true);
-                                handlePermissionToggle(operator, "trasmetti_full", false);
-                              }}
-                              className="accent-primary"
-                            />
-                            Gestione (trasmetti)
-                          </Label>
-                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
-                            <input
-                              type="radio"
-                              name={`trasmetti-${operator.user_id}`}
-                              checked={operator.permissions.trasmetti_full}
-                              onChange={() => {
-                                handlePermissionToggle(operator, "trasmetti_view", true);
-                                handlePermissionToggle(operator, "trasmetti_manage", true);
-                                handlePermissionToggle(operator, "trasmetti_full", true);
-                              }}
-                              className="accent-primary"
-                            />
-                            Controllo completo (scalette)
-                          </Label>
+                          {(['none', 'view', 'partial', 'full'] as PermissionLevel[]).map(level => (
+                            <Label key={level} className="flex items-center gap-2 text-sm cursor-pointer">
+                              <input type="radio" name={`trasmetti-${operator.user_id}`} checked={getPermissionLevel(operator, 'trasmetti') === level} onChange={() => setPermissionLevel(operator, 'trasmetti', level)} className="accent-primary" />
+                              {level === 'none' && 'Nessun accesso'}
+                              {level === 'view' && 'Solo visualizzazione'}
+                              {level === 'partial' && 'Gestione parziale'}
+                              {level === 'full' && 'Gestione completa'}
+                            </Label>
+                          ))}
                         </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Action buttons */}
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setEditingOperator(operator);
-                        setEditUsername(operator.display_name || operator.email);
-                        setEditPassword("");
-                        setShowEditDialog(true);
-                      }}
-                    >
+                  <div className="flex justify-end gap-2 flex-wrap">
+                    <Button variant="outline" size="sm" onClick={() => { setEditingOperator(operator); setEditUsername(operator.display_name || operator.email); setEditPassword(""); setShowEditDialog(true); }}>
                       <Pencil className="w-4 h-4 mr-2" />
                       Modifica Credenziali
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => setShowDeleteDialog(operator.user_id)}
-                    >
+                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setShowDeleteDialog(operator.user_id)}>
                       <Trash2 className="w-4 h-4 mr-2" />
                       Rimuovi
                     </Button>
@@ -876,82 +579,39 @@ export function AdminOperatorsTab() {
       <Card className="bg-muted/30 border-muted">
         <CardContent className="py-4">
           <p className="text-sm text-muted-foreground">
-            <strong>Nota:</strong> Gli operatori non vedono mai pulsanti di reset, eliminazione o configurazioni avanzate.
-            Possono solo gestire la coda e/o rispondere ai messaggi, in base ai permessi assegnati.
+            <strong>Legenda:</strong> Gestione parziale = può modificare ma non eliminare. Gestione completa = accesso totale alla sezione.
           </p>
         </CardContent>
       </Card>
 
       {/* Create Dialog */}
-      <Dialog open={showCreateDialog} onOpenChange={(open) => {
-        setShowCreateDialog(open);
-        if (!open) {
-          setNewOperatorUsername("");
-          setNewOperatorPassword("");
-          setShowPassword(false);
-        }
-      }}>
+      <Dialog open={showCreateDialog} onOpenChange={(open) => { setShowCreateDialog(open); if (!open) { setNewOperatorUsername(""); setNewOperatorPassword(""); setShowPassword(false); } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Nuovo Operatore</DialogTitle>
-            <DialogDescription>
-              Crea un account operatore per gestire gli eventi dal vivo.
-              L'operatore accederà dal pannello admin con username e password.
-            </DialogDescription>
+            <DialogDescription>Crea un account operatore per gestire gli eventi dal vivo.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                type="text"
-                placeholder="es. mario_rossi"
-                value={newOperatorUsername}
-                onChange={(e) => setNewOperatorUsername(e.target.value)}
-                maxLength={50}
-                autoComplete="off"
-              />
-              <p className="text-xs text-muted-foreground">
-                Solo lettere, numeri e underscore. Min 3 caratteri.
-              </p>
+              <Input id="username" type="text" placeholder="es. mario_rossi" value={newOperatorUsername} onChange={(e) => setNewOperatorUsername(e.target.value)} maxLength={50} autoComplete="off" />
+              <p className="text-xs text-muted-foreground">Min 3 caratteri</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  value={newOperatorPassword}
-                  onChange={(e) => setNewOperatorPassword(e.target.value)}
-                  maxLength={100}
-                  className="pr-10"
-                  autoComplete="new-password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  tabIndex={-1}
-                >
+                <Input id="password" type={showPassword ? "text" : "password"} placeholder="••••••••" value={newOperatorPassword} onChange={(e) => setNewOperatorPassword(e.target.value)} maxLength={100} className="pr-10" autoComplete="new-password" />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" tabIndex={-1}>
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Minimo 6 caratteri
-              </p>
+              <p className="text-xs text-muted-foreground">Min 6 caratteri</p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
-              Annulla
-            </Button>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>Annulla</Button>
             <Button onClick={handleCreateOperator} disabled={isCreating}>
-              {isCreating ? (
-                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Plus className="w-4 h-4 mr-2" />
-              )}
+              {isCreating ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Plus className="w-4 h-4 mr-2" />}
               Crea
             </Button>
           </DialogFooter>
@@ -963,97 +623,41 @@ export function AdminOperatorsTab() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Rimuovi Operatore</AlertDialogTitle>
-            <AlertDialogDescription>
-              L'operatore non potrà più accedere alla dashboard admin.
-              L'account utente rimarrà attivo per la community.
-            </AlertDialogDescription>
+            <AlertDialogDescription>L'operatore non potrà più accedere alla dashboard admin.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Annulla</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => showDeleteDialog && handleDeleteOperator(showDeleteDialog)}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              Rimuovi
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => showDeleteDialog && handleDeleteOperator(showDeleteDialog)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Rimuovi</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       {/* Edit Credentials Dialog */}
-      <Dialog open={showEditDialog} onOpenChange={(open) => {
-        setShowEditDialog(open);
-        if (!open) {
-          setEditingOperator(null);
-          setEditUsername("");
-          setEditPassword("");
-          setShowEditPassword(false);
-        }
-      }}>
+      <Dialog open={showEditDialog} onOpenChange={(open) => { setShowEditDialog(open); if (!open) { setEditingOperator(null); setEditUsername(""); setEditPassword(""); setShowEditPassword(false); } }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Pencil className="w-5 h-5 text-primary" />
-              Modifica Credenziali
-            </DialogTitle>
-            <DialogDescription>
-              Modifica username e/o password per <strong>{editingOperator?.display_name || editingOperator?.email}</strong>
-            </DialogDescription>
+            <DialogTitle className="flex items-center gap-2"><Pencil className="w-5 h-5 text-primary" />Modifica Credenziali</DialogTitle>
+            <DialogDescription>Modifica username e/o password per <strong>{editingOperator?.display_name || editingOperator?.email}</strong></DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="edit-username">Username</Label>
-              <Input
-                id="edit-username"
-                type="text"
-                value={editUsername}
-                onChange={(e) => setEditUsername(e.target.value)}
-                placeholder="Nuovo username"
-                maxLength={50}
-              />
-              <p className="text-xs text-muted-foreground">
-                Lascia invariato per mantenere l'username attuale
-              </p>
+              <Input id="edit-username" type="text" value={editUsername} onChange={(e) => setEditUsername(e.target.value)} placeholder="Nuovo username" maxLength={50} />
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-password">Nuova Password</Label>
               <div className="relative">
-                <Input
-                  id="edit-password"
-                  type={showEditPassword ? "text" : "password"}
-                  value={editPassword}
-                  onChange={(e) => setEditPassword(e.target.value)}
-                  placeholder="Lascia vuoto per non cambiare"
-                  className="pr-10"
-                  maxLength={100}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowEditPassword(!showEditPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  tabIndex={-1}
-                >
+                <Input id="edit-password" type={showEditPassword ? "text" : "password"} value={editPassword} onChange={(e) => setEditPassword(e.target.value)} placeholder="Lascia vuoto per non cambiare" className="pr-10" maxLength={100} />
+                <button type="button" onClick={() => setShowEditPassword(!showEditPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors" tabIndex={-1}>
                   {showEditPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Lascia vuoto per mantenere la password attuale
-              </p>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowEditDialog(false)}>
-              Annulla
-            </Button>
-            <Button
-              onClick={handleEditCredentials}
-              disabled={isEditing || (!editPassword.trim() && editUsername === (editingOperator?.display_name || editingOperator?.email))}
-            >
-              {isEditing ? (
-                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Pencil className="w-4 h-4 mr-2" />
-              )}
+            <Button variant="outline" onClick={() => setShowEditDialog(false)}>Annulla</Button>
+            <Button onClick={handleEditCredentials} disabled={isEditing || (!editPassword.trim() && editUsername === (editingOperator?.display_name || editingOperator?.email))}>
+              {isEditing ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Pencil className="w-4 h-4 mr-2" />}
               Salva
             </Button>
           </DialogFooter>
