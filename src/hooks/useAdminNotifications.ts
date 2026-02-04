@@ -46,8 +46,8 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
   
   // Track current channel for cleanup
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
-  // Track last seen assistant message for polling-based notifications
-  const lastAssistantMsgIdRef = useRef<string | null>(null);
+  // Track last seen assistant message timestamp (more reliable than id since is_read can be set immediately)
+  const lastAssistantMsgTimeRef = useRef<string | null>(null);
 
   const fetchJoinRequests = useCallback(async () => {
     // Only fetch if community is enabled
@@ -114,16 +114,30 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
       }
 
       // Assistant unread messages count
+      // NOTE: We count conversations with unread user messages OR active conversations with recent messages
+      // This ensures the badge shows even if messages were marked read immediately by the widget
       let assistantCount = 0;
+      
+      // Count unique conversations with unread user messages
       const { data: unreadAssistant } = await supabase
         .from('assistant_messages')
         .select('conversation_id')
         .eq('sender_type', 'user')
         .eq('is_read', false);
       
-      // Count unique conversations with unread user messages
       const uniqueAssistantConvs = new Set((unreadAssistant || []).map(m => m.conversation_id));
       assistantCount = uniqueAssistantConvs.size;
+      
+      // If no unread messages, also count active conversations that have user messages
+      // This handles the case where messages are marked read immediately
+      if (assistantCount === 0) {
+        const { data: activeConvs } = await supabase
+          .from('assistant_conversations')
+          .select('id')
+          .eq('status', 'active');
+          
+        assistantCount = activeConvs?.length || 0;
+      }
 
       setCounts(prev => ({
         ...prev,
@@ -259,36 +273,49 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
     }, 5000);
 
     // Dedicated polling for assistant messages (Realtime can be blocked by RLS)
+    // NOTE: We use created_at timestamp instead of is_read flag because is_read can be set immediately by the user's widget
     const assistantPollInterval = setInterval(async () => {
       try {
-        // Get the latest unread user message
+        // Build time filter: only look at messages from the last 60 seconds
+        const sixtySecondsAgo = new Date(Date.now() - 60 * 1000).toISOString();
+        
+        // Get recent user messages (regardless of is_read)
         const { data: latestMsgs } = await supabase
           .from('assistant_messages')
           .select('id, conversation_id, message_text, sender_type, created_at')
           .eq('sender_type', 'user')
-          .eq('is_read', false)
+          .gte('created_at', sixtySecondsAgo)
           .order('created_at', { ascending: false })
-          .limit(5);
+          .limit(10);
 
         if (latestMsgs && latestMsgs.length > 0) {
-          const latestMsg = latestMsgs[0];
-          // If we have a new message we haven't seen before, dispatch event
-          if (latestMsg.id !== lastAssistantMsgIdRef.current) {
-            console.log('[AdminNotifications] Poll detected new assistant message:', latestMsg.id);
-            lastAssistantMsgIdRef.current = latestMsg.id;
-            
-            // Dispatch event for toast
-            window.dispatchEvent(new CustomEvent('new-assistant-message', { 
-              detail: {
-                id: latestMsg.id,
-                conversation_id: latestMsg.conversation_id,
-                message_text: latestMsg.message_text,
-                sender_type: latestMsg.sender_type,
-              }
-            }));
-            
-            // Also refresh counts
-            fetchCounts();
+          // Check if we have any message newer than what we've already seen
+          const lastSeenTime = lastAssistantMsgTimeRef.current;
+          
+          for (const msg of latestMsgs) {
+            // If we haven't seen any message yet, or this message is newer than what we've seen
+            if (!lastSeenTime || msg.created_at > lastSeenTime) {
+              console.log('[AdminNotifications] Poll detected new assistant message:', msg.id, 'created_at:', msg.created_at);
+              
+              // Update the last seen time to the latest message
+              lastAssistantMsgTimeRef.current = latestMsgs[0].created_at;
+              
+              // Dispatch event for toast
+              window.dispatchEvent(new CustomEvent('new-assistant-message', { 
+                detail: {
+                  id: msg.id,
+                  conversation_id: msg.conversation_id,
+                  message_text: msg.message_text,
+                  sender_type: msg.sender_type,
+                }
+              }));
+              
+              // Also refresh counts
+              fetchCounts();
+              
+              // Only notify for the most recent one in this batch
+              break;
+            }
           }
         }
       } catch (err) {
