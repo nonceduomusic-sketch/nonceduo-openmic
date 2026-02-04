@@ -199,6 +199,26 @@ export function useAssistantConversations() {
     };
   }, [fetchConversations]);
 
+  // Polling fallback: su alcuni device/reti Realtime può non consegnare gli eventi.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      fetchConversations();
+    }, 6000);
+
+    const onVis = () => {
+      if (document.visibilityState === 'visible') {
+        fetchConversations();
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [fetchConversations]);
+
   return {
     conversations,
     loading,

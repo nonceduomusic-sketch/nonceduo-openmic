@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface AssistantMessage {
@@ -21,14 +21,21 @@ export function useAssistantChat(conversationId: string | null) {
   const [messages, setMessages] = useState<AssistantMessage[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchMessages = useCallback(async () => {
+  const didInitialLoadRef = useRef(false);
+
+  const fetchMessages = useCallback(async (opts?: { silent?: boolean }) => {
+    const silent = opts?.silent ?? false;
+
     if (!conversationId) {
       setMessages([]);
       setLoading(false);
+      didInitialLoadRef.current = false;
       return;
     }
 
     try {
+      if (!silent) setLoading(true);
+
       const { data, error } = await supabase
         .from('assistant_messages')
         .select('*')
@@ -56,7 +63,8 @@ export function useAssistantChat(conversationId: string | null) {
     } catch (err) {
       console.error('Error:', err);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
+      didInitialLoadRef.current = true;
     }
   }, [conversationId]);
 
@@ -180,7 +188,7 @@ export function useAssistantChat(conversationId: string | null) {
 
   // Realtime subscription
   useEffect(() => {
-    fetchMessages();
+    fetchMessages({ silent: false });
 
     if (!conversationId) return;
 
@@ -210,6 +218,28 @@ export function useAssistantChat(conversationId: string | null) {
 
     return () => {
       supabase.removeChannel(channel);
+    };
+  }, [conversationId, fetchMessages]);
+
+  // Polling fallback (spunte + nuovi messaggi) – Realtime può essere intermittente
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const interval = setInterval(() => {
+      // Dopo il primo load, evita spinner/flicker durante i refresh
+      fetchMessages({ silent: didInitialLoadRef.current });
+    }, 2500);
+
+    const onVis = () => {
+      if (document.visibilityState === 'visible') {
+        fetchMessages({ silent: true });
+      }
+    };
+
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', onVis);
     };
   }, [conversationId, fetchMessages]);
 

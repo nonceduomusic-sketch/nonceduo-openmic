@@ -151,12 +151,33 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
     }
   }, [formatPreferences]);
 
+  // Prime last-seen assistant message timestamp so we don't toast old messages on load
+  const primeAssistantLastSeen = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from('assistant_messages')
+        .select('created_at')
+        .eq('sender_type', 'user')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) throw error;
+      if (data?.created_at) {
+        lastAssistantMsgTimeRef.current = data.created_at;
+      }
+    } catch (err) {
+      if (import.meta.env.DEV) console.warn('[AdminNotifications] primeAssistantLastSeen failed:', err);
+    }
+  }, []);
+
   // Setup realtime subscriptions based on active formats
   // Android WebSocket connections can be unreliable, so we use polling as backup
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
       await Promise.all([fetchJoinRequests(), fetchCounts()]);
+      await primeAssistantLastSeen();
       setLoading(false);
     };
 
@@ -272,51 +293,41 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
       }
     }, 5000);
 
-    // Dedicated polling for assistant messages (Realtime can be blocked by RLS)
-    // NOTE: We use created_at timestamp instead of is_read flag because is_read can be set immediately by the user's widget
+    // Dedicated polling for assistant messages (Realtime can be unreliable / throttled)
+    // NOTE: We use latest created_at (no fixed time window) to avoid missing messages when timers are throttled.
     const assistantPollInterval = setInterval(async () => {
       try {
-        // Build time filter: only look at messages from the last 60 seconds
-        const sixtySecondsAgo = new Date(Date.now() - 60 * 1000).toISOString();
-        
-        // Get recent user messages (regardless of is_read)
-        const { data: latestMsgs } = await supabase
+        const { data: latest, error } = await supabase
           .from('assistant_messages')
           .select('id, conversation_id, message_text, sender_type, created_at')
           .eq('sender_type', 'user')
-          .gte('created_at', sixtySecondsAgo)
           .order('created_at', { ascending: false })
-          .limit(10);
+          .limit(1)
+          .maybeSingle();
 
-        if (latestMsgs && latestMsgs.length > 0) {
-          // Check if we have any message newer than what we've already seen
-          const lastSeenTime = lastAssistantMsgTimeRef.current;
-          
-          for (const msg of latestMsgs) {
-            // If we haven't seen any message yet, or this message is newer than what we've seen
-            if (!lastSeenTime || msg.created_at > lastSeenTime) {
-              console.log('[AdminNotifications] Poll detected new assistant message:', msg.id, 'created_at:', msg.created_at);
-              
-              // Update the last seen time to the latest message
-              lastAssistantMsgTimeRef.current = latestMsgs[0].created_at;
-              
-              // Dispatch event for toast
-              window.dispatchEvent(new CustomEvent('new-assistant-message', { 
-                detail: {
-                  id: msg.id,
-                  conversation_id: msg.conversation_id,
-                  message_text: msg.message_text,
-                  sender_type: msg.sender_type,
-                }
-              }));
-              
-              // Also refresh counts
-              fetchCounts();
-              
-              // Only notify for the most recent one in this batch
-              break;
-            }
+        if (error) throw error;
+        if (!latest?.created_at) return;
+
+        const lastSeenTime = lastAssistantMsgTimeRef.current;
+        if (!lastSeenTime || latest.created_at > lastSeenTime) {
+          if (import.meta.env.DEV) {
+            console.log('[AdminNotifications] Poll detected new assistant message:', latest.id, 'created_at:', latest.created_at);
           }
+
+          lastAssistantMsgTimeRef.current = latest.created_at;
+
+          window.dispatchEvent(
+            new CustomEvent('new-assistant-message', {
+              detail: {
+                id: latest.id,
+                conversation_id: latest.conversation_id,
+                message_text: latest.message_text,
+                sender_type: latest.sender_type,
+              },
+            })
+          );
+
+          fetchCounts();
         }
       } catch (err) {
         console.error('[AdminNotifications] Assistant poll error:', err);
@@ -342,7 +353,7 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
         channelRef.current = null;
       }
     };
-  }, [fetchJoinRequests, fetchCounts, formatPreferences]);
+  }, [fetchJoinRequests, fetchCounts, formatPreferences, primeAssistantLastSeen]);
 
   // Approve join request
   const approveJoinRequest = async (requestId: string): Promise<boolean> => {
