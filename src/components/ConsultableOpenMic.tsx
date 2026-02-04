@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
-import { Mic2, Music, Eye, Lock, Search, ChevronLeft, Sparkles, Calendar } from 'lucide-react';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Mic2, Music, Eye, Lock, Search, ChevronLeft, Sparkles, Calendar, FileText, MessageCircle } from 'lucide-react';
 import { songs, Song } from '@/data/songs';
 import { SearchBar } from '@/components/SearchBar';
 import { ArtistFilter } from '@/components/ArtistFilter';
@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { SEO } from '@/components/SEO';
-import { LyricsDialog } from '@/components/LyricsDialog';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { cn } from '@/lib/utils';
 import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
 import { useLiveEvent } from '@/hooks/useLiveEvent';
+import { openLyrics } from '@/lib/lyricsLookup';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -64,7 +64,14 @@ export const ConsultableOpenMic: React.FC<ConsultableOpenMicProps> = ({
 }) => {
   const [search, setSearch] = useState('');
   const [artistFilter, setArtistFilter] = useState('all');
-  const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  const navigate = useNavigate();
+  
+  // Handler per aprire i testi direttamente
+  const handleLyrics = useCallback(async (song: Song) => {
+    if (!protectRepertoire) {
+      await openLyrics(song.title, song.artist, navigate);
+    }
+  }, [protectRepertoire, navigate]);
   
   // Get upcoming events and setting for showing them
   const { upcomingEvents } = useLiveEvent();
@@ -197,54 +204,62 @@ export const ConsultableOpenMic: React.FC<ConsultableOpenMicProps> = ({
         {/* Song grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
           {filteredSongs.map((song, index) => (
-            <Card 
+            <div
               key={`${song.title}-${song.artist}-${index}`}
-              className="glass-card hover:border-border/60 transition-all"
+              className="glass-card p-3 sm:p-4 transition-all duration-300 hover:scale-[1.02] group"
             >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="font-display font-bold text-foreground truncate">
+              <div className="flex flex-col gap-3">
+                {/* Icon and song info */}
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center flex-shrink-0">
+                    <Music className="w-5 h-5 text-primary" />
+                  </div>
+
+                  <div className="flex-1 min-w-0 py-0.5">
+                    <h3 className="font-display font-semibold text-foreground text-sm sm:text-base leading-snug break-words">
                       {song.title}
                     </h3>
-                    <p className="text-sm text-muted-foreground truncate">
+                    <p className="text-muted-foreground text-xs sm:text-sm leading-snug mt-1 break-words">
                       {song.artist}
                     </p>
                   </div>
-
-                  <div className="flex gap-2">
-                    {/* Lyrics button - disabled if protected */}
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={protectRepertoire}
-                      onClick={() => !protectRepertoire && setSelectedSong(song)}
-                      className={cn(
-                        "text-xs",
-                        protectRepertoire && "opacity-50 cursor-not-allowed"
-                      )}
-                      title={protectRepertoire ? "Testi disponibili solo durante l'evento" : "Vedi testo"}
-                    >
-                      {protectRepertoire ? (
-                        <Lock className="w-3 h-3" />
-                      ) : (
-                        '📄'
-                      )}
-                    </Button>
-
-                    {/* Booking button - always disabled */}
-                    <Button
-                      size="sm"
-                      disabled
-                      className="opacity-50 cursor-not-allowed"
-                    >
-                      <Lock className="w-3 h-3 mr-1" />
-                      Prenota
-                    </Button>
-                  </div>
                 </div>
-              </CardContent>
-            </Card>
+
+                {/* Buttons - Same style as live OpenMic */}
+                <div className="flex gap-2">
+                  {/* Prenota button - always disabled in preview */}
+                  <Button
+                    disabled
+                    className="flex-1 h-10 sm:h-11 px-3 sm:px-4 text-xs sm:text-sm font-semibold opacity-50 cursor-not-allowed bg-muted text-muted-foreground"
+                    size="default"
+                  >
+                    <Lock className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 flex-shrink-0" />
+                    <span>Prenota</span>
+                  </Button>
+
+                  {/* Testo button - disabled if protected */}
+                  <Button
+                    onClick={() => handleLyrics(song)}
+                    disabled={protectRepertoire}
+                    variant="outline"
+                    className={cn(
+                      "flex-1 h-10 sm:h-11 px-3 sm:px-4 text-xs sm:text-sm font-semibold transition-all",
+                      protectRepertoire 
+                        ? "opacity-50 cursor-not-allowed border-muted text-muted-foreground" 
+                        : "border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+                    )}
+                    size="default"
+                  >
+                    {protectRepertoire ? (
+                      <Lock className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 flex-shrink-0" />
+                    ) : (
+                      <FileText className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 flex-shrink-0" />
+                    )}
+                    <span>Testo</span>
+                  </Button>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
 
@@ -317,16 +332,6 @@ export const ConsultableOpenMic: React.FC<ConsultableOpenMicProps> = ({
           </div>
         )}
       </main>
-
-      {/* Lyrics Dialog - only if not protected */}
-      {selectedSong && !protectRepertoire && (
-        <LyricsDialog
-          songTitle={selectedSong.title}
-          songArtist={selectedSong.artist}
-          open={!!selectedSong}
-          onOpenChange={(open) => !open && setSelectedSong(null)}
-        />
-      )}
 
       {/* Mobile Bottom Navigation */}
       <MobileBottomNav variant="openmic" />
