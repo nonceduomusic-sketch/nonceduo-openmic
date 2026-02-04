@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bot, MessageCircle, Settings, Users, CheckCircle, Clock, Archive, Trash2, Edit2, Check, X, MoreVertical, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Bot, MessageCircle, Settings, Users, CheckCircle, Clock, Archive, Trash2, Edit2, Check, X, MoreVertical, ArrowLeft, ArrowRight, ChevronLeft, Send } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -18,7 +18,7 @@ import { useAssistantChat, type AssistantMessage } from '@/hooks/useAssistantCha
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { toast } from 'sonner';
-
+import { useIsMobile } from '@/hooks/use-mobile';
 // Telegram icon component
 const TelegramIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -177,7 +177,9 @@ const ChatView: React.FC<{
   conversation: AssistantConversation | null;
   onUpdateStatus: (status: 'active' | 'resolved' | 'archived') => void;
   onDeleteConversation: () => void;
-}> = ({ conversationId, conversation, onUpdateStatus, onDeleteConversation }) => {
+  isMobile?: boolean;
+  onBack?: () => void;
+}> = ({ conversationId, conversation, onUpdateStatus, onDeleteConversation, isMobile, onBack }) => {
   const { messages, loading, sendMessage, editMessage, deleteMessage } = useAssistantChat(conversationId);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -225,31 +227,42 @@ const ChatView: React.FC<{
 
   if (!conversationId || !conversation) {
     return (
-      <div className="flex-1 flex items-center justify-center text-muted-foreground">
+      <div className="flex-1 flex items-center justify-center text-muted-foreground p-8">
         <div className="text-center">
           <MessageCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-          <p>Seleziona una conversazione</p>
+          <p className="text-base">Seleziona una conversazione</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col min-h-0">
       {/* Header */}
-      <div className="p-4 border-b flex items-center justify-between">
-        <div>
-          <h3 className="font-semibold">{conversation.user_name || 'Visitatore'}</h3>
-          <p className="text-xs text-muted-foreground">
-            {conversation.user_email || conversation.source_section}
-          </p>
+      <div className={cn(
+        "border-b flex items-center justify-between gap-2",
+        isMobile ? "p-3" : "p-4"
+      )}>
+        <div className="flex items-center gap-2 min-w-0">
+          {isMobile && onBack && (
+            <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0 -ml-2">
+              <ChevronLeft className="w-5 h-5" />
+            </Button>
+          )}
+          <div className="min-w-0">
+            <h3 className={cn("font-semibold truncate", isMobile ? "text-base" : "text-lg")}>
+              {conversation.user_name || 'Visitatore'}
+            </h3>
+            <p className="text-xs text-muted-foreground truncate">
+              {conversation.user_email || conversation.source_section}
+            </p>
+          </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button size="sm" variant="outline">
-                Azioni
-                <MoreVertical className="w-4 h-4 ml-1" />
+              <Button size={isMobile ? "icon" : "sm"} variant="outline" className={isMobile ? "h-9 w-9" : ""}>
+                {isMobile ? <MoreVertical className="w-4 h-4" /> : <>Azioni <MoreVertical className="w-4 h-4 ml-1" /></>}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -300,13 +313,14 @@ const ChatView: React.FC<{
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className={cn("flex-1", isMobile ? "p-3" : "p-4")}>
         <div className="space-y-3">
           {messages.map((msg) => (
             <div
               key={msg.id}
               className={cn(
-                "max-w-[80%] group relative",
+                "group relative",
+                isMobile ? "max-w-[90%]" : "max-w-[80%]",
                 msg.sender_type === 'admin' ? "ml-auto" : ""
               )}
             >
@@ -315,20 +329,21 @@ const ChatView: React.FC<{
                   <Input
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
-                    className="flex-1"
+                    className="flex-1 text-base"
                     autoFocus
                   />
-                  <Button size="icon" variant="ghost" onClick={() => handleEdit(msg.id)}>
+                  <Button size="icon" variant="ghost" onClick={() => handleEdit(msg.id)} className={isMobile ? "h-10 w-10" : ""}>
                     <Check className="w-4 h-4 text-success" />
                   </Button>
-                  <Button size="icon" variant="ghost" onClick={() => setEditingId(null)}>
+                  <Button size="icon" variant="ghost" onClick={() => setEditingId(null)} className={isMobile ? "h-10 w-10" : ""}>
                     <X className="w-4 h-4 text-destructive" />
                   </Button>
                 </div>
               ) : (
                 <div
                   className={cn(
-                    "p-3 rounded-2xl",
+                    "rounded-2xl",
+                    isMobile ? "p-3" : "p-3",
                     msg.sender_type === 'admin'
                       ? "bg-primary text-primary-foreground"
                       : msg.sender_type === 'bot'
@@ -336,9 +351,9 @@ const ChatView: React.FC<{
                         : "bg-accent"
                   )}
                 >
-                  <p className="text-sm whitespace-pre-line">{msg.message_text}</p>
+                  <p className={cn("whitespace-pre-line", isMobile ? "text-base" : "text-sm")}>{msg.message_text}</p>
                   <div className="flex items-center justify-between mt-1">
-                    <span className="text-[10px] opacity-70">
+                    <span className={cn("opacity-70", isMobile ? "text-xs" : "text-[10px]")}>
                       {format(new Date(msg.created_at), 'HH:mm')}
                       {msg.edited_at && ' (modificato)'}
                     </span>
@@ -352,22 +367,25 @@ const ChatView: React.FC<{
                   
                   {/* Edit/Delete buttons for admin messages */}
                   {msg.sender_type === 'admin' && (
-                    <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                    <div className={cn(
+                      "absolute -top-2 -right-2 flex gap-1 transition-opacity",
+                      isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                    )}>
                       <Button
                         size="icon"
                         variant="secondary"
-                        className="h-6 w-6"
+                        className={cn(isMobile ? "h-8 w-8" : "h-6 w-6")}
                         onClick={() => {
                           setEditingId(msg.id);
                           setEditText(msg.message_text);
                         }}
                       >
-                        <Edit2 className="w-3 h-3" />
+                        <Edit2 className={cn(isMobile ? "w-4 h-4" : "w-3 h-3")} />
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button size="icon" variant="destructive" className="h-6 w-6">
-                            <Trash2 className="w-3 h-3" />
+                          <Button size="icon" variant="destructive" className={cn(isMobile ? "h-8 w-8" : "h-6 w-6")}>
+                            <Trash2 className={cn(isMobile ? "w-4 h-4" : "w-3 h-3")} />
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
@@ -400,17 +418,32 @@ const ChatView: React.FC<{
       </ScrollArea>
 
       {/* Input */}
-      <div className="p-4 border-t">
-        <div className="flex gap-2">
-          <Input
+      <div className={cn("border-t", isMobile ? "p-3" : "p-4")}>
+        <div className="flex gap-2 items-end">
+          <Textarea
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Scrivi un messaggio..."
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+              }
+            }}
             disabled={sending}
+            className={cn(
+              "flex-1 resize-none",
+              isMobile ? "min-h-[48px] max-h-[120px] text-base" : "min-h-[40px] max-h-[100px]"
+            )}
+            rows={1}
           />
-          <Button onClick={handleSend} disabled={!newMessage.trim() || sending}>
-            Invia
+          <Button 
+            onClick={handleSend} 
+            disabled={!newMessage.trim() || sending}
+            size={isMobile ? "icon" : "default"}
+            className={cn(isMobile ? "h-12 w-12 shrink-0" : "")}
+          >
+            {isMobile ? <Send className="w-5 h-5" /> : "Invia"}
           </Button>
         </div>
       </div>
@@ -594,9 +627,11 @@ const SettingsPanel: React.FC = () => {
 
 // Main component
 export const AdminAssistantTab: React.FC = () => {
+  const isMobile = useIsMobile();
   const { conversations, loading, unreadTotal, markAsRead, updateStatus, deleteConversation } = useAssistantConversations();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'resolved' | 'archived'>('active');
+  const [showChat, setShowChat] = useState(false);
 
   const selectedConversation = conversations.find(c => c.id === selectedId) || null;
 
@@ -609,6 +644,13 @@ export const AdminAssistantTab: React.FC = () => {
     if (conv.unread_count && conv.unread_count > 0) {
       markAsRead(conv.id);
     }
+    if (isMobile) {
+      setShowChat(true);
+    }
+  };
+
+  const handleBack = () => {
+    setShowChat(false);
   };
 
   const handleUpdateStatus = async (convId: string, status: 'active' | 'resolved' | 'archived') => {
@@ -622,83 +664,152 @@ export const AdminAssistantTab: React.FC = () => {
       toast.success('Conversazione eliminata');
       if (selectedId === convId) {
         setSelectedId(null);
+        setShowChat(false);
       }
     } else {
       toast.error('Errore nell\'eliminazione');
     }
   };
 
+  // Mobile: Conversations List View
+  const ConversationsListMobile = () => (
+    <div className="flex flex-col h-full">
+      {/* Filter buttons */}
+      <div className="p-3 border-b bg-muted/30">
+        <div className="flex gap-1">
+          {(['active', 'resolved', 'archived'] as const).map((status) => (
+            <Button
+              key={status}
+              size="sm"
+              variant={statusFilter === status ? 'default' : 'ghost'}
+              onClick={() => setStatusFilter(status)}
+              className="flex-1 text-sm"
+            >
+              {status === 'active' ? 'Attive' : status === 'resolved' ? 'Risolte' : 'Archivio'}
+            </Button>
+          ))}
+        </div>
+      </div>
+      {/* Conversations list */}
+      <ScrollArea className="flex-1">
+        <div className="p-2 space-y-1">
+          {loading ? (
+            <p className="text-center text-muted-foreground p-6">Caricamento...</p>
+          ) : filteredConversations.length === 0 ? (
+            <p className="text-center text-muted-foreground p-6">
+              Nessuna conversazione
+            </p>
+          ) : (
+            filteredConversations.map((conv) => (
+              <ConversationItem
+                key={conv.id}
+                conversation={conv}
+                isActive={selectedId === conv.id}
+                onClick={() => handleSelect(conv)}
+                onUpdateStatus={(status) => handleUpdateStatus(conv.id, status)}
+                onDelete={() => handleDelete(conv.id)}
+              />
+            ))
+          )}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <Tabs defaultValue="conversations" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-6">
+        <TabsList className={cn(
+          "grid w-full grid-cols-2",
+          isMobile ? "mb-3" : "mb-6"
+        )}>
           <TabsTrigger value="conversations" className="gap-2">
             <Users className="w-4 h-4" />
-            Conversazioni
+            <span className={isMobile ? "text-sm" : ""}>Conversazioni</span>
             {unreadTotal > 0 && (
-              <Badge variant="destructive" className="ml-1 h-5 px-1.5">
+              <Badge variant="destructive" className="ml-1 h-5 px-1.5 text-xs">
                 {unreadTotal}
               </Badge>
             )}
           </TabsTrigger>
           <TabsTrigger value="settings" className="gap-2">
             <Settings className="w-4 h-4" />
-            Impostazioni
+            <span className={isMobile ? "text-sm" : ""}>Impostazioni</span>
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="conversations">
           <Card className="overflow-hidden">
-            <div className="flex h-[600px]">
-              {/* Sidebar */}
-              <div className="w-80 border-r flex flex-col">
-                <div className="p-3 border-b">
-                  <div className="flex gap-1">
-                    {(['active', 'resolved', 'archived'] as const).map((status) => (
-                      <Button
-                        key={status}
-                        size="sm"
-                        variant={statusFilter === status ? 'default' : 'ghost'}
-                        onClick={() => setStatusFilter(status)}
-                        className="flex-1 text-xs capitalize"
-                      >
-                        {status === 'active' ? 'Attive' : status === 'resolved' ? 'Risolte' : 'Archivio'}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                <ScrollArea className="flex-1">
-                  <div className="p-2 space-y-1">
-                    {loading ? (
-                      <p className="text-center text-muted-foreground p-4">Caricamento...</p>
-                    ) : filteredConversations.length === 0 ? (
-                      <p className="text-center text-muted-foreground p-4">
-                        Nessuna conversazione
-                      </p>
-                    ) : (
-                      filteredConversations.map((conv) => (
-                        <ConversationItem
-                          key={conv.id}
-                          conversation={conv}
-                          isActive={selectedId === conv.id}
-                          onClick={() => handleSelect(conv)}
-                          onUpdateStatus={(status) => handleUpdateStatus(conv.id, status)}
-                          onDelete={() => handleDelete(conv.id)}
-                        />
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
+            {isMobile ? (
+              // Mobile layout: show list or chat, not both
+              <div className="h-[calc(100vh-220px)] min-h-[400px]">
+                {showChat && selectedConversation ? (
+                  <ChatView
+                    conversationId={selectedId}
+                    conversation={selectedConversation}
+                    onUpdateStatus={(status) => selectedId && handleUpdateStatus(selectedId, status)}
+                    onDeleteConversation={() => selectedId && handleDelete(selectedId)}
+                    isMobile={true}
+                    onBack={handleBack}
+                  />
+                ) : (
+                  <ConversationsListMobile />
+                )}
               </div>
+            ) : (
+              // Desktop layout: side-by-side
+              <div className="flex h-[600px]">
+                {/* Sidebar */}
+                <div className="w-80 border-r flex flex-col">
+                  <div className="p-3 border-b">
+                    <div className="flex gap-1">
+                      {(['active', 'resolved', 'archived'] as const).map((status) => (
+                        <Button
+                          key={status}
+                          size="sm"
+                          variant={statusFilter === status ? 'default' : 'ghost'}
+                          onClick={() => setStatusFilter(status)}
+                          className="flex-1 text-xs capitalize"
+                        >
+                          {status === 'active' ? 'Attive' : status === 'resolved' ? 'Risolte' : 'Archivio'}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  <ScrollArea className="flex-1">
+                    <div className="p-2 space-y-1">
+                      {loading ? (
+                        <p className="text-center text-muted-foreground p-4">Caricamento...</p>
+                      ) : filteredConversations.length === 0 ? (
+                        <p className="text-center text-muted-foreground p-4">
+                          Nessuna conversazione
+                        </p>
+                      ) : (
+                        filteredConversations.map((conv) => (
+                          <ConversationItem
+                            key={conv.id}
+                            conversation={conv}
+                            isActive={selectedId === conv.id}
+                            onClick={() => handleSelect(conv)}
+                            onUpdateStatus={(status) => handleUpdateStatus(conv.id, status)}
+                            onDelete={() => handleDelete(conv.id)}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </ScrollArea>
+                </div>
 
-              {/* Chat */}
-              <ChatView
-                conversationId={selectedId}
-                conversation={selectedConversation}
-                onUpdateStatus={(status) => selectedId && handleUpdateStatus(selectedId, status)}
-                onDeleteConversation={() => selectedId && handleDelete(selectedId)}
-              />
-            </div>
+                {/* Chat */}
+                <ChatView
+                  conversationId={selectedId}
+                  conversation={selectedConversation}
+                  onUpdateStatus={(status) => selectedId && handleUpdateStatus(selectedId, status)}
+                  onDeleteConversation={() => selectedId && handleDelete(selectedId)}
+                  isMobile={false}
+                />
+              </div>
+            )}
           </Card>
         </TabsContent>
 
