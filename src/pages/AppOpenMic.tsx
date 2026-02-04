@@ -5,7 +5,7 @@ import { PreEventPage } from "@/components/PreEventPage";
 import { FormatPinGate } from "@/components/FormatPinGate";
 import { FreeModeOpenMic } from "@/components/FreeModeOpenMic";
 import { ConsultableOpenMic } from "@/components/ConsultableOpenMic";
-import { useLiveEvent } from "@/hooks/useLiveEvent";
+import { useLiveEvent, CatalogPreviewSettings } from "@/hooks/useLiveEvent";
 import { usePinSession } from "@/hooks/usePinSession";
 
 /**
@@ -21,8 +21,9 @@ import { usePinSession } from "@/hooks/usePinSession";
  *    - Se is_consultable_mode → mostra versione consultabile (no prenotazioni)
  *    - Se pin_enabled && !pinValidated → mostra PIN gate (stesso sistema unificato)
  *    - Altrimenti → mostra Open Mic senza limiti
- * 3. Se esistono eventi READY → mostra PreEventPage
- * 4. Altrimenti → mostra Info
+ * 3. Se catalog_preview attivo → mostra anteprima limitata
+ * 4. Se esistono eventi READY → mostra PreEventPage
+ * 5. Altrimenti → mostra Info
  * 
  * NOTA IMPORTANTE: Il PIN è legato all'EVENTO, non al format.
  * Una volta validato il PIN, l'utente ha accesso a TUTTI i format dell'evento.
@@ -96,6 +97,9 @@ const AppOpenMic: React.FC = () => {
         <ConsultableOpenMic 
           eventName={freeMode.eventName || 'Open Mic'}
           protectRepertoire={freeMode.protectRepertoire}
+          limitType={freeMode.catalogPreviewEnabled ? freeMode.catalogPreviewLimitType : undefined}
+          limitValue={freeMode.catalogPreviewEnabled ? freeMode.catalogPreviewLimitValue : undefined}
+          previewMessage={freeMode.catalogPreviewMessage}
           message="Il catalogo è in modalità anteprima. Le prenotazioni saranno attive durante l'evento."
         />
       );
@@ -117,12 +121,27 @@ const AppOpenMic: React.FC = () => {
     return <FreeModeOpenMic freeModeState={freeMode} />;
   }
 
-  // CASE 3: Eventi READY esistono → Pre-Event Page
+  // CASE 3: Anteprima Catalogo standalone (nessun evento ma preview attivo)
+  if (eventState.type === 'preview') {
+    const preview = eventState.previewSettings as CatalogPreviewSettings;
+    return (
+      <ConsultableOpenMic 
+        eventName="Open Mic"
+        protectRepertoire={preview.protectRepertoire}
+        limitType={preview.limitType}
+        limitValue={preview.limitValue}
+        previewMessage={preview.message}
+        message="Dai un'occhiata al nostro catalogo! Le prenotazioni saranno disponibili durante i nostri eventi."
+      />
+    );
+  }
+
+  // CASE 4: Eventi READY esistono → Pre-Event Page
   if (eventState.type === 'upcoming') {
     return <PreEventPage events={upcomingEvents} />;
   }
 
-  // CASE 4: Nessun evento → Info page
+  // CASE 5: Nessun evento → Info page
   return <OpenMicInfo />;
 };
 

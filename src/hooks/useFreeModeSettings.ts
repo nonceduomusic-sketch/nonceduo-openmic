@@ -69,6 +69,11 @@ export interface FreeModeSettings {
   // Consultable mode
   is_consultable_mode: boolean;
   protect_repertoire: boolean;
+  // Catalog preview
+  catalog_preview_enabled: boolean;
+  catalog_preview_limit_type: 'percent' | 'count';
+  catalog_preview_limit_value: number;
+  catalog_preview_message: string;
 }
 
 export const useFreeModeSettings = () => {

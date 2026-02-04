@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Mic2, Home, Music, Eye, Lock, Search, ChevronLeft } from 'lucide-react';
+import { Mic2, Home, Music, Eye, Lock, Search, ChevronLeft, Sparkles } from 'lucide-react';
 import { songs, Song } from '@/data/songs';
 import { SearchBar } from '@/components/SearchBar';
 import { ArtistFilter } from '@/components/ArtistFilter';
@@ -22,6 +22,19 @@ interface ConsultableOpenMicProps {
    * Messaggio opzionale da mostrare
    */
   message?: string;
+  /**
+   * Limita il numero di canzoni mostrate (per anteprima)
+   */
+  limitType?: 'percent' | 'count';
+  limitValue?: number;
+  /**
+   * Messaggio da mostrare sotto le canzoni limitate
+   */
+  previewMessage?: string;
+  /**
+   * Mostra eventi in programma
+   */
+  showUpcomingEvents?: boolean;
 }
 
 /**
@@ -41,13 +54,29 @@ export const ConsultableOpenMic: React.FC<ConsultableOpenMicProps> = ({
   eventName = 'Open Mic',
   protectRepertoire = true,
   message,
+  limitType,
+  limitValue,
+  previewMessage = 'e molto altro... vienilo a scoprire partecipando ai nostri eventi!',
+  showUpcomingEvents = false,
 }) => {
   const [search, setSearch] = useState('');
   const [artistFilter, setArtistFilter] = useState('all');
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
 
+  // Calculate how many songs to show
+  const maxSongsToShow = useMemo(() => {
+    if (!limitType || !limitValue) return songs.length;
+    
+    if (limitType === 'percent') {
+      return Math.ceil(songs.length * (limitValue / 100));
+    }
+    return limitValue;
+  }, [limitType, limitValue]);
+
+  const isLimited = maxSongsToShow < songs.length;
+
   const filteredSongs = useMemo(() => {
-    return songs.filter((song) => {
+    let result = songs.filter((song) => {
       const searchLower = search.toLowerCase();
       const matchesSearch =
         song.title.toLowerCase().includes(searchLower) ||
@@ -58,12 +87,24 @@ export const ConsultableOpenMic: React.FC<ConsultableOpenMicProps> = ({
 
       return matchesSearch && matchesArtist;
     });
-  }, [search, artistFilter]);
+
+    // Apply limit only when not searching
+    if (!search && !artistFilter || artistFilter === 'all') {
+      if (isLimited && result.length > maxSongsToShow) {
+        result = result.slice(0, maxSongsToShow);
+      }
+    }
+
+    return result;
+  }, [search, artistFilter, maxSongsToShow, isLimited]);
 
   // Get unique artists count
   const uniqueArtists = useMemo(() => {
     return new Set(songs.map(s => s.artist)).size;
   }, []);
+
+  // Show teaser message when songs are limited and no search active
+  const showTeaserMessage = isLimited && !search && artistFilter === 'all';
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
@@ -138,9 +179,11 @@ export const ConsultableOpenMic: React.FC<ConsultableOpenMicProps> = ({
       <main className="container py-4 pb-8">
         <div className="mb-4">
           <p className="text-sm text-muted-foreground">
-            {filteredSongs.length === songs.length 
-              ? `Mostrando tutte le ${songs.length} canzoni`
-              : `${filteredSongs.length} risultati`}
+            {isLimited && !search && artistFilter === 'all' 
+              ? `Mostrando ${filteredSongs.length} di ${songs.length} canzoni`
+              : filteredSongs.length === songs.length 
+                ? `Mostrando tutte le ${songs.length} canzoni`
+                : `${filteredSongs.length} risultati`}
           </p>
         </div>
 
@@ -197,6 +240,28 @@ export const ConsultableOpenMic: React.FC<ConsultableOpenMicProps> = ({
             </Card>
           ))}
         </div>
+
+        {/* Teaser Message when limited */}
+        {showTeaserMessage && (
+          <div className="mt-8 text-center">
+            <Card className="glass-card border-primary/30 bg-gradient-to-br from-primary/5 to-secondary/5">
+              <CardContent className="py-8">
+                <Sparkles className="w-10 h-10 text-primary mx-auto mb-4" />
+                <p className="text-lg font-display font-bold text-foreground mb-2">
+                  {previewMessage}
+                </p>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Il catalogo completo include <strong>{songs.length} canzoni</strong> di <strong>{uniqueArtists} artisti</strong>
+                </p>
+                <Link to="/">
+                  <Button className="neon-button-cyan">
+                    Scopri i prossimi eventi
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {filteredSongs.length === 0 && (
           <div className="text-center py-12">
