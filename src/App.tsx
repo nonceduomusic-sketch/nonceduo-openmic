@@ -2,10 +2,11 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useLocation } from "react-router-dom";
 import { SocialAuthProvider } from "@/contexts/SocialAuthContext";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { InstallBanner } from "@/components/InstallBanner";
+import { AssistantProvider } from "@/components/assistant/AssistantProvider";
 import Home from "./pages/Home";
 import OpenMic from "./pages/OpenMic";
 import Messages from "./pages/Messages";
@@ -34,6 +35,56 @@ import Lyrics from "./pages/Lyrics";
 
 const queryClient = new QueryClient();
 
+const AppContent = () => (
+  <>
+    <InstallBanner />
+    <AssistantProvider />
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/partyband" element={<PartyBand />} />
+      {/* SITO (vetrina) */}
+      <Route path="/openmic" element={<OpenMicInfo />} />
+      <Route path="/messaggi" element={<DedicheInfo />} />
+      
+      {/* Privacy Policy - GDPR */}
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/informativa-privacy" element={<Privacy />} />
+      
+      {/* PWA Install page */}
+      <Route path="/installa" element={<Installa />} />
+
+      {/* Promo Pages - per target */}
+      <Route path="/collabora" element={<Collabora />} />
+      <Route path="/promo/locali" element={<PromoLocali />} />
+      <Route path="/promo/eventi" element={<PromoEventi />} />
+      <Route path="/promo/matrimoni" element={<PromoMatrimoni />} />
+
+      {/* APP (launcher + live) */}
+      <Route path="/app" element={<AppLauncher />} />
+      <Route path="/app/openmic" element={<AppOpenMic />} />
+      <Route path="/app/dediche" element={<AppDediche />} />
+      
+      {/* Lyrics page - Spotify-like design */}
+      <Route path="/lyrics/:id" element={<Lyrics />} />
+
+      {/* Legacy routes (keep existing behavior for now) */}
+      <Route path="/openmic/live" element={<OpenMic />} />
+      <Route path="/messaggi/live" element={<Messages appMode />} />
+      <Route path="/join/:code" element={<JoinChat />} />
+      <Route path="/evento-live/:linkCode" element={<EventoLive />} />
+      <Route path="/admin" element={<Admin />} />
+      <Route path="/admin/reset" element={<AdminReset />} />
+      <Route path="/admin/manual" element={<AdminManual />} />
+      {/* Social Platform Routes */}
+      <Route path="/social" element={<Social />} />
+      <Route path="/social/auth" element={<SocialAuth />} />
+      <Route path="/social/dashboard" element={<SocialDashboard />} />
+      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  </>
+);
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
@@ -41,52 +92,9 @@ const App = () => (
         <TooltipProvider>
           <Toaster />
           <Sonner />
-        <BrowserRouter>
-          <InstallBanner />
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/partyband" element={<PartyBand />} />
-            {/* SITO (vetrina) */}
-            <Route path="/openmic" element={<OpenMicInfo />} />
-            <Route path="/messaggi" element={<DedicheInfo />} />
-            
-            {/* Privacy Policy - GDPR */}
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="/informativa-privacy" element={<Privacy />} />
-            
-            {/* PWA Install page */}
-            <Route path="/installa" element={<Installa />} />
-
-            {/* Promo Pages - per target */}
-            <Route path="/collabora" element={<Collabora />} />
-            <Route path="/promo/locali" element={<PromoLocali />} />
-            <Route path="/promo/eventi" element={<PromoEventi />} />
-            <Route path="/promo/matrimoni" element={<PromoMatrimoni />} />
-
-            {/* APP (launcher + live) */}
-            <Route path="/app" element={<AppLauncher />} />
-            <Route path="/app/openmic" element={<AppOpenMic />} />
-            <Route path="/app/dediche" element={<AppDediche />} />
-            
-            {/* Lyrics page - Spotify-like design */}
-            <Route path="/lyrics/:id" element={<Lyrics />} />
-
-            {/* Legacy routes (keep existing behavior for now) */}
-            <Route path="/openmic/live" element={<OpenMic />} />
-            <Route path="/messaggi/live" element={<Messages appMode />} />
-            <Route path="/join/:code" element={<JoinChat />} />
-            <Route path="/evento-live/:linkCode" element={<EventoLive />} />
-            <Route path="/admin" element={<Admin />} />
-            <Route path="/admin/reset" element={<AdminReset />} />
-            <Route path="/admin/manual" element={<AdminManual />} />
-            {/* Social Platform Routes */}
-            <Route path="/social" element={<Social />} />
-            <Route path="/social/auth" element={<SocialAuth />} />
-            <Route path="/social/dashboard" element={<SocialDashboard />} />
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
+          <BrowserRouter>
+            <AppContent />
+          </BrowserRouter>
         </TooltipProvider>
       </SocialAuthProvider>
     </ThemeProvider>
