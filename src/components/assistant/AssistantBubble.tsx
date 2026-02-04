@@ -115,7 +115,7 @@ export const AssistantBubble: React.FC<AssistantBubbleProps> = ({
       />
       
       <motion.div 
-        drag={isMobile}
+        drag
         dragControls={dragControls}
         dragMomentum={false}
         dragConstraints={constraintsRef}
@@ -125,9 +125,9 @@ export const AssistantBubble: React.FC<AssistantBubbleProps> = ({
         className={cn(
           "fixed right-4 z-[60] flex flex-col items-end gap-3",
           isMobile ? "bottom-20" : "bottom-4",
-          isMobile && "cursor-grab active:cursor-grabbing"
+          "cursor-grab active:cursor-grabbing"
         )}
-        style={{ touchAction: isMobile ? 'none' : 'auto' }}
+        style={{ touchAction: 'none' }}
       >
         {/* Proactive message - Mini card on desktop, tooltip on mobile */}
         <AnimatePresence>
@@ -185,7 +185,7 @@ export const AssistantBubble: React.FC<AssistantBubbleProps> = ({
                       {welcomeMessage}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {isMobile ? 'Tap per chattare • Trascina per spostare' : 'Clicca per chattare'}
+                      Clicca per chattare • Trascina per spostare
                     </p>
                   </div>
                 </div>
