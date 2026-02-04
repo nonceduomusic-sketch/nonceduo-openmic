@@ -29,10 +29,12 @@ import { useReservations, Reservation } from '@/hooks/useReservations';
 import { Message } from '@/hooks/useMessages';
 import { useConversations, ChatMessage, Conversation } from '@/hooks/useConversations';
 import { useAdminNotifications } from '@/hooks/useAdminNotifications';
+import { supabase } from '@/integrations/supabase/client';
 import { ReservationCard } from './ReservationCard';
 import { NotificationPopup } from './NotificationPopup';
 import { MessageNotificationPopup } from './MessageNotificationPopup';
 import { ChatNotificationPopup } from './ChatNotificationPopup';
+import { AssistantNotificationPopup } from './admin/AssistantNotificationPopup';
 import { AdminSettingsTab } from './AdminSettingsTab';
 import { AdminSongManagementTab } from './AdminSongManagementTab';
 import { AdminPermissionsTab } from './AdminPermissionsTab';
@@ -114,13 +116,14 @@ export const AdminDashboard: React.FC = () => {
   const [reservationNotifications, setReservationNotifications] = useState<Reservation[]>([]);
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
   const [chatNotifications, setChatNotifications] = useState<{ message: ChatMessage; conversation?: Conversation }[]>([]);
+  const [assistantNotifications, setAssistantNotifications] = useState<{ id: string; userName: string; messagePreview: string; sourceSection: string }[]>([]);
   const [mainTab, setMainTab] = useState<AdminMainTab>('notifications');
   const [communitySubTab, setCommunitySubTab] = useState<"groups" | "invites" | "users" | "feed" | "blocked">("groups");
   const [didInitTabFromAccess, setDidInitTabFromAccess] = useState(false);
   
   // Get notification counts for badges
   const { counts: notificationCounts } = useAdminNotifications();
-  const totalNotifications = notificationCounts.pendingJoinRequests + notificationCounts.unreadDedicheMessages + notificationCounts.unreadCommunityMessages;
+  const totalNotifications = notificationCounts.pendingJoinRequests + notificationCounts.unreadDedicheMessages + notificationCounts.unreadCommunityMessages + notificationCounts.unreadAssistantMessages;
   const [activeTab, setActiveTab] = useState<'active' | 'completed'>('active');
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -203,6 +206,43 @@ export const AdminDashboard: React.FC = () => {
     };
   }, [conversations]);
 
+  // Listen for new assistant messages (from useAdminNotifications event)
+  useEffect(() => {
+    const handleNewAssistantMessage = async (event: CustomEvent<{ id: string; conversation_id: string; message_text: string }>) => {
+      const msg = event.detail;
+      if (!msg) return;
+      
+      // Fetch conversation details for source_section and user_name
+      const { data: conv } = await supabase
+        .from('assistant_conversations')
+        .select('user_name, source_section')
+        .eq('id', msg.conversation_id)
+        .single();
+      
+      setAssistantNotifications(prev => [...prev, {
+        id: msg.id,
+        userName: conv?.user_name || 'Visitatore',
+        messagePreview: msg.message_text?.slice(0, 80) || 'Nuovo messaggio',
+        sourceSection: conv?.source_section || 'site',
+      }]);
+
+      // Trigger push notification if permission granted
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(`🤖 Richiesta da ${conv?.user_name || 'Visitatore'}`, {
+          body: msg.message_text?.slice(0, 100) || 'Nuovo messaggio',
+          icon: '/favicon.ico',
+          tag: `assistant-${msg.id}`,
+        });
+      }
+    };
+
+    window.addEventListener('new-assistant-message', handleNewAssistantMessage as EventListener);
+
+    return () => {
+      window.removeEventListener('new-assistant-message', handleNewAssistantMessage as EventListener);
+    };
+  }, []);
+
   const handleUnreadCountChange = useCallback((_count: number) => {
     // Kept for compatibility with AdminDedichePanel prop, but main badges are driven by AdminNotificationCounts.
   }, []);
@@ -281,6 +321,10 @@ export const AdminDashboard: React.FC = () => {
 
   const removeChatNotification = (id: string) => {
     setChatNotifications((prev) => prev.filter((n) => n.message.id !== id));
+  };
+
+  const removeAssistantNotification = (id: string) => {
+    setAssistantNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
   const requestNotificationPermission = async () => {
@@ -566,7 +610,20 @@ export const AdminDashboard: React.FC = () => {
         />
       ))}
 
-      {/* Header - Apple-style minimal */}
+      {/* Assistant Notifications */}
+      {assistantNotifications.map((notification) => (
+        <AssistantNotificationPopup
+          key={notification.id}
+          userName={notification.userName}
+          messagePreview={notification.messagePreview}
+          sourceSection={notification.sourceSection}
+          onClose={() => removeAssistantNotification(notification.id)}
+          onClick={() => {
+            removeAssistantNotification(notification.id);
+            setMainTab('assistant');
+          }}
+        />
+      ))}
       <header className="admin-header safe-area-top">
         <div className="max-w-5xl mx-auto">
           <div className="flex items-center justify-between gap-2">
@@ -912,6 +969,7 @@ export const AdminDashboard: React.FC = () => {
                   community: false 
                 } 
               : access}
+            assistantUnreadCount={notificationCounts.unreadAssistantMessages}
           />
         ) : null}
         </div>

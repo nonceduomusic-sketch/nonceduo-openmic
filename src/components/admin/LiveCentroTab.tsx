@@ -12,6 +12,7 @@ import {
   Maximize2,
   Flame,
   ThumbsUp,
+  Bot,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +38,7 @@ interface LiveCentroTabProps {
     dediche: boolean;
     community: boolean;
   };
+  assistantUnreadCount?: number;
 }
 
 type FilterTab = 'all' | 'songs' | 'dediche' | 'queue';
@@ -58,6 +60,7 @@ interface UnifiedItem {
 export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
   onNavigate,
   access = { openmic: true, dediche: true, community: true },
+  assistantUnreadCount = 0,
 }) => {
   const {
     activeReservations,
@@ -396,6 +399,30 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
           ))}
         </div>
       </div>
+
+      {/* ========== ASSISTENTE QUICK CARD ========== */}
+      {assistantUnreadCount > 0 && (
+        <button
+          onClick={() => onNavigate?.('assistant')}
+          className="mx-2 mb-2 p-3 rounded-xl bg-gradient-to-r from-primary/10 to-secondary/10 border border-primary/20 hover:border-primary/40 transition-all flex items-center gap-3 w-[calc(100%-1rem)] text-left"
+        >
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center flex-shrink-0">
+            <Bot className="w-5 h-5 text-primary-foreground" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-foreground">Assistente</span>
+              <Badge variant="destructive" className="h-5 px-1.5 text-xs animate-pulse">
+                {assistantUnreadCount}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground truncate">
+              {assistantUnreadCount === 1 ? 'Nuova richiesta da gestire' : `${assistantUnreadCount} nuove richieste da gestire`}
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-muted-foreground" />
+        </button>
+      )}
 
       {/* ========== ITEMS LIST ========== */}
       <div className="flex-1 overflow-y-auto px-2 py-2">
