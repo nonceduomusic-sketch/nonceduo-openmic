@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useBroadcast } from '@/hooks/useBroadcast';
 import { supabase } from '@/integrations/supabase/client';
-import { Maximize, Mic, QrCode, Music, Volume2 } from 'lucide-react';
+import { Maximize, Mic, Music } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import QRCode from 'qrcode';
+import brandLogoText from '@/assets/brand-logo-text.png';
 
 interface Song {
   id: string;
@@ -14,12 +15,44 @@ interface Song {
   testo: string | null;
 }
 
+interface ElementPosition {
+  x: number;
+  y: number;
+}
+
+const DEFAULT_POSITIONS: Record<string, ElementPosition> = {
+  logo: { x: 50, y: 15 },
+  title: { x: 50, y: 35 },
+  subtitle: { x: 50, y: 42 },
+  status: { x: 50, y: 52 },
+  qr: { x: 50, y: 72 },
+  qr_cta: { x: 50, y: 88 },
+  footer: { x: 50, y: 96 },
+};
+
 export default function Trasmetti() {
   const { salaCode = 'main' } = useParams();
   const { session, loading } = useBroadcast(salaCode);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
-  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Extract TV settings from session with defaults
+  const tvSettings = useMemo(() => ({
+    title: (session as any)?.tv_title || 'Open Mic',
+    subtitle: (session as any)?.tv_subtitle || 'NonceDuo Live Experience',
+    footer: (session as any)?.tv_footer || 'Powered by NonceDuo',
+    qrUrl: (session as any)?.tv_qr_url || '',
+    logoUrl: (session as any)?.tv_logo_url || '',
+    qrCta: (session as any)?.tv_qr_cta || 'Scansiona per prenotare la tua canzone',
+    showQr: (session as any)?.tv_show_qr ?? true,
+    showLogo: (session as any)?.tv_show_logo ?? true,
+    showTitle: (session as any)?.tv_show_title ?? true,
+    showSubtitle: (session as any)?.tv_show_subtitle ?? true,
+    showFooter: (session as any)?.tv_show_footer ?? true,
+    showStatus: (session as any)?.tv_show_status ?? true,
+    positions: (session as any)?.tv_element_positions || DEFAULT_POSITIONS,
+  }), [session]);
 
   // Fetch current song when it changes
   useEffect(() => {
@@ -43,26 +76,33 @@ export default function Trasmetti() {
     fetchSong();
   }, [session?.current_song_id]);
 
-  // Generate QR code for app
+  // Generate QR code with proper settings
   useEffect(() => {
     const generateQR = async () => {
       try {
-        const appUrl = `${window.location.origin}/app`;
-        const url = await QRCode.toDataURL(appUrl, {
-          width: 300,
+        // Use custom URL or default to /app
+        const qrDestination = tvSettings.qrUrl || `${window.location.origin}/app`;
+        const fullUrl = qrDestination.startsWith('http') 
+          ? qrDestination 
+          : `${window.location.origin}${qrDestination.startsWith('/') ? '' : '/'}${qrDestination}`;
+        
+        const dataUrl = await QRCode.toDataURL(fullUrl, {
+          width: 280,
           margin: 2,
           color: {
             dark: '#ffffff',
-            light: '#00000000',
+            light: '#00000000', // transparent background
           },
+          errorCorrectionLevel: 'M',
         });
-        setQrCodeUrl(url);
+        setQrCodeDataUrl(dataUrl);
       } catch (err) {
         console.error('QR generation error:', err);
       }
     };
+    
     generateQR();
-  }, []);
+  }, [tvSettings.qrUrl]);
 
   // Fullscreen toggle
   const toggleFullscreen = () => {
@@ -83,6 +123,16 @@ export default function Trasmetti() {
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
+
+  const getPosition = (elementId: string): React.CSSProperties => {
+    const pos = tvSettings.positions[elementId] || DEFAULT_POSITIONS[elementId] || { x: 50, y: 50 };
+    return {
+      position: 'absolute',
+      left: `${pos.x}%`,
+      top: `${pos.y}%`,
+      transform: 'translate(-50%, -50%)',
+    };
+  };
 
   if (loading) {
     return (
@@ -149,7 +199,7 @@ export default function Trasmetti() {
         <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent">
           <div className="flex items-center justify-center gap-2 text-white/40 text-sm">
             <Mic className="w-4 h-4" />
-            <span>NonceDuo Open Mic</span>
+            <span>{tvSettings.title}</span>
           </div>
         </div>
       </div>
@@ -165,74 +215,106 @@ export default function Trasmetti() {
         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-purple-500/15 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '1s' }} />
       </div>
 
-      {/* Content */}
-      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-8">
-        {/* Main Title */}
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center gap-4 mb-4">
-            <Music className="w-12 h-12 md:w-16 md:h-16 text-primary animate-pulse" />
-          </div>
-          <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-4">
-            <span className="bg-gradient-to-r from-primary via-purple-400 to-primary bg-clip-text text-transparent">
-              Open Mic
-            </span>
-          </h1>
-          <p className="text-xl md:text-2xl text-white/60 font-light">
-            NonceDuo Live Experience
-          </p>
-        </div>
-
-        {/* Status indicator */}
-        {session?.is_active ? (
-          <div className="flex items-center gap-3 mb-12 px-6 py-3 bg-green-500/20 border border-green-500/30 rounded-full">
-            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-            <span className="text-green-400 font-medium text-lg">
-              Evento in corso
-            </span>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3 mb-12 px-6 py-3 bg-yellow-500/20 border border-yellow-500/30 rounded-full">
-            <div className="w-3 h-3 bg-yellow-500 rounded-full" />
-            <span className="text-yellow-400 font-medium text-lg">
-              In attesa...
-            </span>
+      {/* Content container */}
+      <div className="relative z-10 min-h-screen w-full">
+        {/* Logo */}
+        {tvSettings.showLogo && (
+          <div style={getPosition('logo')}>
+            <img 
+              src={tvSettings.logoUrl || brandLogoText} 
+              alt="Logo" 
+              className="h-16 md:h-24 w-auto object-contain"
+              onError={(e) => {
+                // Fallback to brand logo if custom URL fails
+                (e.target as HTMLImageElement).src = brandLogoText;
+              }}
+            />
           </div>
         )}
 
-        {/* QR Code section */}
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-8 md:p-12 text-center">
-          <p className="text-lg md:text-xl text-white/80 mb-6">
-            Scansiona per prenotare la tua canzone
-          </p>
-          
-          {qrCodeUrl && (
-            <div className="bg-white rounded-2xl p-4 inline-block mb-6">
-              <img src={qrCodeUrl} alt="QR Code per prenotazione" className="w-48 h-48 md:w-64 md:h-64" />
-            </div>
-          )}
-
-          <div className="flex items-center justify-center gap-2 text-white/50">
-            <QrCode className="w-5 h-5" />
-            <span className="text-sm md:text-base">nonceduo.com/app</span>
+        {/* Title */}
+        {tvSettings.showTitle && (
+          <div style={getPosition('title')} className="text-center w-full px-8">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight">
+              <span className="bg-gradient-to-r from-primary via-purple-400 to-primary bg-clip-text text-transparent">
+                {tvSettings.title}
+              </span>
+            </h1>
           </div>
-        </div>
+        )}
 
-        {/* Fullscreen button */}
-        <Button
-          variant="outline"
-          size="lg"
-          onClick={toggleFullscreen}
-          className="mt-8 border-white/20 text-white hover:bg-white/10"
-        >
-          <Maximize className="w-5 h-5 mr-2" />
-          {isFullscreen ? 'Esci da Schermo Intero' : 'Schermo Intero'}
-        </Button>
+        {/* Subtitle */}
+        {tvSettings.showSubtitle && (
+          <div style={getPosition('subtitle')} className="text-center w-full px-8">
+            <p className="text-xl md:text-2xl text-white/60 font-light">
+              {tvSettings.subtitle}
+            </p>
+          </div>
+        )}
 
-        {/* Bottom branding */}
-        <div className="absolute bottom-6 left-0 right-0 text-center">
-          <p className="text-white/30 text-sm">
-            Powered by NonceDuo
-          </p>
+        {/* Status indicator */}
+        {tvSettings.showStatus && (
+          <div style={getPosition('status')} className="flex justify-center">
+            {session?.is_active ? (
+              <div className="flex items-center gap-3 px-6 py-3 bg-green-500/20 border border-green-500/30 rounded-full">
+                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-green-400 font-medium text-lg">
+                  Evento in corso
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3 px-6 py-3 bg-yellow-500/20 border border-yellow-500/30 rounded-full">
+                <div className="w-3 h-3 bg-yellow-500 rounded-full" />
+                <span className="text-yellow-400 font-medium text-lg">
+                  In attesa...
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* QR Code */}
+        {tvSettings.showQr && qrCodeDataUrl && (
+          <div style={getPosition('qr')} className="flex justify-center">
+            <div className="bg-white rounded-2xl p-4 shadow-2xl">
+              <img 
+                src={qrCodeDataUrl} 
+                alt="QR Code per prenotazione" 
+                className="w-40 h-40 md:w-56 md:h-56"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* QR CTA */}
+        {tvSettings.showQr && (
+          <div style={getPosition('qr_cta')} className="text-center w-full px-8">
+            <p className="text-lg md:text-xl text-white/70">
+              {tvSettings.qrCta}
+            </p>
+          </div>
+        )}
+
+        {/* Footer */}
+        {tvSettings.showFooter && (
+          <div style={getPosition('footer')} className="text-center w-full px-8">
+            <p className="text-white/30 text-sm">
+              {tvSettings.footer}
+            </p>
+          </div>
+        )}
+
+        {/* Fullscreen button - always visible in corner */}
+        <div className="fixed bottom-6 right-6 z-50">
+          <Button
+            variant="outline"
+            size="lg"
+            onClick={toggleFullscreen}
+            className="border-white/20 text-white hover:bg-white/10 backdrop-blur-sm"
+          >
+            <Maximize className="w-5 h-5 mr-2" />
+            {isFullscreen ? 'Esci' : 'Fullscreen'}
+          </Button>
         </div>
       </div>
     </div>

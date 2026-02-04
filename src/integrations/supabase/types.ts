@@ -282,6 +282,19 @@ export type Database = {
           sala_name: string
           scroll_position: number | null
           scroll_speed: number | null
+          tv_element_positions: Json | null
+          tv_footer: string | null
+          tv_logo_url: string | null
+          tv_qr_cta: string | null
+          tv_qr_url: string | null
+          tv_show_footer: boolean | null
+          tv_show_logo: boolean | null
+          tv_show_qr: boolean | null
+          tv_show_status: boolean | null
+          tv_show_subtitle: boolean | null
+          tv_show_title: boolean | null
+          tv_subtitle: string | null
+          tv_title: string | null
           updated_at: string | null
           updated_by: string | null
         }
@@ -298,6 +311,19 @@ export type Database = {
           sala_name?: string
           scroll_position?: number | null
           scroll_speed?: number | null
+          tv_element_positions?: Json | null
+          tv_footer?: string | null
+          tv_logo_url?: string | null
+          tv_qr_cta?: string | null
+          tv_qr_url?: string | null
+          tv_show_footer?: boolean | null
+          tv_show_logo?: boolean | null
+          tv_show_qr?: boolean | null
+          tv_show_status?: boolean | null
+          tv_show_subtitle?: boolean | null
+          tv_show_title?: boolean | null
+          tv_subtitle?: string | null
+          tv_title?: string | null
           updated_at?: string | null
           updated_by?: string | null
         }
@@ -314,6 +340,19 @@ export type Database = {
           sala_name?: string
           scroll_position?: number | null
           scroll_speed?: number | null
+          tv_element_positions?: Json | null
+          tv_footer?: string | null
+          tv_logo_url?: string | null
+          tv_qr_cta?: string | null
+          tv_qr_url?: string | null
+          tv_show_footer?: boolean | null
+          tv_show_logo?: boolean | null
+          tv_show_qr?: boolean | null
+          tv_show_status?: boolean | null
+          tv_show_subtitle?: boolean | null
+          tv_show_title?: boolean | null
+          tv_subtitle?: string | null
+          tv_title?: string | null
           updated_at?: string | null
           updated_by?: string | null
         }
