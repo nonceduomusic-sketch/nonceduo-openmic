@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Building2, PartyPopper, Heart, ArrowRight, Music, Sparkles } from 'lucide-react';
+import { Building2, PartyPopper, Heart, ArrowRight, Music, Sparkles, MapPin } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import brandLogo from '@/assets/brand-logo-text.png';
 
@@ -30,6 +30,14 @@ const collaborationOptions = [
     link: '/promo/matrimoni',
     accentClass: 'from-amber-500 to-rose-500',
     hoverBorder: 'hover:border-amber-500/50',
+  },
+  {
+    icon: <MapPin className="w-10 h-10" />,
+    title: 'Feste di Piazza & Eventi Pubblici',
+    description: 'Sagre, feste patronali, rassegne. Anche con noleggio palco e service audio/luci.',
+    link: '/promo/feste-piazza',
+    accentClass: 'from-cyan-500 to-blue-600',
+    hoverBorder: 'hover:border-cyan-500/50',
   },
 ];
 
@@ -88,7 +96,7 @@ const Collabora: React.FC = () => {
         {/* Options Grid */}
         <section className="py-8 md:py-16 bg-card/30">
           <div className="container mx-auto px-4">
-            <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
               {collaborationOptions.map((option, index) => (
                 <motion.div
                   key={option.title}
