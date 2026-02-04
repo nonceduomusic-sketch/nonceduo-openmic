@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/sidebar";
 import { 
   Bell, 
+  Bot,
   Calendar, 
   ListMusic, 
   MessageSquare, 
@@ -38,6 +39,7 @@ export type AdminMainTab =
   | "formats"
   | "grafiche"
   | "notifiche-live"
+  | "assistant"
   | "operators"
   | "staff"
   | "permissions"
@@ -71,6 +73,7 @@ const ITEMS: Item[] = [
   { key: "songs", label: "Canzoni", icon: ListMusic, group: "Operativo", description: "Coda e catalogo brani" },
   { key: "dediche", label: "Dediche", icon: MessageSquare, group: "Operativo", description: "Messaggi e chat" },
   { key: "community", label: "Community", icon: Newspaper, group: "Operativo", description: "Gruppi e bacheca" },
+  { key: "assistant", label: "Assistente", icon: Bot, group: "Operativo", description: "Chat e lead" },
   
   // === GRUPPO GESTIONE ===
   { key: "settings", label: "Impostazioni", icon: Settings, group: "Gestione", description: "Configurazione generale" },
@@ -108,7 +111,7 @@ export function AdminSidebar({
       if (key === "openmic") return !operatorAccess.canViewOpenmic;
       if (key === "dediche") return !operatorAccess.canViewDediche;
       // Operators never see these sections
-      if (["event", "formats", "grafiche", "songs", "community", "settings", "staff", "permissions", "audit"].includes(key)) {
+      if (["event", "formats", "grafiche", "songs", "community", "assistant", "settings", "staff", "permissions", "audit"].includes(key)) {
         return true;
       }
       return false;
@@ -123,6 +126,8 @@ export function AdminSidebar({
     if (key === "operators") return !isOwner;
     if (key === "permissions") return !isOwner;
     if (key === "audit") return !isOwner;
+    // Assistant is owner/admin only
+    if (key === "assistant") return !isOwner && !access.openmic;
     return false;
   };
 
@@ -133,11 +138,12 @@ export function AdminSidebar({
       return ["notifications", "openmic", "dediche"].includes(item.key);
     }
     // Owner-only tabs hidden from non-owners
-    // Owner-only tabs hidden from non-owners
     if (item.key === "staff" && !isOwner) return false;
     if (item.key === "operators" && !isOwner) return false;
     if (item.key === "permissions" && !isOwner) return false;
     if (item.key === "audit" && !isOwner) return false;
+    // Assistant visible for owner and admins
+    if (item.key === "assistant" && !isOwner) return false;
     return true;
   });
 
