@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, Sparkles, ExternalLink, Minimize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { FlowStep, FlowOption, getFlowForSection, getStepById } from './AssistantFlows';
+import { MessageStatusIndicator } from '@/components/MessageStatusIndicator';
 import type { AssistantMessage } from '@/hooks/useAssistantWidget';
 
 interface Message {
@@ -14,6 +15,7 @@ interface Message {
   sender: 'bot' | 'user' | 'admin';
   timestamp: Date;
   options?: FlowOption[];
+  deliveryStatus?: 'sent' | 'delivered' | 'read';
 }
 
 interface SongRequestData {
@@ -86,6 +88,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         sender: pm.sender_type as 'bot' | 'user' | 'admin',
         timestamp: new Date(pm.created_at),
         options: undefined,
+        deliveryStatus: pm.delivery_status,
       }));
 
       const lastPersistedId = persistedMessages[persistedMessages.length - 1]?.id;
@@ -167,6 +170,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
               text: pm.message_text,
               sender: 'admin',
               timestamp: new Date(pm.created_at),
+              deliveryStatus: pm.delivery_status,
             });
           }
         });
@@ -183,7 +187,30 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     }
   }, [persistedMessages, messages, isChatMode]);
 
-  // Scroll to bottom on new messages
+  // Sync delivery status updates from persisted messages to local state
+  useEffect(() => {
+    if (persistedMessages.length === 0 || messages.length === 0) return;
+    
+    // Create a map of persisted message statuses
+    const statusMap = new Map(
+      persistedMessages.map(pm => [pm.id, pm.delivery_status])
+    );
+    
+    // Check if any local message needs status update
+    let needsUpdate = false;
+    const updatedMessages = messages.map(msg => {
+      const persistedStatus = statusMap.get(msg.id);
+      if (persistedStatus && persistedStatus !== msg.deliveryStatus) {
+        needsUpdate = true;
+        return { ...msg, deliveryStatus: persistedStatus as 'sent' | 'delivered' | 'read' };
+      }
+      return msg;
+    });
+    
+    if (needsUpdate) {
+      setMessages(updatedMessages);
+    }
+  }, [persistedMessages]);
   const scrollToBottom = useCallback(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -219,6 +246,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
       text,
       sender: 'user',
       timestamp: new Date(),
+      deliveryStatus: 'sent', // New messages start as "sent"
     };
     setMessages(prev => [...prev, newMessage]);
   };
@@ -590,6 +618,19 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
                       <p className="text-[10px] font-semibold mb-1 opacity-80">👤 Staff</p>
                     )}
                     <p className="text-sm whitespace-pre-line">{message.text}</p>
+                    
+                    {/* Message status for user messages */}
+                    {message.sender === 'user' && (
+                      <div className="flex items-center justify-end mt-1 gap-1">
+                        <span className="text-[10px] opacity-60">
+                          {message.timestamp.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <MessageStatusIndicator 
+                          status={message.deliveryStatus || 'sent'} 
+                          className="ml-0.5"
+                        />
+                      </div>
+                    )}
                     
                     {/* Options buttons */}
                     {message.options && message.options.length > 0 && (

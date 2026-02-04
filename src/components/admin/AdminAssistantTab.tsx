@@ -16,10 +16,12 @@ import { cn } from '@/lib/utils';
 import { useAssistantSettings } from '@/hooks/useAssistantSettings';
 import { useAssistantConversations, type AssistantConversation } from '@/hooks/useAssistantConversations';
 import { useAssistantChat, type AssistantMessage } from '@/hooks/useAssistantChat';
+import { MessageStatusIndicator } from '@/components/MessageStatusIndicator';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
+
 // Telegram icon component
 const TelegramIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -27,27 +29,11 @@ const TelegramIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-// Message status indicator component
-const MessageStatus: React.FC<{ status: string; isRead: boolean }> = ({ status, isRead }) => {
-  if (isRead || status === 'read') {
-    return (
-      <span className="text-primary text-[10px] ml-1" title="Letto">
-        ✓✓
-      </span>
-    );
-  }
-  if (status === 'delivered') {
-    return (
-      <span className="text-muted-foreground text-[10px] ml-1" title="Consegnato">
-        ✓✓
-      </span>
-    );
-  }
-  return (
-    <span className="text-muted-foreground text-[10px] ml-1" title="Inviato">
-      ✓
-    </span>
-  );
+// Message status helper to convert DB status to indicator format
+const getMessageStatus = (deliveryStatus: string, isRead: boolean): 'sent' | 'delivered' | 'read' => {
+  if (isRead || deliveryStatus === 'read') return 'read';
+  if (deliveryStatus === 'delivered') return 'delivered';
+  return 'sent';
 };
 
 // Conversation list item with actions
@@ -371,9 +357,8 @@ const ChatView: React.FC<{
                       {msg.edited_at && ' (modificato)'}
                     </span>
                     {msg.sender_type === 'admin' && (
-                      <MessageStatus 
-                        status={msg.delivery_status || 'sent'} 
-                        isRead={msg.is_read} 
+                      <MessageStatusIndicator 
+                        status={getMessageStatus(msg.delivery_status || 'sent', msg.is_read)} 
                       />
                     )}
                   </div>
