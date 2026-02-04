@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useParams, useSearchParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useBroadcast } from '@/hooks/useBroadcast';
 import { supabase } from '@/integrations/supabase/client';
 import { Maximize, Mic } from 'lucide-react';
@@ -56,25 +56,22 @@ const DEFAULT_POSITIONS: Record<string, ElementPosition> = {
   footer: { x: 50, y: 96 },
 };
 
-type LyricsViewMode = 'karaoke' | 'spotify';
+type LyricsViewMode = 'compact' | 'karaoke' | 'spotify';
 
 export default function Trasmetti() {
   const { salaCode = 'main' } = useParams();
-  const [searchParams, setSearchParams] = useSearchParams();
   const { session, loading } = useBroadcast(salaCode);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [highlightLine, setHighlightLine] = useState(0);
   
-  // View mode from URL param (default: karaoke)
-  const viewMode = (searchParams.get('mode') as LyricsViewMode) || 'karaoke';
-  const setViewMode = (mode: LyricsViewMode) => {
-    setSearchParams({ mode });
-  };
+  // View mode from database (admin controlled)
+  const viewMode: LyricsViewMode = ((session as any)?.tv_view_mode as LyricsViewMode) || 'karaoke';
   
-  // Track if admin is controlling manually (based on session auto_scroll)
-  const isAdminControlled = session?.auto_scroll === false;
+  // Is broadcasting? (admin controls when to show lyrics vs waiting screen)
+  const isBroadcasting = (session as any)?.is_broadcasting ?? false;
+  
   const lyricsRef = useRef<HTMLDivElement>(null);
 
   // Extract TV settings from session with defaults
@@ -116,7 +113,6 @@ export default function Trasmetti() {
 
       if (data) {
         setCurrentSong(data);
-        // Reset to the line from session (admin's control)
         setHighlightLine(session.highlight_line || 0);
       }
     };
@@ -125,15 +121,11 @@ export default function Trasmetti() {
   }, [session?.current_song_id]);
 
   // CRITICAL: Always sync highlight line from session (admin controls via database)
-  // This is the source of truth - no local auto-scroll that could desync
   useEffect(() => {
     if (session?.highlight_line !== undefined && session?.highlight_line !== null) {
       setHighlightLine(session.highlight_line);
     }
   }, [session?.highlight_line]);
-
-  // Auto-scroll is now fully controlled by admin via session.auto_scroll
-  // The TV just follows what's in the database - no local auto-scroll logic
 
   // Scroll highlighted line into view
   useEffect(() => {
@@ -153,9 +145,7 @@ export default function Trasmetti() {
   useEffect(() => {
     const generateQR = async () => {
       try {
-        // Default to nonceduo.com if no custom URL is set
         const qrDestination = tvSettings.qrUrl || 'https://nonceduo.com';
-        // If it's already a full URL, use it; otherwise prepend origin
         const fullUrl = qrDestination.startsWith('http') 
           ? qrDestination 
           : `${window.location.origin}${qrDestination.startsWith('/') ? '' : '/'}${qrDestination}`;
@@ -215,9 +205,10 @@ export default function Trasmetti() {
     );
   }
 
-  // LYRICS MODE - Karaoke or Spotify style
-  if (session?.display_mode === 'lyrics' && currentSong) {
-    // SPOTIFY MODE - Colorful background like Lyrics.tsx
+  // LYRICS MODE - Only show when broadcasting AND has a song
+  if (isBroadcasting && session?.display_mode === 'lyrics' && currentSong) {
+    
+    // SPOTIFY MODE - Colorful background
     if (viewMode === 'spotify') {
       const backgroundColor = getColorForSong(currentSong.id);
       
@@ -247,25 +238,6 @@ export default function Trasmetti() {
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                {/* View Mode Toggle */}
-                <div className="flex items-center gap-0.5 bg-black/30 backdrop-blur-sm rounded-lg p-0.5">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setViewMode('karaoke')}
-                    className="h-8 px-3 text-xs text-white/70 hover:text-white hover:bg-white/20"
-                  >
-                    Karaoke
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setViewMode('spotify')}
-                    className="h-8 px-3 text-xs bg-white/20 text-white"
-                  >
-                    Spotify
-                  </Button>
-                </div>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -319,63 +291,145 @@ export default function Trasmetti() {
     }
     
     // KARAOKE MODE - Dark with ambient glow (default)
-    return (
-      <div className="min-h-screen bg-black text-white relative overflow-hidden select-none">
-        {/* Ambient background - subtle, professional */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-b from-gray-900/50 via-black to-gray-900/50" />
-          <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[200px]" />
-          <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[200px]" />
-        </div>
+    if (viewMode === 'karaoke') {
+      return (
+        <div className="min-h-screen bg-black text-white relative overflow-hidden select-none">
+          {/* Ambient background - subtle, professional */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute inset-0 bg-gradient-to-b from-gray-900/50 via-black to-gray-900/50" />
+            <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[200px]" />
+            <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[200px]" />
+          </div>
 
+          {/* Header with song info */}
+          <div className="relative z-10 px-6 md:px-8 pt-6 md:pt-8 pb-4">
+            <div className="flex items-center justify-between max-w-6xl mx-auto">
+              <div className="flex items-center gap-4 md:gap-6 min-w-0 flex-1">
+                {tvSettings.showLogo && (
+                  <img 
+                    src={tvSettings.logoUrl || brandLogoText} 
+                    alt="Logo" 
+                    className="h-10 md:h-16 w-auto object-contain opacity-80 flex-shrink-0"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = brandLogoText;
+                    }}
+                  />
+                )}
+                <div className="min-w-0">
+                  <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white truncate">
+                    {currentSong.titolo}
+                  </h1>
+                  <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-white/60 mt-1 font-light truncate">
+                    {currentSong.artista}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleFullscreen}
+                  className="text-white/40 hover:text-white hover:bg-white/10"
+                >
+                  <Maximize className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Lyrics display - Karaoke-style with glow */}
+          <div 
+            ref={lyricsRef}
+            className="relative z-10 flex-1 px-8 md:px-16 lg:px-24 py-8 overflow-y-auto"
+            style={{ maxHeight: 'calc(100vh - 200px)' }}
+          >
+            <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 text-center py-[20vh]">
+              {lines.map((line, index) => {
+                const isHighlighted = highlightLine === index;
+                const isPast = index < highlightLine;
+                const distanceFromHighlight = Math.abs(index - highlightLine);
+                
+                // Progressive opacity based on distance
+                let opacity = 1;
+                if (isPast) opacity = 0.3;
+                else if (distanceFromHighlight === 1) opacity = 0.7;
+                else if (distanceFromHighlight === 2) opacity = 0.5;
+                else if (distanceFromHighlight > 2) opacity = 0.35;
+                
+                // Font size based on highlight
+                const fontSizeClass = isHighlighted 
+                  ? 'text-3xl md:text-4xl lg:text-5xl' 
+                  : distanceFromHighlight <= 1 
+                    ? 'text-2xl md:text-3xl lg:text-4xl'
+                    : 'text-xl md:text-2xl lg:text-3xl';
+
+                return (
+                  <p
+                    key={index}
+                    data-line={index}
+                    className={cn(
+                      "font-bold leading-relaxed transition-all duration-700 ease-out",
+                      "font-sans tracking-wide",
+                      fontSizeClass,
+                      isHighlighted && "text-primary scale-105"
+                    )}
+                    style={{
+                      opacity,
+                      textShadow: isHighlighted 
+                        ? '0 0 60px hsl(var(--primary) / 0.6), 0 0 120px hsl(var(--primary) / 0.3)'
+                        : 'none',
+                      transform: isHighlighted ? 'scale(1.05)' : 'scale(1)',
+                    }}
+                  >
+                    {line || '\u00A0'}
+                  </p>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Minimal footer */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none">
+            <div className="flex items-center justify-center gap-2 text-white/30 text-sm">
+              <Mic className="w-4 h-4" />
+              <span>{tvSettings.title} • Karaoke Mode</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // COMPACT MODE - Simple text display
+    return (
+      <div className="min-h-screen bg-background text-foreground relative overflow-hidden select-none">
         {/* Header with song info */}
-        <div className="relative z-10 px-6 md:px-8 pt-6 md:pt-8 pb-4">
-          <div className="flex items-center justify-between max-w-6xl mx-auto">
+        <div className="relative z-10 px-6 md:px-8 pt-6 md:pt-8 pb-4 border-b">
+          <div className="flex items-center justify-between max-w-4xl mx-auto">
             <div className="flex items-center gap-4 md:gap-6 min-w-0 flex-1">
               {tvSettings.showLogo && (
                 <img 
                   src={tvSettings.logoUrl || brandLogoText} 
                   alt="Logo" 
-                  className="h-10 md:h-16 w-auto object-contain opacity-80 flex-shrink-0"
+                  className="h-10 md:h-12 w-auto object-contain flex-shrink-0"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = brandLogoText;
                   }}
                 />
               )}
               <div className="min-w-0">
-                <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white truncate">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight truncate">
                   {currentSong.titolo}
                 </h1>
-                <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-white/60 mt-1 font-light truncate">
+                <p className="text-base sm:text-lg md:text-xl text-muted-foreground mt-1 truncate">
                   {currentSong.artista}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-              {/* View Mode Toggle */}
-              <div className="flex items-center gap-0.5 bg-white/10 backdrop-blur-sm rounded-lg p-0.5">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setViewMode('karaoke')}
-                  className="h-8 px-3 text-xs bg-white/20 text-white"
-                >
-                  Karaoke
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setViewMode('spotify')}
-                  className="h-8 px-3 text-xs text-white/70 hover:text-white hover:bg-white/20"
-                >
-                  Spotify
-                </Button>
-              </div>
               <Button
-                variant="ghost"
+                variant="outline"
                 size="icon"
                 onClick={toggleFullscreen}
-                className="text-white/40 hover:text-white hover:bg-white/10"
               >
                 <Maximize className="w-5 h-5" />
               </Button>
@@ -383,50 +437,30 @@ export default function Trasmetti() {
           </div>
         </div>
 
-        {/* Lyrics display - Karaoke-style with glow */}
+        {/* Lyrics display - Compact list */}
         <div 
           ref={lyricsRef}
-          className="relative z-10 flex-1 px-8 md:px-16 lg:px-24 py-8 overflow-y-auto"
-          style={{ maxHeight: 'calc(100vh - 200px)' }}
+          className="relative z-10 flex-1 px-6 md:px-8 py-6 overflow-y-auto"
+          style={{ maxHeight: 'calc(100vh - 160px)' }}
         >
-          <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 text-center py-[20vh]">
+          <div className="max-w-3xl mx-auto space-y-2">
             {lines.map((line, index) => {
               const isHighlighted = highlightLine === index;
               const isPast = index < highlightLine;
-              const distanceFromHighlight = Math.abs(index - highlightLine);
               
-              // Progressive opacity based on distance
-              let opacity = 1;
-              if (isPast) opacity = 0.3;
-              else if (distanceFromHighlight === 1) opacity = 0.7;
-              else if (distanceFromHighlight === 2) opacity = 0.5;
-              else if (distanceFromHighlight > 2) opacity = 0.35;
-              
-              // Font size based on highlight
-              const fontSizeClass = isHighlighted 
-                ? 'text-3xl md:text-4xl lg:text-5xl' 
-                : distanceFromHighlight <= 1 
-                  ? 'text-2xl md:text-3xl lg:text-4xl'
-                  : 'text-xl md:text-2xl lg:text-3xl';
-
               return (
                 <p
                   key={index}
                   data-line={index}
                   className={cn(
-                    "font-bold leading-relaxed transition-all duration-700 ease-out",
-                    "font-sans tracking-wide",
-                    fontSizeClass,
-                    isHighlighted && "text-primary scale-105"
+                    "leading-relaxed transition-all duration-300 px-4 py-2 rounded-lg",
+                    "text-base sm:text-lg md:text-xl",
+                    isHighlighted && "bg-primary/20 text-primary font-semibold",
+                    isPast && "text-muted-foreground",
+                    !isHighlighted && !isPast && "text-foreground"
                   )}
-                  style={{
-                    opacity,
-                    textShadow: isHighlighted 
-                      ? '0 0 60px hsl(var(--primary) / 0.6), 0 0 120px hsl(var(--primary) / 0.3)'
-                      : 'none',
-                    transform: isHighlighted ? 'scale(1.05)' : 'scale(1)',
-                  }}
                 >
+                  <span className="mr-3 text-sm text-muted-foreground">{index + 1}</span>
                   {line || '\u00A0'}
                 </p>
               );
@@ -434,18 +468,18 @@ export default function Trasmetti() {
           </div>
         </div>
 
-        {/* Minimal footer */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none">
-          <div className="flex items-center justify-center gap-2 text-white/30 text-sm">
+        {/* Footer */}
+        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-background to-transparent pointer-events-none">
+          <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm">
             <Mic className="w-4 h-4" />
-            <span>{tvSettings.title} • Karaoke Mode</span>
+            <span>{tvSettings.title} • Compact Mode</span>
           </div>
         </div>
       </div>
     );
   }
 
-  // WAITING MODE - Promo screen with QR (No chat)
+  // WAITING MODE - Promo screen with QR (shown when not broadcasting)
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white relative overflow-hidden select-none">
       {/* Animated background */}

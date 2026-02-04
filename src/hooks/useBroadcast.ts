@@ -15,6 +15,8 @@ export interface BroadcastSession {
   highlight_line: number;
   auto_scroll: boolean;
   scroll_speed: number;
+  tv_view_mode: 'compact' | 'karaoke' | 'spotify';
+  is_broadcasting: boolean;
   created_at: string;
   updated_at: string;
 }
