@@ -13,6 +13,7 @@ export interface AssistantMessage {
   is_read: boolean;
   read_at: string | null;
   created_at: string;
+  delivery_status?: string;
 }
 
 export interface AssistantConversation {
@@ -107,7 +108,11 @@ export function useAssistantConversations() {
     try {
       await supabase
         .from('assistant_messages')
-        .update({ is_read: true, read_at: new Date().toISOString() })
+        .update({ 
+          is_read: true, 
+          read_at: new Date().toISOString(),
+          delivery_status: 'read'
+        })
         .eq('conversation_id', conversationId)
         .eq('sender_type', 'user')
         .eq('is_read', false);
@@ -147,6 +152,30 @@ export function useAssistantConversations() {
     }
   };
 
+  const deleteConversation = async (conversationId: string) => {
+    try {
+      // First delete all messages in the conversation
+      await supabase
+        .from('assistant_messages')
+        .delete()
+        .eq('conversation_id', conversationId);
+
+      // Then delete the conversation
+      const { error } = await supabase
+        .from('assistant_conversations')
+        .delete()
+        .eq('id', conversationId);
+
+      if (error) throw error;
+
+      setConversations(prev => prev.filter(c => c.id !== conversationId));
+      return true;
+    } catch (err) {
+      console.error('Error deleting conversation:', err);
+      return false;
+    }
+  };
+
   // Realtime subscription
   useEffect(() => {
     fetchConversations();
@@ -160,7 +189,7 @@ export function useAssistantConversations() {
       )
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'assistant_messages' },
+        { event: '*', schema: 'public', table: 'assistant_messages' },
         () => fetchConversations()
       )
       .subscribe();
@@ -177,5 +206,6 @@ export function useAssistantConversations() {
     refetch: fetchConversations,
     markAsRead,
     updateStatus,
+    deleteConversation,
   };
 }
