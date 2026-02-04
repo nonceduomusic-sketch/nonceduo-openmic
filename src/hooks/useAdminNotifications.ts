@@ -46,6 +46,8 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
   
   // Track current channel for cleanup
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  // Track last seen assistant message for polling-based notifications
+  const lastAssistantMsgIdRef = useRef<string | null>(null);
 
   const fetchJoinRequests = useCallback(async () => {
     // Only fetch if community is enabled
@@ -209,29 +211,25 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
       hasSubscriptions = true;
     }
 
-    // Assistant messages (always subscribe) - listen specifically to INSERT for notifications
+    // Assistant messages - try Realtime but also use polling for reliability
     channel.on(
       'postgres_changes',
       { event: 'INSERT', schema: 'public', table: 'assistant_messages' },
       (payload) => {
-        console.log('[AdminNotifications] New assistant message INSERT:', payload);
+        console.log('[AdminNotifications] Realtime: New assistant message INSERT:', payload);
         fetchCounts();
         // Emit event for toast popup if it's a new user message
         const newMsg = payload.new as { sender_type?: string; id?: string; conversation_id?: string; message_text?: string };
         if (newMsg?.sender_type === 'user') {
-          console.log('[AdminNotifications] Dispatching new-assistant-message event');
+          console.log('[AdminNotifications] Dispatching new-assistant-message event from Realtime');
           window.dispatchEvent(new CustomEvent('new-assistant-message', { detail: newMsg }));
         }
       }
     );
-    // Also listen to UPDATE for read status changes
     channel.on(
       'postgres_changes',
       { event: 'UPDATE', schema: 'public', table: 'assistant_messages' },
-      () => {
-        if (import.meta.env.DEV) console.log('[AdminNotifications] assistant_messages updated');
-        fetchCounts();
-      }
+      () => fetchCounts()
     );
     hasSubscriptions = true;
 
@@ -247,8 +245,7 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
       channelRef.current = channel;
     }
 
-    // Backup polling for Android - check every 5 seconds if realtime isn't working
-    // This ensures notifications still update even if WebSocket fails
+    // Polling interval for all notifications (backup for unreliable Realtime)
     const pollInterval = setInterval(() => {
       // Always poll on mobile/Android as WebSocket can be unreliable
       const isAndroid = /android/i.test(navigator.userAgent);
@@ -260,6 +257,44 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
         fetchCounts();
       }
     }, 5000);
+
+    // Dedicated polling for assistant messages (Realtime can be blocked by RLS)
+    const assistantPollInterval = setInterval(async () => {
+      try {
+        // Get the latest unread user message
+        const { data: latestMsgs } = await supabase
+          .from('assistant_messages')
+          .select('id, conversation_id, message_text, sender_type, created_at')
+          .eq('sender_type', 'user')
+          .eq('is_read', false)
+          .order('created_at', { ascending: false })
+          .limit(5);
+
+        if (latestMsgs && latestMsgs.length > 0) {
+          const latestMsg = latestMsgs[0];
+          // If we have a new message we haven't seen before, dispatch event
+          if (latestMsg.id !== lastAssistantMsgIdRef.current) {
+            console.log('[AdminNotifications] Poll detected new assistant message:', latestMsg.id);
+            lastAssistantMsgIdRef.current = latestMsg.id;
+            
+            // Dispatch event for toast
+            window.dispatchEvent(new CustomEvent('new-assistant-message', { 
+              detail: {
+                id: latestMsg.id,
+                conversation_id: latestMsg.conversation_id,
+                message_text: latestMsg.message_text,
+                sender_type: latestMsg.sender_type,
+              }
+            }));
+            
+            // Also refresh counts
+            fetchCounts();
+          }
+        }
+      } catch (err) {
+        console.error('[AdminNotifications] Assistant poll error:', err);
+      }
+    }, 3000); // Poll every 3 seconds for assistant messages
 
     // Also refresh when page becomes visible (tab switch, screen on)
     const handleVisibilityChange = () => {
@@ -273,6 +308,7 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
 
     return () => {
       clearInterval(pollInterval);
+      clearInterval(assistantPollInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
