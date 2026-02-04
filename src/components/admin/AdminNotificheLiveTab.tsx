@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { 
   Bell, Mail, Send, MessageSquare, Music, RefreshCw, 
-  CheckCircle2, XCircle, Clock, TestTube2 
+  CheckCircle2, XCircle, Clock, TestTube2, Settings2, Save
 } from 'lucide-react';
 import { useNotificationSettings, NotificationLog } from '@/hooks/useNotificationSettings';
 import { format } from 'date-fns';
@@ -78,10 +80,20 @@ export const AdminNotificheLiveTab: React.FC = () => {
   
   const [testingOpenMic, setTestingOpenMic] = useState(false);
   const [testingDediche, setTestingDediche] = useState(false);
+  const [openMicChatId, setOpenMicChatId] = useState('');
+  const [dedicheChatId, setDedicheChatId] = useState('');
+  const [savingChatIds, setSavingChatIds] = useState(false);
 
   useEffect(() => {
     fetchLogs(30);
   }, [fetchLogs]);
+
+  useEffect(() => {
+    if (settings) {
+      setOpenMicChatId(settings.telegram_openmic_chat_id || '');
+      setDedicheChatId(settings.telegram_dediche_chat_id || '');
+    }
+  }, [settings]);
 
   const handleTestOpenMic = async () => {
     setTestingOpenMic(true);
@@ -93,6 +105,15 @@ export const AdminNotificheLiveTab: React.FC = () => {
     setTestingDediche(true);
     await sendTestNotification('dediche');
     setTestingDediche(false);
+  };
+
+  const handleSaveChatIds = async () => {
+    setSavingChatIds(true);
+    await updateSettings({
+      telegram_openmic_chat_id: openMicChatId,
+      telegram_dediche_chat_id: dedicheChatId,
+    });
+    setSavingChatIds(false);
   };
 
   if (loading) {
@@ -283,6 +304,66 @@ export const AdminNotificheLiveTab: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Telegram Chat IDs Configuration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Settings2 className="w-5 h-5" />
+            Configurazione Chat ID Telegram
+          </CardTitle>
+          <CardDescription>
+            Modifica i Chat ID per i gruppi Telegram dove ricevere le notifiche
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="openmic-chat-id" className="flex items-center gap-2">
+                <Music className="w-4 h-4 text-primary" />
+                Chat ID Open Mic
+              </Label>
+              <Input
+                id="openmic-chat-id"
+                value={openMicChatId}
+                onChange={(e) => setOpenMicChatId(e.target.value)}
+                placeholder="-100xxxxxxxxxx"
+                className="font-mono"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="dediche-chat-id" className="flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-pink-500" />
+                Chat ID Dediche
+              </Label>
+              <Input
+                id="dediche-chat-id"
+                value={dedicheChatId}
+                onChange={(e) => setDedicheChatId(e.target.value)}
+                placeholder="-100xxxxxxxxxx"
+                className="font-mono"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button 
+              onClick={handleSaveChatIds} 
+              disabled={savingChatIds}
+              size="sm"
+            >
+              {savingChatIds ? (
+                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              Salva Chat ID
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            💡 Per i supergruppi Telegram, usa il prefisso <code className="bg-muted px-1 rounded">-100</code> seguito dall'ID del gruppo.
+          </p>
+        </CardContent>
+      </Card>
 
       <Separator />
 
