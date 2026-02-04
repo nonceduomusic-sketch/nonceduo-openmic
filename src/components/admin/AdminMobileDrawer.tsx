@@ -2,6 +2,7 @@ import React from "react";
 import {
   Bell,
   Book,
+  Bot,
   Calendar,
   Crown,
   Database,
@@ -55,6 +56,7 @@ const MENU_ITEMS: MenuItem[] = [
   { key: "songs", label: "Canzoni", icon: ListMusic, group: "Operativo", gatedBy: "openmic" },
   { key: "dediche", label: "Dediche", icon: MessageSquare, group: "Operativo", gatedBy: "dediche" },
   { key: "community", label: "Community", icon: Newspaper, group: "Operativo", gatedBy: "community" },
+  { key: "assistant", label: "Assistente", icon: Bot, group: "Operativo", ownerOnly: true },
 
   // === GRUPPO GESTIONE ===
   { key: "settings", label: "Impostazioni", icon: Settings, group: "Gestione" },
