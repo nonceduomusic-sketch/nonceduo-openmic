@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Home, Music2, ExternalLink, Plus, Minus, ChevronUp, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Home, Music2, ExternalLink, Plus, Minus, ChevronUp, ChevronDown, Play, Pause, Gauge } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Slider } from '@/components/ui/slider';
 import { useSongs, Song } from '@/hooks/useSongs';
 import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
 import { cn } from '@/lib/utils';
@@ -27,9 +28,15 @@ const BACKGROUND_COLORS = [
 const FONT_SIZES = [16, 20, 24, 28, 32];
 const DEFAULT_FONT_SIZE = 20;
 const FONT_SIZE_STORAGE_KEY = 'lyrics-font-size';
+const AUTO_SCROLL_SPEED_KEY = 'lyrics-auto-scroll-speed';
 
 // Lines per highlight chunk
 const LINES_PER_CHUNK = 3;
+
+// Auto-scroll speeds (pixels per second)
+const MIN_SCROLL_SPEED = 10;
+const MAX_SCROLL_SPEED = 80;
+const DEFAULT_SCROLL_SPEED = 30;
 
 // Generate a consistent color based on song ID
 const getColorForSong = (id: string): string => {
@@ -52,6 +59,7 @@ const Lyrics: React.FC = () => {
   // Admin settings
   const { isActive: zoomEnabled } = useFormatActiveCheck('lyrics_zoom');
   const { isActive: highlightEnabled } = useFormatActiveCheck('lyrics_highlight_arrows');
+  const { isActive: autoScrollEnabled } = useFormatActiveCheck('lyrics_auto_scroll');
 
   // Zoom state (persisted per device)
   const [fontSize, setFontSize] = useState<number>(() => {
@@ -64,6 +72,22 @@ const Lyrics: React.FC = () => {
     } catch {}
     return DEFAULT_FONT_SIZE;
   });
+
+  // Auto-scroll state
+  const [isAutoScrolling, setIsAutoScrolling] = useState(false);
+  const [scrollSpeed, setScrollSpeed] = useState<number>(() => {
+    try {
+      const stored = localStorage.getItem(AUTO_SCROLL_SPEED_KEY);
+      if (stored) {
+        const parsed = parseInt(stored, 10);
+        if (parsed >= MIN_SCROLL_SPEED && parsed <= MAX_SCROLL_SPEED) return parsed;
+      }
+    } catch {}
+    return DEFAULT_SCROLL_SPEED;
+  });
+  const [showSpeedSlider, setShowSpeedSlider] = useState(false);
+  const scrollAnimationRef = useRef<number | null>(null);
+  const lastTimeRef = useRef<number>(0);
 
   // Highlight state - now tracks chunk index
   const [currentChunkIndex, setCurrentChunkIndex] = useState<number>(-1);
@@ -123,7 +147,51 @@ const Lyrics: React.FC = () => {
     } catch {}
   }, [fontSize]);
 
-  // Scroll to highlighted chunk
+  // Persist scroll speed
+  useEffect(() => {
+    try {
+      localStorage.setItem(AUTO_SCROLL_SPEED_KEY, scrollSpeed.toString());
+    } catch {}
+  }, [scrollSpeed]);
+
+  // Auto-scroll animation
+  useEffect(() => {
+    if (!isAutoScrolling) {
+      if (scrollAnimationRef.current) {
+        cancelAnimationFrame(scrollAnimationRef.current);
+        scrollAnimationRef.current = null;
+      }
+      return;
+    }
+
+    const animate = (timestamp: number) => {
+      if (!lastTimeRef.current) lastTimeRef.current = timestamp;
+      const delta = (timestamp - lastTimeRef.current) / 1000; // Convert to seconds
+      lastTimeRef.current = timestamp;
+
+      window.scrollBy(0, scrollSpeed * delta);
+
+      // Check if we've reached the bottom
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      if (window.scrollY >= maxScroll - 10) {
+        setIsAutoScrolling(false);
+        return;
+      }
+
+      scrollAnimationRef.current = requestAnimationFrame(animate);
+    };
+
+    lastTimeRef.current = 0;
+    scrollAnimationRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (scrollAnimationRef.current) {
+        cancelAnimationFrame(scrollAnimationRef.current);
+      }
+    };
+  }, [isAutoScrolling, scrollSpeed]);
+
+  // Scroll to highlighted chunk (and stop auto-scroll if using manual navigation)
   useEffect(() => {
     if (currentChunkIndex >= 0 && chunkRefs.current[currentChunkIndex]) {
       chunkRefs.current[currentChunkIndex]?.scrollIntoView({
@@ -132,6 +200,15 @@ const Lyrics: React.FC = () => {
       });
     }
   }, [currentChunkIndex]);
+
+  const toggleAutoScroll = useCallback(() => {
+    setIsAutoScrolling(prev => !prev);
+    setShowSpeedSlider(false);
+  }, []);
+
+  const handleSpeedChange = useCallback((value: number[]) => {
+    setScrollSpeed(value[0]);
+  }, []);
 
   const handleZoomIn = useCallback(() => {
     setFontSize((prev) => {
@@ -154,14 +231,17 @@ const Lyrics: React.FC = () => {
   }, []);
 
   const handleChunkUp = useCallback(() => {
+    setIsAutoScrolling(false); // Stop auto-scroll on manual navigation
     setCurrentChunkIndex((prev) => Math.max(-1, prev - 1));
   }, []);
 
   const handleChunkDown = useCallback(() => {
+    setIsAutoScrolling(false); // Stop auto-scroll on manual navigation
     setCurrentChunkIndex((prev) => Math.min(lyricsChunks.length - 1, prev + 1));
   }, [lyricsChunks.length]);
 
   const backgroundColor = id ? getColorForSong(id) : BACKGROUND_COLORS[0];
+  const showControls = zoomEnabled || highlightEnabled || autoScrollEnabled;
 
   if (loading) {
     return (
@@ -213,7 +293,7 @@ const Lyrics: React.FC = () => {
     );
   }
 
-  const showControls = zoomEnabled || highlightEnabled;
+  
 
   return (
     <div className={cn('min-h-screen bg-gradient-to-b', backgroundColor)}>
@@ -353,10 +433,58 @@ const Lyrics: React.FC = () => {
 
       {/* Floating Control Buttons */}
       {showControls && song.testo && (
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2">
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 items-end">
+          {/* Speed Slider - shows when clicking settings */}
+          {autoScrollEnabled && showSpeedSlider && (
+            <div className="bg-black/80 backdrop-blur-md rounded-xl p-3 shadow-2xl border border-white/20 flex items-center gap-3 animate-fade-in">
+              <Gauge className="w-4 h-4 text-white/70" />
+              <Slider
+                value={[scrollSpeed]}
+                onValueChange={handleSpeedChange}
+                min={MIN_SCROLL_SPEED}
+                max={MAX_SCROLL_SPEED}
+                step={5}
+                className="w-32"
+              />
+              <span className="text-white/70 text-xs font-mono w-8">{scrollSpeed}</span>
+            </div>
+          )}
+          
           <div className="bg-black/60 backdrop-blur-md rounded-xl p-2 shadow-2xl border border-white/20 flex flex-col gap-1">
+            {/* Auto-scroll controls */}
+            {autoScrollEnabled && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleAutoScroll}
+                  className={cn(
+                    "text-white hover:bg-white/20 h-10 w-10",
+                    isAutoScrolling && "bg-green-500/30 text-green-400"
+                  )}
+                  title={isAutoScrolling ? "Ferma scorrimento" : "Avvia scorrimento automatico"}
+                >
+                  {isAutoScrolling ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowSpeedSlider(!showSpeedSlider)}
+                  className={cn(
+                    "text-white hover:bg-white/20 h-10 w-10",
+                    showSpeedSlider && "bg-white/20"
+                  )}
+                  title="Regola velocità"
+                >
+                  <Gauge className="w-5 h-5" />
+                </Button>
+              </>
+            )}
+            
+            {/* Zoom controls */}
             {zoomEnabled && (
               <>
+                {autoScrollEnabled && <div className="h-px bg-white/20 my-1" />}
                 <Button
                   variant="ghost"
                   size="icon"
@@ -379,10 +507,12 @@ const Lyrics: React.FC = () => {
                 </Button>
               </>
             )}
+            
+            {/* Highlight navigation */}
             {highlightEnabled && (
               <>
-                {zoomEnabled && <div className="h-px bg-white/20 my-1" />}
-              <Button
+                {(zoomEnabled || autoScrollEnabled) && <div className="h-px bg-white/20 my-1" />}
+                <Button
                   variant="ghost"
                   size="icon"
                   onClick={handleChunkUp}
