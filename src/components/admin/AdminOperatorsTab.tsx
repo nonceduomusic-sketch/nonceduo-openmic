@@ -43,6 +43,8 @@ import {
   ChevronDown,
   ChevronUp,
   Pencil,
+  Bot,
+  Tv,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -57,6 +59,14 @@ type OperatorUser = {
     view_dediche: boolean;
     openmic_manage: boolean;
     dediche_manage: boolean;
+    // Assistente (3 livelli)
+    assistente_view: boolean;
+    assistente_manage: boolean;
+    assistente_full: boolean;
+    // Trasmetti (3 livelli)
+    trasmetti_view: boolean;
+    trasmetti_manage: boolean;
+    trasmetti_full: boolean;
   };
 };
 
@@ -69,6 +79,12 @@ const OPERATOR_PERMISSIONS = [
   "operator.openmic_manage",
   "operator.dediche_readonly",
   "operator.dediche_manage",
+  "operator.assistente_view",
+  "operator.assistente_manage",
+  "operator.assistente_full",
+  "operator.trasmetti_view",
+  "operator.trasmetti_manage",
+  "operator.trasmetti_full",
 ] as const;
 
 export function AdminOperatorsTab() {
@@ -151,6 +167,14 @@ export function AdminOperatorsTab() {
             view_dediche: hasPermission("operator.view_dediche"),
             openmic_manage: hasPermission("operator.openmic_manage"),
             dediche_manage: hasPermission("operator.dediche_manage"),
+            // Assistente
+            assistente_view: hasPermission("operator.assistente_view"),
+            assistente_manage: hasPermission("operator.assistente_manage"),
+            assistente_full: hasPermission("operator.assistente_full"),
+            // Trasmetti
+            trasmetti_view: hasPermission("operator.trasmetti_view"),
+            trasmetti_manage: hasPermission("operator.trasmetti_manage"),
+            trasmetti_full: hasPermission("operator.trasmetti_full"),
           },
         };
       });
@@ -225,6 +249,14 @@ export function AdminOperatorsTab() {
       view_dediche: "operator.view_dediche",
       openmic_manage: "operator.openmic_manage",
       dediche_manage: "operator.dediche_manage",
+      // Assistente
+      assistente_view: "operator.assistente_view",
+      assistente_manage: "operator.assistente_manage",
+      assistente_full: "operator.assistente_full",
+      // Trasmetti
+      trasmetti_view: "operator.trasmetti_view",
+      trasmetti_manage: "operator.trasmetti_manage",
+      trasmetti_full: "operator.trasmetti_full",
     };
 
     const permName = permMap[permKey];
@@ -510,7 +542,7 @@ export function AdminOperatorsTab() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 flex-wrap">
                       {operator.permissions.view_centro && (
                         <Badge variant="secondary" className="text-[10px] px-1.5">
                           <Bell className="w-3 h-3" />
@@ -524,6 +556,16 @@ export function AdminOperatorsTab() {
                       {operator.permissions.view_dediche && (
                         <Badge variant="secondary" className="text-[10px] px-1.5">
                           <MessageSquare className="w-3 h-3" />
+                        </Badge>
+                      )}
+                      {(operator.permissions.assistente_view || operator.permissions.assistente_manage || operator.permissions.assistente_full) && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5">
+                          <Bot className="w-3 h-3" />
+                        </Badge>
+                      )}
+                      {(operator.permissions.trasmetti_view || operator.permissions.trasmetti_manage || operator.permissions.trasmetti_full) && (
+                        <Badge variant="secondary" className="text-[10px] px-1.5">
+                          <Tv className="w-3 h-3" />
                         </Badge>
                       )}
                     </div>
@@ -660,6 +702,138 @@ export function AdminOperatorsTab() {
                               className="accent-primary"
                             />
                             Gestione completa (risposte)
+                          </Label>
+                        </div>
+                      </div>
+
+                      {/* Assistente actions - 3 livelli */}
+                      <div className="p-4 rounded-lg border space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Bot className="w-4 h-4 text-primary" />
+                          <span className="font-medium text-sm">Assistente</span>
+                        </div>
+                        <div className="space-y-2 pl-6">
+                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`assistente-${operator.user_id}`}
+                              checked={!operator.permissions.assistente_view && !operator.permissions.assistente_manage && !operator.permissions.assistente_full}
+                              onChange={() => {
+                                handlePermissionToggle(operator, "assistente_view", false);
+                                handlePermissionToggle(operator, "assistente_manage", false);
+                                handlePermissionToggle(operator, "assistente_full", false);
+                              }}
+                              className="accent-primary"
+                            />
+                            Nessun accesso
+                          </Label>
+                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`assistente-${operator.user_id}`}
+                              checked={operator.permissions.assistente_view && !operator.permissions.assistente_manage && !operator.permissions.assistente_full}
+                              onChange={() => {
+                                handlePermissionToggle(operator, "assistente_view", true);
+                                handlePermissionToggle(operator, "assistente_manage", false);
+                                handlePermissionToggle(operator, "assistente_full", false);
+                              }}
+                              className="accent-primary"
+                            />
+                            Solo visualizzazione
+                          </Label>
+                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`assistente-${operator.user_id}`}
+                              checked={operator.permissions.assistente_manage && !operator.permissions.assistente_full}
+                              onChange={() => {
+                                handlePermissionToggle(operator, "assistente_view", true);
+                                handlePermissionToggle(operator, "assistente_manage", true);
+                                handlePermissionToggle(operator, "assistente_full", false);
+                              }}
+                              className="accent-primary"
+                            />
+                            Gestione (no elimina)
+                          </Label>
+                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`assistente-${operator.user_id}`}
+                              checked={operator.permissions.assistente_full}
+                              onChange={() => {
+                                handlePermissionToggle(operator, "assistente_view", true);
+                                handlePermissionToggle(operator, "assistente_manage", true);
+                                handlePermissionToggle(operator, "assistente_full", true);
+                              }}
+                              className="accent-primary"
+                            />
+                            Controllo completo
+                          </Label>
+                        </div>
+                      </div>
+
+                      {/* Trasmetti actions - 3 livelli */}
+                      <div className="p-4 rounded-lg border space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Tv className="w-4 h-4 text-primary" />
+                          <span className="font-medium text-sm">Trasmetti</span>
+                        </div>
+                        <div className="space-y-2 pl-6">
+                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`trasmetti-${operator.user_id}`}
+                              checked={!operator.permissions.trasmetti_view && !operator.permissions.trasmetti_manage && !operator.permissions.trasmetti_full}
+                              onChange={() => {
+                                handlePermissionToggle(operator, "trasmetti_view", false);
+                                handlePermissionToggle(operator, "trasmetti_manage", false);
+                                handlePermissionToggle(operator, "trasmetti_full", false);
+                              }}
+                              className="accent-primary"
+                            />
+                            Nessun accesso
+                          </Label>
+                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`trasmetti-${operator.user_id}`}
+                              checked={operator.permissions.trasmetti_view && !operator.permissions.trasmetti_manage && !operator.permissions.trasmetti_full}
+                              onChange={() => {
+                                handlePermissionToggle(operator, "trasmetti_view", true);
+                                handlePermissionToggle(operator, "trasmetti_manage", false);
+                                handlePermissionToggle(operator, "trasmetti_full", false);
+                              }}
+                              className="accent-primary"
+                            />
+                            Solo visualizzazione
+                          </Label>
+                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`trasmetti-${operator.user_id}`}
+                              checked={operator.permissions.trasmetti_manage && !operator.permissions.trasmetti_full}
+                              onChange={() => {
+                                handlePermissionToggle(operator, "trasmetti_view", true);
+                                handlePermissionToggle(operator, "trasmetti_manage", true);
+                                handlePermissionToggle(operator, "trasmetti_full", false);
+                              }}
+                              className="accent-primary"
+                            />
+                            Gestione (trasmetti)
+                          </Label>
+                          <Label className="flex items-center gap-2 text-sm cursor-pointer">
+                            <input
+                              type="radio"
+                              name={`trasmetti-${operator.user_id}`}
+                              checked={operator.permissions.trasmetti_full}
+                              onChange={() => {
+                                handlePermissionToggle(operator, "trasmetti_view", true);
+                                handlePermissionToggle(operator, "trasmetti_manage", true);
+                                handlePermissionToggle(operator, "trasmetti_full", true);
+                              }}
+                              className="accent-primary"
+                            />
+                            Controllo completo (scalette)
                           </Label>
                         </div>
                       </div>

@@ -578,6 +578,8 @@ export const AdminDashboard: React.FC = () => {
                 canViewCentro: operatorPerms.canViewCentro,
                 canViewOpenmic: operatorPerms.canViewOpenmic,
                 canViewDediche: operatorPerms.canViewDediche,
+                canViewAssistente: operatorPerms.canViewAssistente,
+                canViewTrasmetti: operatorPerms.canViewTrasmetti,
               }}
             />
           )}
