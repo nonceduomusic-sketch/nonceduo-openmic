@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { useBroadcast } from '@/hooks/useBroadcast';
 import { supabase } from '@/integrations/supabase/client';
 import { Maximize, Mic } from 'lucide-react';
@@ -20,6 +20,32 @@ interface ElementPosition {
   y: number;
 }
 
+// Vibrant color palette for Spotify-style backgrounds
+const BACKGROUND_COLORS = [
+  'from-purple-600 to-purple-900',
+  'from-blue-500 to-blue-800',
+  'from-green-500 to-green-800',
+  'from-orange-500 to-orange-800',
+  'from-pink-500 to-pink-800',
+  'from-cyan-500 to-cyan-800',
+  'from-rose-500 to-rose-800',
+  'from-indigo-500 to-indigo-800',
+  'from-teal-500 to-teal-800',
+  'from-amber-500 to-amber-800',
+  'from-fuchsia-500 to-fuchsia-800',
+  'from-emerald-500 to-emerald-800',
+];
+
+// Generate a consistent color based on song ID
+const getColorForSong = (id: string): string => {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % BACKGROUND_COLORS.length;
+  return BACKGROUND_COLORS[index];
+};
+
 const DEFAULT_POSITIONS: Record<string, ElementPosition> = {
   logo: { x: 50, y: 15 },
   title: { x: 50, y: 35 },
@@ -30,13 +56,23 @@ const DEFAULT_POSITIONS: Record<string, ElementPosition> = {
   footer: { x: 50, y: 96 },
 };
 
+type LyricsViewMode = 'karaoke' | 'spotify';
+
 export default function Trasmetti() {
   const { salaCode = 'main' } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { session, loading } = useBroadcast(salaCode);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [highlightLine, setHighlightLine] = useState(0);
+  
+  // View mode from URL param (default: karaoke)
+  const viewMode = (searchParams.get('mode') as LyricsViewMode) || 'karaoke';
+  const setViewMode = (mode: LyricsViewMode) => {
+    setSearchParams({ mode });
+  };
+  
   // Track if admin is controlling manually (based on session auto_scroll)
   const isAdminControlled = session?.auto_scroll === false;
   const lyricsRef = useRef<HTMLDivElement>(null);
@@ -179,8 +215,110 @@ export default function Trasmetti() {
     );
   }
 
-  // LYRICS MODE - Professional Karaoke Style (No chat, clean display)
+  // LYRICS MODE - Karaoke or Spotify style
   if (session?.display_mode === 'lyrics' && currentSong) {
+    // SPOTIFY MODE - Colorful background like Lyrics.tsx
+    if (viewMode === 'spotify') {
+      const backgroundColor = getColorForSong(currentSong.id);
+      
+      return (
+        <div className={cn('min-h-screen text-white relative overflow-hidden select-none bg-gradient-to-b', backgroundColor)}>
+          {/* Header with song info */}
+          <div className="relative z-10 px-6 md:px-8 pt-6 md:pt-8 pb-4">
+            <div className="flex items-center justify-between max-w-4xl mx-auto">
+              <div className="flex items-center gap-4 md:gap-6 min-w-0 flex-1">
+                {tvSettings.showLogo && (
+                  <img 
+                    src={tvSettings.logoUrl || brandLogoText} 
+                    alt="Logo" 
+                    className="h-10 md:h-14 w-auto object-contain opacity-90 flex-shrink-0"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = brandLogoText;
+                    }}
+                  />
+                )}
+                <div className="min-w-0">
+                  <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-white truncate">
+                    {currentSong.titolo}
+                  </h1>
+                  <p className="text-lg sm:text-xl md:text-2xl text-white/80 mt-1 font-medium truncate">
+                    {currentSong.artista}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {/* View Mode Toggle */}
+                <div className="flex items-center gap-0.5 bg-black/30 backdrop-blur-sm rounded-lg p-0.5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setViewMode('karaoke')}
+                    className="h-8 px-3 text-xs text-white/70 hover:text-white hover:bg-white/20"
+                  >
+                    Karaoke
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setViewMode('spotify')}
+                    className="h-8 px-3 text-xs bg-white/20 text-white"
+                  >
+                    Spotify
+                  </Button>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleFullscreen}
+                  className="text-white/60 hover:text-white hover:bg-white/20"
+                >
+                  <Maximize className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* Lyrics display - Spotify-style with card */}
+          <div 
+            ref={lyricsRef}
+            className="relative z-10 flex-1 px-4 md:px-8 py-4 overflow-y-auto"
+            style={{ maxHeight: 'calc(100vh - 180px)' }}
+          >
+            <div className="max-w-3xl mx-auto bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-8 shadow-2xl">
+              {lines.map((line, index) => {
+                const isHighlighted = highlightLine === index;
+                const isPast = index < highlightLine;
+                
+                return (
+                  <p
+                    key={index}
+                    data-line={index}
+                    className={cn(
+                      "font-sans leading-relaxed transition-all duration-300 py-1.5 px-3 -mx-3 rounded-lg",
+                      "text-lg sm:text-xl md:text-2xl",
+                      isHighlighted && "bg-yellow-400/30 ring-2 ring-yellow-400/50 scale-[1.01] font-semibold",
+                      isPast && "opacity-40"
+                    )}
+                  >
+                    {line || '\u00A0'}
+                  </p>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/50 to-transparent pointer-events-none">
+            <div className="flex items-center justify-center gap-2 text-white/50 text-sm">
+              <Mic className="w-4 h-4" />
+              <span>{tvSettings.title} • Spotify Mode</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // KARAOKE MODE - Dark with ambient glow (default)
     return (
       <div className="min-h-screen bg-black text-white relative overflow-hidden select-none">
         {/* Ambient background - subtle, professional */}
@@ -191,40 +329,61 @@ export default function Trasmetti() {
         </div>
 
         {/* Header with song info */}
-        <div className="relative z-10 px-8 pt-8 pb-4">
+        <div className="relative z-10 px-6 md:px-8 pt-6 md:pt-8 pb-4">
           <div className="flex items-center justify-between max-w-6xl mx-auto">
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4 md:gap-6 min-w-0 flex-1">
               {tvSettings.showLogo && (
                 <img 
                   src={tvSettings.logoUrl || brandLogoText} 
                   alt="Logo" 
-                  className="h-12 md:h-16 w-auto object-contain opacity-80"
+                  className="h-10 md:h-16 w-auto object-contain opacity-80 flex-shrink-0"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = brandLogoText;
                   }}
                 />
               )}
-              <div>
-                <h1 className="text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white">
+              <div className="min-w-0">
+                <h1 className="text-2xl sm:text-3xl md:text-5xl lg:text-6xl font-bold tracking-tight text-white truncate">
                   {currentSong.titolo}
                 </h1>
-                <p className="text-xl md:text-2xl lg:text-3xl text-white/60 mt-1 font-light">
+                <p className="text-lg sm:text-xl md:text-2xl lg:text-3xl text-white/60 mt-1 font-light truncate">
                   {currentSong.artista}
                 </p>
               </div>
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleFullscreen}
-              className="text-white/40 hover:text-white hover:bg-white/10"
-            >
-              <Maximize className="w-6 h-6" />
-            </Button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* View Mode Toggle */}
+              <div className="flex items-center gap-0.5 bg-white/10 backdrop-blur-sm rounded-lg p-0.5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setViewMode('karaoke')}
+                  className="h-8 px-3 text-xs bg-white/20 text-white"
+                >
+                  Karaoke
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setViewMode('spotify')}
+                  className="h-8 px-3 text-xs text-white/70 hover:text-white hover:bg-white/20"
+                >
+                  Spotify
+                </Button>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleFullscreen}
+                className="text-white/40 hover:text-white hover:bg-white/10"
+              >
+                <Maximize className="w-5 h-5" />
+              </Button>
+            </div>
           </div>
         </div>
 
-        {/* Lyrics display - Spotify-style */}
+        {/* Lyrics display - Karaoke-style with glow */}
         <div 
           ref={lyricsRef}
           className="relative z-10 flex-1 px-8 md:px-16 lg:px-24 py-8 overflow-y-auto"
@@ -244,7 +403,7 @@ export default function Trasmetti() {
               else if (distanceFromHighlight > 2) opacity = 0.35;
               
               // Font size based on highlight
-              const fontSize = isHighlighted 
+              const fontSizeClass = isHighlighted 
                 ? 'text-3xl md:text-4xl lg:text-5xl' 
                 : distanceFromHighlight <= 1 
                   ? 'text-2xl md:text-3xl lg:text-4xl'
@@ -257,7 +416,7 @@ export default function Trasmetti() {
                   className={cn(
                     "font-bold leading-relaxed transition-all duration-700 ease-out",
                     "font-sans tracking-wide",
-                    fontSize,
+                    fontSizeClass,
                     isHighlighted && "text-primary scale-105"
                   )}
                   style={{
@@ -279,7 +438,7 @@ export default function Trasmetti() {
         <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/80 to-transparent pointer-events-none">
           <div className="flex items-center justify-center gap-2 text-white/30 text-sm">
             <Mic className="w-4 h-4" />
-            <span>{tvSettings.title}</span>
+            <span>{tvSettings.title} • Karaoke Mode</span>
           </div>
         </div>
       </div>

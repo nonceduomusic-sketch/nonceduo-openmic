@@ -37,7 +37,33 @@ interface LiveTVControlPanelProps {
   canManage?: boolean;
 }
 
-type ViewMode = 'compact' | 'spotify';
+type ViewMode = 'compact' | 'karaoke' | 'spotify';
+
+// Vibrant color palette for Spotify-style backgrounds
+const BACKGROUND_COLORS = [
+  'from-purple-600 to-purple-900',
+  'from-blue-500 to-blue-800',
+  'from-green-500 to-green-800',
+  'from-orange-500 to-orange-800',
+  'from-pink-500 to-pink-800',
+  'from-cyan-500 to-cyan-800',
+  'from-rose-500 to-rose-800',
+  'from-indigo-500 to-indigo-800',
+  'from-teal-500 to-teal-800',
+  'from-amber-500 to-amber-800',
+  'from-fuchsia-500 to-fuchsia-800',
+  'from-emerald-500 to-emerald-800',
+];
+
+// Generate a consistent color based on song ID
+const getColorForSong = (id: string): string => {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % BACKGROUND_COLORS.length;
+  return BACKGROUND_COLORS[index];
+};
 
 export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps) {
   const { session, updateSession, stopBroadcast } = useBroadcast('main');
@@ -47,7 +73,7 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
   const [scrollSpeed, setScrollSpeed] = useState(3);
   const [fontSize, setFontSize] = useState(100); // percentage
   const [isFullPreview, setIsFullPreview] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>('spotify');
+  const [viewMode, setViewMode] = useState<ViewMode>('compact');
   const lyricsRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
@@ -170,8 +196,9 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
     }
   }, [autoScroll, updateSession]);
 
-  const openTVPage = () => {
-    window.open('/trasmetti', '_blank');
+  const openTVPage = (mode?: 'karaoke' | 'spotify') => {
+    const url = mode ? `/trasmetti?mode=${mode}` : '/trasmetti';
+    window.open(url, '_blank');
   };
 
   // No broadcast active
@@ -420,7 +447,7 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
                     <Button
                       variant="outline"
                       size="icon"
-                      onClick={openTVPage}
+                      onClick={() => openTVPage()}
                       className="text-white border-white/20 hover:bg-white/20 h-10 w-10"
                     >
                       <ExternalLink className="w-4 h-4" />
@@ -530,7 +557,7 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={openTVPage}
+                    onClick={() => openTVPage()}
                     className="text-white border-white/20 hover:bg-white/20"
                   >
                     <ExternalLink className="w-4 h-4 mr-2" />
@@ -580,6 +607,14 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
                 Compatta
               </Button>
               <Button
+                variant={viewMode === 'karaoke' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('karaoke')}
+                className="h-7 px-2 text-xs"
+              >
+                Karaoke
+              </Button>
+              <Button
                 variant={viewMode === 'spotify' ? 'secondary' : 'ghost'}
                 size="sm"
                 onClick={() => setViewMode('spotify')}
@@ -601,7 +636,7 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
               <Button
                 variant="outline"
                 size="icon"
-                onClick={openTVPage}
+                onClick={() => openTVPage()}
                 className="h-8 w-8"
               >
                 <ExternalLink className="w-4 h-4" />
@@ -802,7 +837,91 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
 
         {/* Preview based on view mode */}
         {viewMode === 'spotify' ? (
-          /* Spotify-style Preview */
+          /* SPOTIFY-style Preview - Colorful background like Lyrics.tsx */
+          <div 
+            className={cn(
+              "relative rounded-xl overflow-hidden cursor-pointer bg-gradient-to-b",
+              currentSong ? getColorForSong(currentSong.id) : 'from-purple-600 to-purple-900'
+            )}
+            style={{ minHeight: isMobile ? 260 : 320 }}
+            onClick={() => setIsFullPreview(true)}
+          >
+            {/* Header with song info */}
+            <div className="relative z-10 px-4 pt-4 pb-2">
+              <div className="flex items-center gap-3">
+                {tvSettings.showLogo && !isMobile && (
+                  <img 
+                    src={tvSettings.logoUrl || brandLogoText} 
+                    alt="Logo" 
+                    className="h-6 w-auto object-contain opacity-80"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = brandLogoText;
+                    }}
+                  />
+                )}
+                <div className="min-w-0 flex-1">
+                  <h3 
+                    className="font-bold text-white truncate"
+                    style={{ fontSize: `${Math.max(14, (isMobile ? 16 : 20) * fontSize / 100)}px` }}
+                  >
+                    {currentSong.titolo}
+                  </h3>
+                  <p 
+                    className="text-white/70 truncate"
+                    style={{ fontSize: `${Math.max(11, (isMobile ? 12 : 14) * fontSize / 100)}px` }}
+                  >
+                    {currentSong.artista}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Spotify-style Lyrics - Like Lyrics.tsx */}
+            <div 
+              ref={lyricsRef}
+              className="relative z-10 px-4 py-4 overflow-y-auto"
+              style={{ maxHeight: isMobile ? 180 : 240 }}
+            >
+              <div className="bg-black/30 backdrop-blur-sm rounded-xl p-4">
+                {lines.map((line, index) => {
+                  const isHighlighted = localHighlightLine === index;
+                  const isPast = index < localHighlightLine;
+                  
+                  return (
+                    <p
+                      key={index}
+                      data-line={index}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleLineClick(index);
+                      }}
+                      className={cn(
+                        "font-sans leading-relaxed transition-all duration-300 cursor-pointer py-1",
+                        isHighlighted && "bg-yellow-400/30 ring-2 ring-yellow-400/50 rounded-lg px-2 scale-[1.01]",
+                        isPast && "opacity-40",
+                        !isHighlighted && !isPast && "text-white hover:bg-white/10 rounded px-2"
+                      )}
+                      style={{ 
+                        fontSize: `${Math.max(isMobile ? 13 : 14, (isMobile ? 14 : 16) * fontSize / 100)}px`,
+                        color: isHighlighted ? 'white' : undefined
+                      }}
+                    >
+                      {line || '\u00A0'}
+                    </p>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/50 to-transparent">
+              <div className="flex items-center justify-center gap-1.5 text-white/50 text-xs">
+                <span>Tocca per espandere • Stile Spotify</span>
+              </div>
+            </div>
+          </div>
+        ) : viewMode === 'karaoke' ? (
+          /* KARAOKE-style Preview - Dark with ambient glow */
           <div 
             className="relative rounded-xl overflow-hidden bg-gradient-to-b from-gray-900 via-black to-gray-900 cursor-pointer"
             style={{ minHeight: isMobile ? 260 : 320 }}
@@ -844,7 +963,7 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
               </div>
             </div>
 
-            {/* Spotify-style Lyrics */}
+            {/* Karaoke-style Lyrics with glow */}
             <div 
               ref={lyricsRef}
               className={cn(
@@ -898,12 +1017,12 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
             <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black to-transparent">
               <div className="flex items-center justify-center gap-1.5 text-white/30 text-xs">
                 <Mic className="w-3 h-3" />
-                <span>Tocca per espandere</span>
+                <span>Tocca per espandere • Karaoke</span>
               </div>
             </div>
           </div>
         ) : (
-          /* Compact Preview */
+          /* COMPACT Preview - Simple text list */
           <div 
             className="relative rounded-lg overflow-hidden border bg-card cursor-pointer"
             onClick={() => setIsFullPreview(true)}
