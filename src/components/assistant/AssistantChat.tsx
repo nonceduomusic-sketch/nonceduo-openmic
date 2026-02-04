@@ -18,6 +18,8 @@ interface Message {
 interface AssistantChatProps {
   isOpen: boolean;
   section: string;
+  initialFlow?: string;
+  initialPrefill?: string;
   onClose: () => void;
   onSendMessage: (text: string, senderType: 'user' | 'bot', senderName?: string, metadata?: Record<string, unknown>) => Promise<unknown>;
   onUpdateConversation: (updates: { lead_type?: string; lead_score?: number; flow_path?: string[] }) => Promise<void>;
@@ -27,6 +29,8 @@ interface AssistantChatProps {
 export const AssistantChat: React.FC<AssistantChatProps> = ({
   isOpen,
   section,
+  initialFlow,
+  initialPrefill,
   onClose,
   onSendMessage,
   onUpdateConversation,
@@ -43,9 +47,30 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
 
   const flow = getFlowForSection(section);
 
-  // Initialize with first message
+  // Initialize with first message (or custom flow)
   useEffect(() => {
     if (isOpen && messages.length === 0) {
+      // Check if we have a specific initial flow to start with
+      if (initialFlow) {
+        const targetStep = getStepById(flow, initialFlow);
+        if (targetStep) {
+          setTimeout(() => {
+            // If we have prefill text, show it as context
+            if (initialPrefill) {
+              const contextMessage = `🔍 Stavi cercando: "${initialPrefill}"`;
+              addBotMessage(contextMessage);
+              setTimeout(() => {
+                addBotMessage(targetStep.message, targetStep.options);
+              }, 400);
+            } else {
+              addBotMessage(targetStep.message, targetStep.options);
+            }
+          }, 300);
+          return;
+        }
+      }
+      
+      // Default: start with first step
       const firstStep = flow[0];
       if (firstStep) {
         setTimeout(() => {
@@ -53,7 +78,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         }, 500);
       }
     }
-  }, [isOpen, flow, messages.length]);
+  }, [isOpen, flow, messages.length, initialFlow, initialPrefill]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
