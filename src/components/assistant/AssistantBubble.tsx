@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence, useDragControls, PanInfo } from 'framer-motion';
 import { MessageCircle, X, Sparkles, Minimize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -30,8 +30,9 @@ export const AssistantBubble: React.FC<AssistantBubbleProps> = ({
   const dragControls = useDragControls();
   const constraintsRef = useRef<HTMLDivElement>(null);
   
-  // Load saved position
-  const [position, setPosition] = useState<{ x: number; y: number } | null>(null);
+  // Load saved position - use x/y offsets from default position
+  const [position, setPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isLoaded, setIsLoaded] = useState(false);
   
   useEffect(() => {
     const saved = safeGetItem('local', POSITION_STORAGE_KEY);
@@ -45,20 +46,24 @@ export const AssistantBubble: React.FC<AssistantBubbleProps> = ({
         // Ignore parse errors
       }
     }
+    setIsLoaded(true);
   }, []);
 
-  const handleDragEnd = (_: any, info: PanInfo) => {
-    // Save new position relative to initial position
+  const handleDragEnd = useCallback((_: any, info: PanInfo) => {
+    // Calculate new position based on current position + drag offset
     const newPos = {
-      x: (position?.x || 0) + info.offset.x,
-      y: (position?.y || 0) + info.offset.y,
+      x: position.x + info.offset.x,
+      y: position.y + info.offset.y,
     };
     setPosition(newPos);
     safeSetItem('local', POSITION_STORAGE_KEY, JSON.stringify(newPos));
-  };
+  }, [position]);
 
   // When chat is open, don't show bubble (unless minimized)
   if (isOpen && !isMinimized) return null;
+  
+  // Wait for position to load before rendering
+  if (!isLoaded) return null;
 
   // Minimized state: tiny draggable dot
   if (isMinimized) {
@@ -77,8 +82,6 @@ export const AssistantBubble: React.FC<AssistantBubbleProps> = ({
           dragConstraints={constraintsRef}
           onDragEnd={handleDragEnd}
           onClick={onOpen}
-          initial={position || { x: 0, y: 0 }}
-          animate={position || { x: 0, y: 0 }}
           whileTap={{ scale: 1.1 }}
           className={cn(
             "fixed right-4 z-[60] cursor-grab active:cursor-grabbing",
@@ -90,7 +93,11 @@ export const AssistantBubble: React.FC<AssistantBubbleProps> = ({
             "border-2 border-white/30",
             "backdrop-blur-sm"
           )}
-          style={{ touchAction: 'none' }}
+          style={{ 
+            touchAction: 'none',
+            x: position.x,
+            y: position.y,
+          }}
         >
           <motion.div
             animate={{ scale: [1, 1.2, 1] }}
@@ -100,7 +107,7 @@ export const AssistantBubble: React.FC<AssistantBubbleProps> = ({
           </motion.div>
           
           {/* Notification dot */}
-          <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 rounded-full border-2 border-white" />
+          <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-destructive rounded-full border-2 border-background" />
         </motion.button>
       </>
     );
@@ -120,14 +127,16 @@ export const AssistantBubble: React.FC<AssistantBubbleProps> = ({
         dragMomentum={false}
         dragConstraints={constraintsRef}
         onDragEnd={handleDragEnd}
-        initial={position || { x: 0, y: 0 }}
-        animate={position || { x: 0, y: 0 }}
         className={cn(
           "fixed right-4 z-[60] flex flex-col items-end gap-3",
           isMobile ? "bottom-20" : "bottom-4",
           "cursor-grab active:cursor-grabbing"
         )}
-        style={{ touchAction: 'none' }}
+        style={{ 
+          touchAction: 'none',
+          x: position.x,
+          y: position.y,
+        }}
       >
         {/* Proactive message - Mini card on desktop, tooltip on mobile */}
         <AnimatePresence>
