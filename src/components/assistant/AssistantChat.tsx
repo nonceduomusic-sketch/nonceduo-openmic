@@ -413,6 +413,30 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     }
   };
 
+  // Check if we should show auto-acknowledgment based on conversation history
+  const shouldShowAutoAck = useCallback((): boolean => {
+    // Always show ack on first user message in the conversation
+    const userMessages = messages.filter(m => m.sender === 'user');
+    if (userMessages.length <= 1) {
+      return true;
+    }
+
+    // Find last admin message timestamp
+    const adminMessages = messages.filter(m => m.sender === 'admin');
+    if (adminMessages.length === 0) {
+      // No admin has ever replied - always show ack
+      return true;
+    }
+
+    const lastAdminMessage = adminMessages[adminMessages.length - 1];
+    const lastAdminTime = lastAdminMessage.timestamp.getTime();
+    const now = Date.now();
+    const fiveMinutesMs = 5 * 60 * 1000;
+
+    // Only show ack if last admin message was more than 5 minutes ago
+    return (now - lastAdminTime) > fiveMinutesMs;
+  }, [messages]);
+
   const handleSendFreeText = async () => {
     if (!inputValue.trim()) return;
 
@@ -428,14 +452,17 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
       return;
     }
 
-    setIsTyping(true);
-    setTimeout(() => {
-      const response = 'Messaggio ricevuto! ✅ Ti risponderemo il prima possibile. Grazie!';
-      onSendMessage(response, 'bot', 'Assistente').catch((err) => {
-        console.error('[assistant] onSendMessage failed (ack):', err);
-      });
-      addBotMessage(response);
-    }, 800);
+    // Only show auto-acknowledgment if appropriate (first message or no recent admin reply)
+    if (shouldShowAutoAck()) {
+      setIsTyping(true);
+      setTimeout(() => {
+        const response = 'Messaggio ricevuto! ✅ Ti risponderemo il prima possibile. Grazie!';
+        onSendMessage(response, 'bot', 'Assistente').catch((err) => {
+          console.error('[assistant] onSendMessage failed (ack):', err);
+        });
+        addBotMessage(response);
+      }, 800);
+    }
   };
 
   const handleSubmit = () => {
