@@ -479,6 +479,10 @@ html, body, #root {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
 /* iOS keyboard viewport fix */
 @supports (height: 100dvh) {
   .h-dvh {
