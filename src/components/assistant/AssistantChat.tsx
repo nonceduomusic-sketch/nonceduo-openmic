@@ -228,19 +228,30 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     setFlowPath(newPath);
 
     if (option.leadType || option.leadScore) {
-      await onUpdateConversation({
-        lead_type: option.leadType,
-        lead_score: option.leadScore,
-        flow_path: newPath,
-      });
+      try {
+        await onUpdateConversation({
+          lead_type: option.leadType,
+          lead_score: option.leadScore,
+          flow_path: newPath,
+        });
+      } catch (err) {
+        console.error('[assistant] onUpdateConversation failed:', err);
+        addBotMessage('⚠️ Non riesco ad aggiornare la conversazione in questo momento. Riprova tra poco.');
+      }
     }
 
-    await onSendMessage(
-      `${option.emoji} ${option.label}`,
-      'user',
-      undefined,
-      { option_id: option.id, step: currentStep }
-    );
+    try {
+      await onSendMessage(
+        `${option.emoji} ${option.label}`,
+        'user',
+        undefined,
+        { option_id: option.id, step: currentStep }
+      );
+    } catch (err) {
+      console.error('[assistant] onSendMessage failed (option click):', err);
+      addBotMessage('⚠️ Errore invio messaggio. Controlla la connessione e riprova.');
+      return;
+    }
 
     // Handle input action - show input field
     if (option.action === 'input' && option.inputField) {
@@ -261,7 +272,9 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
       setTimeout(() => {
         const nextStepData = getStepById(flow, option.nextStep!);
         if (nextStepData) {
-          onSendMessage(nextStepData.message, 'bot', 'Assistente');
+          onSendMessage(nextStepData.message, 'bot', 'Assistente').catch((err) => {
+            console.error('[assistant] onSendMessage failed (bot next step):', err);
+          });
           addBotMessage(nextStepData.message, nextStepData.options);
           if (nextStepData.inputMode) {
             setInputMode(nextStepData.inputMode);
@@ -273,7 +286,9 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         setIsTyping(true);
         setTimeout(() => {
           const thankYou = 'Grazie! 🙏 Se hai altre domande, sono qui per te.';
-          onSendMessage(thankYou, 'bot', 'Assistente');
+          onSendMessage(thankYou, 'bot', 'Assistente').catch((err) => {
+            console.error('[assistant] onSendMessage failed (thank you):', err);
+          });
           addBotMessage(thankYou);
         }, 500);
       }
@@ -327,10 +342,16 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     setSongRequestData(newData);
 
     // Send to backend with metadata
-    await onSendMessage(text, 'user', newData.name, { 
-      input_type: inputMode,
-      song_request: newData 
-    });
+    try {
+      await onSendMessage(text, 'user', newData.name, {
+        input_type: inputMode,
+        song_request: newData,
+      });
+    } catch (err) {
+      console.error('[assistant] onSendMessage failed (guided input):', err);
+      addBotMessage('⚠️ Errore invio messaggio. Controlla la connessione e riprova.');
+      return;
+    }
 
     // Move to next step based on current input mode
     if (inputMode === 'name') {
@@ -339,7 +360,9 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
       setTimeout(() => {
         const nextStep = getStepById(flow, 'song_request_title');
         if (nextStep) {
-          onSendMessage(nextStep.message, 'bot', 'Assistente');
+          onSendMessage(nextStep.message, 'bot', 'Assistente').catch((err) => {
+            console.error('[assistant] onSendMessage failed (song_request_title):', err);
+          });
           addBotMessage(nextStep.message, nextStep.options);
           setInputMode('title');
           setCurrentStep('song_request_title');
@@ -351,7 +374,9 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
       setTimeout(() => {
         const nextStep = getStepById(flow, 'song_request_artist');
         if (nextStep) {
-          onSendMessage(nextStep.message, 'bot', 'Assistente');
+          onSendMessage(nextStep.message, 'bot', 'Assistente').catch((err) => {
+            console.error('[assistant] onSendMessage failed (song_request_artist):', err);
+          });
           addBotMessage(nextStep.message, nextStep.options);
           setInputMode('artist');
           setCurrentStep('song_request_artist');
@@ -362,16 +387,24 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
       setInputMode(null);
       // Final step - send complete song request with special flag for Telegram
       const fullRequest = `📝 Richiesta canzone:\n👤 Nome: ${newData.name}\n🎵 Titolo: ${newData.title}\n🎤 Artista: ${newData.artist || 'Non specificato'}`;
-      await onSendMessage(fullRequest, 'user', newData.name, {
-        type: 'song_request_complete',
-        song_request: newData,
-        isComplete: true // Flag for structured Telegram notification
-      });
+      try {
+        await onSendMessage(fullRequest, 'user', newData.name, {
+          type: 'song_request_complete',
+          song_request: newData,
+          isComplete: true, // Flag for structured Telegram notification
+        });
+      } catch (err) {
+        console.error('[assistant] onSendMessage failed (song_request_complete):', err);
+        addBotMessage('⚠️ Errore invio messaggio. Controlla la connessione e riprova.');
+        return;
+      }
       
       setTimeout(() => {
         const confirmStep = getStepById(flow, 'song_request_confirm');
         if (confirmStep) {
-          onSendMessage(confirmStep.message, 'bot', 'Assistente');
+          onSendMessage(confirmStep.message, 'bot', 'Assistente').catch((err) => {
+            console.error('[assistant] onSendMessage failed (song_request_confirm):', err);
+          });
           addBotMessage(confirmStep.message, confirmStep.options);
           setCurrentStep('song_request_confirm');
           setIsChatMode(true); // Enable free chat after request
@@ -387,12 +420,20 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     setInputValue('');
     addUserMessage(text);
 
-    await onSendMessage(text, 'user', songRequestData.name);
+    try {
+      await onSendMessage(text, 'user', songRequestData.name);
+    } catch (err) {
+      console.error('[assistant] onSendMessage failed (free text):', err);
+      addBotMessage('⚠️ Errore invio messaggio. Controlla la connessione e riprova.');
+      return;
+    }
 
     setIsTyping(true);
     setTimeout(() => {
       const response = 'Messaggio ricevuto! ✅ Ti risponderemo il prima possibile. Grazie!';
-      onSendMessage(response, 'bot', 'Assistente');
+      onSendMessage(response, 'bot', 'Assistente').catch((err) => {
+        console.error('[assistant] onSendMessage failed (ack):', err);
+      });
       addBotMessage(response);
     }, 800);
   };
@@ -413,7 +454,9 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
 
   if (!isOpen) return null;
 
-  const showInput = inputMode || isChatMode;
+  // Mobile/tablet UX: il campo deve esserci sempre.
+  // Desktop: manteniamo la logica guidata, ma permettiamo comunque chat libera se attivata.
+  const showInput = Boolean(inputMode) || isChatMode || isMobile;
 
   return (
     <AnimatePresence>
