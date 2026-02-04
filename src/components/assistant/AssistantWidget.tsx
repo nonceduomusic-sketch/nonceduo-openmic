@@ -18,6 +18,7 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
     isOpen,
     showProactive,
     isMobile,
+    messages,
     open,
     close,
     dismissProactive,
@@ -64,6 +65,7 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
         onSendMessage={sendMessage}
         onUpdateConversation={updateConversation}
         isMobile={isMobile}
+        persistedMessages={messages}
       />
     </>
   );
