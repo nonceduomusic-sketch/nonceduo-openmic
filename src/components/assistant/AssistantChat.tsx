@@ -146,7 +146,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         addBotMessage('Ti ho aperto WhatsApp! 💬 A presto!');
         break;
       case 'instagram':
-        window.open('https://instagram.com/nonceduo', '_blank');
+        window.open('https://www.instagram.com/nonceduo.music/', '_blank');
         addBotMessage('Ti ho aperto Instagram! 📱 Seguici per restare aggiornato!');
         break;
       case 'events':
