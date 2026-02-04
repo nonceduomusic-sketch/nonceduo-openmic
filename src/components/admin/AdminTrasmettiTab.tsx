@@ -1,8 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import { useBroadcast, useBroadcastSetlists, useBroadcastSetlistSongs } from '@/hooks/useBroadcast';
 import { useReservations } from '@/hooks/useReservations';
 import { useSongs } from '@/hooks/useSongs';
-import { supabase } from '@/integrations/supabase/client';
 import { 
   Tv, 
   Play, 
@@ -12,13 +25,14 @@ import {
   Plus, 
   List, 
   ExternalLink,
-  GripVertical,
   Trash2,
   Edit2,
   Save,
   FolderOpen,
   QrCode,
   Settings,
+  Eye,
+  Monitor,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,6 +65,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { BroadcastTVSettings } from './BroadcastTVSettings';
+import { TVPreviewDialog } from './TVPreviewDialog';
+import { SetlistSongItem } from './SetlistSongItem';
 
 interface AdminTrasmettiTabProps {
   canManage?: boolean;
@@ -70,17 +86,31 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
   const [newSetlistName, setNewSetlistName] = useState('');
   const [showNewSetlistDialog, setShowNewSetlistDialog] = useState(false);
   const [editingSetlist, setEditingSetlist] = useState<{ id: string; name: string } | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewSongId, setPreviewSongId] = useState<string | undefined>();
 
-  // Filtered songs for search
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Filtered songs for search - show all if no query
   const filteredSongs = useMemo(() => {
-    if (!searchQuery.trim()) return [];
-    const query = searchQuery.toLowerCase();
-    return songs.filter(
-      s => s.titolo.toLowerCase().includes(query) || s.artista.toLowerCase().includes(query)
-    ).slice(0, 20);
+    const query = searchQuery.toLowerCase().trim();
+    const filtered = query 
+      ? songs.filter(s => s.titolo.toLowerCase().includes(query) || s.artista.toLowerCase().includes(query))
+      : songs;
+    return filtered.slice(0, 50); // Limit for performance
   }, [songs, searchQuery]);
 
-  // Active reservations (not completed) - these are in_progress status
+  // Active reservations (not completed)
   const pendingReservations = activeReservations.filter(r => r.status === 'in_progress');
 
   const handleBroadcast = async (songId: string, reservationId?: string) => {
@@ -124,8 +154,46 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
     }
   };
 
+  // Handle drag end for reordering
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (!over || active.id === over.id) return;
+    
+    const oldIndex = setlistSongs.findIndex(s => s.id === active.id);
+    const newIndex = setlistSongs.findIndex(s => s.id === over.id);
+    
+    if (oldIndex !== newIndex) {
+      const newOrder = [...setlistSongs];
+      const [removed] = newOrder.splice(oldIndex, 1);
+      newOrder.splice(newIndex, 0, removed);
+      
+      await reorderSongs(newOrder.map(s => s.id));
+    }
+  }, [setlistSongs, reorderSongs]);
+
+  // Move song up/down (for mobile)
+  const handleMoveUp = useCallback(async (index: number) => {
+    if (index <= 0) return;
+    const newOrder = [...setlistSongs];
+    [newOrder[index - 1], newOrder[index]] = [newOrder[index], newOrder[index - 1]];
+    await reorderSongs(newOrder.map(s => s.id));
+  }, [setlistSongs, reorderSongs]);
+
+  const handleMoveDown = useCallback(async (index: number) => {
+    if (index >= setlistSongs.length - 1) return;
+    const newOrder = [...setlistSongs];
+    [newOrder[index], newOrder[index + 1]] = [newOrder[index + 1], newOrder[index]];
+    await reorderSongs(newOrder.map(s => s.id));
+  }, [setlistSongs, reorderSongs]);
+
   const openTVPage = () => {
     window.open('/trasmetti', '_blank');
+  };
+
+  const openPreview = (songId?: string) => {
+    setPreviewSongId(songId);
+    setShowPreview(true);
   };
 
   return (
@@ -133,7 +201,7 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
       {/* Header with TV controls */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-xl">
                 <Tv className="w-5 h-5 text-primary" />
@@ -143,7 +211,7 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                 <CardDescription>Gestisci la visualizzazione TV</CardDescription>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <div className="flex items-center gap-2">
                 <Switch
                   id="broadcast-active"
@@ -155,6 +223,10 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                   {session?.is_active ? 'Attivo' : 'Spento'}
                 </Label>
               </div>
+              <Button variant="outline" size="sm" onClick={() => openPreview()}>
+                <Eye className="w-4 h-4 mr-2" />
+                Preview
+              </Button>
               <Button variant="outline" size="sm" onClick={openTVPage}>
                 <ExternalLink className="w-4 h-4 mr-2" />
                 Apri TV
@@ -195,7 +267,7 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
             <span className="hidden sm:inline">Scaletta</span> Live
           </TabsTrigger>
           <TabsTrigger value="catalog">
-            <Search className="w-4 h-4 mr-2" />
+            <Music className="w-4 h-4 mr-2" />
             Catalogo
           </TabsTrigger>
           <TabsTrigger value="setlists">
@@ -240,24 +312,37 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                           </p>
                         </div>
                       </div>
-                      <Button
-                        size="sm"
-                        onClick={async () => {
-                          // Find song by title+artist to get song_id
-                          const song = songs.find(s => 
-                            s.titolo === reservation.song_title && s.artista === reservation.song_artist
-                          );
-                          if (song) {
-                            handleBroadcast(song.id, reservation.id);
-                          } else {
-                            toast.error('Canzone non trovata nel catalogo');
-                          }
-                        }}
-                        disabled={!canManage}
-                      >
-                        <Play className="w-4 h-4 mr-1" />
-                        Trasmetti
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            const song = songs.find(s => 
+                              s.titolo === reservation.song_title && s.artista === reservation.song_artist
+                            );
+                            if (song) openPreview(song.id);
+                          }}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={async () => {
+                            const song = songs.find(s => 
+                              s.titolo === reservation.song_title && s.artista === reservation.song_artist
+                            );
+                            if (song) {
+                              handleBroadcast(song.id, reservation.id);
+                            } else {
+                              toast.error('Canzone non trovata nel catalogo');
+                            }
+                          }}
+                          disabled={!canManage}
+                        >
+                          <Play className="w-4 h-4 mr-1" />
+                          Trasmetti
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -266,61 +351,80 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
           </Card>
         </TabsContent>
 
-        {/* Catalog Search Tab */}
+        {/* Catalog Tab - Shows all songs immediately */}
         <TabsContent value="catalog" className="space-y-4">
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">Cerca nel Catalogo</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">Catalogo Canzoni ({songs.length})</CardTitle>
+                {selectedSetlistId && (
+                  <Badge variant="secondary">
+                    Scaletta selezionata - clicca + per aggiungere
+                  </Badge>
+                )}
+              </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Cerca canzone o artista..."
+                  placeholder="Filtra per titolo o artista..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10"
                 />
               </div>
 
-              {filteredSongs.length > 0 && (
-                <ScrollArea className="h-[400px]">
-                  <div className="space-y-2">
-                    {filteredSongs.map((song) => (
-                      <div
-                        key={song.id}
-                        className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
-                      >
-                        <div>
-                          <p className="font-medium">{song.titolo}</p>
-                          <p className="text-sm text-muted-foreground">{song.artista}</p>
-                        </div>
+              <ScrollArea className="h-[400px]">
+                <div className="space-y-2">
+                  {filteredSongs.map((song) => (
+                    <div
+                      key={song.id}
+                      className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          {selectedSetlistId && canFull && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => addToSetlist(song.id)}
-                            >
-                              <Plus className="w-4 h-4" />
-                            </Button>
+                          <p className="font-medium truncate">{song.titolo}</p>
+                          {song.testo && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">
+                              Testo
+                            </Badge>
                           )}
+                        </div>
+                        <p className="text-sm text-muted-foreground truncate">{song.artista}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => openPreview(song.id)}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
+                        {selectedSetlistId && canFull && (
                           <Button
                             size="sm"
-                            onClick={() => handleBroadcast(song.id)}
-                            disabled={!canManage}
+                            variant="outline"
+                            onClick={() => addToSetlist(song.id)}
                           >
-                            <Play className="w-4 h-4 mr-1" />
-                            Trasmetti
+                            <Plus className="w-4 h-4" />
                           </Button>
-                        </div>
+                        )}
+                        <Button
+                          size="sm"
+                          onClick={() => handleBroadcast(song.id)}
+                          disabled={!canManage}
+                        >
+                          <Play className="w-4 h-4 mr-1" />
+                          Trasmetti
+                        </Button>
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              )}
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
 
-              {searchQuery && filteredSongs.length === 0 && (
+              {filteredSongs.length === 0 && (
                 <p className="text-muted-foreground text-center py-8">
                   Nessuna canzone trovata
                 </p>
@@ -329,7 +433,7 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
           </Card>
         </TabsContent>
 
-        {/* Setlists Tab */}
+        {/* Setlists Tab with Drag & Drop */}
         <TabsContent value="setlists" className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
             {/* Setlist List */}
@@ -441,7 +545,7 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
               </CardContent>
             </Card>
 
-            {/* Selected Setlist Songs */}
+            {/* Selected Setlist Songs with Drag & Drop */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">
@@ -449,6 +553,11 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                     ? setlists.find(s => s.id === selectedSetlistId)?.name || 'Scaletta'
                     : 'Seleziona una Scaletta'}
                 </CardTitle>
+                {selectedSetlistId && setlistSongs.length > 0 && canFull && (
+                  <CardDescription className="text-xs">
+                    Trascina per riordinare le canzoni
+                  </CardDescription>
+                )}
               </CardHeader>
               <CardContent>
                 {!selectedSetlistId ? (
@@ -457,45 +566,40 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                   </p>
                 ) : setlistSongs.length === 0 ? (
                   <p className="text-muted-foreground text-center py-8">
-                    Scaletta vuota. Cerca canzoni nel catalogo e aggiungile.
+                    Scaletta vuota. Vai al Catalogo e clicca + per aggiungere canzoni.
                   </p>
                 ) : (
-                  <div className="space-y-2">
-                    {setlistSongs.map((item, index) => (
-                      <div
-                        key={item.id}
-                        className="flex items-center gap-2 p-3 bg-muted/30 rounded-lg"
-                      >
-                        <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
-                        <Badge variant="outline" className="w-6 h-6 flex items-center justify-center rounded-full text-xs">
-                          {index + 1}
-                        </Badge>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{item.song?.titolo}</p>
-                          <p className="text-sm text-muted-foreground truncate">{item.song?.artista}</p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="sm"
-                            onClick={() => item.song && handleBroadcast(item.song.id)}
-                            disabled={!canManage}
-                          >
-                            <Play className="w-4 h-4" />
-                          </Button>
-                          {canFull && (
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-destructive"
-                              onClick={() => removeFromSetlist(item.id)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={setlistSongs.map(s => s.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="space-y-2">
+                        {setlistSongs.map((item, index) => (
+                          <SetlistSongItem
+                            key={item.id}
+                            id={item.id}
+                            index={index}
+                            title={item.song?.titolo || 'Canzone sconosciuta'}
+                            artist={item.song?.artista || ''}
+                            songId={item.song?.id || ''}
+                            canManage={canManage}
+                            canFull={canFull}
+                            onBroadcast={handleBroadcast}
+                            onRemove={removeFromSetlist}
+                            onMoveUp={() => handleMoveUp(index)}
+                            onMoveDown={() => handleMoveDown(index)}
+                            isFirst={index === 0}
+                            isLast={index === setlistSongs.length - 1}
+                          />
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </SortableContext>
+                  </DndContext>
                 )}
               </CardContent>
             </Card>
@@ -526,6 +630,13 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* TV Preview Dialog */}
+      <TVPreviewDialog
+        open={showPreview}
+        onOpenChange={setShowPreview}
+        previewSongId={previewSongId}
+      />
     </div>
   );
 }
