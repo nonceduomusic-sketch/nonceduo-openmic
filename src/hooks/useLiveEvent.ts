@@ -78,6 +78,9 @@ export interface FreeModeState {
   // Countdown config
   countdownEndShowMinutes: number | null;
   endMode: string | null;
+  // Consultable mode
+  isConsultableMode: boolean;
+  protectRepertoire: boolean;
 }
 
 export type EventState = 
@@ -129,6 +132,8 @@ export const useLiveEvent = () => {
     closurePreviewEnabled: false,
     countdownEndShowMinutes: 10,
     endMode: 'manual',
+    isConsultableMode: false,
+    protectRepertoire: true,
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -205,6 +210,8 @@ export const useLiveEvent = () => {
           closurePreviewEnabled: false,
           countdownEndShowMinutes: 10,
           endMode: 'manual',
+          isConsultableMode: false,
+          protectRepertoire: true,
         });
       } else {
         setLiveEvent(null);
@@ -252,6 +259,8 @@ export const useLiveEvent = () => {
           closurePreviewEnabled: freeModeData?.closure_preview_enabled ?? false,
           countdownEndShowMinutes: freeModeData?.countdown_end_show_minutes ?? 10,
           endMode: freeModeData?.end_mode ?? 'manual',
+          isConsultableMode: freeModeData?.is_consultable_mode ?? false,
+          protectRepertoire: freeModeData?.protect_repertoire ?? true,
         });
 
         // Only fetch upcoming events if not in free mode

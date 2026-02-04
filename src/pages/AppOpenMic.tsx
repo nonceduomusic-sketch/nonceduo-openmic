@@ -4,6 +4,7 @@ import OpenMicInfo from "@/pages/OpenMicInfo";
 import { PreEventPage } from "@/components/PreEventPage";
 import { FormatPinGate } from "@/components/FormatPinGate";
 import { FreeModeOpenMic } from "@/components/FreeModeOpenMic";
+import { ConsultableOpenMic } from "@/components/ConsultableOpenMic";
 import { useLiveEvent } from "@/hooks/useLiveEvent";
 import { usePinSession } from "@/hooks/usePinSession";
 
@@ -17,6 +18,7 @@ import { usePinSession } from "@/hooks/usePinSession";
  *      - Se pin_required && !pinValidated → mostra PIN gate
  *      - Altrimenti → mostra LIVE
  * 2. Se Free Mode attiva per openmic:
+ *    - Se is_consultable_mode → mostra versione consultabile (no prenotazioni)
  *    - Se pin_enabled && !pinValidated → mostra PIN gate (stesso sistema unificato)
  *    - Altrimenti → mostra Open Mic senza limiti
  * 3. Se esistono eventi READY → mostra PreEventPage
@@ -88,6 +90,17 @@ const AppOpenMic: React.FC = () => {
 
   // CASE 2: Free Mode attiva per Open Mic
   if (eventState.type === 'freemode' && freeMode.openmic) {
+    // CASE 2a: Modalità Consultabile - solo anteprima catalogo
+    if (freeMode.isConsultableMode) {
+      return (
+        <ConsultableOpenMic 
+          eventName={freeMode.eventName || 'Open Mic'}
+          protectRepertoire={freeMode.protectRepertoire}
+          message="Il catalogo è in modalità anteprima. Le prenotazioni saranno attive durante l'evento."
+        />
+      );
+    }
+
     // Se PIN abilitato e non ancora validato - usa lo stesso sistema unificato
     if (freeMode.pinEnabled && freeMode.pinCode && !pinValidated) {
       return (
