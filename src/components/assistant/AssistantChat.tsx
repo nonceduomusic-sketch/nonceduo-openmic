@@ -54,6 +54,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
   const [inputMode, setInputMode] = useState<'name' | 'title' | 'artist' | 'free' | null>(null);
   const [songRequestData, setSongRequestData] = useState<SongRequestData>({});
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [hasHydratedFromDb, setHasHydratedFromDb] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -73,8 +74,10 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    // If we have persisted messages, restore them
-    if (persistedMessages.length > 0 && !hasInitialized) {
+    // If we have persisted messages, (re)hydrate from DB.
+    // This is important after refresh: the UI might have already initialized the flow
+    // before persistedMessages arrive.
+    if (persistedMessages.length > 0) {
       const restored: Message[] = persistedMessages.map(pm => ({
         id: pm.id,
         text: pm.message_text,
@@ -82,19 +85,23 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         timestamp: new Date(pm.created_at),
         options: undefined,
       }));
-      
-      setMessages(restored);
-      setHasInitialized(true);
-      
-      // Check if user was in chat mode (had a conversation)
-      const hasUserMessages = persistedMessages.some(m => m.sender_type === 'user');
-      const hasAdminMessages = persistedMessages.some(m => m.sender_type === 'admin');
-      
-      if (hasUserMessages || hasAdminMessages) {
-        setIsChatMode(true);
-        setInputMode('free');
+
+      const lastPersistedId = persistedMessages[persistedMessages.length - 1]?.id;
+      const alreadyHasLast = lastPersistedId ? messages.some(m => m.id === lastPersistedId) : false;
+
+      if (!hasHydratedFromDb || messages.length === 0 || !alreadyHasLast) {
+        setMessages(restored);
+        setHasHydratedFromDb(true);
+        setHasInitialized(true);
+
+        const hasUserMessages = persistedMessages.some(m => m.sender_type === 'user');
+        const hasAdminMessages = persistedMessages.some(m => m.sender_type === 'admin');
+        if (hasUserMessages || hasAdminMessages) {
+          setIsChatMode(true);
+          setInputMode('free');
+        }
       }
-      
+
       return;
     }
 
@@ -136,7 +143,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
       }
       setHasInitialized(true);
     }
-  }, [isOpen, flow, messages.length, initialFlow, initialPrefill, persistedMessages, hasInitialized]);
+  }, [isOpen, flow, messages.length, initialFlow, initialPrefill, persistedMessages, hasInitialized, hasHydratedFromDb, messages]);
 
   // Listen for new admin messages from realtime
   useEffect(() => {
