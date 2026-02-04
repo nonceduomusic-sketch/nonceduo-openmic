@@ -64,22 +64,27 @@ serve(async (req) => {
       });
     }
 
-    // Format message
-    const sectionEmoji: Record<string, string> = {
-      'site': '🌐',
-      'openmic': '🎤',
-      'dediche': '💌',
-      'community': '👥',
+    // Format message with clear section identification
+    const sectionLabels: Record<string, { emoji: string; name: string }> = {
+      'site': { emoji: '🌐', name: 'SITO GENERALE' },
+      'openmic': { emoji: '🎤', name: 'OPEN MIC' },
+      'dediche': { emoji: '💌', name: 'DEDICHE' },
+      'community': { emoji: '👥', name: 'COMMUNITY' },
     };
 
-    const emoji = sectionEmoji[sourceSection?.toLowerCase()] || '💬';
-    const telegramMessage = `${emoji} *Nuovo messaggio Assistente*
+    const section = sectionLabels[sourceSection?.toLowerCase()] || { emoji: '💬', name: 'SITO' };
+    
+    const telegramMessage = `🆘 *RICHIESTA ASSISTENZA*
+━━━━━━━━━━━━━━━━━━
+${section.emoji} *Provenienza:* ${section.name}
+━━━━━━━━━━━━━━━━━━
 
-👤 *Da:* ${userName || 'Visitatore'}
-📍 *Sezione:* ${sourceSection || 'Sito'}
+👤 *Utente:* ${userName || 'Visitatore anonimo'}
 
 💬 *Messaggio:*
-${messageText}`;
+"${messageText}"
+
+⏰ ${new Date().toLocaleString('it-IT', { timeZone: 'Europe/Rome' })}`;
 
     // Send to Telegram
     const telegramUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
