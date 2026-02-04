@@ -24,6 +24,7 @@ export interface AdminNotificationCounts {
   unreadDedicheMessages: number;
   unreadCommunityMessages: number;
   newReservations: number;
+  unreadAssistantMessages: number;
 }
 
 interface UseAdminNotificationsOptions {
@@ -39,6 +40,7 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
     unreadDedicheMessages: 0,
     unreadCommunityMessages: 0,
     newReservations: 0,
+    unreadAssistantMessages: 0,
   });
   const [loading, setLoading] = useState(true);
   
@@ -109,11 +111,24 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
         reservationsCount = count || 0;
       }
 
+      // Assistant unread messages count
+      let assistantCount = 0;
+      const { data: unreadAssistant } = await supabase
+        .from('assistant_messages')
+        .select('conversation_id')
+        .eq('sender_type', 'user')
+        .eq('is_read', false);
+      
+      // Count unique conversations with unread user messages
+      const uniqueAssistantConvs = new Set((unreadAssistant || []).map(m => m.conversation_id));
+      assistantCount = uniqueAssistantConvs.size;
+
       setCounts(prev => ({
         ...prev,
         unreadDedicheMessages: dedicheCount,
         unreadCommunityMessages: communityCount,
         newReservations: reservationsCount,
+        unreadAssistantMessages: assistantCount,
       }));
     } catch (error) {
       console.error('Error fetching counts:', error);
@@ -193,6 +208,21 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
       );
       hasSubscriptions = true;
     }
+
+    // Assistant messages (always subscribe)
+    channel.on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'assistant_messages' },
+      (payload) => {
+        if (import.meta.env.DEV) console.log('[AdminNotifications] assistant_messages changed', payload);
+        fetchCounts();
+        // Emit event for toast popup if it's a new user message
+        if (payload.eventType === 'INSERT' && (payload.new as { sender_type?: string })?.sender_type === 'user') {
+          window.dispatchEvent(new CustomEvent('new-assistant-message', { detail: payload.new }));
+        }
+      }
+    );
+    hasSubscriptions = true;
 
     // Only subscribe if we have at least one active subscription
     if (hasSubscriptions) {
