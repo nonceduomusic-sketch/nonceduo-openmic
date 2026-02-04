@@ -235,7 +235,7 @@ export function AdminOperatorsTab() {
   };
 
   // Helper to set permission level for a section
-  const setPermissionLevel = (operator: OperatorUser, section: string, level: PermissionLevel) => {
+  const setPermissionLevel = async (operator: OperatorUser, section: string, level: PermissionLevel) => {
     const permKeys: Record<string, (keyof OperatorUser["permissions"])[]> = {
       centro: ['centro_view'],
       openmic: ['openmic_view', 'openmic_partial', 'openmic_full'],
@@ -253,9 +253,40 @@ export function AdminOperatorsTab() {
     };
 
     const values = grants[level] || [false, false, false];
-    keys.forEach((key, idx) => {
-      handlePermissionToggle(operator, key, values[idx] ?? false);
-    });
+    
+    // Execute mutations sequentially to avoid race conditions
+    for (let idx = 0; idx < keys.length; idx++) {
+      const key = keys[idx];
+      const value = values[idx] ?? false;
+      const permMap: Record<string, string> = {
+        centro_view: "operator.centro_view",
+        openmic_view: "operator.openmic_view",
+        openmic_partial: "operator.openmic_partial",
+        openmic_full: "operator.openmic_full",
+        dediche_view: "operator.dediche_view",
+        dediche_partial: "operator.dediche_partial",
+        dediche_full: "operator.dediche_full",
+        assistente_view: "operator.assistente_view",
+        assistente_manage: "operator.assistente_manage",
+        assistente_full: "operator.assistente_full",
+        trasmetti_view: "operator.trasmetti_view",
+        trasmetti_manage: "operator.trasmetti_manage",
+        trasmetti_full: "operator.trasmetti_full",
+      };
+      const permName = permMap[key];
+      if (permName) {
+        await updatePermission.mutateAsync({
+          userId: operator.user_id,
+          permissionName: permName,
+          granted: value,
+        }).catch((err) => {
+          console.error(`Failed to update ${permName}:`, err);
+        });
+      }
+    }
+    
+    // Refetch to ensure UI is up to date
+    queryClient.invalidateQueries({ queryKey: ["operators"] });
   };
 
   // Helper to get current permission level
