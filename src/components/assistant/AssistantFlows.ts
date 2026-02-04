@@ -6,7 +6,8 @@ export interface FlowOption {
   emoji: string;
   description?: string;
   nextStep?: string;
-  action?: 'whatsapp' | 'instagram' | 'events' | 'repertoire' | 'chat';
+  action?: 'whatsapp' | 'instagram' | 'events' | 'repertoire' | 'chat' | 'input';
+  inputField?: 'name' | 'title' | 'artist'; // For guided input
   leadType?: string;
   leadScore?: number;
   isFinal?: boolean;
@@ -17,6 +18,7 @@ export interface FlowStep {
   message: string;
   options: FlowOption[];
   isFinal?: boolean;
+  inputMode?: 'name' | 'title' | 'artist' | 'free'; // For guided input
 }
 
 // Main qualification flow
@@ -143,24 +145,52 @@ export const mainFlow: FlowStep[] = [
   },
 ];
 
-// Open Mic specific flow (for song not found)
+// Open Mic specific flow (for song not found) - GUIDED FLOW
 export const openMicFlow: FlowStep[] = [
   {
     id: 'song_not_found',
     message: 'Non hai trovato la canzone che cercavi? 🎤\n\nNessun problema! Posso aiutarti:',
     options: [
-      { id: 'request', label: 'Invia richiesta canzone', emoji: '📝', nextStep: 'song_request' },
+      { id: 'request', label: 'Richiedi canzone', emoji: '📝', nextStep: 'song_request_name' },
       { id: 'help', label: 'Ho bisogno di aiuto', emoji: '❓', nextStep: 'openmic_help' },
     ],
   },
+  // GUIDED SONG REQUEST FLOW
   {
-    id: 'song_request',
-    message: '🎵 **Richiedi una canzone!**\n\nScrivi nel messaggio:\n• 📝 **Il tuo nome** (per riconoscerti)\n• 🎤 **Titolo della canzone**\n• 👤 **Artista o band**\n\nSe possiamo la inseriamo subito, altrimenti la prepariamo per i prossimi eventi!',
+    id: 'song_request_name',
+    message: '🎵 **Richiedi una canzone**\n\nPer prima cosa, come ti chiami?',
     options: [
-      { id: 'write', label: 'Scrivi la richiesta', emoji: '✍️', action: 'chat', isFinal: true } as FlowOption,
+      { id: 'input_name', label: 'Scrivi il tuo nome', emoji: '✍️', action: 'input', inputField: 'name', nextStep: 'song_request_title' } as FlowOption,
+    ],
+    inputMode: 'name',
+  },
+  {
+    id: 'song_request_title',
+    message: 'Perfetto! 🎶\n\nOra scrivi il **titolo della canzone** che vorresti cantare:',
+    options: [
+      { id: 'input_title', label: 'Scrivi il titolo', emoji: '🎵', action: 'input', inputField: 'title', nextStep: 'song_request_artist' } as FlowOption,
+    ],
+    inputMode: 'title',
+  },
+  {
+    id: 'song_request_artist',
+    message: 'Ottimo! 🎤\n\nChi è l\'**artista o la band**? (Puoi anche saltare se non lo sai)',
+    options: [
+      { id: 'input_artist', label: 'Scrivi artista/band', emoji: '👤', action: 'input', inputField: 'artist', nextStep: 'song_request_confirm' } as FlowOption,
+      { id: 'skip_artist', label: 'Non lo so, salta', emoji: '⏭️', nextStep: 'song_request_confirm' },
+    ],
+    inputMode: 'artist',
+  },
+  {
+    id: 'song_request_confirm',
+    message: '✅ **Richiesta registrata!**\n\nAbbiamo ricevuto la tua richiesta. Se possiamo, la inseriamo subito nella scaletta, altrimenti la prepareremo per i prossimi eventi!\n\nVuoi aggiungere altro o hai altre domande?',
+    options: [
+      { id: 'add_note', label: 'Aggiungi una nota', emoji: '💬', action: 'chat', isFinal: true } as FlowOption,
+      { id: 'done', label: 'Grazie, è tutto!', emoji: '👍', isFinal: true } as FlowOption,
     ],
     isFinal: true,
   },
+  // HELP FLOW
   {
     id: 'openmic_help',
     message: 'Come posso aiutarti?',

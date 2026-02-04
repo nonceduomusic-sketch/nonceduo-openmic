@@ -13,6 +13,8 @@ export interface AssistantMessage {
   is_read: boolean;
   read_at: string | null;
   created_at: string;
+  delivery_status: 'sent' | 'delivered' | 'read';
+  edited_at: string | null;
 }
 
 export function useAssistantChat(conversationId: string | null) {
@@ -36,6 +38,18 @@ export function useAssistantChat(conversationId: string | null) {
       if (error) {
         console.error('Error fetching messages:', error);
         return;
+      }
+
+      // Mark user messages as delivered when admin fetches them
+      const undeliveredUserMsgs = (data || []).filter(
+        m => m.sender_type === 'user' && m.delivery_status === 'sent'
+      );
+      
+      if (undeliveredUserMsgs.length > 0) {
+        await supabase
+          .from('assistant_messages')
+          .update({ delivery_status: 'delivered' })
+          .in('id', undeliveredUserMsgs.map(m => m.id));
       }
 
       setMessages((data || []) as AssistantMessage[]);
@@ -65,6 +79,7 @@ export function useAssistantChat(conversationId: string | null) {
         message_text: text,
         message_type: 'text',
         metadata: metadata || {},
+        delivery_status: 'sent',
       };
       
       const { data, error } = await supabase
@@ -91,6 +106,78 @@ export function useAssistantChat(conversationId: string | null) {
     }
   };
 
+  const editMessage = async (messageId: string, newText: string) => {
+    try {
+      const { error } = await supabase
+        .from('assistant_messages')
+        .update({ 
+          message_text: newText, 
+          edited_at: new Date().toISOString() 
+        })
+        .eq('id', messageId);
+
+      if (error) {
+        console.error('Error editing message:', error);
+        return false;
+      }
+
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === messageId
+            ? { ...m, message_text: newText, edited_at: new Date().toISOString() }
+            : m
+        )
+      );
+      return true;
+    } catch (err) {
+      console.error('Error:', err);
+      return false;
+    }
+  };
+
+  const deleteMessage = async (messageId: string) => {
+    try {
+      const { error } = await supabase
+        .from('assistant_messages')
+        .delete()
+        .eq('id', messageId);
+
+      if (error) {
+        console.error('Error deleting message:', error);
+        return false;
+      }
+
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+      return true;
+    } catch (err) {
+      console.error('Error:', err);
+      return false;
+    }
+  };
+
+  const markAsRead = async (messageId: string) => {
+    try {
+      await supabase
+        .from('assistant_messages')
+        .update({ 
+          is_read: true, 
+          read_at: new Date().toISOString(),
+          delivery_status: 'read'
+        })
+        .eq('id', messageId);
+
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === messageId
+            ? { ...m, is_read: true, delivery_status: 'read' as const }
+            : m
+        )
+      );
+    } catch (err) {
+      console.error('Error marking as read:', err);
+    }
+  };
+
   // Realtime subscription
   useEffect(() => {
     fetchMessages();
@@ -102,13 +189,21 @@ export function useAssistantChat(conversationId: string | null) {
       .on(
         'postgres_changes',
         {
-          event: 'INSERT',
+          event: '*',
           schema: 'public',
           table: 'assistant_messages',
           filter: `conversation_id=eq.${conversationId}`,
         },
         (payload) => {
-          setMessages(prev => [...prev, payload.new as AssistantMessage]);
+          if (payload.eventType === 'INSERT') {
+            setMessages(prev => [...prev, payload.new as AssistantMessage]);
+          } else if (payload.eventType === 'UPDATE') {
+            setMessages(prev =>
+              prev.map(m => m.id === payload.new.id ? payload.new as AssistantMessage : m)
+            );
+          } else if (payload.eventType === 'DELETE') {
+            setMessages(prev => prev.filter(m => m.id !== payload.old.id));
+          }
         }
       )
       .subscribe();
@@ -122,6 +217,9 @@ export function useAssistantChat(conversationId: string | null) {
     messages,
     loading,
     sendMessage,
+    editMessage,
+    deleteMessage,
+    markAsRead,
     refetch: fetchMessages,
   };
 }

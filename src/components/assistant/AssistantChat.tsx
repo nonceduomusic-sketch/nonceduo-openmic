@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Send, ChevronLeft, Sparkles, ExternalLink } from 'lucide-react';
+import { X, Send, Sparkles, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,12 @@ interface Message {
   options?: FlowOption[];
 }
 
+interface SongRequestData {
+  name?: string;
+  title?: string;
+  artist?: string;
+}
+
 interface AssistantChatProps {
   isOpen: boolean;
   section: string;
@@ -22,7 +28,7 @@ interface AssistantChatProps {
   initialPrefill?: string;
   onClose: () => void;
   onSendMessage: (text: string, senderType: 'user' | 'bot', senderName?: string, metadata?: Record<string, unknown>) => Promise<unknown>;
-  onUpdateConversation: (updates: { lead_type?: string; lead_score?: number; flow_path?: string[] }) => Promise<void>;
+  onUpdateConversation: (updates: { lead_type?: string; lead_score?: number; flow_path?: string[]; user_name?: string }) => Promise<void>;
   isMobile: boolean;
 }
 
@@ -42,39 +48,57 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
   const [currentStep, setCurrentStep] = useState<string>('start');
   const [flowPath, setFlowPath] = useState<string[]>([]);
   const [isChatMode, setIsChatMode] = useState(false);
+  const [inputMode, setInputMode] = useState<'name' | 'title' | 'artist' | 'free' | null>(null);
+  const [songRequestData, setSongRequestData] = useState<SongRequestData>({});
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const flow = getFlowForSection(section);
 
+  // Get placeholder based on input mode
+  const getInputPlaceholder = () => {
+    switch (inputMode) {
+      case 'name': return 'Scrivi il tuo nome...';
+      case 'title': return 'Scrivi il titolo della canzone...';
+      case 'artist': return 'Scrivi artista o band...';
+      default: return 'Scrivi un messaggio...';
+    }
+  };
+
   // Initialize with first message (or custom flow)
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      // Check if we have a specific initial flow to start with
       if (initialFlow) {
         const targetStep = getStepById(flow, initialFlow);
         if (targetStep) {
           setTimeout(() => {
-            // If we have prefill text, show it as context
             if (initialPrefill) {
               const contextMessage = `🔍 Stavi cercando: "${initialPrefill}"`;
               addBotMessage(contextMessage);
               setTimeout(() => {
                 addBotMessage(targetStep.message, targetStep.options);
+                if (targetStep.inputMode) {
+                  setInputMode(targetStep.inputMode);
+                }
               }, 400);
             } else {
               addBotMessage(targetStep.message, targetStep.options);
+              if (targetStep.inputMode) {
+                setInputMode(targetStep.inputMode);
+              }
             }
           }, 300);
           return;
         }
       }
       
-      // Default: start with first step
       const firstStep = flow[0];
       if (firstStep) {
         setTimeout(() => {
           addBotMessage(firstStep.message, firstStep.options);
+          if (firstStep.inputMode) {
+            setInputMode(firstStep.inputMode);
+          }
         }, 500);
       }
     }
@@ -83,7 +107,6 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
   // Scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current) {
-      // Use setTimeout to ensure DOM has updated
       setTimeout(() => {
         if (scrollRef.current) {
           scrollRef.current.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -91,6 +114,13 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
       }, 100);
     }
   }, [messages, isTyping]);
+
+  // Focus input when input mode is active
+  useEffect(() => {
+    if (inputMode && inputRef.current) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [inputMode]);
 
   const addBotMessage = (text: string, options?: FlowOption[]) => {
     const newMessage: Message = {
@@ -115,14 +145,11 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
   };
 
   const handleOptionClick = async (option: FlowOption) => {
-    // Add user selection as message
     addUserMessage(`${option.emoji} ${option.label}`);
 
-    // Update flow path
     const newPath = [...flowPath, option.id];
     setFlowPath(newPath);
 
-    // Update conversation with lead info
     if (option.leadType || option.leadScore) {
       await onUpdateConversation({
         lead_type: option.leadType,
@@ -131,7 +158,6 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
       });
     }
 
-    // Send to backend
     await onSendMessage(
       `${option.emoji} ${option.label}`,
       'user',
@@ -139,13 +165,18 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
       { option_id: option.id, step: currentStep }
     );
 
-    // Handle action
-    if (option.action) {
+    // Handle input action - show input field
+    if (option.action === 'input' && option.inputField) {
+      setInputMode(option.inputField);
+      setCurrentStep(option.nextStep || currentStep);
+      return;
+    }
+
+    if (option.action && option.action !== 'input') {
       handleAction(option.action);
       return;
     }
 
-    // Move to next step
     if (option.nextStep) {
       setIsTyping(true);
       setCurrentStep(option.nextStep);
@@ -153,19 +184,22 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
       setTimeout(() => {
         const nextStepData = getStepById(flow, option.nextStep!);
         if (nextStepData) {
-          // Send bot response to backend
           onSendMessage(nextStepData.message, 'bot', 'Assistente');
           addBotMessage(nextStepData.message, nextStepData.options);
+          if (nextStepData.inputMode) {
+            setInputMode(nextStepData.inputMode);
+          }
         }
       }, 800);
     } else if (option.isFinal) {
-      // Final step without action - show thank you
-      setIsTyping(true);
-      setTimeout(() => {
-        const thankYou = 'Grazie! 🙏 Se hai altre domande, sono qui per te.';
-        onSendMessage(thankYou, 'bot', 'Assistente');
-        addBotMessage(thankYou);
-      }, 500);
+      if (option.id === 'done') {
+        setIsTyping(true);
+        setTimeout(() => {
+          const thankYou = 'Grazie! 🙏 Se hai altre domande, sono qui per te.';
+          onSendMessage(thankYou, 'bot', 'Assistente');
+          addBotMessage(thankYou);
+        }, 500);
+      }
     }
   };
 
@@ -180,20 +214,91 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
         addBotMessage('Ti ho aperto Instagram! 📱 Seguici per restare aggiornato!');
         break;
       case 'events':
-        // Could navigate to events page
         addBotMessage('Puoi vedere i nostri prossimi eventi sulla pagina principale! 🎵');
         break;
       case 'repertoire':
-        // Could navigate to repertoire
         addBotMessage('Trovi il nostro repertorio nella sezione Open Mic! 🎤 Abbiamo tantissime canzoni!');
         break;
       case 'chat':
         setIsChatMode(true);
+        setInputMode('free');
         addBotMessage('Perfetto! Scrivi pure il tuo messaggio qui sotto. Ti risponderemo il prima possibile! ✍️');
         setTimeout(() => {
           inputRef.current?.focus();
         }, 100);
         break;
+    }
+  };
+
+  const handleGuidedInput = async () => {
+    if (!inputValue.trim()) return;
+
+    const text = inputValue.trim();
+    setInputValue('');
+    addUserMessage(text);
+
+    // Save to song request data
+    const newData = { ...songRequestData };
+    if (inputMode === 'name') {
+      newData.name = text;
+      await onUpdateConversation({ user_name: text });
+    } else if (inputMode === 'title') {
+      newData.title = text;
+    } else if (inputMode === 'artist') {
+      newData.artist = text;
+    }
+    setSongRequestData(newData);
+
+    // Send to backend with metadata
+    await onSendMessage(text, 'user', newData.name, { 
+      input_type: inputMode,
+      song_request: newData 
+    });
+
+    // Move to next step based on current input mode
+    if (inputMode === 'name') {
+      setIsTyping(true);
+      setInputMode(null);
+      setTimeout(() => {
+        const nextStep = getStepById(flow, 'song_request_title');
+        if (nextStep) {
+          onSendMessage(nextStep.message, 'bot', 'Assistente');
+          addBotMessage(nextStep.message, nextStep.options);
+          setInputMode('title');
+          setCurrentStep('song_request_title');
+        }
+      }, 600);
+    } else if (inputMode === 'title') {
+      setIsTyping(true);
+      setInputMode(null);
+      setTimeout(() => {
+        const nextStep = getStepById(flow, 'song_request_artist');
+        if (nextStep) {
+          onSendMessage(nextStep.message, 'bot', 'Assistente');
+          addBotMessage(nextStep.message, nextStep.options);
+          setInputMode('artist');
+          setCurrentStep('song_request_artist');
+        }
+      }, 600);
+    } else if (inputMode === 'artist') {
+      setIsTyping(true);
+      setInputMode(null);
+      // Final step - send complete song request
+      const fullRequest = `📝 Richiesta canzone:\n👤 Nome: ${newData.name}\n🎵 Titolo: ${newData.title}\n🎤 Artista: ${newData.artist || 'Non specificato'}`;
+      await onSendMessage(fullRequest, 'user', newData.name, {
+        type: 'song_request_complete',
+        song_request: newData
+      });
+      
+      setTimeout(() => {
+        const confirmStep = getStepById(flow, 'song_request_confirm');
+        if (confirmStep) {
+          onSendMessage(confirmStep.message, 'bot', 'Assistente');
+          addBotMessage(confirmStep.message, confirmStep.options);
+          setCurrentStep('song_request_confirm');
+          setIsChatMode(true); // Enable free chat after request
+        }
+      }, 800);
     }
   };
 
@@ -204,10 +309,8 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     setInputValue('');
     addUserMessage(text);
 
-    // Send to backend
-    await onSendMessage(text, 'user');
+    await onSendMessage(text, 'user', songRequestData.name);
 
-    // Show confirmation
     setIsTyping(true);
     setTimeout(() => {
       const response = 'Messaggio ricevuto! ✅ Ti risponderemo il prima possibile. Grazie!';
@@ -216,7 +319,17 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
     }, 800);
   };
 
+  const handleSubmit = () => {
+    if (inputMode && inputMode !== 'free') {
+      handleGuidedInput();
+    } else {
+      handleSendFreeText();
+    }
+  };
+
   if (!isOpen) return null;
+
+  const showInput = inputMode || isChatMode;
 
   return (
     <AnimatePresence>
@@ -306,7 +419,7 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
                                 </p>
                               )}
                             </div>
-                            {option.action && (
+                            {option.action && option.action !== 'input' && (
                               <ExternalLink className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                             )}
                           </button>
@@ -339,20 +452,20 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
             </div>
           </ScrollArea>
 
-          {/* Input - only show in chat mode */}
-          {isChatMode && (
+          {/* Input - show when in input mode or chat mode */}
+          {showInput && (
             <div className="p-4 border-t border-border bg-background/50">
               <div className="flex gap-2">
                 <Input
                   ref={inputRef}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendFreeText()}
-                  placeholder="Scrivi un messaggio..."
+                  onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
+                  placeholder={getInputPlaceholder()}
                   className="flex-1"
                 />
                 <Button
-                  onClick={handleSendFreeText}
+                  onClick={handleSubmit}
                   disabled={!inputValue.trim()}
                   size="icon"
                   className="bg-primary hover:bg-primary/90"
@@ -360,6 +473,13 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
                   <Send className="w-4 h-4" />
                 </Button>
               </div>
+              {inputMode && inputMode !== 'free' && (
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  {inputMode === 'name' && '👤 Step 1/3: Il tuo nome'}
+                  {inputMode === 'title' && '🎵 Step 2/3: Titolo canzone'}
+                  {inputMode === 'artist' && '🎤 Step 3/3: Artista (opzionale)'}
+                </p>
+              )}
             </div>
           )}
 

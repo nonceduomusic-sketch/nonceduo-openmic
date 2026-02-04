@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bot, MessageCircle, Settings, Users, CheckCircle, Clock, Archive, Send } from 'lucide-react';
+import { Bot, MessageCircle, Settings, Users, CheckCircle, Clock, Archive, Trash2, Edit2, Check, X, MoreVertical, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -9,12 +9,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
 import { useAssistantSettings } from '@/hooks/useAssistantSettings';
 import { useAssistantConversations, type AssistantConversation } from '@/hooks/useAssistantConversations';
-import { useAssistantChat } from '@/hooks/useAssistantChat';
+import { useAssistantChat, type AssistantMessage } from '@/hooks/useAssistantChat';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
+import { toast } from 'sonner';
 
 // Telegram icon component
 const TelegramIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -23,12 +26,37 @@ const TelegramIcon: React.FC<{ className?: string }> = ({ className }) => (
   </svg>
 );
 
-// Conversation list item
+// Message status indicator component
+const MessageStatus: React.FC<{ status: string; isRead: boolean }> = ({ status, isRead }) => {
+  if (isRead || status === 'read') {
+    return (
+      <span className="text-primary text-[10px] ml-1" title="Letto">
+        ✓✓
+      </span>
+    );
+  }
+  if (status === 'delivered') {
+    return (
+      <span className="text-muted-foreground text-[10px] ml-1" title="Consegnato">
+        ✓✓
+      </span>
+    );
+  }
+  return (
+    <span className="text-muted-foreground text-[10px] ml-1" title="Inviato">
+      ✓
+    </span>
+  );
+};
+
+// Conversation list item with actions
 const ConversationItem: React.FC<{
   conversation: AssistantConversation;
   isActive: boolean;
   onClick: () => void;
-}> = ({ conversation, isActive, onClick }) => {
+  onUpdateStatus: (status: 'active' | 'resolved' | 'archived') => void;
+  onDelete: () => void;
+}> = ({ conversation, isActive, onClick, onUpdateStatus, onDelete }) => {
   const statusIcon = {
     active: <Clock className="w-3 h-3 text-warning" />,
     resolved: <CheckCircle className="w-3 h-3 text-success" />,
@@ -44,16 +72,15 @@ const ConversationItem: React.FC<{
   };
 
   return (
-    <button
-      onClick={onClick}
+    <div
       className={cn(
-        "w-full p-3 text-left rounded-xl transition-colors",
+        "w-full p-3 text-left rounded-xl transition-colors relative group",
         "hover:bg-accent/50",
         isActive && "bg-primary/10 border border-primary/20"
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
+      <div className="flex items-start justify-between gap-2" onClick={onClick}>
+        <div className="min-w-0 flex-1 cursor-pointer">
           <div className="flex items-center gap-2">
             <span className="font-medium truncate">
               {conversation.user_name || 'Visitatore'}
@@ -75,29 +102,87 @@ const ConversationItem: React.FC<{
           </span>
         </div>
       </div>
-      <div className="flex items-center gap-2 mt-2">
-        <Badge variant="outline" className="text-[10px] h-5">
-          {conversation.source_section}
-        </Badge>
-        {conversation.lead_type && (
-          <span className="text-[10px]">
-            {leadTypeLabel[conversation.lead_type as keyof typeof leadTypeLabel] || conversation.lead_type}
-          </span>
-        )}
+      
+      <div className="flex items-center justify-between mt-2">
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-[10px] h-5">
+            {conversation.source_section}
+          </Badge>
+          {conversation.lead_type && (
+            <span className="text-[10px]">
+              {leadTypeLabel[conversation.lead_type as keyof typeof leadTypeLabel] || conversation.lead_type}
+            </span>
+          )}
+        </div>
+        
+        {/* Quick actions */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100">
+              <MoreVertical className="w-3 h-3" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {conversation.status !== 'active' && (
+              <DropdownMenuItem onClick={() => onUpdateStatus('active')}>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Sposta in Attive
+              </DropdownMenuItem>
+            )}
+            {conversation.status !== 'resolved' && (
+              <DropdownMenuItem onClick={() => onUpdateStatus('resolved')}>
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Segna come Risolta
+              </DropdownMenuItem>
+            )}
+            {conversation.status !== 'archived' && (
+              <DropdownMenuItem onClick={() => onUpdateStatus('archived')}>
+                <Archive className="w-4 h-4 mr-2" />
+                Archivia
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Elimina
+                </DropdownMenuItem>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Eliminare questa conversazione?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Questa azione è irreversibile. Tutti i messaggi verranno eliminati.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                  <AlertDialogAction onClick={onDelete} className="bg-destructive text-destructive-foreground">
+                    Elimina
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-    </button>
+    </div>
   );
 };
 
-// Chat view
+// Chat view with edit/delete for admin messages
 const ChatView: React.FC<{
   conversationId: string | null;
   conversation: AssistantConversation | null;
   onUpdateStatus: (status: 'active' | 'resolved' | 'archived') => void;
-}> = ({ conversationId, conversation, onUpdateStatus }) => {
-  const { messages, loading, sendMessage } = useAssistantChat(conversationId);
+  onDeleteConversation: () => void;
+}> = ({ conversationId, conversation, onUpdateStatus, onDeleteConversation }) => {
+  const { messages, loading, sendMessage, editMessage, deleteMessage } = useAssistantChat(conversationId);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
 
   const handleSend = async () => {
     if (!newMessage.trim() || sending) return;
@@ -105,6 +190,27 @@ const ChatView: React.FC<{
     await sendMessage(newMessage.trim(), 'admin');
     setNewMessage('');
     setSending(false);
+  };
+
+  const handleEdit = async (msgId: string) => {
+    if (!editText.trim()) return;
+    const success = await editMessage(msgId, editText.trim());
+    if (success) {
+      toast.success('Messaggio modificato');
+      setEditingId(null);
+      setEditText('');
+    } else {
+      toast.error('Errore nella modifica');
+    }
+  };
+
+  const handleDelete = async (msgId: string) => {
+    const success = await deleteMessage(msgId);
+    if (success) {
+      toast.success('Messaggio eliminato');
+    } else {
+      toast.error('Errore nell\'eliminazione');
+    }
   };
 
   if (!conversationId || !conversation) {
@@ -129,28 +235,57 @@ const ChatView: React.FC<{
           </p>
         </div>
         <div className="flex gap-2">
-          {conversation.status === 'active' && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onUpdateStatus('resolved')}
-              className="gap-1.5"
-            >
-              <CheckCircle className="w-4 h-4" />
-              Risolvi
-            </Button>
-          )}
-          {conversation.status === 'resolved' && (
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => onUpdateStatus('archived')}
-              className="gap-1.5"
-            >
-              <Archive className="w-4 h-4" />
-              Archivia
-            </Button>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" variant="outline">
+                Azioni
+                <MoreVertical className="w-4 h-4 ml-1" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {conversation.status !== 'active' && (
+                <DropdownMenuItem onClick={() => onUpdateStatus('active')}>
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Sposta in Attive
+                </DropdownMenuItem>
+              )}
+              {conversation.status === 'active' && (
+                <DropdownMenuItem onClick={() => onUpdateStatus('resolved')}>
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                  Segna come Risolta
+                </DropdownMenuItem>
+              )}
+              {conversation.status === 'resolved' && (
+                <DropdownMenuItem onClick={() => onUpdateStatus('archived')}>
+                  <Archive className="w-4 h-4 mr-2" />
+                  Archivia
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Elimina Conversazione
+                  </DropdownMenuItem>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Eliminare questa conversazione?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Questa azione è irreversibile. Tutti i messaggi verranno eliminati.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annulla</AlertDialogCancel>
+                    <AlertDialogAction onClick={onDeleteConversation} className="bg-destructive text-destructive-foreground">
+                      Elimina
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -161,18 +296,92 @@ const ChatView: React.FC<{
             <div
               key={msg.id}
               className={cn(
-                "max-w-[80%] p-3 rounded-2xl",
-                msg.sender_type === 'admin'
-                  ? "ml-auto bg-primary text-primary-foreground"
-                  : msg.sender_type === 'bot'
-                    ? "bg-secondary/50"
-                    : "bg-accent"
+                "max-w-[80%] group relative",
+                msg.sender_type === 'admin' ? "ml-auto" : ""
               )}
             >
-              <p className="text-sm">{msg.message_text}</p>
-              <span className="text-[10px] opacity-70 mt-1 block">
-                {format(new Date(msg.created_at), 'HH:mm')}
-              </span>
+              {editingId === msg.id ? (
+                <div className="flex gap-2 items-center">
+                  <Input
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    className="flex-1"
+                    autoFocus
+                  />
+                  <Button size="icon" variant="ghost" onClick={() => handleEdit(msg.id)}>
+                    <Check className="w-4 h-4 text-success" />
+                  </Button>
+                  <Button size="icon" variant="ghost" onClick={() => setEditingId(null)}>
+                    <X className="w-4 h-4 text-destructive" />
+                  </Button>
+                </div>
+              ) : (
+                <div
+                  className={cn(
+                    "p-3 rounded-2xl",
+                    msg.sender_type === 'admin'
+                      ? "bg-primary text-primary-foreground"
+                      : msg.sender_type === 'bot'
+                        ? "bg-secondary/50"
+                        : "bg-accent"
+                  )}
+                >
+                  <p className="text-sm whitespace-pre-line">{msg.message_text}</p>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-[10px] opacity-70">
+                      {format(new Date(msg.created_at), 'HH:mm')}
+                      {msg.edited_at && ' (modificato)'}
+                    </span>
+                    {msg.sender_type === 'admin' && (
+                      <MessageStatus 
+                        status={msg.delivery_status || 'sent'} 
+                        isRead={msg.is_read} 
+                      />
+                    )}
+                  </div>
+                  
+                  {/* Edit/Delete buttons for admin messages */}
+                  {msg.sender_type === 'admin' && (
+                    <div className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                      <Button
+                        size="icon"
+                        variant="secondary"
+                        className="h-6 w-6"
+                        onClick={() => {
+                          setEditingId(msg.id);
+                          setEditText(msg.message_text);
+                        }}
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button size="icon" variant="destructive" className="h-6 w-6">
+                            <Trash2 className="w-3 h-3" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Eliminare questo messaggio?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Questa azione è irreversibile.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annulla</AlertDialogCancel>
+                            <AlertDialogAction 
+                              onClick={() => handleDelete(msg.id)} 
+                              className="bg-destructive text-destructive-foreground"
+                            >
+                              Elimina
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -373,7 +582,7 @@ const SettingsPanel: React.FC = () => {
 
 // Main component
 export const AdminAssistantTab: React.FC = () => {
-  const { conversations, loading, unreadTotal, markAsRead, updateStatus } = useAssistantConversations();
+  const { conversations, loading, unreadTotal, markAsRead, updateStatus, deleteConversation } = useAssistantConversations();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'resolved' | 'archived'>('active');
 
@@ -387,6 +596,23 @@ export const AdminAssistantTab: React.FC = () => {
     setSelectedId(conv.id);
     if (conv.unread_count && conv.unread_count > 0) {
       markAsRead(conv.id);
+    }
+  };
+
+  const handleUpdateStatus = async (convId: string, status: 'active' | 'resolved' | 'archived') => {
+    await updateStatus(convId, status);
+    toast.success(`Conversazione spostata in ${status === 'active' ? 'Attive' : status === 'resolved' ? 'Risolte' : 'Archivio'}`);
+  };
+
+  const handleDelete = async (convId: string) => {
+    const success = await deleteConversation(convId);
+    if (success) {
+      toast.success('Conversazione eliminata');
+      if (selectedId === convId) {
+        setSelectedId(null);
+      }
+    } else {
+      toast.error('Errore nell\'eliminazione');
     }
   };
 
@@ -444,6 +670,8 @@ export const AdminAssistantTab: React.FC = () => {
                           conversation={conv}
                           isActive={selectedId === conv.id}
                           onClick={() => handleSelect(conv)}
+                          onUpdateStatus={(status) => handleUpdateStatus(conv.id, status)}
+                          onDelete={() => handleDelete(conv.id)}
                         />
                       ))
                     )}
@@ -455,9 +683,8 @@ export const AdminAssistantTab: React.FC = () => {
               <ChatView
                 conversationId={selectedId}
                 conversation={selectedConversation}
-                onUpdateStatus={(status) => {
-                  if (selectedId) updateStatus(selectedId, status);
-                }}
+                onUpdateStatus={(status) => selectedId && handleUpdateStatus(selectedId, status)}
+                onDeleteConversation={() => selectedId && handleDelete(selectedId)}
               />
             </div>
           </Card>
