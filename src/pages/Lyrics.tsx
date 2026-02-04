@@ -350,7 +350,8 @@ const Lyrics: React.FC = () => {
         </div>
 
         {/* Lyrics Content */}
-        <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-2xl mb-24">
+        {/* Extra padding on mobile for bottom bar */}
+        <div className="bg-black/30 backdrop-blur-sm rounded-2xl p-6 sm:p-8 shadow-2xl mb-24 pb-24 sm:pb-8">
           {song.testo ? (
             <div
               className="font-sans leading-relaxed text-white"
@@ -431,111 +432,221 @@ const Lyrics: React.FC = () => {
         </div>
       </div>
 
-      {/* Floating Control Buttons */}
+      {/* Floating Control Buttons - Bottom bar on mobile, side panel on desktop */}
       {showControls && song.testo && (
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 items-end">
-          {/* Speed Slider - shows when clicking settings */}
-          {autoScrollEnabled && showSpeedSlider && (
-            <div className="bg-black/80 backdrop-blur-md rounded-xl p-3 shadow-2xl border border-white/20 flex items-center gap-3 animate-fade-in">
-              <Gauge className="w-4 h-4 text-white/70" />
-              <Slider
-                value={[scrollSpeed]}
-                onValueChange={handleSpeedChange}
-                min={MIN_SCROLL_SPEED}
-                max={MAX_SCROLL_SPEED}
-                step={5}
-                className="w-32"
-              />
-              <span className="text-white/70 text-xs font-mono w-8">{scrollSpeed}</span>
+        <>
+          {/* Mobile: Bottom horizontal bar */}
+          <div className="fixed bottom-0 left-0 right-0 z-50 sm:hidden">
+            <div className="bg-black/80 backdrop-blur-md border-t border-white/20 px-4 py-3 safe-area-bottom">
+              <div className="flex items-center justify-center gap-2 flex-wrap">
+                {/* Auto-scroll controls */}
+                {autoScrollEnabled && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={toggleAutoScroll}
+                      className={cn(
+                        "text-white hover:bg-white/20 h-10 w-10",
+                        isAutoScrolling && "bg-green-500/30 text-green-400"
+                      )}
+                      title={isAutoScrolling ? "Ferma scorrimento" : "Avvia scorrimento automatico"}
+                    >
+                      {isAutoScrolling ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowSpeedSlider(!showSpeedSlider)}
+                      className={cn(
+                        "text-white hover:bg-white/20 h-10 w-10",
+                        showSpeedSlider && "bg-white/20"
+                      )}
+                      title="Regola velocità"
+                    >
+                      <Gauge className="w-5 h-5" />
+                    </Button>
+                  </>
+                )}
+                
+                {/* Zoom controls */}
+                {zoomEnabled && (
+                  <>
+                    {autoScrollEnabled && <div className="w-px h-8 bg-white/20" />}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleZoomOut}
+                      disabled={fontSize <= FONT_SIZES[0]}
+                      className="text-white hover:bg-white/20 h-10 w-10"
+                      title="Riduci testo"
+                    >
+                      <Minus className="w-5 h-5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleZoomIn}
+                      disabled={fontSize >= FONT_SIZES[FONT_SIZES.length - 1]}
+                      className="text-white hover:bg-white/20 h-10 w-10"
+                      title="Ingrandisci testo"
+                    >
+                      <Plus className="w-5 h-5" />
+                    </Button>
+                  </>
+                )}
+                
+                {/* Highlight navigation */}
+                {highlightEnabled && (
+                  <>
+                    {(zoomEnabled || autoScrollEnabled) && <div className="w-px h-8 bg-white/20" />}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleChunkUp}
+                      disabled={currentChunkIndex < 0}
+                      className="text-white hover:bg-white/20 h-10 w-10"
+                      title="Blocco precedente"
+                    >
+                      <ChevronUp className="w-5 h-5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleChunkDown}
+                      disabled={currentChunkIndex >= lyricsChunks.length - 1}
+                      className="text-white hover:bg-white/20 h-10 w-10"
+                      title="Blocco successivo"
+                    >
+                      <ChevronDown className="w-5 h-5" />
+                    </Button>
+                  </>
+                )}
+              </div>
+              
+              {/* Speed Slider - shows above the bar when active */}
+              {autoScrollEnabled && showSpeedSlider && (
+                <div className="mt-2 flex items-center justify-center gap-3">
+                  <Gauge className="w-4 h-4 text-white/70" />
+                  <Slider
+                    value={[scrollSpeed]}
+                    onValueChange={handleSpeedChange}
+                    min={MIN_SCROLL_SPEED}
+                    max={MAX_SCROLL_SPEED}
+                    step={5}
+                    className="w-40"
+                  />
+                  <span className="text-white/70 text-xs font-mono w-8">{scrollSpeed}</span>
+                </div>
+              )}
             </div>
-          )}
-          
-          <div className="bg-black/60 backdrop-blur-md rounded-xl p-2 shadow-2xl border border-white/20 flex flex-col gap-1">
-            {/* Auto-scroll controls */}
-            {autoScrollEnabled && (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggleAutoScroll}
-                  className={cn(
-                    "text-white hover:bg-white/20 h-10 w-10",
-                    isAutoScrolling && "bg-green-500/30 text-green-400"
-                  )}
-                  title={isAutoScrolling ? "Ferma scorrimento" : "Avvia scorrimento automatico"}
-                >
-                  {isAutoScrolling ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setShowSpeedSlider(!showSpeedSlider)}
-                  className={cn(
-                    "text-white hover:bg-white/20 h-10 w-10",
-                    showSpeedSlider && "bg-white/20"
-                  )}
-                  title="Regola velocità"
-                >
-                  <Gauge className="w-5 h-5" />
-                </Button>
-              </>
-            )}
-            
-            {/* Zoom controls */}
-            {zoomEnabled && (
-              <>
-                {autoScrollEnabled && <div className="h-px bg-white/20 my-1" />}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleZoomIn}
-                  disabled={fontSize >= FONT_SIZES[FONT_SIZES.length - 1]}
-                  className="text-white hover:bg-white/20 h-10 w-10"
-                  title="Ingrandisci testo"
-                >
-                  <Plus className="w-5 h-5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleZoomOut}
-                  disabled={fontSize <= FONT_SIZES[0]}
-                  className="text-white hover:bg-white/20 h-10 w-10"
-                  title="Riduci testo"
-                >
-                  <Minus className="w-5 h-5" />
-                </Button>
-              </>
-            )}
-            
-            {/* Highlight navigation */}
-            {highlightEnabled && (
-              <>
-                {(zoomEnabled || autoScrollEnabled) && <div className="h-px bg-white/20 my-1" />}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleChunkUp}
-                  disabled={currentChunkIndex < 0}
-                  className="text-white hover:bg-white/20 h-10 w-10"
-                  title="Blocco precedente"
-                >
-                  <ChevronUp className="w-5 h-5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleChunkDown}
-                  disabled={currentChunkIndex >= lyricsChunks.length - 1}
-                  className="text-white hover:bg-white/20 h-10 w-10"
-                  title="Blocco successivo"
-                >
-                  <ChevronDown className="w-5 h-5" />
-                </Button>
-              </>
-            )}
           </div>
-        </div>
+
+          {/* Desktop: Side panel (original behavior) */}
+          <div className="hidden sm:flex fixed bottom-6 right-6 z-50 flex-col gap-2 items-end">
+            {/* Speed Slider - shows when clicking settings */}
+            {autoScrollEnabled && showSpeedSlider && (
+              <div className="bg-black/80 backdrop-blur-md rounded-xl p-3 shadow-2xl border border-white/20 flex items-center gap-3 animate-fade-in">
+                <Gauge className="w-4 h-4 text-white/70" />
+                <Slider
+                  value={[scrollSpeed]}
+                  onValueChange={handleSpeedChange}
+                  min={MIN_SCROLL_SPEED}
+                  max={MAX_SCROLL_SPEED}
+                  step={5}
+                  className="w-32"
+                />
+                <span className="text-white/70 text-xs font-mono w-8">{scrollSpeed}</span>
+              </div>
+            )}
+            
+            <div className="bg-black/60 backdrop-blur-md rounded-xl p-2 shadow-2xl border border-white/20 flex flex-col gap-1">
+              {/* Auto-scroll controls */}
+              {autoScrollEnabled && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={toggleAutoScroll}
+                    className={cn(
+                      "text-white hover:bg-white/20 h-10 w-10",
+                      isAutoScrolling && "bg-green-500/30 text-green-400"
+                    )}
+                    title={isAutoScrolling ? "Ferma scorrimento" : "Avvia scorrimento automatico"}
+                  >
+                    {isAutoScrolling ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowSpeedSlider(!showSpeedSlider)}
+                    className={cn(
+                      "text-white hover:bg-white/20 h-10 w-10",
+                      showSpeedSlider && "bg-white/20"
+                    )}
+                    title="Regola velocità"
+                  >
+                    <Gauge className="w-5 h-5" />
+                  </Button>
+                </>
+              )}
+              
+              {/* Zoom controls */}
+              {zoomEnabled && (
+                <>
+                  {autoScrollEnabled && <div className="h-px bg-white/20 my-1" />}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleZoomIn}
+                    disabled={fontSize >= FONT_SIZES[FONT_SIZES.length - 1]}
+                    className="text-white hover:bg-white/20 h-10 w-10"
+                    title="Ingrandisci testo"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleZoomOut}
+                    disabled={fontSize <= FONT_SIZES[0]}
+                    className="text-white hover:bg-white/20 h-10 w-10"
+                    title="Riduci testo"
+                  >
+                    <Minus className="w-5 h-5" />
+                  </Button>
+                </>
+              )}
+              
+              {/* Highlight navigation */}
+              {highlightEnabled && (
+                <>
+                  {(zoomEnabled || autoScrollEnabled) && <div className="h-px bg-white/20 my-1" />}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleChunkUp}
+                    disabled={currentChunkIndex < 0}
+                    className="text-white hover:bg-white/20 h-10 w-10"
+                    title="Blocco precedente"
+                  >
+                    <ChevronUp className="w-5 h-5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleChunkDown}
+                    disabled={currentChunkIndex >= lyricsChunks.length - 1}
+                    className="text-white hover:bg-white/20 h-10 w-10"
+                    title="Blocco successivo"
+                  >
+                    <ChevronDown className="w-5 h-5" />
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </>
       )}
 
       {/* Bottom Gradient Fade */}
