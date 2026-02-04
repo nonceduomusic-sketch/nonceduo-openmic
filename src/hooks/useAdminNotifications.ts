@@ -209,17 +209,28 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
       hasSubscriptions = true;
     }
 
-    // Assistant messages (always subscribe)
+    // Assistant messages (always subscribe) - listen specifically to INSERT for notifications
     channel.on(
       'postgres_changes',
-      { event: '*', schema: 'public', table: 'assistant_messages' },
+      { event: 'INSERT', schema: 'public', table: 'assistant_messages' },
       (payload) => {
-        if (import.meta.env.DEV) console.log('[AdminNotifications] assistant_messages changed', payload);
+        console.log('[AdminNotifications] New assistant message INSERT:', payload);
         fetchCounts();
         // Emit event for toast popup if it's a new user message
-        if (payload.eventType === 'INSERT' && (payload.new as { sender_type?: string })?.sender_type === 'user') {
-          window.dispatchEvent(new CustomEvent('new-assistant-message', { detail: payload.new }));
+        const newMsg = payload.new as { sender_type?: string; id?: string; conversation_id?: string; message_text?: string };
+        if (newMsg?.sender_type === 'user') {
+          console.log('[AdminNotifications] Dispatching new-assistant-message event');
+          window.dispatchEvent(new CustomEvent('new-assistant-message', { detail: newMsg }));
         }
+      }
+    );
+    // Also listen to UPDATE for read status changes
+    channel.on(
+      'postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'assistant_messages' },
+      () => {
+        if (import.meta.env.DEV) console.log('[AdminNotifications] assistant_messages updated');
+        fetchCounts();
       }
     );
     hasSubscriptions = true;
