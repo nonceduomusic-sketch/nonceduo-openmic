@@ -14,6 +14,7 @@ import {
   ExternalLink,
   Maximize,
   Monitor,
+  Minimize2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -22,6 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
 import brandLogoText from '@/assets/brand-logo-text.png';
 
 interface Song {
@@ -47,6 +49,7 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
   const [isFullPreview, setIsFullPreview] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('spotify');
   const lyricsRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
 
   // TV Settings from session
   const tvSettings = useMemo(() => ({
@@ -193,7 +196,7 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
     );
   }
 
-  // Full Preview Mode (expanded)
+  // Full Preview Mode (expanded) - Mobile optimized
   if (isFullPreview) {
     return (
       <Card className="border-green-500/30">
@@ -201,56 +204,56 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
           {/* Full TV Replica */}
           <div 
             className="relative rounded-xl overflow-hidden bg-black"
-            style={{ minHeight: '70vh' }}
+            style={{ minHeight: isMobile ? '60vh' : '70vh' }}
           >
             {/* Ambient background */}
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute inset-0 bg-gradient-to-b from-gray-900/50 via-black to-gray-900/50" />
-              <div className="absolute top-0 left-1/4 w-[400px] h-[400px] bg-primary/15 rounded-full blur-[150px]" />
-              <div className="absolute bottom-0 right-1/4 w-[300px] h-[300px] bg-purple-600/10 rounded-full blur-[100px]" />
+              <div className="absolute top-0 left-1/4 w-[200px] md:w-[400px] h-[200px] md:h-[400px] bg-primary/15 rounded-full blur-[100px] md:blur-[150px]" />
+              <div className="absolute bottom-0 right-1/4 w-[150px] md:w-[300px] h-[150px] md:h-[300px] bg-purple-600/10 rounded-full blur-[60px] md:blur-[100px]" />
             </div>
 
             {/* Header with song info */}
-            <div className="relative z-10 px-6 pt-6 pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  {tvSettings.showLogo && (
+            <div className="relative z-10 px-4 md:px-6 pt-4 md:pt-6 pb-2 md:pb-4">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-2 md:gap-4 min-w-0 flex-1">
+                  {tvSettings.showLogo && !isMobile && (
                     <img 
                       src={tvSettings.logoUrl || brandLogoText} 
                       alt="Logo" 
-                      className="h-10 md:h-12 w-auto object-contain opacity-80"
+                      className="h-8 md:h-12 w-auto object-contain opacity-80 flex-shrink-0"
                       onError={(e) => {
                         (e.target as HTMLImageElement).src = brandLogoText;
                       }}
                     />
                   )}
-                  <div>
+                  <div className="min-w-0 flex-1">
                     <h1 
-                      className="font-bold text-white"
-                      style={{ fontSize: `${Math.max(18, 28 * fontSize / 100)}px` }}
+                      className="font-bold text-white truncate"
+                      style={{ fontSize: isMobile ? `${Math.max(16, 20 * fontSize / 100)}px` : `${Math.max(18, 28 * fontSize / 100)}px` }}
                     >
                       {currentSong.titolo}
                     </h1>
                     <p 
-                      className="text-white/60"
-                      style={{ fontSize: `${Math.max(14, 18 * fontSize / 100)}px` }}
+                      className="text-white/60 truncate"
+                      style={{ fontSize: isMobile ? `${Math.max(12, 14 * fontSize / 100)}px` : `${Math.max(14, 18 * fontSize / 100)}px` }}
                     >
                       {currentSong.artista}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse mr-2" />
-                    LIVE
+                <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+                  <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30 text-xs">
+                    <div className="w-1.5 h-1.5 md:w-2 md:h-2 bg-green-500 rounded-full animate-pulse mr-1 md:mr-2" />
+                    {!isMobile && 'LIVE'}
                   </Badge>
                   <Button
                     variant="outline"
-                    size="sm"
+                    size="icon"
                     onClick={() => setIsFullPreview(false)}
-                    className="text-white border-white/20 hover:bg-white/10"
+                    className="text-white border-white/20 hover:bg-white/10 h-8 w-8 md:h-9 md:w-9"
                   >
-                    Riduci
+                    <Minimize2 className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
@@ -259,10 +262,13 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
             {/* Lyrics display - Full Spotify style */}
             <div 
               ref={lyricsRef}
-              className="relative z-10 px-6 md:px-12 overflow-y-auto"
-              style={{ height: 'calc(70vh - 200px)' }}
+              className="relative z-10 px-4 md:px-12 overflow-y-auto"
+              style={{ height: isMobile ? 'calc(60vh - 180px)' : 'calc(70vh - 200px)' }}
             >
-              <div className="max-w-4xl mx-auto space-y-4 md:space-y-6 text-center py-[15vh]">
+              <div className={cn(
+                "max-w-4xl mx-auto text-center",
+                isMobile ? "space-y-3 py-[10vh]" : "space-y-4 md:space-y-6 py-[15vh]"
+              )}>
                 {lines.map((line, index) => {
                   const isHighlighted = localHighlightLine === index;
                   const isPast = index < localHighlightLine;
@@ -275,7 +281,9 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
                   else if (distanceFromHighlight === 2) opacity = 0.5;
                   else if (distanceFromHighlight > 2) opacity = 0.35;
                   
-                  const baseFontSize = Math.max(16, 24 * fontSize / 100);
+                  const baseFontSize = isMobile 
+                    ? Math.max(14, 18 * fontSize / 100)
+                    : Math.max(16, 24 * fontSize / 100);
                   const highlightFontSize = baseFontSize * 1.3;
 
                   return (
@@ -303,116 +311,233 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
               </div>
             </div>
 
-            {/* Controls Overlay */}
-            <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black via-black/90 to-transparent">
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                {/* Navigation */}
-                <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleLineChange('up')}
-                    disabled={!canManage || localHighlightLine === 0}
-                    className="text-white hover:bg-white/20"
-                  >
-                    <ChevronUp className="w-5 h-5" />
-                  </Button>
-                  <div className="px-3 min-w-[70px] text-center">
-                    <span className="text-white font-medium">
-                      {localHighlightLine + 1}/{lines.length}
-                    </span>
+            {/* Controls Overlay - Mobile optimized */}
+            <div className="absolute bottom-0 left-0 right-0 p-3 md:p-4 bg-gradient-to-t from-black via-black/90 to-transparent">
+              {isMobile ? (
+                // Mobile: 2-row layout
+                <div className="space-y-2">
+                  {/* Row 1: Navigation + Auto-scroll */}
+                  <div className="flex items-center justify-center gap-2">
+                    {/* Navigation */}
+                    <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleLineChange('up')}
+                        disabled={!canManage || localHighlightLine === 0}
+                        className="text-white hover:bg-white/20 h-10 w-10"
+                      >
+                        <ChevronUp className="w-5 h-5" />
+                      </Button>
+                      <div className="px-2 min-w-[50px] text-center">
+                        <span className="text-white font-medium text-sm">
+                          {localHighlightLine + 1}/{lines.length}
+                        </span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleLineChange('down')}
+                        disabled={!canManage || localHighlightLine >= lines.length - 1}
+                        className="text-white hover:bg-white/20 h-10 w-10"
+                      >
+                        <ChevronDown className="w-5 h-5" />
+                      </Button>
+                    </div>
+
+                    {/* Auto-scroll */}
+                    <Button
+                      variant={autoScroll ? "destructive" : "outline"}
+                      size="icon"
+                      onClick={handleToggleAutoScroll}
+                      disabled={!canManage}
+                      className={cn("h-10 w-10", !autoScroll && "text-white border-white/20 hover:bg-white/20")}
+                    >
+                      {autoScroll ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                    </Button>
+
+                    {/* Reset */}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleReset}
+                      disabled={!canManage}
+                      className="text-white border-white/20 hover:bg-white/20 h-10 w-10"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleLineChange('down')}
-                    disabled={!canManage || localHighlightLine >= lines.length - 1}
-                    className="text-white hover:bg-white/20"
-                  >
-                    <ChevronDown className="w-5 h-5" />
-                  </Button>
+
+                  {/* Row 2: Speed + Zoom + Stop + TV */}
+                  <div className="flex items-center justify-center gap-2">
+                    {/* Speed */}
+                    <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-2">
+                      <Label className="text-xs text-white/70">Vel.</Label>
+                      <Slider
+                        value={[scrollSpeed]}
+                        onValueChange={([v]) => setScrollSpeed(v)}
+                        min={1}
+                        max={5}
+                        step={1}
+                        className="w-16"
+                        disabled={!canManage}
+                      />
+                    </div>
+
+                    {/* Zoom */}
+                    <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setFontSize(prev => Math.max(50, prev - 10))}
+                        className="text-white hover:bg-white/20 h-8 w-8"
+                      >
+                        <ZoomOut className="w-4 h-4" />
+                      </Button>
+                      <span className="text-xs text-white min-w-[32px] text-center">{fontSize}%</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setFontSize(prev => Math.min(150, prev + 10))}
+                        className="text-white hover:bg-white/20 h-8 w-8"
+                      >
+                        <ZoomIn className="w-4 h-4" />
+                      </Button>
+                    </div>
+
+                    {/* Stop */}
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      onClick={handleStop}
+                      disabled={!canManage}
+                      className="h-10 w-10"
+                    >
+                      <Square className="w-4 h-4" />
+                    </Button>
+
+                    {/* Open TV */}
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={openTVPage}
+                      className="text-white border-white/20 hover:bg-white/20 h-10 w-10"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
+              ) : (
+                // Desktop: Single row
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  {/* Navigation */}
+                  <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleLineChange('up')}
+                      disabled={!canManage || localHighlightLine === 0}
+                      className="text-white hover:bg-white/20"
+                    >
+                      <ChevronUp className="w-5 h-5" />
+                    </Button>
+                    <div className="px-3 min-w-[70px] text-center">
+                      <span className="text-white font-medium">
+                        {localHighlightLine + 1}/{lines.length}
+                      </span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleLineChange('down')}
+                      disabled={!canManage || localHighlightLine >= lines.length - 1}
+                      className="text-white hover:bg-white/20"
+                    >
+                      <ChevronDown className="w-5 h-5" />
+                    </Button>
+                  </div>
 
-                {/* Auto-scroll */}
-                <Button
-                  variant={autoScroll ? "destructive" : "outline"}
-                  size="sm"
-                  onClick={handleToggleAutoScroll}
-                  disabled={!canManage}
-                  className={!autoScroll ? "text-white border-white/20 hover:bg-white/20" : ""}
-                >
-                  {autoScroll ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
-                  Auto
-                </Button>
-
-                {/* Speed */}
-                <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-1.5">
-                  <Label className="text-xs text-white/70 whitespace-nowrap">Vel.</Label>
-                  <Slider
-                    value={[scrollSpeed]}
-                    onValueChange={([v]) => setScrollSpeed(v)}
-                    min={1}
-                    max={5}
-                    step={1}
-                    className="w-20"
+                  {/* Auto-scroll */}
+                  <Button
+                    variant={autoScroll ? "destructive" : "outline"}
+                    size="sm"
+                    onClick={handleToggleAutoScroll}
                     disabled={!canManage}
-                  />
-                </div>
-
-                {/* Zoom */}
-                <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => setFontSize(prev => Math.max(50, prev - 10))}
-                    className="text-white hover:bg-white/20"
+                    className={!autoScroll ? "text-white border-white/20 hover:bg-white/20" : ""}
                   >
-                    <ZoomOut className="w-4 h-4" />
+                    {autoScroll ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+                    Auto
                   </Button>
-                  <span className="text-xs text-white min-w-[40px] text-center">{fontSize}%</span>
+
+                  {/* Speed */}
+                  <div className="flex items-center gap-2 bg-white/10 rounded-lg px-3 py-1.5">
+                    <Label className="text-xs text-white/70 whitespace-nowrap">Vel.</Label>
+                    <Slider
+                      value={[scrollSpeed]}
+                      onValueChange={([v]) => setScrollSpeed(v)}
+                      min={1}
+                      max={5}
+                      step={1}
+                      className="w-20"
+                      disabled={!canManage}
+                    />
+                  </div>
+
+                  {/* Zoom */}
+                  <div className="flex items-center gap-1 bg-white/10 rounded-lg p-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setFontSize(prev => Math.max(50, prev - 10))}
+                      className="text-white hover:bg-white/20"
+                    >
+                      <ZoomOut className="w-4 h-4" />
+                    </Button>
+                    <span className="text-xs text-white min-w-[40px] text-center">{fontSize}%</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setFontSize(prev => Math.min(150, prev + 10))}
+                      className="text-white hover:bg-white/20"
+                    >
+                      <ZoomIn className="w-4 h-4" />
+                    </Button>
+                  </div>
+
+                  {/* Reset */}
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="icon"
-                    onClick={() => setFontSize(prev => Math.min(150, prev + 10))}
-                    className="text-white hover:bg-white/20"
+                    onClick={handleReset}
+                    disabled={!canManage}
+                    className="text-white border-white/20 hover:bg-white/20"
                   >
-                    <ZoomIn className="w-4 h-4" />
+                    <RotateCcw className="w-4 h-4" />
+                  </Button>
+
+                  {/* Stop */}
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleStop}
+                    disabled={!canManage}
+                  >
+                    <Square className="w-4 h-4 mr-2" />
+                    Stop
+                  </Button>
+
+                  {/* Open TV */}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={openTVPage}
+                    className="text-white border-white/20 hover:bg-white/20"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    TV
                   </Button>
                 </div>
-
-                {/* Reset */}
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={handleReset}
-                  disabled={!canManage}
-                  className="text-white border-white/20 hover:bg-white/20"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                </Button>
-
-                {/* Stop */}
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleStop}
-                  disabled={!canManage}
-                >
-                  <Square className="w-4 h-4 mr-2" />
-                  Stop
-                </Button>
-
-                {/* Open TV */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={openTVPage}
-                  className="text-white border-white/20 hover:bg-white/20"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  TV
-                </Button>
-              </div>
+              )}
             </div>
           </div>
         </CardContent>
@@ -420,25 +545,32 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
     );
   }
 
-  // Compact Mode (default)
+  // Compact Mode (default) - Mobile optimized
   return (
     <Card className="border-green-500/30 bg-green-500/5">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between flex-wrap gap-3">
+      <CardHeader className="pb-3 px-3 md:px-6">
+        <div className={cn(
+          "flex gap-3",
+          isMobile ? "flex-col" : "items-center justify-between flex-wrap"
+        )}>
           <div className="flex items-center gap-3">
-            <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-            <div>
-              <CardTitle className="text-base text-green-600 dark:text-green-400">
+            <div className="w-2.5 h-2.5 md:w-3 md:h-3 bg-green-500 rounded-full animate-pulse flex-shrink-0" />
+            <div className="min-w-0 flex-1">
+              <CardTitle className="text-sm md:text-base text-green-600 dark:text-green-400">
                 Trasmissione Live
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="truncate text-xs md:text-sm">
                 {currentSong.titolo} - {currentSong.artista}
               </CardDescription>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          
+          <div className={cn(
+            "flex items-center gap-2",
+            isMobile && "justify-between"
+          )}>
             {/* View Mode Toggle */}
-            <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+            <div className="flex items-center gap-0.5 bg-muted rounded-lg p-0.5">
               <Button
                 variant={viewMode === 'compact' ? 'secondary' : 'ghost'}
                 size="sm"
@@ -456,160 +588,255 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
                 Spotify
               </Button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsFullPreview(true)}
-            >
-              <Maximize className="w-4 h-4 mr-2" />
-              Espandi
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={openTVPage}
-            >
-              <ExternalLink className="w-4 h-4 mr-2" />
-              Apri TV
-            </Button>
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleStop}
-              disabled={!canManage}
-            >
-              <Square className="w-4 h-4 mr-2" />
-              Stop
-            </Button>
+            
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setIsFullPreview(true)}
+                className="h-8 w-8"
+              >
+                <Maximize className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={openTVPage}
+                className="h-8 w-8"
+              >
+                <ExternalLink className="w-4 h-4" />
+              </Button>
+              <Button
+                variant="destructive"
+                size="icon"
+                onClick={handleStop}
+                disabled={!canManage}
+                className="h-8 w-8"
+              >
+                <Square className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Controls bar */}
-        <div className="flex flex-wrap items-center gap-3 p-3 bg-muted/50 rounded-lg">
-          {/* Navigation */}
-          <div className="flex items-center gap-1">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => handleLineChange('up')}
-              disabled={!canManage || localHighlightLine === 0}
-            >
-              <ChevronUp className="w-4 h-4" />
-            </Button>
-            <div className="px-3 min-w-[60px] text-center">
-              <span className="text-sm font-medium">
-                {localHighlightLine + 1}/{lines.length}
-              </span>
+      
+      <CardContent className="space-y-3 md:space-y-4 px-3 md:px-6">
+        {/* Controls bar - Mobile optimized */}
+        {isMobile ? (
+          <div className="space-y-2">
+            {/* Row 1: Navigation + Auto */}
+            <div className="flex items-center justify-between gap-2 p-2 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => handleLineChange('up')}
+                  disabled={!canManage || localHighlightLine === 0}
+                  className="h-9 w-9"
+                >
+                  <ChevronUp className="w-4 h-4" />
+                </Button>
+                <div className="px-2 min-w-[50px] text-center">
+                  <span className="text-sm font-medium">
+                    {localHighlightLine + 1}/{lines.length}
+                  </span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => handleLineChange('down')}
+                  disabled={!canManage || localHighlightLine >= lines.length - 1}
+                  className="h-9 w-9"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </Button>
+              </div>
+
+              <Button
+                variant={autoScroll ? "destructive" : "outline"}
+                size="sm"
+                onClick={handleToggleAutoScroll}
+                disabled={!canManage}
+                className="h-9"
+              >
+                {autoScroll ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" />}
+                Auto
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => handleLineChange('down')}
-              disabled={!canManage || localHighlightLine >= lines.length - 1}
-            >
-              <ChevronDown className="w-4 h-4" />
-            </Button>
+
+            {/* Row 2: Speed + Zoom + Reset */}
+            <div className="flex items-center justify-between gap-2 p-2 bg-muted/50 rounded-lg">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs whitespace-nowrap">Vel.</Label>
+                <Slider
+                  value={[scrollSpeed]}
+                  onValueChange={([v]) => setScrollSpeed(v)}
+                  min={1}
+                  max={5}
+                  step={1}
+                  className="w-16"
+                  disabled={!canManage}
+                />
+              </div>
+
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setFontSize(prev => Math.max(50, prev - 10))}
+                  className="h-8 w-8"
+                >
+                  <ZoomOut className="w-3.5 h-3.5" />
+                </Button>
+                <span className="text-xs min-w-[32px] text-center">{fontSize}%</span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => setFontSize(prev => Math.min(150, prev + 10))}
+                  className="h-8 w-8"
+                >
+                  <ZoomIn className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleReset}
+                disabled={!canManage}
+                className="h-8 w-8"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </Button>
+            </div>
           </div>
+        ) : (
+          // Desktop: Single row
+          <div className="flex flex-wrap items-center gap-3 p-3 bg-muted/50 rounded-lg">
+            {/* Navigation */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleLineChange('up')}
+                disabled={!canManage || localHighlightLine === 0}
+              >
+                <ChevronUp className="w-4 h-4" />
+              </Button>
+              <div className="px-3 min-w-[60px] text-center">
+                <span className="text-sm font-medium">
+                  {localHighlightLine + 1}/{lines.length}
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => handleLineChange('down')}
+                disabled={!canManage || localHighlightLine >= lines.length - 1}
+              >
+                <ChevronDown className="w-4 h-4" />
+              </Button>
+            </div>
 
-          <div className="h-6 w-px bg-border" />
+            <div className="h-6 w-px bg-border" />
 
-          {/* Auto-scroll */}
-          <Button
-            variant={autoScroll ? "destructive" : "outline"}
-            size="sm"
-            onClick={handleToggleAutoScroll}
-            disabled={!canManage}
-          >
-            {autoScroll ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
-            Auto
-          </Button>
-
-          {/* Speed */}
-          <div className="flex items-center gap-2 min-w-[100px]">
-            <Label className="text-xs whitespace-nowrap">Vel.</Label>
-            <Slider
-              value={[scrollSpeed]}
-              onValueChange={([v]) => setScrollSpeed(v)}
-              min={1}
-              max={5}
-              step={1}
-              className="w-16"
+            {/* Auto-scroll */}
+            <Button
+              variant={autoScroll ? "destructive" : "outline"}
+              size="sm"
+              onClick={handleToggleAutoScroll}
               disabled={!canManage}
-            />
-          </div>
+            >
+              {autoScroll ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+              Auto
+            </Button>
 
-          <div className="h-6 w-px bg-border" />
+            {/* Speed */}
+            <div className="flex items-center gap-2 min-w-[100px]">
+              <Label className="text-xs whitespace-nowrap">Vel.</Label>
+              <Slider
+                value={[scrollSpeed]}
+                onValueChange={([v]) => setScrollSpeed(v)}
+                min={1}
+                max={5}
+                step={1}
+                className="w-16"
+                disabled={!canManage}
+              />
+            </div>
 
-          {/* Zoom */}
-          <div className="flex items-center gap-1">
+            <div className="h-6 w-px bg-border" />
+
+            {/* Zoom */}
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setFontSize(prev => Math.max(50, prev - 10))}
+              >
+                <ZoomOut className="w-4 h-4" />
+              </Button>
+              <span className="text-xs min-w-[40px] text-center">{fontSize}%</span>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => setFontSize(prev => Math.min(150, prev + 10))}
+              >
+                <ZoomIn className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="h-6 w-px bg-border" />
+
+            {/* Reset */}
             <Button
               variant="outline"
               size="icon"
-              onClick={() => setFontSize(prev => Math.max(50, prev - 10))}
+              onClick={handleReset}
+              disabled={!canManage}
             >
-              <ZoomOut className="w-4 h-4" />
-            </Button>
-            <span className="text-xs min-w-[40px] text-center">{fontSize}%</span>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => setFontSize(prev => Math.min(150, prev + 10))}
-            >
-              <ZoomIn className="w-4 h-4" />
+              <RotateCcw className="w-4 h-4" />
             </Button>
           </div>
-
-          <div className="h-6 w-px bg-border" />
-
-          {/* Reset */}
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleReset}
-            disabled={!canManage}
-          >
-            <RotateCcw className="w-4 h-4" />
-          </Button>
-        </div>
+        )}
 
         {/* Preview based on view mode */}
         {viewMode === 'spotify' ? (
           /* Spotify-style Preview */
           <div 
             className="relative rounded-xl overflow-hidden bg-gradient-to-b from-gray-900 via-black to-gray-900 cursor-pointer"
-            style={{ minHeight: 320 }}
+            style={{ minHeight: isMobile ? 260 : 320 }}
             onClick={() => setIsFullPreview(true)}
           >
             {/* Ambient background */}
             <div className="absolute inset-0 pointer-events-none">
-              <div className="absolute top-0 left-1/4 w-48 h-48 bg-primary/20 rounded-full blur-[80px]" />
-              <div className="absolute bottom-0 right-1/4 w-40 h-40 bg-purple-500/15 rounded-full blur-[60px]" />
+              <div className="absolute top-0 left-1/4 w-32 md:w-48 h-32 md:h-48 bg-primary/20 rounded-full blur-[60px] md:blur-[80px]" />
+              <div className="absolute bottom-0 right-1/4 w-28 md:w-40 h-28 md:h-40 bg-purple-500/15 rounded-full blur-[40px] md:blur-[60px]" />
             </div>
 
             {/* Header */}
-            <div className="relative z-10 px-4 pt-4 pb-2">
-              <div className="flex items-center gap-3">
-                {tvSettings.showLogo && (
+            <div className="relative z-10 px-3 md:px-4 pt-3 md:pt-4 pb-2">
+              <div className="flex items-center gap-2 md:gap-3">
+                {tvSettings.showLogo && !isMobile && (
                   <img 
                     src={tvSettings.logoUrl || brandLogoText} 
                     alt="Logo" 
-                    className="h-6 w-auto object-contain opacity-70"
+                    className="h-5 md:h-6 w-auto object-contain opacity-70"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = brandLogoText;
                     }}
                   />
                 )}
-                <div>
+                <div className="min-w-0 flex-1">
                   <h3 
                     className="font-bold text-white truncate"
-                    style={{ fontSize: `${Math.max(14, 18 * fontSize / 100)}px` }}
+                    style={{ fontSize: `${Math.max(12, (isMobile ? 14 : 18) * fontSize / 100)}px` }}
                   >
                     {currentSong.titolo}
                   </h3>
                   <p 
                     className="text-white/60 truncate"
-                    style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px` }}
+                    style={{ fontSize: `${Math.max(10, (isMobile ? 12 : 14) * fontSize / 100)}px` }}
                   >
                     {currentSong.artista}
                   </p>
@@ -620,8 +847,11 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
             {/* Spotify-style Lyrics */}
             <div 
               ref={lyricsRef}
-              className="px-6 py-6 space-y-4 text-center overflow-y-auto"
-              style={{ maxHeight: 220 }}
+              className={cn(
+                "px-4 md:px-6 py-4 md:py-6 text-center overflow-y-auto",
+                isMobile ? "space-y-3" : "space-y-4"
+              )}
+              style={{ maxHeight: isMobile ? 160 : 220 }}
             >
               {lines.map((line, index) => {
                 const isHighlighted = localHighlightLine === index;
@@ -634,7 +864,7 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
                 else if (distanceFromHighlight === 2) opacity = 0.5;
                 else if (distanceFromHighlight > 2) opacity = 0.35;
 
-                const baseFontSize = Math.max(14, 18 * fontSize / 100);
+                const baseFontSize = Math.max(isMobile ? 12 : 14, (isMobile ? 14 : 18) * fontSize / 100);
                 const highlightFontSize = baseFontSize * 1.25;
 
                 return (
@@ -668,7 +898,7 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
             <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black to-transparent">
               <div className="flex items-center justify-center gap-1.5 text-white/30 text-xs">
                 <Mic className="w-3 h-3" />
-                <span>Clicca per espandere</span>
+                <span>Tocca per espandere</span>
               </div>
             </div>
           </div>
@@ -679,23 +909,23 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
             onClick={() => setIsFullPreview(true)}
           >
             {/* Header */}
-            <div className="p-3 border-b bg-muted/30">
+            <div className="p-2 md:p-3 border-b bg-muted/30">
               <div className="flex items-center gap-2">
-                {tvSettings.showLogo && (
+                {tvSettings.showLogo && !isMobile && (
                   <img 
                     src={tvSettings.logoUrl || brandLogoText} 
                     alt="Logo" 
-                    className="h-5 w-auto object-contain"
+                    className="h-4 md:h-5 w-auto object-contain"
                     onError={(e) => {
                       (e.target as HTMLImageElement).src = brandLogoText;
                     }}
                   />
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm truncate">{currentSong.titolo}</p>
-                  <p className="text-xs text-muted-foreground truncate">{currentSong.artista}</p>
+                  <p className="font-medium text-xs md:text-sm truncate">{currentSong.titolo}</p>
+                  <p className="text-[10px] md:text-xs text-muted-foreground truncate">{currentSong.artista}</p>
                 </div>
-                <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30 text-xs">
+                <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30 text-[10px] md:text-xs px-1.5">
                   LIVE
                 </Badge>
               </div>
@@ -704,8 +934,8 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
             {/* Compact Lyrics List */}
             <div 
               ref={lyricsRef}
-              className="p-3 space-y-1.5 overflow-y-auto"
-              style={{ maxHeight: 200 }}
+              className="p-2 md:p-3 space-y-1 md:space-y-1.5 overflow-y-auto"
+              style={{ maxHeight: isMobile ? 160 : 200 }}
             >
               {lines.map((line, index) => {
                 const isHighlighted = localHighlightLine === index;
@@ -720,14 +950,14 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
                       handleLineClick(index);
                     }}
                     className={cn(
-                      "text-sm leading-relaxed transition-all duration-300 cursor-pointer px-2 py-1 rounded",
+                      "leading-relaxed transition-all duration-300 cursor-pointer px-2 py-1 rounded",
                       isHighlighted && "bg-primary/20 text-primary font-semibold",
                       isPast && "text-muted-foreground",
                       !isHighlighted && !isPast && "text-foreground hover:bg-muted"
                     )}
-                    style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px` }}
+                    style={{ fontSize: `${Math.max(isMobile ? 11 : 12, (isMobile ? 12 : 14) * fontSize / 100)}px` }}
                   >
-                    <span className="mr-2 text-xs text-muted-foreground">{index + 1}</span>
+                    <span className="mr-2 text-[10px] md:text-xs text-muted-foreground">{index + 1}</span>
                     {line || '\u00A0'}
                   </p>
                 );
@@ -736,13 +966,13 @@ export function LiveTVControlPanel({ canManage = true }: LiveTVControlPanelProps
 
             {/* Footer */}
             <div className="p-2 border-t bg-muted/20 text-center">
-              <span className="text-xs text-muted-foreground">Clicca per espandere</span>
+              <span className="text-[10px] md:text-xs text-muted-foreground">Tocca per espandere</span>
             </div>
           </div>
         )}
 
-        <p className="text-xs text-muted-foreground text-center">
-          Clicca su una riga per saltarci direttamente. La TV si sincronizza in tempo reale.
+        <p className="text-[10px] md:text-xs text-muted-foreground text-center">
+          Tocca una riga per saltarci. La TV si sincronizza in tempo reale.
         </p>
       </CardContent>
     </Card>
