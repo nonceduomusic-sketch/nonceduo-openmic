@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bot, MessageCircle, Settings, Users, CheckCircle, Clock, Archive, Trash2, Edit2, Check, X, MoreVertical, ArrowLeft, ArrowRight, ChevronLeft, Send } from 'lucide-react';
+import { Bot, MessageCircle, Settings, Users, CheckCircle, Clock, Archive, Trash2, Edit2, Check, X, MoreVertical, ArrowLeft, ArrowRight, ChevronLeft, Send, Square, CheckSquare } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
@@ -56,7 +57,10 @@ const ConversationItem: React.FC<{
   onClick: () => void;
   onUpdateStatus: (status: 'active' | 'resolved' | 'archived') => void;
   onDelete: () => void;
-}> = ({ conversation, isActive, onClick, onUpdateStatus, onDelete }) => {
+  selectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
+}> = ({ conversation, isActive, onClick, onUpdateStatus, onDelete, selectionMode, isSelected, onToggleSelect }) => {
   const statusIcon = {
     active: <Clock className="w-3 h-3 text-warning" />,
     resolved: <CheckCircle className="w-3 h-3 text-success" />,
@@ -76,10 +80,19 @@ const ConversationItem: React.FC<{
       className={cn(
         "w-full p-3 text-left rounded-xl transition-colors relative group",
         "hover:bg-accent/50",
-        isActive && "bg-primary/10 border border-primary/20"
+        isActive && "bg-primary/10 border border-primary/20",
+        isSelected && "bg-destructive/10 border border-destructive/30"
       )}
     >
-      <div className="flex items-start justify-between gap-2" onClick={onClick}>
+      <div className="flex items-start justify-between gap-2" onClick={selectionMode ? onToggleSelect : onClick}>
+        {selectionMode && (
+          <Checkbox 
+            checked={isSelected} 
+            onCheckedChange={() => onToggleSelect?.()} 
+            className="mt-1 shrink-0"
+            onClick={(e) => e.stopPropagation()}
+          />
+        )}
         <div className="min-w-0 flex-1 cursor-pointer">
           <div className="flex items-center gap-2">
             <span className="font-medium truncate">
@@ -632,6 +645,10 @@ export const AdminAssistantTab: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'resolved' | 'archived'>('active');
   const [showChat, setShowChat] = useState(false);
+  
+  // Selection mode for bulk delete
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const selectedConversation = conversations.find(c => c.id === selectedId) || null;
 
@@ -651,6 +668,53 @@ export const AdminAssistantTab: React.FC = () => {
 
   const handleBack = () => {
     setShowChat(false);
+  };
+
+  const handleToggleSelect = (convId: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(convId)) {
+        next.delete(convId);
+      } else {
+        next.add(convId);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    if (selectedIds.size === filteredConversations.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredConversations.map(c => c.id)));
+    }
+  };
+
+  const handleDeleteSelected = async () => {
+    if (selectedIds.size === 0) return;
+    
+    let successCount = 0;
+    for (const id of selectedIds) {
+      const success = await deleteConversation(id);
+      if (success) successCount++;
+    }
+    
+    if (successCount > 0) {
+      toast.success(`${successCount} conversazioni eliminate`);
+      setSelectedIds(new Set());
+      setSelectionMode(false);
+      if (selectedId && selectedIds.has(selectedId)) {
+        setSelectedId(null);
+        setShowChat(false);
+      }
+    }
+  };
+
+  const toggleSelectionMode = () => {
+    if (selectionMode) {
+      setSelectedIds(new Set());
+    }
+    setSelectionMode(!selectionMode);
   };
 
   const handleUpdateStatus = async (convId: string, status: 'active' | 'resolved' | 'archived') => {
@@ -674,8 +738,59 @@ export const AdminAssistantTab: React.FC = () => {
   // Mobile: Conversations List View
   const ConversationsListMobile = () => (
     <div className="flex flex-col h-full">
-      {/* Filter buttons */}
+      {/* Selection bar */}
       <div className="p-3 border-b bg-muted/30">
+        <div className="flex gap-2 items-center justify-between mb-2">
+          <Button
+            size="sm"
+            variant={selectionMode ? "secondary" : "outline"}
+            onClick={toggleSelectionMode}
+            className="gap-2"
+          >
+            {selectionMode ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+            {selectionMode ? 'Annulla' : 'Seleziona'}
+          </Button>
+          
+          {selectionMode && (
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleSelectAll}
+              >
+                {selectedIds.size === filteredConversations.length ? 'Deseleziona' : 'Tutti'}
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    disabled={selectedIds.size === 0}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    {selectedIds.size > 0 && selectedIds.size}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Eliminare {selectedIds.size} conversazioni?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Questa azione è irreversibile. Tutti i messaggi verranno eliminati.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annulla</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive text-destructive-foreground">
+                      Elimina
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          )}
+        </div>
+        
+        {/* Filter buttons */}
         <div className="flex gap-1">
           {(['active', 'resolved', 'archived'] as const).map((status) => (
             <Button
@@ -708,6 +823,9 @@ export const AdminAssistantTab: React.FC = () => {
                 onClick={() => handleSelect(conv)}
                 onUpdateStatus={(status) => handleUpdateStatus(conv.id, status)}
                 onDelete={() => handleDelete(conv.id)}
+                selectionMode={selectionMode}
+                isSelected={selectedIds.has(conv.id)}
+                onToggleSelect={() => handleToggleSelect(conv.id)}
               />
             ))
           )}
@@ -761,7 +879,59 @@ export const AdminAssistantTab: React.FC = () => {
               <div className="flex h-[600px]">
                 {/* Sidebar */}
                 <div className="w-80 border-r flex flex-col">
-                  <div className="p-3 border-b">
+                  <div className="p-3 border-b space-y-2">
+                    {/* Selection controls */}
+                    <div className="flex gap-2 items-center justify-between">
+                      <Button
+                        size="sm"
+                        variant={selectionMode ? "secondary" : "outline"}
+                        onClick={toggleSelectionMode}
+                        className="gap-2"
+                      >
+                        {selectionMode ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                        {selectionMode ? 'Annulla' : 'Seleziona'}
+                      </Button>
+                      
+                      {selectionMode && (
+                        <div className="flex gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={handleSelectAll}
+                          >
+                            {selectedIds.size === filteredConversations.length ? 'Nessuno' : 'Tutti'}
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                disabled={selectedIds.size === 0}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                {selectedIds.size > 0 && <span className="ml-1">{selectedIds.size}</span>}
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Eliminare {selectedIds.size} conversazioni?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Questa azione è irreversibile. Tutti i messaggi verranno eliminati.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleDeleteSelected} className="bg-destructive text-destructive-foreground">
+                                  Elimina
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Filter buttons */}
                     <div className="flex gap-1">
                       {(['active', 'resolved', 'archived'] as const).map((status) => (
                         <Button
@@ -793,6 +963,9 @@ export const AdminAssistantTab: React.FC = () => {
                             onClick={() => handleSelect(conv)}
                             onUpdateStatus={(status) => handleUpdateStatus(conv.id, status)}
                             onDelete={() => handleDelete(conv.id)}
+                            selectionMode={selectionMode}
+                            isSelected={selectedIds.has(conv.id)}
+                            onToggleSelect={() => handleToggleSelect(conv.id)}
                           />
                         ))
                       )}
