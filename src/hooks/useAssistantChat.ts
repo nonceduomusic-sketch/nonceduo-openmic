@@ -228,7 +228,7 @@ export function useAssistantChat(conversationId: string | null) {
     const interval = setInterval(() => {
       // Dopo il primo load, evita spinner/flicker durante i refresh
       fetchMessages({ silent: didInitialLoadRef.current });
-    }, 2500);
+    }, 2000);
 
     const onVis = () => {
       if (document.visibilityState === 'visible') {

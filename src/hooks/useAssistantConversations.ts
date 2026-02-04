@@ -204,7 +204,7 @@ export function useAssistantConversations() {
     const interval = setInterval(() => {
       if (document.visibilityState !== 'visible') return;
       fetchConversations();
-    }, 6000);
+    }, 2000);
 
     const onVis = () => {
       if (document.visibilityState === 'visible') {
