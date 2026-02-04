@@ -87,7 +87,14 @@ export default function Trasmetti() {
     fetchSong();
   }, [session?.current_song_id]);
 
-  // Auto-scroll effect
+  // Sync highlight line from session (realtime updates from admin)
+  useEffect(() => {
+    if (session?.highlight_line !== undefined && session?.highlight_line !== null) {
+      setHighlightLine(session.highlight_line);
+    }
+  }, [session?.highlight_line]);
+
+  // Auto-scroll effect - only when admin hasn't set manual control
   useEffect(() => {
     if (!autoScroll || !lines.length || session?.display_mode !== 'lyrics') return;
     

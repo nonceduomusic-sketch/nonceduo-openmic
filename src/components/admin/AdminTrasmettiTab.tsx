@@ -67,6 +67,7 @@ import { toast } from 'sonner';
 import { BroadcastTVSettings } from './BroadcastTVSettings';
 import { TVPreviewDialog } from './TVPreviewDialog';
 import { SetlistSongItem } from './SetlistSongItem';
+import { LiveTVControlPanel } from './LiveTVControlPanel';
 
 interface AdminTrasmettiTabProps {
   canManage?: boolean;
@@ -198,6 +199,9 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
 
   return (
     <div className="space-y-6">
+      {/* Live Control Panel - Show when broadcasting */}
+      <LiveTVControlPanel canManage={canManage} />
+
       {/* Header with TV controls */}
       <Card>
         <CardHeader className="pb-3">
@@ -216,7 +220,13 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                 <Switch
                   id="broadcast-active"
                   checked={session?.is_active || false}
-                  onCheckedChange={canManage ? toggleActive : undefined}
+                  onCheckedChange={async (checked) => {
+                    if (!canManage) return;
+                    const success = await toggleActive(checked);
+                    if (success) {
+                      toast.success(checked ? 'Trasmissione attivata' : 'Trasmissione disattivata');
+                    }
+                  }}
                   disabled={!canManage}
                 />
                 <Label htmlFor="broadcast-active" className="text-sm">
