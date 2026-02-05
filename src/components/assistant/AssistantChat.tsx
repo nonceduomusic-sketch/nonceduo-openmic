@@ -694,8 +694,8 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
           {/* Input - show when in input mode or chat mode */}
           {showInput && (
             <div className={cn(
-              "p-4 border-t border-border bg-background",
-              isMobile && "pb-safe sticky bottom-0"
+              "p-4 border-t border-border bg-background flex-shrink-0",
+              isMobile && "pb-safe"
             )}>
               <div className="flex gap-2">
                 <Input
@@ -704,16 +704,16 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                   placeholder={getInputPlaceholder()}
-                  className="flex-1"
+                  className="flex-1 text-base"
                   enterKeyHint="send"
                 />
                 <Button
                   onClick={handleSubmit}
                   disabled={!inputValue.trim()}
-                  size="icon"
-                  className="bg-primary hover:bg-primary/90 flex-shrink-0"
+                  size="lg"
+                  className="bg-primary hover:bg-primary/90 flex-shrink-0 w-12 h-12 min-w-12"
                 >
-                  <Send className="w-4 h-4" />
+                  <Send className="w-5 h-5" />
                 </Button>
               </div>
               {inputMode && inputMode !== 'free' && (
@@ -727,7 +727,10 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
           )}
 
           {/* Powered by footer */}
-          <div className="px-4 py-2 border-t border-border/50 bg-muted/30">
+          <div className={cn(
+            "px-4 py-2 border-t border-border/50 bg-muted/30 flex-shrink-0",
+            isMobile && "hidden"
+          )}>
             <p className="text-[10px] text-center text-muted-foreground">
               ⚡ Risposte rapide • 💬 Chat live con lo staff
             </p>
