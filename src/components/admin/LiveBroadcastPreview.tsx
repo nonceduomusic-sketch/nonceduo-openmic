@@ -127,14 +127,19 @@
      return () => clearInterval(interval);
    }, [autoScroll, lines.length, scrollSpeed, updateSession]);
  
-   // Scroll into view
-   useEffect(() => {
-     if (lyricsRef.current && lines.length > 0) {
-       const lineElements = lyricsRef.current.querySelectorAll('[data-line]');
-       const highlightedLine = lineElements[localHighlightLine];
-       if (highlightedLine) highlightedLine.scrollIntoView({ behavior: 'smooth', block: 'center' });
-     }
-   }, [localHighlightLine, lines.length]);
+  // Scroll within container only (no page scroll)
+  useEffect(() => {
+    if (lyricsRef.current && lines.length > 0) {
+      const container = lyricsRef.current;
+      const lineElement = container.querySelector(`[data-line="${localHighlightLine}"]`) as HTMLElement;
+      if (lineElement) {
+        const containerRect = container.getBoundingClientRect();
+        const lineRect = lineElement.getBoundingClientRect();
+        const scrollTop = lineElement.offsetTop - container.offsetTop - (containerRect.height / 2) + (lineRect.height / 2);
+        container.scrollTo({ top: scrollTop, behavior: 'smooth' });
+      }
+    }
+  }, [localHighlightLine, lines.length]);
  
    const handleLineChange = useCallback(async (direction: 'up' | 'down') => {
      if (!canManage) return;
