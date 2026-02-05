@@ -46,19 +46,19 @@
      fetchSong();
    }, [session?.current_song_id]);
  
-   // Auto-scroll to highlighted line
-   useEffect(() => {
-     if (lyricsRef.current && showPreview) {
-       const lineElements = lyricsRef.current.querySelectorAll('[data-line]');
-       const highlightedLine = lineElements[highlightLine];
-       if (highlightedLine) {
-         highlightedLine.scrollIntoView({
-           behavior: 'smooth',
-           block: 'center',
-         });
-       }
-     }
-   }, [highlightLine, showPreview]);
+  // Auto-scroll to highlighted line (only within container, not page)
+  useEffect(() => {
+    if (lyricsRef.current && showPreview) {
+      const container = lyricsRef.current;
+      const lineElement = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement;
+      if (lineElement) {
+        const containerRect = container.getBoundingClientRect();
+        const lineRect = lineElement.getBoundingClientRect();
+        const scrollTop = lineElement.offsetTop - container.offsetTop - (containerRect.height / 2) + (lineRect.height / 2);
+        container.scrollTo({ top: scrollTop, behavior: 'smooth' });
+      }
+    }
+  }, [highlightLine, showPreview]);
  
    // Controlli scroll (admin ha permessi diretti)
    const scrollUp = async () => {
