@@ -133,10 +133,12 @@
       const container = lyricsRef.current;
       const lineElement = container.querySelector(`[data-line="${localHighlightLine}"]`) as HTMLElement;
       if (lineElement) {
-        const containerRect = container.getBoundingClientRect();
-        const lineRect = lineElement.getBoundingClientRect();
-        const scrollTop = lineElement.offsetTop - container.offsetTop - (containerRect.height / 2) + (lineRect.height / 2);
-        container.scrollTo({ top: scrollTop, behavior: 'smooth' });
+        // Calculate scroll to center the highlighted line in the container
+        const containerHeight = container.clientHeight;
+        const lineTop = lineElement.offsetTop;
+        const lineHeight = lineElement.offsetHeight;
+        const scrollTarget = lineTop - (containerHeight / 2) + (lineHeight / 2);
+        container.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
       }
     }
   }, [localHighlightLine, lines.length]);
