@@ -1,64 +1,65 @@
- import React, { useState, useEffect, useMemo, useRef } from 'react';
- import { useBroadcast } from '@/hooks/useBroadcast';
- import { supabase } from '@/integrations/supabase/client';
- import { Button } from '@/components/ui/button';
- import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
- import { Switch } from '@/components/ui/switch';
- import { Label } from '@/components/ui/label';
- import { ChevronUp, ChevronDown, Tv, Eye, EyeOff } from 'lucide-react';
- import { cn } from '@/lib/utils';
- import { ScrollArea } from '@/components/ui/scroll-area';
- 
- interface AdminRemotePreviewProps {
-   salaCode?: string;
- }
- 
- export function AdminRemotePreview({ salaCode = 'main' }: AdminRemotePreviewProps) {
-   const { session, updateSession } = useBroadcast(salaCode);
-   const [currentSong, setCurrentSong] = useState<{ titolo: string; artista: string; testo: string | null } | null>(null);
-   const [showPreview, setShowPreview] = useState(false);
-   const lyricsRef = useRef<HTMLDivElement>(null);
- 
-   const isBroadcasting = (session as any)?.is_broadcasting ?? false;
-   const highlightLine = session?.highlight_line ?? 0;
- 
-   const lines = useMemo(() => 
-     currentSong?.testo?.split('\n').filter(line => line.trim()) || []
-   , [currentSong?.testo]);
- 
-   // Fetch current song
-   useEffect(() => {
-     const fetchSong = async () => {
-       if (!session?.current_song_id) {
-         setCurrentSong(null);
-         return;
-       }
- 
-       const { data } = await supabase
-         .from('songs')
-         .select('titolo, artista, testo')
-         .eq('id', session.current_song_id)
-         .single();
- 
-       if (data) setCurrentSong(data);
-     };
- 
-     fetchSong();
-   }, [session?.current_song_id]);
- 
-  // Auto-scroll to highlighted line (only within container, not page)
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useBroadcast } from '@/hooks/useBroadcast';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { ChevronUp, ChevronDown, Tv, Eye, EyeOff } from 'lucide-react';
+import { cn } from '@/lib/utils';
+
+interface AdminRemotePreviewProps {
+  salaCode?: string;
+}
+
+export function AdminRemotePreview({ salaCode = 'main' }: AdminRemotePreviewProps) {
+  const { session, updateSession } = useBroadcast(salaCode);
+  const [currentSong, setCurrentSong] = useState<{ titolo: string; artista: string; testo: string | null } | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const isBroadcasting = (session as any)?.is_broadcasting ?? false;
+  const highlightLine = session?.highlight_line ?? 0;
+
+  const lines = useMemo(() => 
+    currentSong?.testo?.split('\n').filter(line => line.trim()) || []
+  , [currentSong?.testo]);
+
+  // Fetch current song
   useEffect(() => {
-    if (lyricsRef.current && showPreview) {
-      const container = lyricsRef.current;
+    const fetchSong = async () => {
+      if (!session?.current_song_id) {
+        setCurrentSong(null);
+        return;
+      }
+
+      const { data } = await supabase
+        .from('songs')
+        .select('titolo, artista, testo')
+        .eq('id', session.current_song_id)
+        .single();
+
+      if (data) setCurrentSong(data);
+    };
+
+    fetchSong();
+  }, [session?.current_song_id]);
+
+  // Auto-scroll to highlighted line (within container only)
+  useEffect(() => {
+    if (scrollContainerRef.current && showPreview && lines.length > 0) {
+      const container = scrollContainerRef.current;
       const lineElement = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement;
       if (lineElement) {
-        const containerRect = container.getBoundingClientRect();
-        const lineRect = lineElement.getBoundingClientRect();
-        const scrollTop = lineElement.offsetTop - container.offsetTop - (containerRect.height / 2) + (lineRect.height / 2);
-        container.scrollTo({ top: scrollTop, behavior: 'smooth' });
+        // Calculate scroll position to center the highlighted line
+        const containerHeight = container.clientHeight;
+        const lineTop = lineElement.offsetTop;
+        const lineHeight = lineElement.offsetHeight;
+        const scrollTarget = lineTop - (containerHeight / 2) + (lineHeight / 2);
+        container.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
       }
     }
-  }, [highlightLine, showPreview]);
+  }, [highlightLine, showPreview, lines.length]);
  
    // Controlli scroll (admin ha permessi diretti)
    const scrollUp = async () => {
@@ -119,31 +120,32 @@
                  </div>
                </div>
  
-               {/* Lyrics preview */}
-               <ScrollArea className="h-48 rounded-lg border">
-                 <div ref={lyricsRef} className="p-2 space-y-1">
-                   {lines.map((line, index) => {
-                     const isHighlighted = highlightLine === index;
-                     const isPast = index < highlightLine;
-                     
-                     return (
-                       <button
-                         key={index}
-                         data-line={index}
-                         onClick={() => scrollToLine(index)}
-                         className={cn(
-                           "w-full text-left px-2 py-1 rounded text-xs transition-all",
-                           isHighlighted && "bg-primary/20 text-primary font-semibold ring-1 ring-primary/50",
-                           isPast && "text-muted-foreground/50",
-                           !isHighlighted && !isPast && "hover:bg-muted"
-                         )}
-                       >
-                         {line || '\u00A0'}
-                       </button>
-                     );
-                   })}
-                 </div>
-               </ScrollArea>
+              {/* Lyrics preview - simple scrollable div */}
+              <div 
+                ref={scrollContainerRef}
+                className="h-48 rounded-lg border overflow-y-auto p-2 space-y-1"
+              >
+                {lines.map((line, index) => {
+                  const isHighlighted = highlightLine === index;
+                  const isPast = index < highlightLine;
+                  
+                  return (
+                    <button
+                      key={index}
+                      data-line={index}
+                      onClick={() => scrollToLine(index)}
+                      className={cn(
+                        "w-full text-left px-2 py-1 rounded text-xs transition-all",
+                        isHighlighted && "bg-primary/20 text-primary font-semibold ring-1 ring-primary/50",
+                        isPast && "text-muted-foreground/50",
+                        !isHighlighted && !isPast && "hover:bg-muted"
+                      )}
+                    >
+                      {line || '\u00A0'}
+                    </button>
+                  );
+                })}
+              </div>
  
                {/* Controls */}
                <div className="flex items-center justify-center gap-3">
