@@ -272,26 +272,26 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
 
       {/* Main content tabs */}
       <Tabs defaultValue="queue" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="queue">
-            <List className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">Scaletta</span> Live
+        <TabsList className="grid w-full grid-cols-5 h-auto">
+          <TabsTrigger value="queue" className="flex-col gap-0.5 py-2 px-1 text-[11px] sm:text-sm sm:flex-row sm:gap-2">
+            <List className="w-4 h-4" />
+            <span className="leading-tight text-center">Scaletta<br className="sm:hidden" /><span className="hidden sm:inline"> </span>Live</span>
           </TabsTrigger>
-          <TabsTrigger value="catalog">
-            <Music className="w-4 h-4 mr-2" />
-            Catalogo
+          <TabsTrigger value="catalog" className="flex-col gap-0.5 py-2 px-1 text-[11px] sm:text-sm sm:flex-row sm:gap-2">
+            <Music className="w-4 h-4" />
+            <span className="leading-tight text-center">Catalogo</span>
           </TabsTrigger>
-          <TabsTrigger value="setlists">
-            <FolderOpen className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">Le Mie</span> Scalette
+          <TabsTrigger value="setlists" className="flex-col gap-0.5 py-2 px-1 text-[11px] sm:text-sm sm:flex-row sm:gap-2">
+            <FolderOpen className="w-4 h-4" />
+            <span className="leading-tight text-center">Le Mie<br className="sm:hidden" /><span className="hidden sm:inline"> </span>Scalette</span>
           </TabsTrigger>
-          <TabsTrigger value="remote">
-            <Monitor className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">Tele</span>comando
+          <TabsTrigger value="remote" className="flex-col gap-0.5 py-2 px-1 text-[11px] sm:text-sm sm:flex-row sm:gap-2">
+            <Monitor className="w-4 h-4" />
+            <span className="leading-tight text-center">Tele-<br className="sm:hidden" /><span className="hidden sm:inline">Tele</span>comando</span>
           </TabsTrigger>
-          <TabsTrigger value="tv-settings">
-            <Settings className="w-4 h-4 mr-2" />
-            <span className="hidden sm:inline">Impostazioni</span> TV
+          <TabsTrigger value="tv-settings" className="flex-col gap-0.5 py-2 px-1 text-[11px] sm:text-sm sm:flex-row sm:gap-2">
+            <Settings className="w-4 h-4" />
+            <span className="leading-tight text-center">Imposta-<br className="sm:hidden" /><span className="hidden sm:inline">Impostazioni </span>zioni TV</span>
           </TabsTrigger>
         </TabsList>
 
