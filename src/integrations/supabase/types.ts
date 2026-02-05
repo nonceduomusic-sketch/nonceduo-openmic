@@ -268,6 +268,86 @@ export type Database = {
         }
         Relationships: []
       }
+      broadcast_remote_access: {
+        Row: {
+          access_token: string
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          last_used_at: string | null
+          name: string
+          pin_code: string
+          sala_code: string
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          name?: string
+          pin_code?: string
+          sala_code?: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          name?: string
+          pin_code?: string
+          sala_code?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      broadcast_remote_sessions: {
+        Row: {
+          access_id: string
+          connected_at: string
+          device_fingerprint: string | null
+          device_name: string | null
+          id: string
+          is_active: boolean
+          last_activity_at: string
+        }
+        Insert: {
+          access_id: string
+          connected_at?: string
+          device_fingerprint?: string | null
+          device_name?: string | null
+          id?: string
+          is_active?: boolean
+          last_activity_at?: string
+        }
+        Update: {
+          access_id?: string
+          connected_at?: string
+          device_fingerprint?: string | null
+          device_name?: string | null
+          id?: string
+          is_active?: boolean
+          last_activity_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broadcast_remote_sessions_access_id_fkey"
+            columns: ["access_id"]
+            isOneToOne: false
+            referencedRelation: "broadcast_remote_access"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       broadcast_sessions: {
         Row: {
           auto_scroll: boolean | null
@@ -2413,6 +2493,10 @@ export type Database = {
         Args: { conv_id: string; session: string }
         Returns: boolean
       }
+      kick_all_remote_sessions: {
+        Args: { p_access_id: string }
+        Returns: number
+      }
       normalize_song_text: { Args: { t: string }; Returns: string }
       touch_pin_session: { Args: { p_token: string }; Returns: undefined }
       validate_event_pin: {
@@ -2449,6 +2533,15 @@ export type Database = {
           live_session_id: string
           pin_code: string
           protected_formats: string[]
+        }[]
+      }
+      validate_remote_access: {
+        Args: { p_pin: string; p_token: string }
+        Returns: {
+          access_id: string
+          access_name: string
+          is_valid: boolean
+          sala_code: string
         }[]
       }
     }

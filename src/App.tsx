@@ -35,6 +35,7 @@ import PromoFestePiazza from "./pages/PromoFestePiazza";
 import Collabora from "./pages/Collabora";
 import Lyrics from "./pages/Lyrics";
 import Trasmetti from "./pages/Trasmetti";
+import Telecomando from "./pages/Telecomando";
 
 const queryClient = new QueryClient();
 
@@ -74,6 +75,9 @@ const AppContent = () => (
       {/* Trasmetti - TV broadcast page for karaoke */}
       <Route path="/trasmetti" element={<Trasmetti />} />
       <Route path="/trasmetti/:salaCode" element={<Trasmetti />} />
+      
+      {/* Telecomando - Remote control for broadcast (public access with PIN) */}
+      <Route path="/telecomando/:token" element={<Telecomando />} />
 
       {/* Legacy routes (keep existing behavior for now) */}
       <Route path="/openmic/live" element={<OpenMic />} />
