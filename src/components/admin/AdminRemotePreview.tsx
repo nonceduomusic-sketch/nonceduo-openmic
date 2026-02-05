@@ -120,14 +120,17 @@ export function AdminRemotePreview({ salaCode = 'main' }: AdminRemotePreviewProp
                  </div>
                </div>
  
-              {/* Lyrics preview - simple scrollable div */}
+              {/* Lyrics preview - scrollable div with prominent highlight */}
               <div 
                 ref={scrollContainerRef}
-                className="h-48 rounded-lg border overflow-y-auto p-2 space-y-1"
+                className="h-48 rounded-lg border bg-muted/30 overflow-y-auto p-2 space-y-0.5"
               >
                 {lines.map((line, index) => {
                   const isHighlighted = highlightLine === index;
                   const isPast = index < highlightLine;
+                  const distance = Math.abs(index - highlightLine);
+                  // Fade lines based on distance for context
+                  const opacity = isHighlighted ? 1 : distance === 1 ? 0.8 : distance === 2 ? 0.6 : 0.4;
                   
                   return (
                     <button
@@ -135,11 +138,12 @@ export function AdminRemotePreview({ salaCode = 'main' }: AdminRemotePreviewProp
                       data-line={index}
                       onClick={() => scrollToLine(index)}
                       className={cn(
-                        "w-full text-left px-2 py-1 rounded text-xs transition-all",
-                        isHighlighted && "bg-primary/20 text-primary font-semibold ring-1 ring-primary/50",
-                        isPast && "text-muted-foreground/50",
-                        !isHighlighted && !isPast && "hover:bg-muted"
+                        "w-full text-left px-3 py-1.5 rounded-md text-xs transition-all duration-200",
+                        isHighlighted && "bg-primary text-primary-foreground font-bold shadow-md ring-2 ring-primary/70 scale-[1.02]",
+                        isPast && !isHighlighted && "text-muted-foreground",
+                        !isHighlighted && !isPast && "text-foreground hover:bg-muted"
                       )}
+                      style={{ opacity: isHighlighted ? 1 : opacity }}
                     >
                       {line || '\u00A0'}
                     </button>

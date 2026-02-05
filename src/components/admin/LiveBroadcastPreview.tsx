@@ -243,42 +243,48 @@
              )}
            </div>
          </div>
-         <div ref={lyricsRef} className="relative z-10 px-3 overflow-y-auto" style={{ height: lyricsHeight }}>
-           {viewMode === 'spotify' ? (
-             <div className="bg-black/30 backdrop-blur-sm rounded-xl p-3 space-y-2">
-               {lines.map((line, index) => {
-                 const isHighlighted = localHighlightLine === index;
-                 const isPast = index < localHighlightLine;
-                 return (
-                   <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn("font-sans leading-relaxed transition-all duration-300 cursor-pointer py-1 px-2 -mx-2 rounded-lg text-white", isHighlighted && "bg-yellow-400/30 ring-2 ring-yellow-400/50 font-semibold", isPast && "opacity-40", !isHighlighted && !isPast && "hover:bg-white/10")} style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px` }}>{line || '\u00A0'}</p>
-                 );
-               })}
-             </div>
-           ) : viewMode === 'karaoke' ? (
-             <div className="text-center space-y-2 py-4">
-               {lines.map((line, index) => {
-                 const isHighlighted = localHighlightLine === index;
-                 const isPast = index < localHighlightLine;
-                 const dist = Math.abs(index - localHighlightLine);
-                 let opacity = isPast ? 0.3 : dist === 1 ? 0.7 : dist === 2 ? 0.5 : dist > 2 ? 0.35 : 1;
-                 const baseFontSize = Math.max(12, 14 * fontSize / 100);
-                 return (
-                   <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn("font-bold transition-all duration-500 cursor-pointer text-white", isHighlighted && "text-primary scale-105")} style={{ fontSize: isHighlighted ? `${baseFontSize * 1.3}px` : `${baseFontSize}px`, opacity, textShadow: isHighlighted ? '0 0 30px hsl(var(--primary) / 0.5)' : 'none' }}>{line || '\u00A0'}</p>
-                 );
-               })}
-             </div>
-           ) : (
-             <div className="space-y-1 py-2">
-               {lines.map((line, index) => {
-                 const isHighlighted = localHighlightLine === index;
-                 const isPast = index < localHighlightLine;
-                 return (
-                   <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn("transition-all duration-300 cursor-pointer px-2 py-1 rounded", isHighlighted && "bg-primary/20 text-primary font-semibold", isPast && "text-muted-foreground", !isHighlighted && !isPast && "text-foreground hover:bg-muted")} style={{ fontSize: `${Math.max(11, 12 * fontSize / 100)}px` }}><span className="mr-2 text-xs text-muted-foreground">{index + 1}</span>{line || '\u00A0'}</p>
-                 );
-               })}
-             </div>
-           )}
-         </div>
+          <div ref={lyricsRef} className="relative z-10 px-3 overflow-y-auto" style={{ height: lyricsHeight }}>
+            {viewMode === 'spotify' ? (
+              <div className="bg-black/30 backdrop-blur-sm rounded-xl p-3 space-y-1">
+                {lines.map((line, index) => {
+                  const isHighlighted = localHighlightLine === index;
+                  const isPast = index < localHighlightLine;
+                  const distance = Math.abs(index - localHighlightLine);
+                  // Show context: immediate neighbors more visible, fade gradually
+                  const opacity = isHighlighted ? 1 : isPast ? 0.35 : distance === 1 ? 0.85 : distance === 2 ? 0.65 : 0.45;
+                  return (
+                    <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn("font-sans leading-relaxed transition-all duration-300 cursor-pointer py-1.5 px-3 -mx-1 rounded-lg text-white", isHighlighted && "bg-yellow-400/40 ring-2 ring-yellow-400/60 font-bold shadow-lg scale-[1.02]", !isHighlighted && "hover:bg-white/10")} style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px`, opacity }}>{line || '\u00A0'}</p>
+                  );
+                })}
+              </div>
+            ) : viewMode === 'karaoke' ? (
+              <div className="text-center space-y-1 py-4">
+                {lines.map((line, index) => {
+                  const isHighlighted = localHighlightLine === index;
+                  const isPast = index < localHighlightLine;
+                  const dist = Math.abs(index - localHighlightLine);
+                  // Show context: neighbors visible, gradual fade
+                  const opacity = isHighlighted ? 1 : isPast ? 0.3 : dist === 1 ? 0.8 : dist === 2 ? 0.6 : dist === 3 ? 0.45 : 0.3;
+                  const baseFontSize = Math.max(12, 14 * fontSize / 100);
+                  return (
+                    <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn("font-bold transition-all duration-500 cursor-pointer text-white py-1", isHighlighted && "text-primary scale-110 bg-primary/20 rounded-lg px-4 shadow-lg")} style={{ fontSize: isHighlighted ? `${baseFontSize * 1.4}px` : `${baseFontSize}px`, opacity, textShadow: isHighlighted ? '0 0 40px hsl(var(--primary) / 0.6)' : 'none' }}>{line || '\u00A0'}</p>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="space-y-0.5 py-2">
+                {lines.map((line, index) => {
+                  const isHighlighted = localHighlightLine === index;
+                  const isPast = index < localHighlightLine;
+                  const distance = Math.abs(index - localHighlightLine);
+                  const opacity = isHighlighted ? 1 : isPast ? 0.4 : distance === 1 ? 0.85 : distance === 2 ? 0.65 : 0.5;
+                  return (
+                    <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn("transition-all duration-300 cursor-pointer px-2 py-1.5 rounded-md", isHighlighted && "bg-primary text-primary-foreground font-bold shadow-md ring-2 ring-primary/50", !isHighlighted && "hover:bg-muted")} style={{ fontSize: `${Math.max(11, 12 * fontSize / 100)}px`, opacity }}><span className="mr-2 text-xs opacity-60">{index + 1}</span>{line || '\u00A0'}</p>
+                  );
+                })}
+              </div>
+            )}
+          </div>
        </div>
      );
    };
