@@ -418,23 +418,32 @@ function RemoteOnlyControls({
   React.useEffect(() => {
     if (!scrollContainerRef.current || lines.length === 0) return;
     
+    // Doppio RAF per assicurarsi che il DOM sia aggiornato
     requestAnimationFrame(() => {
-      const container = scrollContainerRef.current;
-      if (!container) return;
-      
-      const lineElement = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement;
-      if (!lineElement) return;
-      
-      const containerRect = container.getBoundingClientRect();
-      const lineRect = lineElement.getBoundingClientRect();
-      
-      const containerCenter = containerRect.height / 2;
-      const lineCenter = lineRect.top - containerRect.top + lineRect.height / 2;
-      const scrollOffset = lineCenter - containerCenter;
-      
-      container.scrollTo({ 
-        top: container.scrollTop + scrollOffset, 
-        behavior: 'smooth' 
+      requestAnimationFrame(() => {
+        const container = scrollContainerRef.current;
+        if (!container) return;
+        
+        const lineElement = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement;
+        if (!lineElement) return;
+        
+        // Altezza visibile effettiva (escluso padding-bottom per pulsanti fissi)
+        const fixedButtonsHeight = 220; // Altezza approssimativa dei pulsanti fissi
+        const visibleHeight = container.clientHeight - fixedButtonsHeight;
+        const visibleCenter = visibleHeight / 2;
+        
+        // Posizione della riga rispetto al container
+        const lineOffsetTop = lineElement.offsetTop;
+        const lineHeight = lineElement.offsetHeight;
+        const lineCenter = lineOffsetTop + lineHeight / 2;
+        
+        // Calcola scroll target per centrare la riga nella parte visibile
+        const scrollTarget = lineCenter - visibleCenter;
+        
+        container.scrollTo({ 
+          top: Math.max(0, scrollTarget), 
+          behavior: 'smooth' 
+        });
       });
     });
   }, [highlightLine, lines.length]);
