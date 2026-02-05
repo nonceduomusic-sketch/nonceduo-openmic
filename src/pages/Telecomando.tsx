@@ -396,126 +396,145 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
    );
  }
  
- // Vista Solo Telecomando - pulsanti grandi
- interface RemoteOnlyControlsProps {
-   lines: string[];
-   highlightLine: number;
-   isBroadcasting: boolean;
-   onScrollUp: () => void;
-   onScrollDown: () => void;
- }
- 
- function RemoteOnlyControls({
-   lines,
-   highlightLine,
-   isBroadcasting,
-   onScrollUp,
-   onScrollDown,
- }: RemoteOnlyControlsProps) {
-   if (!isBroadcasting || lines.length === 0) {
-     return (
-       <div className="h-full flex items-center justify-center text-center p-6">
-         <div>
-           <Mic className="w-20 h-20 text-muted-foreground/30 mx-auto mb-4" />
-           <p className="text-lg text-muted-foreground">
-             In attesa...
-           </p>
-         </div>
-       </div>
-     );
-   }
- 
-  // Mostra contesto: 2 righe prima, riga corrente, 2 righe dopo
-   const currentLine = lines[highlightLine] || '';
-  const prevLines = [
-    lines[highlightLine - 2] || null,
-    lines[highlightLine - 1] || null,
-  ];
-  const nextLines = [
-    lines[highlightLine + 1] || null,
-    lines[highlightLine + 2] || null,
-  ];
- 
+// Vista Solo Telecomando - pulsanti grandi FISSI
+interface RemoteOnlyControlsProps {
+  lines: string[];
+  highlightLine: number;
+  isBroadcasting: boolean;
+  onScrollUp: () => void;
+  onScrollDown: () => void;
+}
+
+function RemoteOnlyControls({
+  lines,
+  highlightLine,
+  isBroadcasting,
+  onScrollUp,
+  onScrollDown,
+}: RemoteOnlyControlsProps) {
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+
+  // Auto-scroll per centrare la riga evidenziata
+  React.useEffect(() => {
+    if (!scrollContainerRef.current || lines.length === 0) return;
+    
+    requestAnimationFrame(() => {
+      const container = scrollContainerRef.current;
+      if (!container) return;
+      
+      const lineElement = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement;
+      if (!lineElement) return;
+      
+      const containerRect = container.getBoundingClientRect();
+      const lineRect = lineElement.getBoundingClientRect();
+      
+      const containerCenter = containerRect.height / 2;
+      const lineCenter = lineRect.top - containerRect.top + lineRect.height / 2;
+      const scrollOffset = lineCenter - containerCenter;
+      
+      container.scrollTo({ 
+        top: container.scrollTop + scrollOffset, 
+        behavior: 'smooth' 
+      });
+    });
+  }, [highlightLine, lines.length]);
+
+  if (!isBroadcasting || lines.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center text-center p-6">
+        <div>
+          <Mic className="w-20 h-20 text-muted-foreground/30 mx-auto mb-4" />
+          <p className="text-lg text-muted-foreground">
+            In attesa...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-full flex flex-col">
-      {/* Contesto righe - area scrollabile superiore */}
-      <div className="flex-1 min-h-0 overflow-hidden p-4">
-        <div className="text-sm text-muted-foreground mb-3 text-center">
+      {/* Area testo scrollabile - con padding per i pulsanti fissi */}
+      <div 
+        ref={scrollContainerRef}
+        className="flex-1 overflow-y-auto px-4 pt-4"
+        style={{ paddingBottom: 'calc(220px + env(safe-area-inset-bottom))' }}
+      >
+        {/* Indicatore posizione */}
+        <div className="text-sm text-muted-foreground mb-4 text-center sticky top-0 bg-background/80 backdrop-blur-sm py-2 -mx-4 px-4">
           Riga {highlightLine + 1} di {lines.length}
         </div>
         
-        <div className="space-y-2 text-center">
-          {/* Righe precedenti */}
-          {prevLines.map((line, i) => line && (
-            <div 
-              key={`prev-${i}`}
-              className="text-sm text-muted-foreground/50 px-4 py-1"
-            >
-              {line}
-            </div>
-          ))}
-          
-          {/* Riga corrente evidenziata */}
-          <div className="bg-primary/10 rounded-xl p-4 border border-primary/20">
-            <p className="text-lg font-semibold text-primary leading-relaxed">
-              {currentLine || '—'}
-            </p>
-          </div>
-          
-          {/* Righe successive */}
-          {nextLines.map((line, i) => line && (
-            <div 
-              key={`next-${i}`}
-              className="text-sm text-muted-foreground/70 px-4 py-1"
-            >
-              {line}
-            </div>
-          ))}
+        {/* Tutte le righe del testo */}
+        <div className="space-y-2 text-center max-w-lg mx-auto">
+          {lines.map((line, index) => {
+            const isHighlighted = highlightLine === index;
+            const distance = Math.abs(highlightLine - index);
+            
+            return (
+              <div 
+                key={index}
+                data-line={index}
+                className={cn(
+                  "px-4 py-2 rounded-xl transition-all duration-300",
+                  isHighlighted && "bg-primary text-primary-foreground font-semibold text-lg scale-105",
+                  !isHighlighted && "text-muted-foreground",
+                  distance === 1 && "opacity-70",
+                  distance === 2 && "opacity-50",
+                  distance > 2 && "opacity-30"
+                )}
+              >
+                {line || '\u00A0'}
+              </div>
+            );
+          })}
         </div>
       </div>
 
-      {/* Pulsanti FISSI in basso - non si spostano mai */}
-      <div className="flex-shrink-0 border-t bg-card/95 backdrop-blur-xl p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
-        {/* Barra progresso */}
-        <div className="h-2 bg-muted rounded-full overflow-hidden mb-4">
-          <div 
-            className="h-full bg-primary transition-all duration-300"
-            style={{ width: `${((highlightLine + 1) / lines.length) * 100}%` }}
-          />
-        </div>
-        
-        {/* Pulsanti grandi */}
-        <div className="flex gap-4 max-w-md mx-auto">
-          <Button
-            size="lg"
-            variant="outline"
-            className={cn(
-              "flex-1 h-24 text-lg font-semibold rounded-2xl",
-              "transition-all active:scale-95",
-              highlightLine === 0 && "opacity-30"
-            )}
-            onClick={onScrollUp}
-            disabled={highlightLine === 0}
-          >
-            <ChevronUp className="w-8 h-8 mr-2" />
-            INDIETRO
-          </Button>
+      {/* PULSANTI FISSI - non si muovono MAI */}
+      <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-xl border-t z-50">
+        <div className="p-4 pb-[max(16px,env(safe-area-inset-bottom))] max-w-md mx-auto">
+          {/* Barra progresso */}
+          <div className="h-2 bg-muted rounded-full overflow-hidden mb-4">
+            <div 
+              className="h-full bg-primary transition-all duration-300"
+              style={{ width: `${((highlightLine + 1) / lines.length) * 100}%` }}
+            />
+          </div>
           
-          <Button
-            size="lg"
-            className={cn(
-              "flex-1 h-24 text-lg font-semibold rounded-2xl",
-              "transition-all active:scale-95",
-              highlightLine >= lines.length - 1 && "opacity-30"
-            )}
-            onClick={onScrollDown}
-            disabled={highlightLine >= lines.length - 1}
-          >
-            AVANTI
-            <ChevronDown className="w-8 h-8 ml-2" />
-          </Button>
+          {/* Pulsanti grandi - uno sopra l'altro */}
+          <div className="flex flex-col gap-3">
+            <Button
+              size="lg"
+              variant="outline"
+              className={cn(
+                "h-20 text-xl font-bold rounded-2xl",
+                "transition-all active:scale-95",
+                highlightLine === 0 && "opacity-30"
+              )}
+              onClick={onScrollUp}
+              disabled={highlightLine === 0}
+            >
+              <ChevronUp className="w-10 h-10 mr-3" />
+              INDIETRO
+            </Button>
+            
+            <Button
+              size="lg"
+              className={cn(
+                "h-20 text-xl font-bold rounded-2xl",
+                "transition-all active:scale-95",
+                highlightLine >= lines.length - 1 && "opacity-30"
+              )}
+              onClick={onScrollDown}
+              disabled={highlightLine >= lines.length - 1}
+            >
+              AVANTI
+              <ChevronDown className="w-10 h-10 ml-3" />
+            </Button>
+          </div>
         </div>
       </div>
     </div>
   );
- }
+}
