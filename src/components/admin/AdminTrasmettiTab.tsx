@@ -67,7 +67,7 @@ import { toast } from 'sonner';
 import { BroadcastTVSettings } from './BroadcastTVSettings';
 import { TVPreviewDialog } from './TVPreviewDialog';
 import { SetlistSongItem } from './SetlistSongItem';
-import { LiveTVControlPanel } from './LiveTVControlPanel';
+import { LiveBroadcastPreview } from './LiveBroadcastPreview';
 
 interface AdminTrasmettiTabProps {
   canManage?: boolean;
@@ -200,7 +200,7 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
   return (
     <div className="space-y-6">
       {/* Live Control Panel - Show when broadcasting */}
-      <LiveTVControlPanel canManage={canManage} />
+      <LiveBroadcastPreview canManage={canManage} />
 
       {/* Header with TV controls */}
       <Card>
@@ -395,38 +395,39 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <p className="font-medium truncate">{song.titolo}</p>
-                          {song.testo && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">
-                              Testo
-                            </Badge>
-                          )}
+                        {song.testo && (
+                          <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">Testo</Badge>
+                        )}
                         </div>
                         <p className="text-sm text-muted-foreground truncate">{song.artista}</p>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1.5 shrink-0">
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => openPreview(song.id)}
+                          className="h-9 w-9 p-0"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-4 h-4 shrink-0" />
                         </Button>
                         {selectedSetlistId && canFull && (
                           <Button
                             size="sm"
                             variant="outline"
                             onClick={() => addToSetlist(song.id)}
+                            className="h-9 w-9 p-0"
                           >
-                            <Plus className="w-4 h-4" />
+                            <Plus className="w-4 h-4 shrink-0" />
                           </Button>
                         )}
                         <Button
                           size="sm"
                           onClick={() => handleBroadcast(song.id)}
                           disabled={!canManage}
+                          className="h-9 px-2.5"
                         >
-                          <Play className="w-4 h-4 mr-1" />
-                          Trasmetti
+                          <Play className="w-4 h-4 mr-1 shrink-0" />
+                          <span className="hidden sm:inline">Trasmetti</span>
                         </Button>
                       </div>
                     </div>
