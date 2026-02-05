@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { useConversations, Conversation } from "@/hooks/useConversations";
+import { getProductionBaseUrl } from "@/lib/productionUrl";
 
 type InviteLinkRow = {
   id: string;
@@ -60,7 +61,7 @@ export const AdminCommunityInvitesTab: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedGroupId]);
 
-  const inviteUrl = (inviteCode: string) => `${window.location.origin}/join/${inviteCode}`;
+  const inviteUrl = (inviteCode: string) => `${getProductionBaseUrl()}/join/${inviteCode}`;
 
   const handleCreate = async () => {
     if (!selectedGroupId) return;

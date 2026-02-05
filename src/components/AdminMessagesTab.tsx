@@ -29,6 +29,7 @@ import { TypingIndicator } from '@/components/TypingIndicator';
 import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { ChatScrollIndicator } from '@/components/ChatScrollIndicator';
 import { GroupMembersDialog } from '@/components/GroupMembersDialog';
+import { getProductionBaseUrl } from '@/lib/productionUrl';
 import { GroupPasswordDialog } from '@/components/GroupPasswordDialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -857,7 +858,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
                       <DropdownMenuItem onClick={async () => {
                         const result = await adminCreateInviteLink(selectedConversation.id);
                         if (result?.invite_code) {
-                          const link = `${window.location.origin}/join/${result.invite_code}`;
+                          const link = `${getProductionBaseUrl()}/join/${result.invite_code}`;
                           await navigator.clipboard.writeText(link);
                           toast({
                             title: 'Link copiato!',
@@ -1590,7 +1591,7 @@ export const AdminMessagesTab: React.FC<AdminMessagesTabProps> = ({
                             e.stopPropagation();
                             const inviteLink = await adminCreateInviteLink(conv.id);
                             if (inviteLink) {
-                              const fullUrl = `${window.location.origin}/join/${inviteLink.invite_code}`;
+                              const fullUrl = `${getProductionBaseUrl()}/join/${inviteLink.invite_code}`;
                               await navigator.clipboard.writeText(fullUrl);
                               toast({
                                 title: 'Link copiato!',

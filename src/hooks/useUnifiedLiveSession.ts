@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { adminAuditLog } from '@/lib/adminAudit';
+import { getProductionBaseUrl } from '@/lib/productionUrl';
 
 export type FormatType = 'openmic' | 'dediche';
 
@@ -391,11 +392,9 @@ export const useUnifiedLiveSession = () => {
   // Get event URL - always use nonceduo.com for production
   const getEventUrl = (): string | null => {
     if (!session) return null;
-    // Use current origin so the link always works in Preview + Published.
-    // (No hardcoded domains.)
-    // Fallback to default link code if not set
+    // Use production base URL for shareable links
     const linkCode = session.event_link_code || 'nonceduo';
-    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const origin = typeof window !== 'undefined' ? getProductionBaseUrl() : '';
     return `${origin}/evento-live/${linkCode}`;
   };
 

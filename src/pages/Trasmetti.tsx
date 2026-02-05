@@ -146,9 +146,14 @@ export default function Trasmetti() {
     const generateQR = async () => {
       try {
         const qrDestination = tvSettings.qrUrl || 'https://nonceduo.com';
-        const fullUrl = qrDestination.startsWith('http') 
-          ? qrDestination 
-          : `${window.location.origin}${qrDestination.startsWith('/') ? '' : '/'}${qrDestination}`;
+        // Se è un URL assoluto, usalo direttamente; altrimenti usa il dominio di produzione
+        let fullUrl: string;
+        if (qrDestination.startsWith('http')) {
+          fullUrl = qrDestination;
+        } else {
+          const baseUrl = 'https://nonceduo.com';
+          fullUrl = `${baseUrl}${qrDestination.startsWith('/') ? '' : '/'}${qrDestination}`;
+        }
         
         const dataUrl = await QRCode.toDataURL(fullUrl, {
           width: 280,
