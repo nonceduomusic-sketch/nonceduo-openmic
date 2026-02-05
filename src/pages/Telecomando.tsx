@@ -28,11 +28,16 @@ import { useBroadcastRemoteUser, useRemoteControl } from '@/hooks/useBroadcastRe
      validatePIN 
    } = useBroadcastRemoteUser(token);
    
-   const [pin, setPin] = useState('');
-   const [validating, setValidating] = useState(false);
-   const [viewMode, setViewMode] = useState<ViewMode>('remote');
- 
-   // Handle PIN submission
+    const [pin, setPin] = useState('');
+    const [validating, setValidating] = useState(false);
+    const [viewMode, setViewMode] = useState<ViewMode>('remote');
+
+    // Dopo la validazione PIN, apri sempre con i "pulsantoni" (vista Remote)
+    useEffect(() => {
+      if (isValidated) setViewMode('remote');
+    }, [isValidated]);
+
+    // Handle PIN submission
    const handlePINSubmit = async (e: React.FormEvent) => {
      e.preventDefault();
      if (!pin.trim()) return;
@@ -413,39 +418,77 @@ function RemoteOnlyControls({
   onScrollDown,
 }: RemoteOnlyControlsProps) {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const controlsRef = React.useRef<HTMLDivElement>(null);
+  const indicatorRef = React.useRef<HTMLDivElement>(null);
 
-  // Auto-scroll per centrare la riga evidenziata (solo nel container, non nella pagina)
-  React.useEffect(() => {
-    if (!scrollContainerRef.current || lines.length === 0) return;
-    
-    // Delay per assicurarsi che il DOM sia pronto
-    const timeoutId = setTimeout(() => {
+  const recenterHighlightedLine = React.useCallback(
+    (lineIndex: number, behavior: ScrollBehavior = 'smooth') => {
       const container = scrollContainerRef.current;
       if (!container) return;
-      
-      const lineElement = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement;
-      if (!lineElement) return;
-      
-      // Calcola la posizione target considerando i pulsanti fissi (220px)
-      const buttonsHeight = 220;
-      const availableHeight = container.clientHeight - buttonsHeight;
-      const targetCenter = availableHeight / 2;
-      
-      // Posizione della riga nel container
-      const lineTop = lineElement.offsetTop;
-      const lineHeight = lineElement.offsetHeight;
-      
-      // Scroll per mettere la riga al centro dell'area visibile
-      const scrollTo = lineTop - targetCenter + (lineHeight / 2);
-      
-      container.scrollTo({
-        top: Math.max(0, scrollTo),
-        behavior: 'smooth'
-      });
-    }, 50);
-    
-    return () => clearTimeout(timeoutId);
-  }, [highlightLine, lines.length]);
+
+      let attempts = 0;
+      const tryRecenter = () => {
+        const lineElement = container.querySelector(
+          `[data-line="${lineIndex}"]`
+        ) as HTMLElement | null;
+
+        if (!lineElement) {
+          if (attempts < 6) {
+            attempts += 1;
+            requestAnimationFrame(tryRecenter);
+          }
+          return;
+        }
+
+        const containerRect = container.getBoundingClientRect();
+        const controlsRect = controlsRef.current?.getBoundingClientRect();
+        const indicatorHeight =
+          indicatorRef.current?.getBoundingClientRect().height ?? 0;
+
+        // Area veramente visibile: escludi indicatore sticky in alto e pannello pulsanti fisso in basso
+        const visibleTop = containerRect.top + indicatorHeight + 12;
+        const visibleBottom = Math.min(
+          containerRect.bottom,
+          controlsRect?.top ?? containerRect.bottom
+        );
+        const visibleHeight = visibleBottom - visibleTop;
+        if (visibleHeight <= 0) return;
+
+        const targetCenterY = visibleTop + visibleHeight / 2;
+
+        const lineRect = lineElement.getBoundingClientRect();
+        const lineCenterY = lineRect.top + lineRect.height / 2;
+        const delta = lineCenterY - targetCenterY;
+
+        if (Math.abs(delta) < 1) return;
+
+        container.scrollTo({
+          top: container.scrollTop + delta,
+          behavior,
+        });
+      };
+
+      requestAnimationFrame(tryRecenter);
+    },
+    []
+  );
+
+  // Auto-scroll: la riga evidenziata deve rimanere sempre centrata (su telefono)
+  React.useEffect(() => {
+    if (!isBroadcasting || lines.length === 0) return;
+    recenterHighlightedLine(highlightLine, 'smooth');
+  }, [highlightLine, lines.length, isBroadcasting, recenterHighlightedLine]);
+
+  // Ricalcola anche su resize/orientamento
+  React.useEffect(() => {
+    const onResize = () => {
+      if (!isBroadcasting || lines.length === 0) return;
+      recenterHighlightedLine(highlightLine, 'auto');
+    };
+
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [highlightLine, isBroadcasting, lines.length, recenterHighlightedLine]);
 
   if (!isBroadcasting || lines.length === 0) {
     return (
@@ -469,7 +512,10 @@ function RemoteOnlyControls({
         style={{ paddingBottom: 'calc(220px + env(safe-area-inset-bottom))' }}
       >
         {/* Indicatore posizione */}
-        <div className="text-sm text-muted-foreground mb-4 text-center sticky top-0 bg-background/80 backdrop-blur-sm py-2 -mx-4 px-4">
+        <div
+          ref={indicatorRef}
+          className="text-sm text-muted-foreground mb-4 text-center sticky top-0 bg-background/80 backdrop-blur-sm py-2 -mx-4 px-4"
+        >
           Riga {highlightLine + 1} di {lines.length}
         </div>
         
@@ -500,7 +546,7 @@ function RemoteOnlyControls({
       </div>
 
       {/* PULSANTI FISSI - non si muovono MAI */}
-      <div className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-xl border-t z-50">
+      <div ref={controlsRef} className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-xl border-t z-50">
         <div className="p-4 pb-[max(16px,env(safe-area-inset-bottom))] max-w-md mx-auto">
           {/* Barra progresso */}
           <div className="h-2 bg-muted rounded-full overflow-hidden mb-4">
