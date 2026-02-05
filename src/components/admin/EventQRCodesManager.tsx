@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
+import { getProductionBaseUrl } from '@/lib/productionUrl';
 import {
   Dialog,
   DialogContent,
@@ -89,7 +90,7 @@ export const EventQRCodesManager: React.FC<EventQRCodesManagerProps> = ({
 
   // Base URL per il QR code
   const getQRUrl = (pin: string) => {
-    const baseUrl = window.location.origin;
+    const baseUrl = getProductionBaseUrl();
     return `${baseUrl}/evento?pin=${pin}`;
   };
 

@@ -12,6 +12,7 @@
  import { cn } from '@/lib/utils';
  import { toast } from 'sonner';
  import QRCode from 'qrcode';
+import { getProductionBaseUrl } from '@/lib/productionUrl';
  import {
    Dialog,
    DialogContent,
@@ -65,7 +66,7 @@
    };
  
    const getRemoteUrl = (token: string) => {
-     return `${window.location.origin}/telecomando/${token}`;
+    return `${getProductionBaseUrl()}/telecomando/${token}`;
    };
  
    const copyLink = async (token: string) => {
