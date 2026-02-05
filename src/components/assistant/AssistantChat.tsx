@@ -548,9 +548,10 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
           "border border-border shadow-2xl shadow-black/20",
           isMobile ? "rounded-none overflow-hidden" : "rounded-2xl overflow-hidden"
         )}>
-          {/* Header - enlarged touch targets on mobile, with safe area padding */}
+          {/* Header */}
           <div className={cn(
-            "flex items-center justify-between border-b border-border bg-gradient-to-r from-primary/10 to-secondary/10 flex-shrink-0",
+            "flex items-center justify-between border-b border-border bg-gradient-to-r from-primary/10 to-secondary/10",
+            "flex-shrink-0 flex-grow-0",
             isMobile ? "px-3 py-3" : "p-4"
           )}
           style={isMobile ? { paddingTop: 'max(12px, env(safe-area-inset-top, 12px))' } : undefined}
@@ -593,8 +594,8 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
           </div>
 
           {/* Messages */}
-          <ScrollArea className="flex-1 min-h-0 p-4">
-            <div className="space-y-4">
+          <ScrollArea className="flex-1 min-h-0 overflow-y-auto">
+            <div className="space-y-4 p-4">
               {messages.map((message) => (
                 <motion.div
                   key={message.id}
@@ -694,17 +695,18 @@ export const AssistantChat: React.FC<AssistantChatProps> = ({
           {/* Input - show when in input mode or chat mode */}
           {showInput && (
             <div className={cn(
-              "p-4 border-t border-border bg-background flex-shrink-0",
-              isMobile && "pb-safe"
+              "p-4 border-t border-border bg-background",
+              "flex-shrink-0 flex-grow-0",
+              isMobile && "pb-[max(16px,env(safe-area-inset-bottom))]"
             )}>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
                 <Input
                   ref={inputRef}
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
                   placeholder={getInputPlaceholder()}
-                  className="flex-1 text-base"
+                  className="flex-1 text-base h-12"
                   enterKeyHint="send"
                 />
                 <Button
