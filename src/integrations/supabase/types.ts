@@ -2539,7 +2539,6 @@ export type Database = {
         Args: { p_pin: string; p_token: string }
         Returns: {
           access_id: string
-          access_name: string
           is_valid: boolean
           sala_code: string
         }[]
