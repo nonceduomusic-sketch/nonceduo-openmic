@@ -312,7 +312,7 @@ const ChatView: React.FC<{
       </div>
 
       {/* Messages */}
-      <ScrollArea className={cn("flex-1", isMobile ? "p-3" : "p-4")}>
+      <ScrollArea className={cn("flex-1 min-h-0", isMobile ? "p-3" : "p-4")}>
         <div className="space-y-3">
           {messages.map((msg) => (
             <div
@@ -416,7 +416,12 @@ const ChatView: React.FC<{
       </ScrollArea>
 
       {/* Input */}
-      <div className={cn("border-t", isMobile ? "p-3" : "p-4")}>
+      <div
+        className={cn(
+          "border-t flex-shrink-0",
+          isMobile ? "p-3 pb-[max(12px,env(safe-area-inset-bottom))]" : "p-4",
+        )}
+      >
         <div className="flex gap-2 items-end">
           <Textarea
             value={newMessage}
@@ -845,7 +850,16 @@ export const AdminAssistantTab: React.FC = () => {
           <Card className="overflow-hidden">
             {isMobile ? (
               // Mobile layout: show list or chat, not both
-              <div className="h-[calc(100vh-220px)] min-h-[400px]">
+              <div
+                className={cn(
+                  "h-[calc(100dvh-220px)] min-h-[400px]",
+                  // IMPORTANT: on mobile there's a fixed bottom tab bar (AdminMobileTabBar).
+                  // Without reserving space, the chat composer (input) ends up behind it.
+                  // Using padding on a border-box container reduces the available height
+                  // and keeps the composer always visible.
+                  "box-border pb-[calc(56px+env(safe-area-inset-bottom))]",
+                )}
+              >
                 {showChat && selectedConversation ? (
                   <ChatView
                     conversationId={selectedId}
