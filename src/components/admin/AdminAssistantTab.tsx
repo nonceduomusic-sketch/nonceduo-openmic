@@ -236,10 +236,12 @@ const ChatView: React.FC<{
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    // IMPORTANT (mobile): this view must be height-constrained so the ScrollArea
+    // can take the remaining space and the composer stays visible.
+    <div className="h-full flex flex-col min-h-0">
       {/* Header */}
       <div className={cn(
-        "border-b flex items-center justify-between gap-2",
+        "border-b flex items-center justify-between gap-2 flex-shrink-0",
         isMobile ? "p-3" : "p-4"
       )}>
         <div className="flex items-center gap-2 min-w-0">
@@ -313,7 +315,14 @@ const ChatView: React.FC<{
 
       {/* Messages */}
       <ScrollArea className={cn("flex-1 min-h-0", isMobile ? "p-3" : "p-4")}>
-        <div className="space-y-3">
+        <div
+          className={cn(
+            "space-y-3",
+            // When the composer is fixed on mobile, reserve scroll space so the last messages
+            // aren't hidden behind the input + the bottom tab bar.
+            isMobile && "pb-[calc(96px+56px+env(safe-area-inset-bottom))]",
+          )}
+        >
           {messages.map((msg) => (
             <div
               key={msg.id}
@@ -419,7 +428,16 @@ const ChatView: React.FC<{
       <div
         className={cn(
           "border-t flex-shrink-0",
-          isMobile ? "p-3 pb-[max(12px,env(safe-area-inset-bottom))]" : "p-4",
+          isMobile
+            ? [
+                // Pin the composer above the fixed mobile tab bar.
+                "fixed left-0 right-0",
+                "bottom-[calc(56px+env(safe-area-inset-bottom))]",
+                "z-40",
+                "bg-background/95 backdrop-blur-xl",
+                "p-3",
+              ].join(" ")
+            : "p-4",
         )}
       >
         <div className="flex gap-2 items-end">
@@ -852,7 +870,9 @@ export const AdminAssistantTab: React.FC = () => {
               // Mobile layout: show list or chat, not both
               <div
                 className={cn(
-                  "h-[calc(100dvh-220px)] min-h-[400px]",
+                  // This container MUST be a flex column so ChatView can be height-constrained (h-full)
+                  // and the composer doesn't get pushed/clipped out of view.
+                  "h-[calc(100dvh-220px)] min-h-[400px] flex flex-col",
                   // IMPORTANT: on mobile there's a fixed bottom tab bar (AdminMobileTabBar).
                   // Without reserving space, the chat composer (input) ends up behind it.
                   // Using padding on a border-box container reduces the available height
