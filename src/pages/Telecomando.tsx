@@ -436,13 +436,13 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
     lines[highlightLine + 2] || null,
   ];
  
-   return (
-     <div className="h-full flex flex-col p-4">
-      {/* Contesto righe */}
-      <div className="flex-shrink-0 mb-6">
-        <div className="text-sm text-muted-foreground mb-2 text-center">
-           Riga {highlightLine + 1} di {lines.length}
-         </div>
+  return (
+    <div className="h-full flex flex-col">
+      {/* Contesto righe - area scrollabile superiore */}
+      <div className="flex-1 min-h-0 overflow-hidden p-4">
+        <div className="text-sm text-muted-foreground mb-3 text-center">
+          Riga {highlightLine + 1} di {lines.length}
+        </div>
         
         <div className="space-y-2 text-center">
           {/* Righe precedenti */}
@@ -473,48 +473,49 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
           ))}
         </div>
       </div>
- 
-       {/* Pulsanti grandi */}
-       <div className="flex-1 flex flex-col gap-4 justify-center max-w-sm mx-auto w-full">
-         <Button
-           size="lg"
-           variant="outline"
-           className={cn(
-             "h-28 text-xl font-semibold rounded-2xl",
-             "transition-all active:scale-95",
-             highlightLine === 0 && "opacity-30"
-           )}
-           onClick={onScrollUp}
-           disabled={highlightLine === 0}
-         >
-           <ChevronUp className="w-10 h-10 mr-2" />
-           INDIETRO
-         </Button>
-         
-         <Button
-           size="lg"
-           className={cn(
-             "h-28 text-xl font-semibold rounded-2xl",
-             "transition-all active:scale-95",
-             highlightLine >= lines.length - 1 && "opacity-30"
-           )}
-           onClick={onScrollDown}
-           disabled={highlightLine >= lines.length - 1}
-         >
-           AVANTI
-           <ChevronDown className="w-10 h-10 ml-2" />
-         </Button>
-       </div>
- 
-       {/* Barra progresso */}
-       <div className="flex-shrink-0 mt-6 pb-[env(safe-area-inset-bottom)]">
-         <div className="h-2 bg-muted rounded-full overflow-hidden">
-           <div 
-             className="h-full bg-primary transition-all duration-300"
-             style={{ width: `${((highlightLine + 1) / lines.length) * 100}%` }}
-           />
-         </div>
-       </div>
-     </div>
-   );
+
+      {/* Pulsanti FISSI in basso - non si spostano mai */}
+      <div className="flex-shrink-0 border-t bg-card/95 backdrop-blur-xl p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+        {/* Barra progresso */}
+        <div className="h-2 bg-muted rounded-full overflow-hidden mb-4">
+          <div 
+            className="h-full bg-primary transition-all duration-300"
+            style={{ width: `${((highlightLine + 1) / lines.length) * 100}%` }}
+          />
+        </div>
+        
+        {/* Pulsanti grandi */}
+        <div className="flex gap-4 max-w-md mx-auto">
+          <Button
+            size="lg"
+            variant="outline"
+            className={cn(
+              "flex-1 h-24 text-lg font-semibold rounded-2xl",
+              "transition-all active:scale-95",
+              highlightLine === 0 && "opacity-30"
+            )}
+            onClick={onScrollUp}
+            disabled={highlightLine === 0}
+          >
+            <ChevronUp className="w-8 h-8 mr-2" />
+            INDIETRO
+          </Button>
+          
+          <Button
+            size="lg"
+            className={cn(
+              "flex-1 h-24 text-lg font-semibold rounded-2xl",
+              "transition-all active:scale-95",
+              highlightLine >= lines.length - 1 && "opacity-30"
+            )}
+            onClick={onScrollDown}
+            disabled={highlightLine >= lines.length - 1}
+          >
+            AVANTI
+            <ChevronDown className="w-8 h-8 ml-2" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
  }
