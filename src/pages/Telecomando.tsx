@@ -326,14 +326,14 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
    }
  
    return (
-    <div className="h-full flex flex-col md:flex-row">
-      {/* Preview testi - scrollabile (sopra su mobile, a sinistra su desktop) */}
-      <div className="flex-1 min-h-0 overflow-hidden flex flex-col md:border-r">
+    <div className="h-full flex flex-col">
+      {/* Preview testi - scrollabile */}
+      <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
         <div 
           ref={lyricsRef}
-          className="flex-1 overflow-y-auto px-4 py-4"
+          className="flex-1 overflow-y-auto px-4 py-4 pb-24"
         >
-          <div className="space-y-2 max-w-lg mx-auto">
+          <div className="space-y-2 max-w-lg mx-auto text-center">
             {lines.map((line, index) => {
               const isHighlighted = highlightLine === index;
               const isPast = index < highlightLine;
@@ -344,7 +344,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
                   data-line={index}
                   onClick={() => onScrollToLine(index)}
                   className={cn(
-                    "w-full text-left px-3 py-2 rounded-lg transition-all",
+                    "w-full px-3 py-2 rounded-lg transition-all",
                     "text-sm leading-relaxed",
                     isHighlighted && "bg-primary/20 text-primary font-semibold ring-2 ring-primary/50",
                     isPast && "text-muted-foreground/50",
@@ -356,23 +356,23 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
               );
             })}
           </div>
-         </div>
-       </div>
+        </div>
+      </div>
  
-      {/* Controlli fissi (sotto su mobile, a destra su desktop) */}
-      <div className="flex-shrink-0 border-t md:border-t-0 bg-card/95 backdrop-blur-xl p-4 pb-[max(16px,env(safe-area-inset-bottom))] md:w-32 md:flex md:flex-col md:justify-center">
-        <div className="flex items-center justify-center gap-4 md:flex-col md:gap-6">
+      {/* Controlli fissi in basso */}
+      <div className="fixed bottom-0 left-0 right-0 border-t bg-card/95 backdrop-blur-xl p-4 pb-[max(16px,env(safe-area-inset-bottom))]">
+        <div className="flex items-center justify-center gap-6 max-w-md mx-auto">
            <Button
              size="lg"
              variant="outline"
-            className="h-14 w-14 md:h-16 md:w-16 rounded-full"
+            className="h-16 w-16 rounded-full"
              onClick={onScrollUp}
              disabled={highlightLine === 0}
            >
              <ChevronUp className="w-6 h-6" />
            </Button>
            
-           <div className="text-center min-w-[80px]">
+          <div className="text-center min-w-[100px]">
              <div className="text-2xl font-bold tabular-nums">
                {highlightLine + 1}
              </div>
@@ -384,7 +384,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
            <Button
              size="lg"
              variant="outline"
-            className="h-14 w-14 md:h-16 md:w-16 rounded-full"
+            className="h-16 w-16 rounded-full"
              onClick={onScrollDown}
              disabled={highlightLine >= lines.length - 1}
            >
@@ -425,7 +425,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
      );
    }
  
-  // Mostra contesto: 2 righe prima, riga corrente, 2 righe dopo (5 totali)
+  // Mostra contesto: 2 righe prima, riga corrente, 2 righe dopo
    const currentLine = lines[highlightLine] || '';
   const prevLines = [
     lines[highlightLine - 2] || null,
@@ -438,41 +438,41 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
  
    return (
      <div className="h-full flex flex-col p-4">
-      {/* Contesto righe - mostra 5 righe totali */}
-      <div className="flex-shrink-0 mb-4">
-         <div className="text-sm text-muted-foreground mb-1">
+      {/* Contesto righe */}
+      <div className="flex-shrink-0 mb-6">
+        <div className="text-sm text-muted-foreground mb-2 text-center">
            Riga {highlightLine + 1} di {lines.length}
          </div>
         
-        <div className="space-y-1">
+        <div className="space-y-2 text-center">
           {/* Righe precedenti */}
           {prevLines.map((line, i) => line && (
             <div 
               key={`prev-${i}`}
-              className="text-xs text-muted-foreground/50 truncate px-3 py-1"
+              className="text-sm text-muted-foreground/50 px-4 py-1"
             >
               {line}
             </div>
           ))}
           
           {/* Riga corrente evidenziata */}
-          <div className="bg-primary/10 rounded-xl p-3 border border-primary/20">
-            <p className="text-base font-medium text-primary leading-relaxed text-center">
+          <div className="bg-primary/10 rounded-xl p-4 border border-primary/20">
+            <p className="text-lg font-semibold text-primary leading-relaxed">
               {currentLine || '—'}
             </p>
-           </div>
+          </div>
           
           {/* Righe successive */}
           {nextLines.map((line, i) => line && (
             <div 
               key={`next-${i}`}
-              className="text-xs text-muted-foreground/70 truncate px-3 py-1"
+              className="text-sm text-muted-foreground/70 px-4 py-1"
             >
               {line}
             </div>
           ))}
         </div>
-       </div>
+      </div>
  
        {/* Pulsanti grandi */}
        <div className="flex-1 flex flex-col gap-4 justify-center max-w-sm mx-auto w-full">
