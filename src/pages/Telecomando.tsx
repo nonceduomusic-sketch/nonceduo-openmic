@@ -30,7 +30,7 @@ import { useBroadcastRemoteUser, useRemoteControl } from '@/hooks/useBroadcastRe
    
    const [pin, setPin] = useState('');
    const [validating, setValidating] = useState(false);
-   const [viewMode, setViewMode] = useState<ViewMode>('preview');
+   const [viewMode, setViewMode] = useState<ViewMode>('remote');
  
    // Handle PIN submission
    const handlePINSubmit = async (e: React.FormEvent) => {
@@ -414,38 +414,37 @@ function RemoteOnlyControls({
 }: RemoteOnlyControlsProps) {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
 
-  // Auto-scroll per centrare la riga evidenziata
+  // Auto-scroll per centrare la riga evidenziata (solo nel container, non nella pagina)
   React.useEffect(() => {
     if (!scrollContainerRef.current || lines.length === 0) return;
     
-    // Doppio RAF per assicurarsi che il DOM sia aggiornato
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        const container = scrollContainerRef.current;
-        if (!container) return;
-        
-        const lineElement = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement;
-        if (!lineElement) return;
-        
-        // Altezza visibile effettiva (escluso padding-bottom per pulsanti fissi)
-        const fixedButtonsHeight = 220; // Altezza approssimativa dei pulsanti fissi
-        const visibleHeight = container.clientHeight - fixedButtonsHeight;
-        const visibleCenter = visibleHeight / 2;
-        
-        // Posizione della riga rispetto al container
-        const lineOffsetTop = lineElement.offsetTop;
-        const lineHeight = lineElement.offsetHeight;
-        const lineCenter = lineOffsetTop + lineHeight / 2;
-        
-        // Calcola scroll target per centrare la riga nella parte visibile
-        const scrollTarget = lineCenter - visibleCenter;
-        
-        container.scrollTo({ 
-          top: Math.max(0, scrollTarget), 
-          behavior: 'smooth' 
-        });
+    // Delay per assicurarsi che il DOM sia pronto
+    const timeoutId = setTimeout(() => {
+      const container = scrollContainerRef.current;
+      if (!container) return;
+      
+      const lineElement = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement;
+      if (!lineElement) return;
+      
+      // Calcola la posizione target considerando i pulsanti fissi (220px)
+      const buttonsHeight = 220;
+      const availableHeight = container.clientHeight - buttonsHeight;
+      const targetCenter = availableHeight / 2;
+      
+      // Posizione della riga nel container
+      const lineTop = lineElement.offsetTop;
+      const lineHeight = lineElement.offsetHeight;
+      
+      // Scroll per mettere la riga al centro dell'area visibile
+      const scrollTo = lineTop - targetCenter + (lineHeight / 2);
+      
+      container.scrollTo({
+        top: Math.max(0, scrollTo),
+        behavior: 'smooth'
       });
-    });
+    }, 50);
+    
+    return () => clearTimeout(timeoutId);
   }, [highlightLine, lines.length]);
 
   if (!isBroadcasting || lines.length === 0) {
