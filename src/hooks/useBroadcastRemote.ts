@@ -387,6 +387,28 @@
      validatePIN,
    };
  }
+
+// Hook per controllo remoto - aggiorna highlight_line via RPC sicura
+export function useRemoteControl(sessionId: string | null, salaCode: string) {
+  const updateHighlightLine = useCallback(async (highlightLine: number): Promise<boolean> => {
+    if (!sessionId) return false;
+
+    const { data, error } = await supabase.rpc('remote_update_highlight_line', {
+      p_session_id: sessionId,
+      p_sala_code: salaCode,
+      p_highlight_line: highlightLine,
+    });
+
+    if (error) {
+      console.error('Error updating highlight line:', error);
+      return false;
+    }
+
+    return data === true;
+  }, [sessionId, salaCode]);
+
+  return { updateHighlightLine };
+}
  
  // Helpers
  function getDeviceName(): string {
