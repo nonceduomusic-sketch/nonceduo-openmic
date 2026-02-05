@@ -422,7 +422,7 @@ function RemoteOnlyControls({
   const indicatorRef = React.useRef<HTMLDivElement>(null);
 
   const recenterHighlightedLine = React.useCallback(
-    (lineIndex: number, behavior: ScrollBehavior = 'smooth') => {
+    (lineIndex: number, behavior: ScrollBehavior = 'auto') => {
       const container = scrollContainerRef.current;
       if (!container) return;
 
@@ -433,50 +433,54 @@ function RemoteOnlyControls({
         ) as HTMLElement | null;
 
         if (!lineElement) {
-          if (attempts < 6) {
+          if (attempts < 10) {
             attempts += 1;
             requestAnimationFrame(tryRecenter);
           }
           return;
         }
 
-        const containerRect = container.getBoundingClientRect();
-        const controlsRect = controlsRef.current?.getBoundingClientRect();
-        const indicatorHeight =
-          indicatorRef.current?.getBoundingClientRect().height ?? 0;
+        const controlsHeight = controlsRef.current?.offsetHeight ?? 0;
+        const indicatorHeight = indicatorRef.current?.offsetHeight ?? 0;
 
-        // Area veramente visibile: escludi indicatore sticky in alto e pannello pulsanti fisso in basso
-        const visibleTop = containerRect.top + indicatorHeight + 12;
-        const visibleBottom = Math.min(
-          containerRect.bottom,
-          controlsRect?.top ?? containerRect.bottom
-        );
-        const visibleHeight = visibleBottom - visibleTop;
-        if (visibleHeight <= 0) return;
+        // Inset visivi: area occupata dall'indicatore sticky in alto e dai pulsanti fissi in basso
+        const topInset = indicatorHeight + 12;
+        const bottomInset = controlsHeight + 12;
 
-        const targetCenterY = visibleTop + visibleHeight / 2;
+        const viewportHeight = container.clientHeight;
+        const availableHeight = Math.max(0, viewportHeight - topInset - bottomInset);
+        if (availableHeight <= 0) return;
 
-        const lineRect = lineElement.getBoundingClientRect();
-        const lineCenterY = lineRect.top + lineRect.height / 2;
-        const delta = lineCenterY - targetCenterY;
+        // Vogliamo il centro della riga attiva al centro dell'area davvero visibile
+        const desiredViewportY = topInset + availableHeight / 2;
 
-        if (Math.abs(delta) < 1) return;
+        // Posizione della riga nel contenuto scrollabile (coordinate del container)
+        // Nota: container ha `relative`, quindi offsetTop è stabile e non risente delle transform (scale).
+        const lineCenterContentY = lineElement.offsetTop + lineElement.offsetHeight / 2;
+
+        let targetScrollTop = lineCenterContentY - desiredViewportY;
+
+        const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
+        targetScrollTop = Math.min(Math.max(targetScrollTop, 0), maxScrollTop);
+
+        if (Math.abs(container.scrollTop - targetScrollTop) < 1) return;
 
         container.scrollTo({
-          top: container.scrollTop + delta,
+          top: targetScrollTop,
           behavior,
         });
       };
 
-      requestAnimationFrame(tryRecenter);
+      // Doppio RAF: 1) applica classi/transition della riga evidenziata, 2) misura e centra
+      requestAnimationFrame(() => requestAnimationFrame(tryRecenter));
     },
     []
   );
 
-  // Auto-scroll: la riga evidenziata deve rimanere sempre centrata (su telefono)
-  React.useEffect(() => {
+  // Mantieni sempre la riga evidenziata centrata (mobile): usa layoutEffect per evitare "drift" visivo
+  React.useLayoutEffect(() => {
     if (!isBroadcasting || lines.length === 0) return;
-    recenterHighlightedLine(highlightLine, 'smooth');
+    recenterHighlightedLine(highlightLine, 'auto');
   }, [highlightLine, lines.length, isBroadcasting, recenterHighlightedLine]);
 
   // Ricalcola anche su resize/orientamento
@@ -508,7 +512,7 @@ function RemoteOnlyControls({
       {/* Area testo scrollabile - con padding per i pulsanti fissi */}
       <div 
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto px-4 pt-4"
+        className="relative flex-1 overflow-y-auto overscroll-contain px-4 pt-4"
         style={{ paddingBottom: 'calc(220px + env(safe-area-inset-bottom))' }}
       >
         {/* Indicatore posizione */}
