@@ -393,41 +393,43 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                       className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium truncate">{song.titolo}</p>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium truncate max-w-[150px] sm:max-w-none">{song.titolo}</p>
                         {song.testo && (
                           <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">Testo</Badge>
                         )}
                         </div>
                         <p className="text-sm text-muted-foreground truncate">{song.artista}</p>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex items-center gap-2 shrink-0 ml-2">
                         <Button
-                          size="sm"
+                          size="icon"
                           variant="outline"
                           onClick={() => openPreview(song.id)}
-                          className="h-9 w-9 p-0"
+                          className="h-11 w-11 min-w-[44px] min-h-[44px]"
+                          title="Anteprima"
                         >
-                          <Eye className="w-4 h-4 shrink-0" />
+                          <Eye className="w-5 h-5" />
                         </Button>
                         {selectedSetlistId && canFull && (
                           <Button
-                            size="sm"
+                            size="icon"
                             variant="outline"
                             onClick={() => addToSetlist(song.id)}
-                            className="h-9 w-9 p-0"
+                            className="h-11 w-11 min-w-[44px] min-h-[44px]"
+                            title="Aggiungi a scaletta"
                           >
-                            <Plus className="w-4 h-4 shrink-0" />
+                            <Plus className="w-5 h-5" />
                           </Button>
                         )}
                         <Button
-                          size="sm"
+                          size="icon"
                           onClick={() => handleBroadcast(song.id)}
                           disabled={!canManage}
-                          className="h-9 px-2.5"
+                          className="h-11 w-11 min-w-[44px] min-h-[44px] bg-primary"
+                          title="Trasmetti"
                         >
-                          <Play className="w-4 h-4 mr-1 shrink-0" />
-                          <span className="hidden sm:inline">Trasmetti</span>
+                          <Play className="w-5 h-5" />
                         </Button>
                       </div>
                     </div>
