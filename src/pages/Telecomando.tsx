@@ -1,6 +1,6 @@
  import React, { useState, useEffect, useMemo, useRef } from 'react';
  import { useParams } from 'react-router-dom';
- import { useBroadcastRemoteUser } from '@/hooks/useBroadcastRemote';
+import { useBroadcastRemoteUser, useRemoteControl } from '@/hooks/useBroadcastRemote';
  import { useBroadcast } from '@/hooks/useBroadcast';
  import { supabase } from '@/integrations/supabase/client';
  import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@
    const { 
      isValidated, 
      accessInfo, 
+    sessionId,
      loading: authLoading, 
      tokenExists,
      isKicked,
@@ -141,6 +142,7 @@
    return (
      <RemoteControlInterface 
        salaCode={accessInfo?.salaCode || 'main'}
+        sessionId={sessionId}
        viewMode={viewMode}
        onViewModeChange={setViewMode}
      />
@@ -150,12 +152,14 @@
  // Interfaccia telecomando principale
  interface RemoteControlInterfaceProps {
    salaCode: string;
+  sessionId: string | null;
    viewMode: ViewMode;
    onViewModeChange: (mode: ViewMode) => void;
  }
  
- function RemoteControlInterface({ salaCode, viewMode, onViewModeChange }: RemoteControlInterfaceProps) {
-   const { session, updateSession } = useBroadcast(salaCode);
+function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChange }: RemoteControlInterfaceProps) {
+  const { session } = useBroadcast(salaCode);
+  const { updateHighlightLine } = useRemoteControl(sessionId, salaCode);
    const [currentSong, setCurrentSong] = useState<{ titolo: string; artista: string; testo: string | null } | null>(null);
    
    const isBroadcasting = (session as any)?.is_broadcasting ?? false;
@@ -188,16 +192,16 @@
    // Controlli scroll
    const scrollUp = async () => {
      const newLine = Math.max(0, highlightLine - 1);
-     await updateSession({ highlight_line: newLine });
+      await updateHighlightLine(newLine);
    };
  
    const scrollDown = async () => {
      const newLine = Math.min(lines.length - 1, highlightLine + 1);
-     await updateSession({ highlight_line: newLine });
+      await updateHighlightLine(newLine);
    };
  
    const scrollToLine = async (lineIndex: number) => {
-     await updateSession({ highlight_line: lineIndex });
+      await updateHighlightLine(lineIndex);
    };
  
    return (

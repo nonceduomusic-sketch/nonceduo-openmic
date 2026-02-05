@@ -13,6 +13,7 @@
  import { toast } from 'sonner';
  import QRCode from 'qrcode';
 import { getProductionBaseUrl } from '@/lib/productionUrl';
+import { AdminRemotePreview } from './AdminRemotePreview';
  import {
    Dialog,
    DialogContent,
@@ -331,6 +332,9 @@ import { getProductionBaseUrl } from '@/lib/productionUrl';
            </AlertDialogFooter>
          </AlertDialogContent>
        </AlertDialog>
+
+      {/* Pannello controllo remoto admin */}
+      <AdminRemotePreview salaCode="main" />
      </div>
    );
  }

@@ -2498,6 +2498,14 @@ export type Database = {
         Returns: number
       }
       normalize_song_text: { Args: { t: string }; Returns: string }
+      remote_update_highlight_line: {
+        Args: {
+          p_highlight_line: number
+          p_sala_code: string
+          p_session_id: string
+        }
+        Returns: boolean
+      }
       touch_pin_session: { Args: { p_token: string }; Returns: undefined }
       validate_event_pin: {
         Args: { p_format?: string; p_pin: string }
