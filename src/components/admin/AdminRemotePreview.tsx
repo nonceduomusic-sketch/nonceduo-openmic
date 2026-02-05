@@ -47,18 +47,30 @@ export function AdminRemotePreview({ salaCode = 'main' }: AdminRemotePreviewProp
 
   // Auto-scroll to highlighted line (within container only)
   useEffect(() => {
-    if (scrollContainerRef.current && showPreview && lines.length > 0) {
+    if (!scrollContainerRef.current || !showPreview || lines.length === 0) return;
+    
+    // Use requestAnimationFrame to ensure DOM is updated before scrolling
+    requestAnimationFrame(() => {
       const container = scrollContainerRef.current;
+      if (!container) return;
+      
       const lineElement = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement;
-      if (lineElement) {
-        // Calculate scroll position to center the highlighted line
-        const containerHeight = container.clientHeight;
-        const lineTop = lineElement.offsetTop;
-        const lineHeight = lineElement.offsetHeight;
-        const scrollTarget = lineTop - (containerHeight / 2) + (lineHeight / 2);
-        container.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
-      }
-    }
+      if (!lineElement) return;
+      
+      // Use getBoundingClientRect for reliable positioning
+      const containerRect = container.getBoundingClientRect();
+      const lineRect = lineElement.getBoundingClientRect();
+      
+      // Calculate how much we need to scroll to center the line
+      const containerCenter = containerRect.height / 2;
+      const lineCenter = lineRect.top - containerRect.top + lineRect.height / 2;
+      const scrollOffset = lineCenter - containerCenter;
+      
+      container.scrollTo({ 
+        top: container.scrollTop + scrollOffset, 
+        behavior: 'smooth' 
+      });
+    });
   }, [highlightLine, showPreview, lines.length]);
  
    // Controlli scroll (admin ha permessi diretti)
