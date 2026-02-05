@@ -68,6 +68,7 @@ import { BroadcastTVSettings } from './BroadcastTVSettings';
 import { TVPreviewDialog } from './TVPreviewDialog';
 import { SetlistSongItem } from './SetlistSongItem';
 import { LiveBroadcastPreview } from './LiveBroadcastPreview';
+ import { BroadcastRemoteSection } from './BroadcastRemoteSection';
 
 interface AdminTrasmettiTabProps {
   canManage?: boolean;
@@ -271,7 +272,7 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
 
       {/* Main content tabs */}
       <Tabs defaultValue="queue" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="queue">
             <List className="w-4 h-4 mr-2" />
             <span className="hidden sm:inline">Scaletta</span> Live
@@ -283,6 +284,10 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
           <TabsTrigger value="setlists">
             <FolderOpen className="w-4 h-4 mr-2" />
             <span className="hidden sm:inline">Le Mie</span> Scalette
+          </TabsTrigger>
+          <TabsTrigger value="remote">
+            <Monitor className="w-4 h-4 mr-2" />
+            <span className="hidden sm:inline">Tele</span>comando
           </TabsTrigger>
           <TabsTrigger value="tv-settings">
             <Settings className="w-4 h-4 mr-2" />
@@ -617,6 +622,15 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        {/* Remote Control Tab */}
+        <TabsContent value="remote" className="space-y-4">
+          <Card>
+            <CardContent className="pt-6">
+              <BroadcastRemoteSection />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* TV Settings Tab */}
