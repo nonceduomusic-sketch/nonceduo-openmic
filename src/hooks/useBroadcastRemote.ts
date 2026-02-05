@@ -142,12 +142,12 @@
    }, [fetchAccesses]);
  
    // Rigenera PIN
-   const regeneratePIN = useCallback(async (accessId: string) => {
-     const newPin = Array.from(crypto.getRandomValues(new Uint8Array(3)))
-       .map(b => b.toString(16).padStart(2, '0'))
-       .join('')
-       .toUpperCase()
-       .slice(0, 6);
+  const regeneratePIN = useCallback(async (accessId: string, customPin?: string) => {
+    const newPin = customPin || Array.from(crypto.getRandomValues(new Uint8Array(3)))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('')
+      .toUpperCase()
+      .slice(0, 6);
  
      const { error } = await supabase
        .from('broadcast_remote_access')
@@ -163,7 +163,7 @@
      // Espelli tutte le sessioni attive
      await supabase.rpc('kick_all_remote_sessions', { p_access_id: accessId });
      
-     toast.success('PIN rigenerato, utenti espulsi');
+    toast.success(customPin ? 'PIN personalizzato impostato' : 'PIN rigenerato, utenti espulsi');
      await fetchAccesses();
      return true;
    }, [fetchAccesses]);

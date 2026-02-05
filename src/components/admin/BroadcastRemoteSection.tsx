@@ -155,21 +155,43 @@
                        </div>
                        
                        {/* PIN visibile */}
-                       <div className="flex items-center gap-2 text-sm">
-                         <Key className="w-3.5 h-3.5 text-muted-foreground" />
-                         <code className="bg-muted px-2 py-0.5 rounded font-mono text-xs">
-                           {access.pin_code}
-                         </code>
-                         <Button
-                           variant="ghost"
-                           size="sm"
-                           className="h-6 w-6 p-0"
-                           onClick={() => regeneratePIN(access.id)}
-                           title="Rigenera PIN"
-                         >
-                           <RefreshCw className="w-3 h-3" />
-                         </Button>
-                       </div>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <div className="flex items-center gap-2">
+                <Key className="w-3.5 h-3.5 text-muted-foreground" />
+                <code className="bg-muted px-2 py-0.5 rounded font-mono text-xs">
+                  {access.pin_code}
+                </code>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => regeneratePIN(access.id)}
+                  title="Rigenera PIN casuale"
+                >
+                  <RefreshCw className="w-3 h-3 mr-1" />
+                  Rigenera
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => {
+                    const newPin = prompt('Inserisci nuovo PIN (4-8 caratteri alfanumerici):');
+                    if (newPin && /^[A-Za-z0-9]{4,8}$/.test(newPin)) {
+                      regeneratePIN(access.id, newPin.toUpperCase());
+                    } else if (newPin) {
+                      toast.error('PIN non valido. Usa 4-8 caratteri alfanumerici.');
+                    }
+                  }}
+                  title="Imposta PIN personalizzato"
+                >
+                  <Key className="w-3 h-3 mr-1" />
+                  Personalizza
+                </Button>
+              </div>
+            </div>
                      </div>
  
                      {/* Switch attivo */}
