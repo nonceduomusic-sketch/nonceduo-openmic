@@ -235,7 +235,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
 }
 
 // ──────────────────────────────────────────────
-//           PRIMA PAGINA: Preview – righe cliccabili + pulsanti piccoli
+//           PAGINA 1: Preview – righe cliccabili + pulsanti piccoli
 // ──────────────────────────────────────────────
 function PreviewWithControls({
   lines,
@@ -256,7 +256,6 @@ function PreviewWithControls({
   const controlsRef = useRef<HTMLDivElement>(null);
   const [controlsHeight, setControlsHeight] = useState(0);
 
-  // Misura altezza pulsanti piccoli in basso
   useLayoutEffect(() => {
     const el = controlsRef.current;
     if (!el) return;
@@ -267,19 +266,20 @@ function PreviewWithControls({
     return () => ro.disconnect();
   }, []);
 
-  // Scroll automatico alla riga evidenziata
-  useEffect(() => {
-    if (lyricsRef.current) {
-      const lineElements = lyricsRef.current.querySelectorAll("[data-line]");
-      const highlightedLine = lineElements[highlightLine];
-      if (highlightedLine) {
-        highlightedLine.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        });
-      }
+  // Scroll automatico alla riga evidenziata (centra sempre quando cambia highlightLine o viewMode)
+  useLayoutEffect(() => {
+    if (!lyricsRef.current || !isBroadcasting) return;
+
+    const container = lyricsRef.current;
+    const activeEl = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement | null;
+
+    if (activeEl) {
+      activeEl.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
     }
-  }, [highlightLine]);
+  }, [highlightLine, isBroadcasting]);
 
   if (!isBroadcasting || lines.length === 0) {
     return (
@@ -301,14 +301,13 @@ function PreviewWithControls({
         ref={lyricsRef}
         className="flex-1 overflow-y-auto px-4 py-4"
         style={{
-          paddingBottom: controlsHeight > 0 ? controlsHeight + 100 : 220, // margine extra per ultima riga visibile
+          paddingBottom: controlsHeight > 0 ? controlsHeight + 120 : 260, // margine extra per ultima riga
         }}
       >
         <div className="space-y-2 max-w-lg mx-auto text-center">
           {lines.map((line, index) => {
             const isHighlighted = highlightLine === index;
             const isPast = index < highlightLine;
-
             return (
               <button
                 key={index}
@@ -331,7 +330,7 @@ function PreviewWithControls({
 
       <div
         ref={controlsRef}
-        className="fixed bottom-0 left-0 right-0 border-t bg-card/95 backdrop-blur-xl p-4 pb-[max(24px, env(safe-area-inset-bottom))] z-50"
+        className="fixed bottom-0 left-0 right-0 border-t bg-card/95 backdrop-blur-xl p-4 pb-[max(24px,env(safe-area-inset-bottom))] z-50"
       >
         <div className="flex items-center justify-center gap-6 max-w-md mx-auto">
           <Button
@@ -365,7 +364,7 @@ function PreviewWithControls({
 }
 
 // ──────────────────────────────────────────────
-//           SECONDA PAGINA: Pulsantoni grandi – invariata (come la vuoi tu)
+//           PAGINA 2: Pulsantoni grandi (lasciata come la volevi)
 // ──────────────────────────────────────────────
 function RemoteOnlyControls({
   lines,
@@ -387,7 +386,7 @@ function RemoteOnlyControls({
   useLayoutEffect(() => {
     const el = controlsRef.current;
     if (!el) return;
-    const updateHeight = () => setControlsHeight(el.offsetHeight);
+    const updateHeight = () => setControlsHeight(el.offsetHeight || 220);
     updateHeight();
     const ro = new ResizeObserver(updateHeight);
     ro.observe(el);
@@ -395,12 +394,16 @@ function RemoteOnlyControls({
   }, []);
 
   useLayoutEffect(() => {
-    if (!isBroadcasting || lines.length === 0) return;
+    if (!isBroadcasting || lines.length === 0 || !scrollContainerRef.current) return;
+
     const container = scrollContainerRef.current;
-    if (!container) return;
-    const activeEl = container.querySelector(`[data-line="${highlightLine}"]`);
+    const activeEl = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement | null;
+
     if (activeEl) {
-      activeEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      activeEl.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
     }
   }, [highlightLine, isBroadcasting, lines.length]);
 
