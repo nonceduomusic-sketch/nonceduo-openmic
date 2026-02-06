@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from "react";
 import { useParams } from "react-router-dom";
 import { useBroadcastRemoteUser, useRemoteControl } from "@/hooks/useBroadcastRemote";
 import { useBroadcast } from "@/hooks/useBroadcast";
@@ -206,9 +206,8 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
 
       <main className="flex-1 min-h-0 overflow-hidden">
         {viewMode === "preview" ? (
-          // Qui puoi rimettere la tua versione di PreviewWithControls se la preferisci
           <div className="h-full flex items-center justify-center text-muted-foreground">
-            Modalità preview (da implementare o tenere come placeholder)
+            Modalità anteprima (da implementare o mantenere come placeholder)
           </div>
         ) : (
           <RemoteOnlyControls
@@ -266,12 +265,21 @@ function RemoteOnlyControls({
 
     const containerHeight = container.clientHeight;
     const visibleHeight = containerHeight - controlsHeight;
-    let targetScroll = activeEl.offsetTop - visibleHeight / 2 + activeEl.offsetHeight / 2;
+
+    // Regola qui il centramento:
+    // 0.35 → riga evidenziata circa al 40% dall'alto dello schermo
+    // 0.30 → un po' più in basso   |   0.40 → più in alto
+    const centerOffset = visibleHeight * 0.35;
+
+    let targetScroll = activeEl.offsetTop - visibleHeight / 2 + activeEl.offsetHeight / 2 - centerOffset;
 
     const maxScroll = container.scrollHeight - containerHeight;
     targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
 
-    container.scrollTo({ top: targetScroll, behavior: "smooth" });
+    container.scrollTo({
+      top: targetScroll,
+      behavior: "smooth",
+    });
   }, [highlightLine, isBroadcasting, lines.length, controlsHeight]);
 
   if (!isBroadcasting || lines.length === 0) {
@@ -318,7 +326,7 @@ function RemoteOnlyControls({
                   distance > 2 && "opacity-40",
                 )}
               >
-                {line || " "}
+                {line || " "}
               </div>
             );
           })}
