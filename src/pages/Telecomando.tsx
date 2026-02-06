@@ -401,7 +401,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
    );
  }
  
-// Vista Solo Telecomando - pulsanti grandi FISSI
+// Vista Solo Telecomando - scroll-snap teleprompter, pulsantiera bloccata
 interface RemoteOnlyControlsProps {
   lines: string[];
   highlightLine: number;
@@ -418,90 +418,31 @@ function RemoteOnlyControls({
   onScrollDown,
 }: RemoteOnlyControlsProps) {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
-  const controlsRef = React.useRef<HTMLDivElement>(null);
-  const indicatorRef = React.useRef<HTMLDivElement>(null);
 
-  const recenterHighlightedLine = React.useCallback(
-    (lineIndex: number, behavior: ScrollBehavior = 'auto') => {
-      const container = scrollContainerRef.current;
-      if (!container) return;
-
-      let attempts = 0;
-      const tryRecenter = () => {
-        const lineElement = container.querySelector(
-          `[data-line="${lineIndex}"]`
-        ) as HTMLElement | null;
-
-        if (!lineElement) {
-          if (attempts < 10) {
-            attempts += 1;
-            requestAnimationFrame(tryRecenter);
-          }
-          return;
-        }
-
-        const controlsHeight = controlsRef.current?.offsetHeight ?? 0;
-        const indicatorHeight = indicatorRef.current?.offsetHeight ?? 0;
-
-        // Inset visivi: area occupata dall'indicatore sticky in alto e dai pulsanti fissi in basso
-        const topInset = indicatorHeight + 12;
-        const bottomInset = controlsHeight + 12;
-
-        const viewportHeight = container.clientHeight;
-        const availableHeight = Math.max(0, viewportHeight - topInset - bottomInset);
-        if (availableHeight <= 0) return;
-
-        // Vogliamo il centro della riga attiva al centro dell'area davvero visibile
-        const desiredViewportY = topInset + availableHeight / 2;
-
-        // Posizione della riga nel contenuto scrollabile (coordinate del container)
-        // Nota: container ha `relative`, quindi offsetTop è stabile e non risente delle transform (scale).
-        const lineCenterContentY = lineElement.offsetTop + lineElement.offsetHeight / 2;
-
-        let targetScrollTop = lineCenterContentY - desiredViewportY;
-
-        const maxScrollTop = Math.max(0, container.scrollHeight - container.clientHeight);
-        targetScrollTop = Math.min(Math.max(targetScrollTop, 0), maxScrollTop);
-
-        if (Math.abs(container.scrollTop - targetScrollTop) < 1) return;
-
-        container.scrollTo({
-          top: targetScrollTop,
-          behavior,
-        });
-      };
-
-      // Doppio RAF: 1) applica classi/transition della riga evidenziata, 2) misura e centra
-      requestAnimationFrame(() => requestAnimationFrame(tryRecenter));
-    },
-    []
-  );
-
-  // Mantieni sempre la riga evidenziata centrata (mobile): usa layoutEffect per evitare "drift" visivo
+  // Teleprompter: ad ogni cambio riga, centra SEMPRE la riga attiva nel display
   React.useLayoutEffect(() => {
     if (!isBroadcasting || lines.length === 0) return;
-    recenterHighlightedLine(highlightLine, 'auto');
-  }, [highlightLine, lines.length, isBroadcasting, recenterHighlightedLine]);
+    const container = scrollContainerRef.current;
+    if (!container) return;
 
-  // Ricalcola anche su resize/orientamento
-  React.useEffect(() => {
-    const onResize = () => {
-      if (!isBroadcasting || lines.length === 0) return;
-      recenterHighlightedLine(highlightLine, 'auto');
-    };
+    const activeEl = container.querySelector(
+      `[data-line="${highlightLine}"]`
+    ) as HTMLElement | null;
 
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [highlightLine, isBroadcasting, lines.length, recenterHighlightedLine]);
+    if (!activeEl) return;
+
+    activeEl.scrollIntoView({
+      block: 'center',
+      behavior: 'smooth',
+    });
+  }, [highlightLine, isBroadcasting, lines.length]);
 
   if (!isBroadcasting || lines.length === 0) {
     return (
       <div className="h-full flex items-center justify-center text-center p-6">
         <div>
           <Mic className="w-20 h-20 text-muted-foreground/30 mx-auto mb-4" />
-          <p className="text-lg text-muted-foreground">
-            In attesa...
-          </p>
+          <p className="text-lg text-muted-foreground">In attesa...</p>
         </div>
       </div>
     );
@@ -509,33 +450,41 @@ function RemoteOnlyControls({
 
   return (
     <div className="h-full flex flex-col">
-      {/* Area testo scrollabile - con padding per i pulsanti fissi */}
-      <div 
+      {/* DISPLAY TESTO: scroll-snap-type: y mandatory */}
+      <div
         ref={scrollContainerRef}
-        className="relative flex-1 overflow-y-auto overscroll-contain px-4 pt-4"
-        style={{ paddingBottom: 'calc(220px + env(safe-area-inset-bottom))' }}
+        className={cn(
+          "relative flex-1 overflow-y-scroll overscroll-contain px-4 pt-4",
+          "snap-y snap-mandatory"
+        )}
       >
-        {/* Indicatore posizione */}
+        {/* Indicatore posizione sticky */}
         <div
-          ref={indicatorRef}
-          className="text-sm text-muted-foreground mb-4 text-center sticky top-0 bg-background/80 backdrop-blur-sm py-2 -mx-4 px-4"
+          className={cn(
+            "text-sm text-muted-foreground mb-4 text-center",
+            "sticky top-0 bg-background/80 backdrop-blur-sm py-2 -mx-4 px-4 z-10"
+          )}
         >
           Riga {highlightLine + 1} di {lines.length}
         </div>
-        
-        {/* Tutte le righe del testo */}
-        <div className="space-y-2 text-center max-w-lg mx-auto">
+
+        {/* Righe con snap-center */}
+        <div className="space-y-2 text-center max-w-lg mx-auto pb-6">
           {lines.map((line, index) => {
             const isHighlighted = highlightLine === index;
             const distance = Math.abs(highlightLine - index);
-            
+
             return (
-              <div 
+              <div
                 key={index}
                 data-line={index}
                 className={cn(
-                  "px-4 py-2 rounded-xl transition-all duration-300",
-                  isHighlighted && "bg-primary text-primary-foreground font-semibold text-lg scale-105",
+                  "snap-center",
+                  "px-4 py-2 rounded-xl",
+                  "text-base leading-relaxed",
+                  "transition-colors duration-200",
+                  isHighlighted &&
+                    "bg-primary text-primary-foreground font-semibold",
                   !isHighlighted && "text-muted-foreground",
                   distance === 1 && "opacity-70",
                   distance === 2 && "opacity-50",
@@ -549,17 +498,17 @@ function RemoteOnlyControls({
         </div>
       </div>
 
-      {/* PULSANTI FISSI - non si muovono MAI */}
-      <div ref={controlsRef} className="fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-xl border-t z-50">
+      {/* PULSANTIERA: flex-shrink-0 (NON scorre) */}
+      <div className="flex-shrink-0 bg-card/95 backdrop-blur-xl border-t z-50">
         <div className="p-4 pb-[max(16px,env(safe-area-inset-bottom))] max-w-md mx-auto">
           {/* Barra progresso */}
           <div className="h-2 bg-muted rounded-full overflow-hidden mb-4">
-            <div 
+            <div
               className="h-full bg-primary transition-all duration-300"
               style={{ width: `${((highlightLine + 1) / lines.length) * 100}%` }}
             />
           </div>
-          
+
           {/* Pulsanti grandi - uno sopra l'altro */}
           <div className="flex flex-col gap-3">
             <Button
@@ -576,7 +525,7 @@ function RemoteOnlyControls({
               <ChevronUp className="w-10 h-10 mr-3" />
               INDIETRO
             </Button>
-            
+
             <Button
               size="lg"
               className={cn(
