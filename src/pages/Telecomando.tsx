@@ -209,75 +209,75 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
       await updateHighlightLine(lineIndex);
    };
  
-   return (
-     <div className="min-h-[100dvh] bg-background flex flex-col">
-       {/* Header compatto */}
-       <header className="flex-shrink-0 border-b bg-card/50 backdrop-blur-sm px-4 py-3">
-         <div className="flex items-center justify-between">
-           <div className="flex items-center gap-3 min-w-0">
-             <div className={cn(
-               "w-2.5 h-2.5 rounded-full flex-shrink-0",
-               isBroadcasting ? "bg-green-500 animate-pulse" : "bg-muted"
-             )} />
-             <div className="min-w-0">
-               <h1 className="font-semibold truncate text-sm">
-                 {currentSong?.titolo || 'In attesa...'}
-               </h1>
-               {currentSong && (
-                 <p className="text-xs text-muted-foreground truncate">
-                   {currentSong.artista}
-                 </p>
-               )}
-             </div>
-           </div>
-           
-           {/* Switch vista */}
-           <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-             <Button
-               variant={viewMode === 'preview' ? 'secondary' : 'ghost'}
-               size="sm"
-               className="h-8 px-3"
-               onClick={() => onViewModeChange('preview')}
-             >
-               <Eye className="w-4 h-4" />
-             </Button>
-             <Button
-               variant={viewMode === 'remote' ? 'secondary' : 'ghost'}
-               size="sm"
-               className="h-8 px-3"
-               onClick={() => onViewModeChange('remote')}
-             >
-               <Smartphone className="w-4 h-4" />
-             </Button>
-           </div>
-         </div>
-       </header>
- 
-       {/* Contenuto principale */}
-       <main className="flex-1 min-h-0 overflow-hidden">
-         {viewMode === 'preview' ? (
-           <PreviewWithControls 
-             lines={lines}
-             highlightLine={highlightLine}
-             isBroadcasting={isBroadcasting}
-             onScrollUp={scrollUp}
-             onScrollDown={scrollDown}
-             onScrollToLine={scrollToLine}
-           />
-         ) : (
-           <RemoteOnlyControls
-             lines={lines}
-             highlightLine={highlightLine}
-             isBroadcasting={isBroadcasting}
-             onScrollUp={scrollUp}
-             onScrollDown={scrollDown}
-           />
-         )}
-       </main>
-     </div>
-   );
- }
- 
+    return (
+      <div className="h-[100dvh] overflow-hidden bg-background flex flex-col">
+        {/* Header compatto */}
+        <header className="flex-shrink-0 border-b bg-card/50 backdrop-blur-sm px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={cn(
+                "w-2.5 h-2.5 rounded-full flex-shrink-0",
+                isBroadcasting ? "bg-green-500 animate-pulse" : "bg-muted"
+              )} />
+              <div className="min-w-0">
+                <h1 className="font-semibold truncate text-sm">
+                  {currentSong?.titolo || 'In attesa...'}
+                </h1>
+                {currentSong && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    {currentSong.artista}
+                  </p>
+                )}
+              </div>
+            </div>
+            
+            {/* Switch vista */}
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === 'preview' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-8 px-3"
+                onClick={() => onViewModeChange('preview')}
+              >
+                <Eye className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={viewMode === 'remote' ? 'secondary' : 'ghost'}
+                size="sm"
+                className="h-8 px-3"
+                onClick={() => onViewModeChange('remote')}
+              >
+                <Smartphone className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </header>
+
+        {/* Contenuto principale */}
+        <main className="flex-1 min-h-0 overflow-hidden">
+          {viewMode === 'preview' ? (
+            <PreviewWithControls 
+              lines={lines}
+              highlightLine={highlightLine}
+              isBroadcasting={isBroadcasting}
+              onScrollUp={scrollUp}
+              onScrollDown={scrollDown}
+              onScrollToLine={scrollToLine}
+            />
+          ) : (
+            <RemoteOnlyControls
+              lines={lines}
+              highlightLine={highlightLine}
+              isBroadcasting={isBroadcasting}
+              onScrollUp={scrollUp}
+              onScrollDown={scrollDown}
+            />
+          )}
+        </main>
+      </div>
+    );
+  }
+
  // Vista Preview + Controlli
  interface PreviewWithControlsProps {
    lines: string[];
@@ -418,6 +418,21 @@ function RemoteOnlyControls({
   onScrollDown,
 }: RemoteOnlyControlsProps) {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const controlsRef = React.useRef<HTMLDivElement>(null);
+  const [controlsHeight, setControlsHeight] = React.useState(0);
+
+  // Misura la pulsantiera per garantire padding-bottom al display (ultima riga mai sotto i tasti)
+  React.useLayoutEffect(() => {
+    const el = controlsRef.current;
+    if (!el) return;
+
+    const update = () => setControlsHeight(el.offsetHeight);
+    update();
+
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Teleprompter: ad ogni cambio riga, centra SEMPRE la riga attiva nel display
   React.useLayoutEffect(() => {
@@ -449,14 +464,15 @@ function RemoteOnlyControls({
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="relative h-full overflow-hidden">
       {/* DISPLAY TESTO: scroll-snap-type: y mandatory */}
       <div
         ref={scrollContainerRef}
         className={cn(
-          "relative flex-1 overflow-y-scroll overscroll-contain px-4 pt-4",
+          "absolute inset-0 overflow-y-scroll overscroll-contain px-4 pt-4",
           "snap-y snap-mandatory"
         )}
+        style={{ paddingBottom: Math.max(controlsHeight + 16, 140) }}
       >
         {/* Indicatore posizione sticky */}
         <div
@@ -497,9 +513,11 @@ function RemoteOnlyControls({
           })}
         </div>
       </div>
-
-      {/* PULSANTIERA: flex-shrink-0 (NON scorre) */}
-      <div className="flex-shrink-0 bg-card/95 backdrop-blur-xl border-t z-50">
+      {/* PULSANTIERA: ABSOLUTE bottom (sempre visibile, mai scroll) */}
+      <div
+        ref={controlsRef}
+        className="absolute bottom-0 left-0 w-full bg-card/95 backdrop-blur-xl border-t z-50"
+      >
         <div className="p-4 pb-[max(16px,env(safe-area-inset-bottom))] max-w-md mx-auto">
           {/* Barra progresso */}
           <div className="h-2 bg-muted rounded-full overflow-hidden mb-4">
