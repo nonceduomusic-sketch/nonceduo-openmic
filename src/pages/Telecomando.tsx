@@ -35,18 +35,13 @@ export default function Telecomando() {
   const handlePINSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pin.trim()) return;
-
     setValidating(true);
     await validatePIN(pin);
     setValidating(false);
   };
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Caricamento...</div>
-      </div>
-    );
+    return <div className="min-h-screen bg-background flex items-center justify-center">Caricamento...</div>;
   }
 
   if (!tokenExists) {
@@ -206,7 +201,14 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
 
       <main className="flex-1 min-h-0 overflow-hidden">
         {viewMode === "preview" ? (
-          <div className="h-full flex items-center justify-center text-muted-foreground">Modalità anteprima</div>
+          <PreviewWithControls
+            lines={lines}
+            highlightLine={highlightLine}
+            isBroadcasting={isBroadcasting}
+            onScrollUp={scrollUp}
+            onScrollDown={scrollDown}
+            onScrollToLine={(index) => updateHighlightLine(index)}
+          />
         ) : (
           <RemoteOnlyControls
             lines={lines}
@@ -221,6 +223,149 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
   );
 }
 
+// ──────────────────────────────────────────────
+//           VISTA PREVIEW (con pulsanti piccoli)
+// ──────────────────────────────────────────────
+interface PreviewWithControlsProps {
+  lines: string[];
+  highlightLine: number;
+  isBroadcasting: boolean;
+  onScrollUp: () => void;
+  onScrollDown: () => void;
+  onScrollToLine: (index: number) => void;
+}
+
+function PreviewWithControls({
+  lines,
+  highlightLine,
+  isBroadcasting,
+  onScrollUp,
+  onScrollDown,
+  onScrollToLine,
+}: PreviewWithControlsProps) {
+  const lyricsRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const [controlsHeight, setControlsHeight] = useState(0);
+
+  // Misura altezza pulsantiera in basso
+  useLayoutEffect(() => {
+    const el = controlsRef.current;
+    if (!el) return;
+    const update = () => setControlsHeight(el.offsetHeight || 100);
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Scroll automatico alla riga evidenziata (centra nel visibile)
+  useLayoutEffect(() => {
+    if (!lyricsRef.current) return;
+    const container = lyricsRef.current;
+    const activeEl = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement | null;
+    if (!activeEl) return;
+
+    const containerHeight = container.clientHeight;
+    const visibleHeight = containerHeight - controlsHeight;
+
+    // Piccolo offset verso l'alto (regolabile: 0 = centro puro, 0.2 = più in alto)
+    const centerOffset = visibleHeight * 0.15;
+
+    let targetScroll = activeEl.offsetTop - visibleHeight / 2 + activeEl.offsetHeight / 2 - centerOffset;
+
+    const maxScroll = container.scrollHeight - containerHeight;
+    targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
+
+    container.scrollTo({ top: targetScroll, behavior: "smooth" });
+  }, [highlightLine, controlsHeight]);
+
+  if (!isBroadcasting || lines.length === 0) {
+    return (
+      <div className="h-full flex items-center justify-center text-center p-6">
+        <div>
+          <Tv className="w-16 h-16 text-muted-foreground/50 mx-auto mb-4" />
+          <p className="text-muted-foreground">
+            {isBroadcasting ? "Nessun testo disponibile" : "Trasmissione non attiva"}
+          </p>
+          <p className="text-sm text-muted-foreground/70 mt-2">In attesa che l'admin avvii la trasmissione...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full flex flex-col relative">
+      {/* Area scrollabile testi */}
+      <div
+        ref={lyricsRef}
+        className="flex-1 overflow-y-auto px-4 py-6"
+        style={{
+          paddingBottom: controlsHeight > 0 ? controlsHeight + 80 : 200, // spazio extra sotto
+        }}
+      >
+        <div className="space-y-2 max-w-lg mx-auto text-center">
+          {lines.map((line, index) => {
+            const isHighlighted = highlightLine === index;
+            const isPast = index < highlightLine;
+
+            return (
+              <button
+                key={index}
+                data-line={index}
+                onClick={() => onScrollToLine(index)}
+                className={cn(
+                  "w-full px-4 py-3 rounded-xl transition-all text-left text-base leading-relaxed",
+                  isHighlighted && "bg-primary/20 text-primary font-semibold ring-2 ring-primary/40",
+                  isPast && "text-muted-foreground/60 opacity-70",
+                  !isHighlighted && !isPast && "hover:bg-muted/50",
+                )}
+              >
+                {line || "\u00A0"}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Pulsanti fissi in basso */}
+      <div
+        ref={controlsRef}
+        className="fixed bottom-0 left-0 right-0 border-t bg-card/95 backdrop-blur-xl p-4 pb-[max(24px,env(safe-area-inset-bottom))] z-50"
+      >
+        <div className="flex items-center justify-center gap-6 max-w-md mx-auto">
+          <Button
+            size="lg"
+            variant="outline"
+            className="h-16 w-16 rounded-full"
+            onClick={onScrollUp}
+            disabled={highlightLine === 0}
+          >
+            <ChevronUp className="w-6 h-6" />
+          </Button>
+
+          <div className="text-center min-w-[100px]">
+            <div className="text-2xl font-bold tabular-nums">{highlightLine + 1}</div>
+            <div className="text-xs text-muted-foreground">di {lines.length}</div>
+          </div>
+
+          <Button
+            size="lg"
+            variant="outline"
+            className="h-16 w-16 rounded-full"
+            onClick={onScrollDown}
+            disabled={highlightLine >= lines.length - 1}
+          >
+            <ChevronDown className="w-6 h-6" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────
+//           VISTA REMOTE (pulsanti grandi) – invariata
+// ──────────────────────────────────────────────
 interface RemoteOnlyControlsProps {
   lines: string[];
   highlightLine: number;
@@ -252,31 +397,19 @@ function RemoteOnlyControls({
 
   useLayoutEffect(() => {
     if (!isBroadcasting || lines.length === 0 || !scrollContainerRef.current) return;
-
     const container = scrollContainerRef.current;
     const activeEl = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement | null;
-
     if (!activeEl) {
       console.warn(`Riga ${highlightLine} non trovata`);
       return;
     }
-
     const containerHeight = container.clientHeight;
     const visibleHeight = containerHeight - controlsHeight;
-
-    // Valore più conservativo: centrato geometrico con piccolo spostamento verso l'alto
-    // 0.15 → circa 15% sopra il centro puro → dovrebbe stare bene centrata senza finire sotto
     const centerOffset = visibleHeight * 0.15;
-
     let targetScroll = activeEl.offsetTop - visibleHeight / 2 + activeEl.offsetHeight / 2 - centerOffset;
-
     const maxScroll = container.scrollHeight - containerHeight;
     targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
-
-    container.scrollTo({
-      top: targetScroll,
-      behavior: "smooth",
-    });
+    container.scrollTo({ top: targetScroll, behavior: "smooth" });
   }, [highlightLine, isBroadcasting, lines.length, controlsHeight]);
 
   if (!isBroadcasting || lines.length === 0) {
@@ -296,7 +429,6 @@ function RemoteOnlyControls({
         ref={scrollContainerRef}
         className="absolute inset-0 overflow-y-scroll px-5 pt-6"
         style={{
-          // Padding extra generoso sotto + altezza pulsantiera reale
           paddingBottom: controlsHeight > 0 ? controlsHeight + 120 : 340,
           paddingTop: 90,
         }}
@@ -304,12 +436,10 @@ function RemoteOnlyControls({
         <div className="sticky top-0 bg-background/90 backdrop-blur-md py-3 text-center text-sm text-muted-foreground z-10 -mx-5 px-5 shadow-sm">
           Riga {highlightLine + 1} di {lines.length}
         </div>
-
         <div className="space-y-5 text-center max-w-lg mx-auto pb-16">
           {lines.map((line, index) => {
             const isHighlighted = index === highlightLine;
             const distance = Math.abs(index - highlightLine);
-
             return (
               <div
                 key={index}
@@ -330,7 +460,6 @@ function RemoteOnlyControls({
           })}
         </div>
       </div>
-
       <div ref={controlsRef} className="absolute bottom-0 left-0 right-0 bg-card/95 backdrop-blur-xl border-t z-50">
         <div className="p-5 pb-[max(64px,env(safe-area-inset-bottom))] max-w-md mx-auto">
           <div className="h-2.5 bg-muted rounded-full mb-6 overflow-hidden">
@@ -339,7 +468,6 @@ function RemoteOnlyControls({
               style={{ width: lines.length > 0 ? `${((highlightLine + 1) / lines.length) * 100}%` : "0%" }}
             />
           </div>
-
           <div className="flex flex-col gap-4">
             <Button
               size="lg"
