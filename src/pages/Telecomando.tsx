@@ -35,13 +35,18 @@ export default function Telecomando() {
   const handlePINSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pin.trim()) return;
+
     setValidating(true);
     await validatePIN(pin);
     setValidating(false);
   };
 
   if (authLoading) {
-    return <div className="min-h-screen bg-background flex items-center justify-center">Caricamento...</div>;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">Caricamento...</div>
+      </div>
+    );
   }
 
   if (!tokenExists) {
@@ -86,7 +91,7 @@ export default function Telecomando() {
             <form onSubmit={handlePINSubmit} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-2">
-                  <Lock className="w-4 h-4" /> PIN
+                  <Lock className="w-4 h-4" /> Inserisci PIN
                 </label>
                 <Input
                   type="text"
@@ -129,9 +134,11 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
   const { session } = useBroadcast(salaCode);
   const { updateHighlightLine } = useRemoteControl(sessionId, salaCode);
 
-  const [currentSong, setCurrentSong] = useState<{ titolo: string; artista: string; testo: string | null } | null>(
-    null,
-  );
+  const [currentSong, setCurrentSong] = useState<{
+    titolo: string;
+    artista: string;
+    testo: string | null;
+  } | null>(null);
 
   const isBroadcasting = (session as any)?.is_broadcasting ?? false;
   const highlightLine = session?.highlight_line ?? 0;
@@ -180,10 +187,12 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
               {currentSong && <p className="text-xs text-muted-foreground truncate">{currentSong.artista}</p>}
             </div>
           </div>
+
           <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
             <Button
               variant={viewMode === "preview" ? "secondary" : "ghost"}
               size="sm"
+              className="h-8 px-3"
               onClick={() => onViewModeChange("preview")}
             >
               <Eye className="w-4 h-4" />
@@ -191,6 +200,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
             <Button
               variant={viewMode === "remote" ? "secondary" : "ghost"}
               size="sm"
+              className="h-8 px-3"
               onClick={() => onViewModeChange("remote")}
             >
               <Smartphone className="w-4 h-4" />
@@ -224,11 +234,25 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
 }
 
 // ──────────────────────────────────────────────
-//           VISTA 1: PREVIEW (migliorata, con padding dinamico)
+//           PAGINA 1 – Preview (righe cliccabili + pulsanti piccoli)
 // ──────────────────────────────────────────────
-function PreviewWithControls({ lines, highlightLine, isBroadcasting, onScrollUp, onScrollDown, onScrollToLine }) {
-  const lyricsRef = useRef(null);
-  const controlsRef = useRef(null);
+function PreviewWithControls({
+  lines,
+  highlightLine,
+  isBroadcasting,
+  onScrollUp,
+  onScrollDown,
+  onScrollToLine,
+}: {
+  lines: string[];
+  highlightLine: number;
+  isBroadcasting: boolean;
+  onScrollUp: () => void;
+  onScrollDown: () => void;
+  onScrollToLine: (index: number) => void;
+}) {
+  const lyricsRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
   const [controlsHeight, setControlsHeight] = useState(0);
 
   useLayoutEffect(() => {
@@ -241,12 +265,15 @@ function PreviewWithControls({ lines, highlightLine, isBroadcasting, onScrollUp,
     return () => ro.disconnect();
   }, []);
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (lyricsRef.current) {
-      const container = lyricsRef.current;
-      const activeEl = container.querySelector(`[data-line="${highlightLine}"]`);
-      if (activeEl) {
-        activeEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      const lineElements = lyricsRef.current.querySelectorAll("[data-line]");
+      const highlightedLine = lineElements[highlightLine];
+      if (highlightedLine) {
+        highlightedLine.scrollIntoView({
+          behavior: "smooth",
+          block: "center",
+        });
       }
     }
   }, [highlightLine]);
@@ -265,11 +292,13 @@ function PreviewWithControls({ lines, highlightLine, isBroadcasting, onScrollUp,
   }
 
   return (
-    <div className="h-full flex flex-col relative">
+    <div className="h-full flex flex-col">
       <div
         ref={lyricsRef}
         className="flex-1 overflow-y-auto px-4 py-4"
-        style={{ paddingBottom: controlsHeight > 0 ? controlsHeight + 60 : 180 }}
+        style={{
+          paddingBottom: controlsHeight > 0 ? controlsHeight + 120 : 260, // margine extra per ultima riga visibile
+        }}
       >
         <div className="space-y-2 max-w-lg mx-auto text-center">
           {lines.map((line, index) => {
@@ -281,10 +310,10 @@ function PreviewWithControls({ lines, highlightLine, isBroadcasting, onScrollUp,
                 data-line={index}
                 onClick={() => onScrollToLine(index)}
                 className={cn(
-                  "w-full px-3 py-2 rounded-lg transition-all text-left",
-                  "text-base leading-relaxed",
+                  "w-full px-3 py-2 rounded-lg transition-all",
+                  "text-sm leading-relaxed",
                   isHighlighted && "bg-primary/20 text-primary font-semibold ring-2 ring-primary/50",
-                  isPast && "text-muted-foreground/60",
+                  isPast && "text-muted-foreground/50",
                   !isHighlighted && !isPast && "hover:bg-muted",
                 )}
               >
@@ -297,7 +326,7 @@ function PreviewWithControls({ lines, highlightLine, isBroadcasting, onScrollUp,
 
       <div
         ref={controlsRef}
-        className="fixed bottom-0 left-0 right-0 border-t bg-card/95 backdrop-blur-xl p-4 pb-[max(16px,env(safe-area-inset-bottom))] z-50"
+        className="fixed bottom-0 left-0 right-0 border-t bg-card/95 backdrop-blur-xl p-4 pb-[max(32px,env(safe-area-inset-bottom))] z-50"
       >
         <div className="flex items-center justify-center gap-6 max-w-md mx-auto">
           <Button
@@ -309,10 +338,12 @@ function PreviewWithControls({ lines, highlightLine, isBroadcasting, onScrollUp,
           >
             <ChevronUp className="w-6 h-6" />
           </Button>
+
           <div className="text-center min-w-[100px]">
             <div className="text-2xl font-bold tabular-nums">{highlightLine + 1}</div>
             <div className="text-xs text-muted-foreground">di {lines.length}</div>
           </div>
+
           <Button
             size="lg"
             variant="outline"
@@ -329,30 +360,47 @@ function PreviewWithControls({ lines, highlightLine, isBroadcasting, onScrollUp,
 }
 
 // ──────────────────────────────────────────────
-//           VISTA 2: REMOTE (pulsanti grandi – versione precedente che funzionava)
+//           PAGINA 2 – Remote (pulsanti grandi – versione stabile)
 // ──────────────────────────────────────────────
-function RemoteOnlyControls({ lines, highlightLine, isBroadcasting, onScrollUp, onScrollDown }) {
-  const scrollContainerRef = useRef(null);
-  const controlsRef = useRef(null);
+function RemoteOnlyControls({
+  lines,
+  highlightLine,
+  isBroadcasting,
+  onScrollUp,
+  onScrollDown,
+}: {
+  lines: string[];
+  highlightLine: number;
+  isBroadcasting: boolean;
+  onScrollUp: () => void;
+  onScrollDown: () => void;
+}) {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
   const [controlsHeight, setControlsHeight] = useState(0);
 
   useLayoutEffect(() => {
     const el = controlsRef.current;
     if (!el) return;
-    const update = () => setControlsHeight(el.offsetHeight);
-    update();
-    const ro = new ResizeObserver(update);
+    const updateHeight = () => setControlsHeight(el.offsetHeight || 220);
+    updateHeight();
+    const ro = new ResizeObserver(updateHeight);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
   useLayoutEffect(() => {
-    if (!isBroadcasting || lines.length === 0) return;
+    if (!isBroadcasting || lines.length === 0 || !scrollContainerRef.current) return;
+
     const container = scrollContainerRef.current;
-    if (!container) return;
-    const activeEl = container.querySelector(`[data-line="${highlightLine}"]`);
-    if (!activeEl) return;
-    activeEl.scrollIntoView({ behavior: "smooth", block: "center" });
+    const activeEl = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement | null;
+
+    if (activeEl) {
+      activeEl.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
   }, [highlightLine, isBroadcasting, lines.length]);
 
   if (!isBroadcasting || lines.length === 0) {
@@ -371,7 +419,9 @@ function RemoteOnlyControls({ lines, highlightLine, isBroadcasting, onScrollUp, 
       <div
         ref={scrollContainerRef}
         className="absolute inset-0 overflow-y-scroll overscroll-contain px-4 pt-4"
-        style={{ paddingBottom: Math.max(controlsHeight + 16, 140) }}
+        style={{
+          paddingBottom: Math.max(controlsHeight + 16, 140),
+        }}
       >
         <div className="text-sm text-muted-foreground mb-4 text-center sticky top-0 bg-background/80 backdrop-blur-sm py-2 -mx-4 px-4 z-10">
           Riga {highlightLine + 1} di {lines.length}
