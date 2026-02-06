@@ -206,9 +206,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
 
       <main className="flex-1 min-h-0 overflow-hidden">
         {viewMode === "preview" ? (
-          <div className="h-full flex items-center justify-center text-muted-foreground">
-            Modalità anteprima (da implementare o mantenere come placeholder)
-          </div>
+          <div className="h-full flex items-center justify-center text-muted-foreground">Modalità anteprima</div>
         ) : (
           <RemoteOnlyControls
             lines={lines}
@@ -245,7 +243,7 @@ function RemoteOnlyControls({
   useLayoutEffect(() => {
     const el = controlsRef.current;
     if (!el) return;
-    const updateHeight = () => setControlsHeight(el.offsetHeight || 200);
+    const updateHeight = () => setControlsHeight(el.offsetHeight || 220);
     updateHeight();
     const ro = new ResizeObserver(updateHeight);
     ro.observe(el);
@@ -266,10 +264,9 @@ function RemoteOnlyControls({
     const containerHeight = container.clientHeight;
     const visibleHeight = containerHeight - controlsHeight;
 
-    // Regola qui il centramento:
-    // 0.35 → riga evidenziata circa al 40% dall'alto dello schermo
-    // 0.30 → un po' più in basso   |   0.40 → più in alto
-    const centerOffset = visibleHeight * 0.35;
+    // Valore più conservativo: centrato geometrico con piccolo spostamento verso l'alto
+    // 0.15 → circa 15% sopra il centro puro → dovrebbe stare bene centrata senza finire sotto
+    const centerOffset = visibleHeight * 0.15;
 
     let targetScroll = activeEl.offsetTop - visibleHeight / 2 + activeEl.offsetHeight / 2 - centerOffset;
 
@@ -299,15 +296,16 @@ function RemoteOnlyControls({
         ref={scrollContainerRef}
         className="absolute inset-0 overflow-y-scroll px-5 pt-6"
         style={{
-          paddingBottom: controlsHeight > 0 ? controlsHeight + 80 : 300,
-          paddingTop: 100,
+          // Padding extra generoso sotto + altezza pulsantiera reale
+          paddingBottom: controlsHeight > 0 ? controlsHeight + 120 : 340,
+          paddingTop: 90,
         }}
       >
-        <div className="sticky top-0 bg-background/90 backdrop-blur-md py-3 text-center text-sm text-muted-foreground z-10 -mx-5 px-5">
+        <div className="sticky top-0 bg-background/90 backdrop-blur-md py-3 text-center text-sm text-muted-foreground z-10 -mx-5 px-5 shadow-sm">
           Riga {highlightLine + 1} di {lines.length}
         </div>
 
-        <div className="space-y-4 text-center max-w-lg mx-auto pb-12">
+        <div className="space-y-5 text-center max-w-lg mx-auto pb-16">
           {lines.map((line, index) => {
             const isHighlighted = index === highlightLine;
             const distance = Math.abs(index - highlightLine);
@@ -317,13 +315,13 @@ function RemoteOnlyControls({
                 key={index}
                 data-line={index}
                 className={cn(
-                  "px-5 py-4 rounded-xl text-base leading-relaxed transition-all",
+                  "px-5 py-4 rounded-xl text-base leading-relaxed transition-all duration-200",
                   isHighlighted
-                    ? "bg-primary text-primary-foreground font-semibold shadow-md"
+                    ? "bg-primary text-primary-foreground font-semibold shadow-md scale-[1.02]"
                     : "text-muted-foreground",
-                  distance === 1 && "opacity-80",
-                  distance === 2 && "opacity-60",
-                  distance > 2 && "opacity-40",
+                  distance === 1 && "opacity-85",
+                  distance === 2 && "opacity-65",
+                  distance > 2 && "opacity-45",
                 )}
               >
                 {line || " "}
@@ -334,10 +332,10 @@ function RemoteOnlyControls({
       </div>
 
       <div ref={controlsRef} className="absolute bottom-0 left-0 right-0 bg-card/95 backdrop-blur-xl border-t z-50">
-        <div className="p-5 pb-[max(56px,env(safe-area-inset-bottom))] max-w-md mx-auto">
+        <div className="p-5 pb-[max(64px,env(safe-area-inset-bottom))] max-w-md mx-auto">
           <div className="h-2.5 bg-muted rounded-full mb-6 overflow-hidden">
             <div
-              className="h-full bg-primary transition-all"
+              className="h-full bg-primary transition-all duration-300"
               style={{ width: lines.length > 0 ? `${((highlightLine + 1) / lines.length) * 100}%` : "0%" }}
             />
           </div>
@@ -346,7 +344,10 @@ function RemoteOnlyControls({
             <Button
               size="lg"
               variant="outline"
-              className={cn("h-20 text-xl font-bold rounded-2xl", highlightLine === 0 && "opacity-40")}
+              className={cn(
+                "h-20 text-xl font-bold rounded-2xl transition-all active:scale-95",
+                highlightLine === 0 && "opacity-40",
+              )}
               onClick={onScrollUp}
               disabled={highlightLine === 0}
             >
@@ -354,7 +355,10 @@ function RemoteOnlyControls({
             </Button>
             <Button
               size="lg"
-              className={cn("h-20 text-xl font-bold rounded-2xl", highlightLine >= lines.length - 1 && "opacity-40")}
+              className={cn(
+                "h-20 text-xl font-bold rounded-2xl transition-all active:scale-95",
+                highlightLine >= lines.length - 1 && "opacity-40",
+              )}
               onClick={onScrollDown}
               disabled={highlightLine >= lines.length - 1}
             >
