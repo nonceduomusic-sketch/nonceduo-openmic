@@ -224,30 +224,13 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
 }
 
 // ──────────────────────────────────────────────
-//           VISTA PREVIEW (con pulsanti piccoli)
+//           VISTA 1: PREVIEW (migliorata, con padding dinamico)
 // ──────────────────────────────────────────────
-interface PreviewWithControlsProps {
-  lines: string[];
-  highlightLine: number;
-  isBroadcasting: boolean;
-  onScrollUp: () => void;
-  onScrollDown: () => void;
-  onScrollToLine: (index: number) => void;
-}
-
-function PreviewWithControls({
-  lines,
-  highlightLine,
-  isBroadcasting,
-  onScrollUp,
-  onScrollDown,
-  onScrollToLine,
-}: PreviewWithControlsProps) {
-  const lyricsRef = useRef<HTMLDivElement>(null);
-  const controlsRef = useRef<HTMLDivElement>(null);
+function PreviewWithControls({ lines, highlightLine, isBroadcasting, onScrollUp, onScrollDown, onScrollToLine }) {
+  const lyricsRef = useRef(null);
+  const controlsRef = useRef(null);
   const [controlsHeight, setControlsHeight] = useState(0);
 
-  // Misura altezza pulsantiera in basso
   useLayoutEffect(() => {
     const el = controlsRef.current;
     if (!el) return;
@@ -258,26 +241,15 @@ function PreviewWithControls({
     return () => ro.disconnect();
   }, []);
 
-  // Scroll automatico alla riga evidenziata (centra nel visibile)
   useLayoutEffect(() => {
-    if (!lyricsRef.current) return;
-    const container = lyricsRef.current;
-    const activeEl = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement | null;
-    if (!activeEl) return;
-
-    const containerHeight = container.clientHeight;
-    const visibleHeight = containerHeight - controlsHeight;
-
-    // Piccolo offset verso l'alto (regolabile: 0 = centro puro, 0.2 = più in alto)
-    const centerOffset = visibleHeight * 0.15;
-
-    let targetScroll = activeEl.offsetTop - visibleHeight / 2 + activeEl.offsetHeight / 2 - centerOffset;
-
-    const maxScroll = container.scrollHeight - containerHeight;
-    targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
-
-    container.scrollTo({ top: targetScroll, behavior: "smooth" });
-  }, [highlightLine, controlsHeight]);
+    if (lyricsRef.current) {
+      const container = lyricsRef.current;
+      const activeEl = container.querySelector(`[data-line="${highlightLine}"]`);
+      if (activeEl) {
+        activeEl.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+    }
+  }, [highlightLine]);
 
   if (!isBroadcasting || lines.length === 0) {
     return (
@@ -287,7 +259,6 @@ function PreviewWithControls({
           <p className="text-muted-foreground">
             {isBroadcasting ? "Nessun testo disponibile" : "Trasmissione non attiva"}
           </p>
-          <p className="text-sm text-muted-foreground/70 mt-2">In attesa che l'admin avvii la trasmissione...</p>
         </div>
       </div>
     );
@@ -295,29 +266,26 @@ function PreviewWithControls({
 
   return (
     <div className="h-full flex flex-col relative">
-      {/* Area scrollabile testi */}
       <div
         ref={lyricsRef}
-        className="flex-1 overflow-y-auto px-4 py-6"
-        style={{
-          paddingBottom: controlsHeight > 0 ? controlsHeight + 80 : 200, // spazio extra sotto
-        }}
+        className="flex-1 overflow-y-auto px-4 py-4"
+        style={{ paddingBottom: controlsHeight > 0 ? controlsHeight + 60 : 180 }}
       >
         <div className="space-y-2 max-w-lg mx-auto text-center">
           {lines.map((line, index) => {
             const isHighlighted = highlightLine === index;
             const isPast = index < highlightLine;
-
             return (
               <button
                 key={index}
                 data-line={index}
                 onClick={() => onScrollToLine(index)}
                 className={cn(
-                  "w-full px-4 py-3 rounded-xl transition-all text-left text-base leading-relaxed",
-                  isHighlighted && "bg-primary/20 text-primary font-semibold ring-2 ring-primary/40",
-                  isPast && "text-muted-foreground/60 opacity-70",
-                  !isHighlighted && !isPast && "hover:bg-muted/50",
+                  "w-full px-3 py-2 rounded-lg transition-all text-left",
+                  "text-base leading-relaxed",
+                  isHighlighted && "bg-primary/20 text-primary font-semibold ring-2 ring-primary/50",
+                  isPast && "text-muted-foreground/60",
+                  !isHighlighted && !isPast && "hover:bg-muted",
                 )}
               >
                 {line || "\u00A0"}
@@ -327,10 +295,9 @@ function PreviewWithControls({
         </div>
       </div>
 
-      {/* Pulsanti fissi in basso */}
       <div
         ref={controlsRef}
-        className="fixed bottom-0 left-0 right-0 border-t bg-card/95 backdrop-blur-xl p-4 pb-[max(24px,env(safe-area-inset-bottom))] z-50"
+        className="fixed bottom-0 left-0 right-0 border-t bg-card/95 backdrop-blur-xl p-4 pb-[max(16px,env(safe-area-inset-bottom))] z-50"
       >
         <div className="flex items-center justify-center gap-6 max-w-md mx-auto">
           <Button
@@ -342,12 +309,10 @@ function PreviewWithControls({
           >
             <ChevronUp className="w-6 h-6" />
           </Button>
-
           <div className="text-center min-w-[100px]">
             <div className="text-2xl font-bold tabular-nums">{highlightLine + 1}</div>
             <div className="text-xs text-muted-foreground">di {lines.length}</div>
           </div>
-
           <Button
             size="lg"
             variant="outline"
@@ -364,53 +329,31 @@ function PreviewWithControls({
 }
 
 // ──────────────────────────────────────────────
-//           VISTA REMOTE (pulsanti grandi) – invariata
+//           VISTA 2: REMOTE (pulsanti grandi – versione precedente che funzionava)
 // ──────────────────────────────────────────────
-interface RemoteOnlyControlsProps {
-  lines: string[];
-  highlightLine: number;
-  isBroadcasting: boolean;
-  onScrollUp: () => void;
-  onScrollDown: () => void;
-}
-
-function RemoteOnlyControls({
-  lines,
-  highlightLine,
-  isBroadcasting,
-  onScrollUp,
-  onScrollDown,
-}: RemoteOnlyControlsProps) {
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const controlsRef = useRef<HTMLDivElement>(null);
+function RemoteOnlyControls({ lines, highlightLine, isBroadcasting, onScrollUp, onScrollDown }) {
+  const scrollContainerRef = useRef(null);
+  const controlsRef = useRef(null);
   const [controlsHeight, setControlsHeight] = useState(0);
 
   useLayoutEffect(() => {
     const el = controlsRef.current;
     if (!el) return;
-    const updateHeight = () => setControlsHeight(el.offsetHeight || 220);
-    updateHeight();
-    const ro = new ResizeObserver(updateHeight);
+    const update = () => setControlsHeight(el.offsetHeight);
+    update();
+    const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
   useLayoutEffect(() => {
-    if (!isBroadcasting || lines.length === 0 || !scrollContainerRef.current) return;
+    if (!isBroadcasting || lines.length === 0) return;
     const container = scrollContainerRef.current;
-    const activeEl = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement | null;
-    if (!activeEl) {
-      console.warn(`Riga ${highlightLine} non trovata`);
-      return;
-    }
-    const containerHeight = container.clientHeight;
-    const visibleHeight = containerHeight - controlsHeight;
-    const centerOffset = visibleHeight * 0.15;
-    let targetScroll = activeEl.offsetTop - visibleHeight / 2 + activeEl.offsetHeight / 2 - centerOffset;
-    const maxScroll = container.scrollHeight - containerHeight;
-    targetScroll = Math.max(0, Math.min(targetScroll, maxScroll));
-    container.scrollTo({ top: targetScroll, behavior: "smooth" });
-  }, [highlightLine, isBroadcasting, lines.length, controlsHeight]);
+    if (!container) return;
+    const activeEl = container.querySelector(`[data-line="${highlightLine}"]`);
+    if (!activeEl) return;
+    activeEl.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [highlightLine, isBroadcasting, lines.length]);
 
   if (!isBroadcasting || lines.length === 0) {
     return (
@@ -427,70 +370,69 @@ function RemoteOnlyControls({
     <div className="relative h-full overflow-hidden">
       <div
         ref={scrollContainerRef}
-        className="absolute inset-0 overflow-y-scroll px-5 pt-6"
-        style={{
-          paddingBottom: controlsHeight > 0 ? controlsHeight + 120 : 340,
-          paddingTop: 90,
-        }}
+        className="absolute inset-0 overflow-y-scroll overscroll-contain px-4 pt-4"
+        style={{ paddingBottom: Math.max(controlsHeight + 16, 140) }}
       >
-        <div className="sticky top-0 bg-background/90 backdrop-blur-md py-3 text-center text-sm text-muted-foreground z-10 -mx-5 px-5 shadow-sm">
+        <div className="text-sm text-muted-foreground mb-4 text-center sticky top-0 bg-background/80 backdrop-blur-sm py-2 -mx-4 px-4 z-10">
           Riga {highlightLine + 1} di {lines.length}
         </div>
-        <div className="space-y-5 text-center max-w-lg mx-auto pb-16">
+        <div className="space-y-2 text-center max-w-lg mx-auto pb-6">
           {lines.map((line, index) => {
-            const isHighlighted = index === highlightLine;
-            const distance = Math.abs(index - highlightLine);
+            const isHighlighted = highlightLine === index;
+            const distance = Math.abs(highlightLine - index);
             return (
               <div
                 key={index}
                 data-line={index}
                 className={cn(
-                  "px-5 py-4 rounded-xl text-base leading-relaxed transition-all duration-200",
-                  isHighlighted
-                    ? "bg-primary text-primary-foreground font-semibold shadow-md scale-[1.02]"
-                    : "text-muted-foreground",
-                  distance === 1 && "opacity-85",
-                  distance === 2 && "opacity-65",
-                  distance > 2 && "opacity-45",
+                  "px-4 py-2 rounded-xl text-base leading-relaxed transition-colors duration-200",
+                  isHighlighted && "bg-primary text-primary-foreground font-semibold",
+                  !isHighlighted && "text-muted-foreground",
+                  distance === 1 && "opacity-70",
+                  distance === 2 && "opacity-50",
+                  distance > 2 && "opacity-30",
                 )}
               >
-                {line || " "}
+                {line || "\u00A0"}
               </div>
             );
           })}
         </div>
       </div>
-      <div ref={controlsRef} className="absolute bottom-0 left-0 right-0 bg-card/95 backdrop-blur-xl border-t z-50">
-        <div className="p-5 pb-[max(64px,env(safe-area-inset-bottom))] max-w-md mx-auto">
-          <div className="h-2.5 bg-muted rounded-full mb-6 overflow-hidden">
+
+      <div ref={controlsRef} className="absolute bottom-0 left-0 w-full bg-card/95 backdrop-blur-xl border-t z-50">
+        <div className="p-4 pb-[max(16px,env(safe-area-inset-bottom))] max-w-md mx-auto">
+          <div className="h-2 bg-muted rounded-full overflow-hidden mb-4">
             <div
               className="h-full bg-primary transition-all duration-300"
-              style={{ width: lines.length > 0 ? `${((highlightLine + 1) / lines.length) * 100}%` : "0%" }}
+              style={{ width: `${((highlightLine + 1) / lines.length) * 100}%` }}
             />
           </div>
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
             <Button
               size="lg"
               variant="outline"
               className={cn(
                 "h-20 text-xl font-bold rounded-2xl transition-all active:scale-95",
-                highlightLine === 0 && "opacity-40",
+                highlightLine === 0 && "opacity-30",
               )}
               onClick={onScrollUp}
               disabled={highlightLine === 0}
             >
-              <ChevronUp className="w-10 h-10 mr-3" /> INDIETRO
+              <ChevronUp className="w-10 h-10 mr-3" />
+              INDIETRO
             </Button>
             <Button
               size="lg"
               className={cn(
                 "h-20 text-xl font-bold rounded-2xl transition-all active:scale-95",
-                highlightLine >= lines.length - 1 && "opacity-40",
+                highlightLine >= lines.length - 1 && "opacity-30",
               )}
               onClick={onScrollDown}
               disabled={highlightLine >= lines.length - 1}
             >
-              AVANTI <ChevronDown className="w-10 h-10 ml-3" />
+              AVANTI
+              <ChevronDown className="w-10 h-10 ml-3" />
             </Button>
           </div>
         </div>
