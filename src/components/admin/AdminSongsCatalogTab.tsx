@@ -12,6 +12,7 @@ import {
   User,
   Calendar,
   Download,
+  Trash,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -63,7 +64,7 @@ type SortField = 'titolo' | 'artista' | 'created_at';
 type SortDirection = 'asc' | 'desc';
 
 export const AdminSongsCatalogTab: React.FC = () => {
-  const { songs, loading, createSong, updateSong, deleteSong, refetch } = useSongs();
+  const { songs, loading, createSong, updateSong, deleteSong, deleteAllSongs, refetch } = useSongs();
   
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState<SortField>('titolo');
@@ -72,9 +73,11 @@ export const AdminSongsCatalogTab: React.FC = () => {
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeleteAllOpen, setIsDeleteAllOpen] = useState(false);
   const [editingSong, setEditingSong] = useState<Song | null>(null);
   const [deletingSong, setDeletingSong] = useState<Song | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
   
   // Form state
   const [formData, setFormData] = useState<SongInput>({
@@ -162,6 +165,18 @@ export const AdminSongsCatalogTab: React.FC = () => {
     }
   };
 
+  const handleDeleteAll = async () => {
+    if (songs.length === 0) return;
+    
+    setDeletingAll(true);
+    const success = await deleteAllSongs();
+    setDeletingAll(false);
+    
+    if (success) {
+      setIsDeleteAllOpen(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!deletingSong) return;
 
@@ -243,14 +258,23 @@ export const AdminSongsCatalogTab: React.FC = () => {
                 </CardDescription>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button onClick={handleExportCSV} variant="outline" className="hidden sm:flex">
-                <Download className="w-4 h-4 mr-2" />
-                Esporta CSV
+            <div className="flex flex-wrap items-center gap-2">
+              <Button 
+                onClick={() => setIsDeleteAllOpen(true)} 
+                variant="outline" 
+                className="text-destructive hover:text-destructive border-destructive/30 hover:border-destructive/50 hover:bg-destructive/10"
+                disabled={songs.length === 0}
+              >
+                <Trash className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Elimina tutte</span>
+              </Button>
+              <Button onClick={handleExportCSV} variant="outline">
+                <Download className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Esporta CSV</span>
               </Button>
               <Button onClick={openAddForm} className="neon-button-pink">
-                <Plus className="w-4 h-4 mr-2" />
-                Aggiungi
+                <Plus className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Aggiungi</span>
               </Button>
             </div>
           </div>
@@ -472,6 +496,40 @@ export const AdminSongsCatalogTab: React.FC = () => {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Elimina
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete All Confirmation Dialog */}
+      <AlertDialog open={isDeleteAllOpen} onOpenChange={setIsDeleteAllOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">⚠️ Eliminare TUTTE le canzoni?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>Stai per eliminare <strong>{songs.length} canzoni</strong> dal catalogo.</p>
+              <p className="font-semibold text-destructive">Questa azione è irreversibile!</p>
+              <p>Ti consigliamo di esportare il catalogo in CSV prima di procedere.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingAll}>Annulla</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAll}
+              disabled={deletingAll}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingAll ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Eliminazione...
+                </>
+              ) : (
+                <>
+                  <Trash className="w-4 h-4 mr-2" />
+                  Sì, elimina tutte
+                </>
+              )}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

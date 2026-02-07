@@ -147,6 +147,22 @@ export const useSongs = () => {
     }
   };
 
+  const deleteAllSongs = async (): Promise<boolean> => {
+    try {
+      const { error } = await supabase.from('songs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+      if (error) throw error;
+
+      toast.success('Tutte le canzoni sono state eliminate');
+      setSongs([]);
+      return true;
+    } catch (error: any) {
+      console.error('Error deleting all songs:', error);
+      toast.error(error.message || 'Errore durante l\'eliminazione');
+      return false;
+    }
+  };
+
   const getSongById = async (id: string): Promise<Song | null> => {
     const { data, error } = await supabase
       .from('songs')
@@ -221,6 +237,7 @@ export const useSongs = () => {
     createSong,
     updateSong,
     deleteSong,
+    deleteAllSongs,
     getSongById,
     getSongBySlug,
     importSongs,
