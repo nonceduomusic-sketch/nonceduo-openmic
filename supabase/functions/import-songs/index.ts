@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 /* ------------------------------------------------------------------ */
-/*  CORS                                                              */
+/* CORS                                                              */
 /* ------------------------------------------------------------------ */
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,7 +10,7 @@ const corsHeaders = {
 };
 
 /* ------------------------------------------------------------------ */
-/*  Types                                                             */
+/* Types                                                             */
 /* ------------------------------------------------------------------ */
 interface SongData {
   titolo: string;
@@ -20,7 +20,7 @@ interface SongData {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Utils                                                             */
+/* Utils                                                             */
 /* ------------------------------------------------------------------ */
 function normalize(input: string): string {
   return (input ?? "")
@@ -50,7 +50,7 @@ function generateSlug(titolo: string, artista: string): string {
 }
 
 /* ------------------------------------------------------------------ */
-/*  CSV Parsing robusto                                               */
+/* CSV Parsing robusto                                               */
 /* ------------------------------------------------------------------ */
 function parseCsv(csv: string): string[][] {
   const rows: string[][] = [];
@@ -106,7 +106,7 @@ function parseCsv(csv: string): string[][] {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Parse CSV → SongData                                               */
+/* Parse CSV → SongData (Con gestione Intestazione)                  */
 /* ------------------------------------------------------------------ */
 function parseSongs(csv: string): SongData[] {
   const rows = parseCsv(csv);
@@ -114,12 +114,25 @@ function parseSongs(csv: string): SongData[] {
 
   const songs: SongData[] = [];
 
-  for (const row of rows) {
-    // Colonna A = titolo, B = artista, C = testo
-    const titolo = normalize(row[0] ?? "");
-    const artista = normalize(row[1] ?? "");
-    const testo = normalizeLyrics(row[2] ?? "");
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
 
+    // Colonna A = titolo, B = artista, C = testo
+    const rawTitolo = row[0] ?? "";
+    const rawArtista = row[1] ?? "";
+    const rawTesto = row[2] ?? "";
+
+    // SALTO L'INTESTAZIONE: se è la prima riga e contiene parole chiave, saltala
+    if (i === 0 && (rawTitolo.toLowerCase().includes("titolo") || rawArtista.toLowerCase().includes("artista"))) {
+      console.log("Salto riga intestazione rilevata");
+      continue;
+    }
+
+    const titolo = normalize(rawTitolo);
+    const artista = normalize(rawArtista);
+    const testo = normalizeLyrics(rawTesto);
+
+    // Salta righe vuote o incomplete
     if (!titolo || !artista) continue;
 
     const slug = generateSlug(titolo, artista);
@@ -130,7 +143,7 @@ function parseSongs(csv: string): SongData[] {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Server                                                            */
+/* Server                                                            */
 /* ------------------------------------------------------------------ */
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -147,25 +160,29 @@ serve(async (req) => {
 
     const parsed = parseSongs(csvContent);
 
+    // Logica per filtrare i duplicati basata sullo slug
+    const uniqueMap = new Map<string, SongData>();
+    const duplicates: { titolo: string; artista: string; duplicateOf: string }[] = [];
+
+    for (const s of parsed) {
+      const prev = uniqueMap.get(s.slug);
+      if (!prev) {
+        uniqueMap.set(s.slug, s);
+        continue;
+      }
+      duplicates.push({
+        titolo: s.titolo,
+        artista: s.artista,
+        duplicateOf: `${prev.titolo} – ${prev.artista}`,
+      });
+      // Mantieni la versione con il testo più lungo in caso di duplicato
+      if (s.testo.length > prev.testo.length) uniqueMap.set(s.slug, s);
+    }
+
+    const uniqueSongs = [...uniqueMap.values()];
+
     /* ---------------- PREVIEW ---------------- */
     if (action === "parse") {
-      const uniqueMap = new Map<string, SongData>();
-      const duplicates: { titolo: string; artista: string; duplicateOf: string }[] = [];
-
-      for (const s of parsed) {
-        const prev = uniqueMap.get(s.slug);
-        if (!prev) {
-          uniqueMap.set(s.slug, s);
-          continue;
-        }
-        duplicates.push({
-          titolo: s.titolo,
-          artista: s.artista,
-          duplicateOf: `${prev.titolo} – ${prev.artista}`,
-        });
-        if (s.testo.length > prev.testo.length) uniqueMap.set(s.slug, s);
-      }
-
       return new Response(
         JSON.stringify({
           success: true,
@@ -173,7 +190,7 @@ serve(async (req) => {
           uniqueCount: uniqueMap.size,
           duplicatesCount: duplicates.length,
           duplicates,
-          preview: [...uniqueMap.values()].slice(0, 5),
+          preview: uniqueSongs.slice(0, 5),
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
@@ -181,31 +198,15 @@ serve(async (req) => {
 
     /* ---------------- IMPORT ---------------- */
     if (action === "import") {
-      const uniqueMap = new Map<string, SongData>();
-      const duplicates: { titolo: string; artista: string; duplicateOf: string }[] = [];
-
-      for (const s of parsed) {
-        const prev = uniqueMap.get(s.slug);
-        if (!prev) {
-          uniqueMap.set(s.slug, s);
-          continue;
-        }
-        duplicates.push({
-          titolo: s.titolo,
-          artista: s.artista,
-          duplicateOf: `${prev.titolo} – ${prev.artista}`,
-        });
-        if (s.testo.length > prev.testo.length) uniqueMap.set(s.slug, s);
-      }
-
-      const uniqueSongs = [...uniqueMap.values()];
       const chunkSize = 50;
       let imported = 0;
       const errorDetails: string[] = [];
 
       for (let i = 0; i < uniqueSongs.length; i += chunkSize) {
         const chunk = uniqueSongs.slice(i, i + chunkSize);
+        // Utilizziamo l'upsert basato sullo 'slug' per aggiornare se già esiste
         const { error } = await supabase.from("songs").upsert(chunk, { onConflict: "slug" });
+
         if (error) {
           errorDetails.push(`Chunk ${i}-${i + chunk.length}: ${error.message}`);
         } else {
@@ -222,7 +223,6 @@ serve(async (req) => {
           total: uniqueSongs.length,
           totalRaw: parsed.length,
           duplicatesCount: duplicates.length,
-          duplicates,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
