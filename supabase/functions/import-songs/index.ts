@@ -1,85 +1,234 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
-import Papa from "https://esm.sh/papaparse@5.4.1";
 
+/* ------------------------------------------------------------------ */
+/*  CORS                                                              */
+/* ------------------------------------------------------------------ */
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+/* ------------------------------------------------------------------ */
+/*  Types                                                             */
+/* ------------------------------------------------------------------ */
+interface SongData {
+  titolo: string;
+  artista: string;
+  testo: string;
+  slug: string;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Utils                                                             */
+/* ------------------------------------------------------------------ */
+function normalize(input: string): string {
+  return (input ?? "")
+    .toString()
+    .replace(/\u00A0/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeLyrics(input: string): string {
+  return (input ?? "")
+    .toString()
+    .replace(/\u00A0/g, " ")
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/[ \t]+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function generateSlug(titolo: string, artista: string): string {
+  return `${normalize(titolo)}-${normalize(artista)}`
+    .normalize("NFKD")
+    .replace(/[^\w\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .toLowerCase();
+}
+
+/* ------------------------------------------------------------------ */
+/*  CSV Parsing robusto (virgolette + newline multilinea)            */
+/* ------------------------------------------------------------------ */
+function parseCsv(csv: string): string[][] {
+  const rows: string[][] = [];
+  let row: string[] = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < csv.length; i++) {
+    const c = csv[i];
+
+    if (inQuotes) {
+      if (c === '"' && csv[i + 1] === '"') {
+        field += '"';
+        i++;
+      } else if (c === '"') {
+        inQuotes = false;
+      } else {
+        field += c;
+      }
+      continue;
+    }
+
+    if (c === '"') {
+      inQuotes = true;
+      continue;
+    }
+
+    if (c === ",") {
+      row.push(field);
+      field = "";
+      continue;
+    }
+
+    if (c === "\n") {
+      row.push(field);
+      field = "";
+      rows.push([...row]);
+      row = [];
+      continue;
+    }
+
+    if (c === "\r") continue;
+
+    field += c;
+  }
+
+  if (field.length || row.length) {
+    row.push(field);
+    rows.push([...row]);
+  }
+
+  return rows;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Parse CSV → SongData                                               */
+/* ------------------------------------------------------------------ */
+function parseSongs(csv: string): SongData[] {
+  const rows = parseCsv(csv);
+  if (!rows.length) return [];
+
+  const songs: SongData[] = [];
+
+  // Salta header
+  const dataRows = rows.slice(1);
+
+  for (const row of dataRows) {
+    const titolo = normalize(row[0] ?? "");
+    const artista = normalize(row[1] ?? "");
+    const testo = normalizeLyrics(row[2] ?? "");
+
+    if (!titolo || !artista) continue;
+
+    const slug = generateSlug(titolo, artista);
+    songs.push({ titolo, artista, testo, slug });
+  }
+
+  return songs;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Server                                                            */
+/* ------------------------------------------------------------------ */
 serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { csvContent, action } = await req.json();
-    if (!csvContent) throw new Error("File vuoto");
-
-    // PARSER ADATTIVO
-    const parseResult = Papa.parse(csvContent, {
-      header: false,
-      skipEmptyLines: true,
-      relaxQuotes: true, // Fondamentale: non si blocca se le virgolette sono messe male
-      quoteChar: '"',
-      escapeChar: '"', // Gestisce le doppie virgolette "" trasformandole in una sola
-    });
-
-    const rows = parseResult.data as string[][];
-    const songs = [];
-
-    for (let i = 0; i < rows.length; i++) {
-      const row = rows[i];
-      if (row.length < 2) continue;
-
-      // Pulizia profonda: rimuove i residui di virgolette e spazi strani
-      let titolo = (row[0] || "").trim().replace(/^"|"$/g, "");
-      let artista = (row[1] || "").trim().replace(/^"|"$/g, "");
-      let testo = (row[2] || "").trim();
-
-      // Salta l'intestazione se presente
-      if (titolo.toLowerCase() === "titolo" || titolo.toLowerCase() === "title") continue;
-
-      if (titolo && artista) {
-        // Genera slug semplice
-        const slug = `${titolo}-${artista}`
-          .toLowerCase()
-          .normalize("NFKD")
-          .replace(/[^\w\s-]/g, "")
-          .replace(/\s+/g, "-")
-          .replace(/-+/g, "-")
-          .trim();
-
-        songs.push({ titolo, artista, testo, slug });
-      }
+    if (!csvContent) {
+      return new Response(JSON.stringify({ error: "csvContent missing" }), { status: 400, headers: corsHeaders });
     }
 
+    const parsed = parseSongs(csvContent);
+
+    /* ---------------- PREVIEW ---------------- */
     if (action === "parse") {
+      const uniqueMap = new Map<string, SongData>();
+      const duplicates: { titolo: string; artista: string; duplicateOf: string }[] = [];
+
+      for (const s of parsed) {
+        const prev = uniqueMap.get(s.slug);
+        if (!prev) {
+          uniqueMap.set(s.slug, s);
+          continue;
+        }
+        duplicates.push({
+          titolo: s.titolo,
+          artista: s.artista,
+          duplicateOf: `${prev.titolo} – ${prev.artista}`,
+        });
+        if (s.testo.length > prev.testo.length) uniqueMap.set(s.slug, s);
+      }
+
       return new Response(
         JSON.stringify({
           success: true,
-          count: songs.length,
-          preview: songs.slice(0, 3),
+          count: parsed.length,
+          uniqueCount: uniqueMap.size,
+          duplicatesCount: duplicates.length,
+          duplicates,
+          preview: [...uniqueMap.values()].slice(0, 5),
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
+    /* ---------------- IMPORT ---------------- */
     if (action === "import") {
-      if (songs.length === 0) throw new Error("Nessuna canzone trovata");
+      const uniqueMap = new Map<string, SongData>();
+      const duplicates: { titolo: string; artista: string; duplicateOf: string }[] = [];
 
-      // Upsert basato sullo slug
-      const { error } = await supabase.from("songs").upsert(songs, { onConflict: "slug" });
-      if (error) throw error;
+      for (const s of parsed) {
+        const prev = uniqueMap.get(s.slug);
+        if (!prev) {
+          uniqueMap.set(s.slug, s);
+          continue;
+        }
+        duplicates.push({
+          titolo: s.titolo,
+          artista: s.artista,
+          duplicateOf: `${prev.titolo} – ${prev.artista}`,
+        });
+        if (s.testo.length > prev.testo.length) uniqueMap.set(s.slug, s);
+      }
 
-      return new Response(JSON.stringify({ success: true, imported: songs.length }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      const uniqueSongs = [...uniqueMap.values()];
+      const chunkSize = 50;
+      let imported = 0;
+      const errorDetails: string[] = [];
+
+      for (let i = 0; i < uniqueSongs.length; i += chunkSize) {
+        const chunk = uniqueSongs.slice(i, i + chunkSize);
+        const { error } = await supabase.from("songs").upsert(chunk, { onConflict: "slug" });
+        if (error) errorDetails.push(`Chunk ${i}-${i + chunk.length}: ${error.message}`);
+        else imported += chunk.length;
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          imported,
+          errors: errorDetails.length,
+          errorDetails: errorDetails.slice(0, 10),
+          total: uniqueSongs.length,
+          totalRaw: parsed.length,
+          duplicatesCount: duplicates.length,
+          duplicates,
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
+
+    return new Response(JSON.stringify({ error: "Invalid action" }), { status: 400, headers: corsHeaders });
   } catch (err) {
-    return new Response(JSON.stringify({ success: false, error: String(err) }), {
-      status: 500,
-      headers: corsHeaders,
-    });
+    return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: corsHeaders });
   }
 });
