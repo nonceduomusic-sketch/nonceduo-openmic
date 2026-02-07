@@ -50,24 +50,13 @@ function generateSlug(titolo: string, artista: string): string {
 }
 
 /* ------------------------------------------------------------------ */
-/*  CSV Parsing (robusto)                                              */
+/*  CSV Parsing robusto                                               */
 /* ------------------------------------------------------------------ */
 function parseCsv(csv: string): string[][] {
   const rows: string[][] = [];
-  let field = "";
   let row: string[] = [];
+  let field = "";
   let inQuotes = false;
-
-  const pushField = () => {
-    row.push(field);
-    field = "";
-  };
-
-  const pushRow = () => {
-    if (row.length === 0) return;
-    rows.push([...row]);
-    row = [];
-  };
 
   for (let i = 0; i < csv.length; i++) {
     const c = csv[i];
@@ -90,13 +79,16 @@ function parseCsv(csv: string): string[][] {
     }
 
     if (c === ",") {
-      pushField();
+      row.push(field);
+      field = "";
       continue;
     }
 
     if (c === "\n") {
-      pushField();
-      pushRow();
+      row.push(field);
+      field = "";
+      rows.push([...row]);
+      row = [];
       continue;
     }
 
@@ -106,24 +98,24 @@ function parseCsv(csv: string): string[][] {
   }
 
   if (field.length || row.length) {
-    pushField();
-    pushRow();
+    row.push(field);
+    rows.push([...row]);
   }
 
   return rows;
 }
 
 /* ------------------------------------------------------------------ */
-/*  Parse CSV → Songs                                                 */
+/*  Parse CSV → SongData                                               */
 /* ------------------------------------------------------------------ */
 function parseSongs(csv: string): SongData[] {
   const rows = parseCsv(csv);
-  if (rows.length <= 1) return [];
+  if (!rows.length) return [];
 
-  const dataRows = rows.slice(1); // skip header
   const songs: SongData[] = [];
 
-  for (const row of dataRows) {
+  for (const row of rows) {
+    // Colonna A = titolo, B = artista, C = testo
     const titolo = normalize(row[0] ?? "");
     const artista = normalize(row[1] ?? "");
     const testo = normalizeLyrics(row[2] ?? "");
@@ -166,7 +158,11 @@ serve(async (req) => {
           uniqueMap.set(s.slug, s);
           continue;
         }
-        duplicates.push({ titolo: s.titolo, artista: s.artista, duplicateOf: `${prev.titolo} – ${prev.artista}` });
+        duplicates.push({
+          titolo: s.titolo,
+          artista: s.artista,
+          duplicateOf: `${prev.titolo} – ${prev.artista}`,
+        });
         if (s.testo.length > prev.testo.length) uniqueMap.set(s.slug, s);
       }
 
@@ -194,7 +190,11 @@ serve(async (req) => {
           uniqueMap.set(s.slug, s);
           continue;
         }
-        duplicates.push({ titolo: s.titolo, artista: s.artista, duplicateOf: `${prev.titolo} – ${prev.artista}` });
+        duplicates.push({
+          titolo: s.titolo,
+          artista: s.artista,
+          duplicateOf: `${prev.titolo} – ${prev.artista}`,
+        });
         if (s.testo.length > prev.testo.length) uniqueMap.set(s.slug, s);
       }
 
