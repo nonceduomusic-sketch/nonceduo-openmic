@@ -2,10 +2,11 @@ import React, { useState, useMemo, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ChevronLeft, Music2, Zap, Users, ListMusic, AlertTriangle, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { songs, Song } from "@/data/songs";
+import { Song } from "@/data/songs";
+import { useSongsCatalog } from "@/hooks/useSongsCatalog";
 import { SEO } from "@/components/SEO";
 import { SearchBar } from "@/components/SearchBar";
-import { ArtistFilter } from "@/components/ArtistFilter";
+import { ArtistFilterDynamic } from "@/components/ArtistFilterDynamic";
 import { SongCardWithStatus } from "@/components/SongCardWithStatus";
 import { BookingConfirmationModal } from "@/components/BookingConfirmationModal";
 import { LiveQueueDisplay } from "@/components/LiveQueueDisplay";
@@ -37,10 +38,13 @@ interface FreeModeOpenMicProps {
 export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState }) => {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
-  const [artistFilter, setArtistFilter] = useState("");
+  const [artistFilter, setArtistFilter] = useState("all");
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   const [showQueue, setShowQueue] = useState(false);
   const [now, setNow] = useState(new Date());
+  
+  // Load songs from database
+  const { songs, loading: songsLoading } = useSongsCatalog();
   
   const { statuses, isSongBooked, isSongCompleted } = useReservationStatuses();
   
@@ -133,18 +137,26 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
   // Filter songs based on search and artist
   const filteredSongs = useMemo(() => {
     return songs.filter(song => {
-      const matchesSearch = !search || 
-        song.title.toLowerCase().includes(search.toLowerCase()) ||
-        song.artist.toLowerCase().includes(search.toLowerCase());
+      const searchLower = search.toLowerCase().trim();
       
-      const matchesArtist = !artistFilter || artistFilter === 'all' || song.artist === artistFilter;
+      if (!searchLower) {
+        const matchesArtist = artistFilter === 'all' || song.artist === artistFilter;
+        const isCompleted = isSongCompleted(song.title, song.artist);
+        return matchesArtist && !isCompleted;
+      }
+      
+      const matchesSearch = 
+        song.title.toLowerCase().includes(searchLower) ||
+        song.artist.toLowerCase().includes(searchLower);
+      
+      const matchesArtist = artistFilter === 'all' || song.artist === artistFilter;
       
       // Hide completed songs
       const isCompleted = isSongCompleted(song.title, song.artist);
       
       return matchesSearch && matchesArtist && !isCompleted;
     });
-  }, [search, artistFilter, isSongCompleted]);
+  }, [songs, search, artistFilter, isSongCompleted]);
 
   // Build queue from in_progress reservations
   const queueSongs = useMemo(() => {
@@ -333,9 +345,10 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
                   onChange={setSearch}
                   placeholder="Cerca canzone o artista..."
                 />
-                <ArtistFilter
+                <ArtistFilterDynamic
                   value={artistFilter}
                   onChange={setArtistFilter}
+                  songs={songs}
                 />
               </div>
 

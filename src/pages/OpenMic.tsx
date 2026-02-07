@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { Mic2, Home, MessageCircle, Users, Music, Settings, ListMusic, Trophy, Sparkles } from 'lucide-react';
-import { songs, Song } from '@/data/songs';
+import { Song } from '@/data/songs';
+import { useSongsCatalog, useFilteredSongs } from '@/hooks/useSongsCatalog';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
 import { SongCardWithStatus } from '@/components/SongCardWithStatus';
 import { SearchBar } from '@/components/SearchBar';
-import { ArtistFilter } from '@/components/ArtistFilter';
+import { ArtistFilterDynamic } from '@/components/ArtistFilterDynamic';
 import { BookingConfirmationModal } from '@/components/BookingConfirmationModal';
 import { EventContextBanner } from '@/components/EventContextBanner';
 import { LiveQueueDisplay } from '@/components/LiveQueueDisplay';
@@ -40,6 +41,9 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
   const [artistFilter, setArtistFilter] = useState('all');
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
   
+  // Load songs from database
+  const { songs, loading: songsLoading } = useSongsCatalog();
+  
   // Assistant context for triggering song request flow
   const { triggerFlow } = useAssistantContext();
   
@@ -50,7 +54,10 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
   const { isActive: showLiveQueue } = useFormatActiveCheck('show_live_queue');
   
   // Use the public statuses hook for real-time updates (no auth required)
-  const { isSongBooked, isSongCompleted, activeCount, loading, bookedSongKeys, statuses } = useReservationStatuses();
+  const { isSongBooked, isSongCompleted, activeCount, loading: statusesLoading, bookedSongKeys, statuses } = useReservationStatuses();
+  
+  // Combined loading state
+  const loading = songsLoading || statusesLoading;
   
   // State for queue visibility - closed by default
   const [showQueue, setShowQueue] = useState(false);
@@ -63,7 +70,14 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
   // Filter songs: exclude completed ones from the main list
   const filteredSongs = useMemo(() => {
     return songs.filter((song) => {
-      const searchLower = search.toLowerCase();
+      const searchLower = search.toLowerCase().trim();
+      
+      if (!searchLower) {
+        const matchesArtist = artistFilter === 'all' || song.artist === artistFilter;
+        const isCompleted = isSongCompleted(song.title, song.artist);
+        return matchesArtist && !isCompleted;
+      }
+      
       const matchesSearch =
         song.title.toLowerCase().includes(searchLower) ||
         song.artist.toLowerCase().includes(searchLower);
@@ -76,7 +90,7 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
 
       return matchesSearch && matchesArtist && !isCompleted;
     });
-  }, [search, artistFilter, isSongCompleted]);
+  }, [songs, search, artistFilter, isSongCompleted]);
 
   // Queue songs for display
   const queueSongs = useMemo(() => {
@@ -177,7 +191,7 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
           {/* Search & Filter */}
           <div className="space-y-3">
             <SearchBar value={search} onChange={setSearch} />
-            <ArtistFilter value={artistFilter} onChange={setArtistFilter} />
+            <ArtistFilterDynamic value={artistFilter} onChange={setArtistFilter} songs={songs} />
           </div>
 
           {/* Booked count only */}
