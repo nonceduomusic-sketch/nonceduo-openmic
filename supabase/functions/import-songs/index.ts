@@ -14,18 +14,15 @@ serve(async (req) => {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { csvContent, action } = await req.json();
-    if (!csvContent) throw new Error("Contenuto CSV mancante");
+    if (!csvContent) throw new Error("File vuoto");
 
-    // CONFIGURAZIONE AVANZATA PAPAPARSE
+    // PARSER ADATTIVO
     const parseResult = Papa.parse(csvContent, {
       header: false,
       skipEmptyLines: true,
-      // 'quoteChar' istruisce il codice che tutto ciò che è tra " " è TESTO,
-      // ignorando virgole o punti e virgola all'interno.
+      relaxQuotes: true, // Fondamentale: non si blocca se le virgolette sono messe male
       quoteChar: '"',
-      // 'escapeChar' gestisce i casi in cui nel testo c'è un simbolo di virgolette (es: "L'importante è "cantare"")
-      escapeChar: '"',
-      relaxQuotes: true,
+      escapeChar: '"', // Gestisce le doppie virgolette "" trasformandole in una sola
     });
 
     const rows = parseResult.data as string[][];
@@ -35,20 +32,22 @@ serve(async (req) => {
       const row = rows[i];
       if (row.length < 2) continue;
 
-      const titolo = row[0]?.trim();
-      const artista = row[1]?.trim();
-      // Il testo ora viene preso integralmente, punteggiatura inclusa
-      const testo = row[2]?.trim() || "";
+      // Pulizia profonda: rimuove i residui di virgolette e spazi strani
+      let titolo = (row[0] || "").trim().replace(/^"|"$/g, "");
+      let artista = (row[1] || "").trim().replace(/^"|"$/g, "");
+      let testo = (row[2] || "").trim();
 
-      if (i === 0 && (titolo.toLowerCase().includes("titolo") || artista.toLowerCase().includes("artista"))) continue;
+      // Salta l'intestazione se presente
+      if (titolo.toLowerCase() === "titolo" || titolo.toLowerCase() === "title") continue;
 
       if (titolo && artista) {
-        // Creiamo uno slug che ignora la punteggiatura per l'URL
+        // Genera slug semplice
         const slug = `${titolo}-${artista}`
           .toLowerCase()
           .normalize("NFKD")
-          .replace(/[^\w\s-]/g, "") // Rimuove tutto ciò che non è lettera, numero o spazio
-          .replace(/\s+/g, "-") // Sostituisce spazi con trattini
+          .replace(/[^\w\s-]/g, "")
+          .replace(/\s+/g, "-")
+          .replace(/-+/g, "-")
           .trim();
 
         songs.push({ titolo, artista, testo, slug });
@@ -67,8 +66,12 @@ serve(async (req) => {
     }
 
     if (action === "import") {
+      if (songs.length === 0) throw new Error("Nessuna canzone trovata");
+
+      // Upsert basato sullo slug
       const { error } = await supabase.from("songs").upsert(songs, { onConflict: "slug" });
       if (error) throw error;
+
       return new Response(JSON.stringify({ success: true, imported: songs.length }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
