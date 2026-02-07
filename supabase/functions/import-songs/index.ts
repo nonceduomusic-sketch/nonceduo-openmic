@@ -1,17 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-/* ------------------------------------------------------------------ */
-/* CORS                                                              */
-/* ------------------------------------------------------------------ */
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-/* ------------------------------------------------------------------ */
-/* Types                                                             */
-/* ------------------------------------------------------------------ */
 interface SongData {
   titolo: string;
   artista: string;
@@ -19,9 +13,6 @@ interface SongData {
   slug: string;
 }
 
-/* ------------------------------------------------------------------ */
-/* Utils                                                             */
-/* ------------------------------------------------------------------ */
 function normalize(input: string): string {
   return (input ?? "")
     .toString()
@@ -49,186 +40,89 @@ function generateSlug(titolo: string, artista: string): string {
     .toLowerCase();
 }
 
-/* ------------------------------------------------------------------ */
-/* CSV Parsing robusto                                               */
-/* ------------------------------------------------------------------ */
+// PARSER ROBUSTO: Gestisce correttamente i ritorni a capo dentro le virgolette
 function parseCsv(csv: string): string[][] {
   const rows: string[][] = [];
-  let row: string[] = [];
-  let field = "";
+  let currentRow: string[] = [];
+  let currentField = "";
   let inQuotes = false;
 
   for (let i = 0; i < csv.length; i++) {
-    const c = csv[i];
+    const char = csv[i];
+    const nextChar = csv[i + 1];
 
     if (inQuotes) {
-      if (c === '"' && csv[i + 1] === '"') {
-        field += '"';
-        i++;
-      } else if (c === '"') {
+      if (char === '"' && nextChar === '"') {
+        currentField += '"';
+        i++; // Salta il prossimo carattere
+      } else if (char === '"') {
         inQuotes = false;
       } else {
-        field += c;
+        currentField += char;
       }
-      continue;
+    } else {
+      if (char === '"') {
+        inQuotes = true;
+      } else if (char === ",") {
+        currentRow.push(currentField);
+        currentField = "";
+      } else if (char === "\n") {
+        currentRow.push(currentField);
+        rows.push(currentRow);
+        currentRow = [];
+        currentField = "";
+      } else if (char !== "\r") {
+        currentField += char;
+      }
     }
-
-    if (c === '"') {
-      inQuotes = true;
-      continue;
-    }
-
-    if (c === ",") {
-      row.push(field);
-      field = "";
-      continue;
-    }
-
-    if (c === "\n") {
-      row.push(field);
-      field = "";
-      rows.push([...row]);
-      row = [];
-      continue;
-    }
-
-    if (c === "\r") continue;
-
-    field += c;
   }
 
-  if (field.length || row.length) {
-    row.push(field);
-    rows.push([...row]);
+  if (currentRow.length || currentField) {
+    currentRow.push(currentField);
+    rows.push(currentRow);
   }
 
   return rows;
 }
 
-/* ------------------------------------------------------------------ */
-/* Parse CSV → SongData (Con gestione Intestazione)                  */
-/* ------------------------------------------------------------------ */
-function parseSongs(csv: string): SongData[] {
-  const rows = parseCsv(csv);
-  if (!rows.length) return [];
-
-  const songs: SongData[] = [];
-
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-
-    // Colonna A = titolo, B = artista, C = testo
-    const rawTitolo = row[0] ?? "";
-    const rawArtista = row[1] ?? "";
-    const rawTesto = row[2] ?? "";
-
-    // SALTO L'INTESTAZIONE: se è la prima riga e contiene parole chiave, saltala
-    if (i === 0 && (rawTitolo.toLowerCase().includes("titolo") || rawArtista.toLowerCase().includes("artista"))) {
-      console.log("Salto riga intestazione rilevata");
-      continue;
-    }
-
-    const titolo = normalize(rawTitolo);
-    const artista = normalize(rawArtista);
-    const testo = normalizeLyrics(rawTesto);
-
-    // Salta righe vuote o incomplete
-    if (!titolo || !artista) continue;
-
-    const slug = generateSlug(titolo, artista);
-    songs.push({ titolo, artista, testo, slug });
-  }
-
-  return songs;
-}
-
-/* ------------------------------------------------------------------ */
-/* Server                                                            */
-/* ------------------------------------------------------------------ */
 serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { csvContent, action } = await req.json();
-    if (!csvContent) {
-      return new Response(JSON.stringify({ error: "csvContent missing" }), { status: 400, headers: corsHeaders });
+    const rows = parseCsv(csvContent);
+    const songs: SongData[] = [];
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (row.length < 2) continue;
+
+      const t = normalize(row[0]);
+      const a = normalize(row[1]);
+      const txt = normalizeLyrics(row[2] ?? "");
+
+      // Salta l'intestazione o righe senza dati reali
+      if (!t || !a || t.toLowerCase() === "titolo") continue;
+
+      songs.push({ titolo: t, artista: a, testo: txt, slug: generateSlug(t, a) });
     }
 
-    const parsed = parseSongs(csvContent);
-
-    // Logica per filtrare i duplicati basata sullo slug
-    const uniqueMap = new Map<string, SongData>();
-    const duplicates: { titolo: string; artista: string; duplicateOf: string }[] = [];
-
-    for (const s of parsed) {
-      const prev = uniqueMap.get(s.slug);
-      if (!prev) {
-        uniqueMap.set(s.slug, s);
-        continue;
-      }
-      duplicates.push({
-        titolo: s.titolo,
-        artista: s.artista,
-        duplicateOf: `${prev.titolo} – ${prev.artista}`,
-      });
-      // Mantieni la versione con il testo più lungo in caso di duplicato
-      if (s.testo.length > prev.testo.length) uniqueMap.set(s.slug, s);
-    }
-
-    const uniqueSongs = [...uniqueMap.values()];
-
-    /* ---------------- PREVIEW ---------------- */
     if (action === "parse") {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          count: parsed.length,
-          uniqueCount: uniqueMap.size,
-          duplicatesCount: duplicates.length,
-          duplicates,
-          preview: uniqueSongs.slice(0, 5),
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return new Response(JSON.stringify({ success: true, count: songs.length, preview: songs.slice(0, 3) }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    /* ---------------- IMPORT ---------------- */
     if (action === "import") {
-      const chunkSize = 50;
-      let imported = 0;
-      const errorDetails: string[] = [];
+      const { error } = await supabase.from("songs").upsert(songs, { onConflict: "slug" });
+      if (error) throw error;
 
-      for (let i = 0; i < uniqueSongs.length; i += chunkSize) {
-        const chunk = uniqueSongs.slice(i, i + chunkSize);
-        // Utilizziamo l'upsert basato sullo 'slug' per aggiornare se già esiste
-        const { error } = await supabase.from("songs").upsert(chunk, { onConflict: "slug" });
-
-        if (error) {
-          errorDetails.push(`Chunk ${i}-${i + chunk.length}: ${error.message}`);
-        } else {
-          imported += chunk.length;
-        }
-      }
-
-      return new Response(
-        JSON.stringify({
-          success: true,
-          imported,
-          errors: errorDetails.length,
-          errorDetails: errorDetails.slice(0, 10),
-          total: uniqueSongs.length,
-          totalRaw: parsed.length,
-          duplicatesCount: duplicates.length,
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return new Response(JSON.stringify({ success: true, imported: songs.length }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
-
-    return new Response(JSON.stringify({ error: "Invalid action" }), { status: 400, headers: corsHeaders });
   } catch (err) {
     return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: corsHeaders });
   }
