@@ -41,9 +41,6 @@ function normalizeLyrics(input: string): string {
     .trim();
 }
 
-/**
- * Slug NON distruttivo → riduce i falsi duplicati
- */
 function generateSlug(titolo: string, artista: string): string {
   return `${normalize(titolo)}-${normalize(artista)}`
     .normalize("NFKD")
@@ -55,8 +52,8 @@ function generateSlug(titolo: string, artista: string): string {
 /* ------------------------------------------------------------------ */
 /*  CSV Parsing (robusto)                                              */
 /* ------------------------------------------------------------------ */
-function parseCsv(csv: string): Array<[string, string]> {
-  const rows: Array<[string, string]> = [];
+function parseCsv(csv: string): string[][] {
+  const rows: string[][] = [];
   let field = "";
   let row: string[] = [];
   let inQuotes = false;
@@ -68,9 +65,7 @@ function parseCsv(csv: string): Array<[string, string]> {
 
   const pushRow = () => {
     if (row.length === 0) return;
-    const col1 = row[0] ?? "";
-    const col2 = row.slice(1).join(",") ?? "";
-    rows.push([col1, col2]);
+    rows.push([...row]);
     row = [];
   };
 
@@ -119,23 +114,6 @@ function parseCsv(csv: string): Array<[string, string]> {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Titolo / Artista split (TOLLERANTE)                                */
-/* ------------------------------------------------------------------ */
-function splitTitoloArtista(raw: string): { titolo: string; artista: string } | null {
-  const s = normalize(raw);
-  const matches = [...s.matchAll(/[-–—|]/g)];
-  if (matches.length === 0) return null;
-
-  const m = matches[matches.length - 1];
-  const idx = m.index!;
-  const titolo = s.slice(0, idx).trim();
-  const artista = s.slice(idx + 1).trim();
-
-  if (!titolo || !artista) return null;
-  return { titolo, artista };
-}
-
-/* ------------------------------------------------------------------ */
 /*  Parse CSV → Songs                                                 */
 /* ------------------------------------------------------------------ */
 function parseSongs(csv: string): SongData[] {
@@ -145,15 +123,14 @@ function parseSongs(csv: string): SongData[] {
   const dataRows = rows.slice(1); // skip header
   const songs: SongData[] = [];
 
-  for (const [rawTitleArtist, rawLyrics] of dataRows) {
-    const split = splitTitoloArtista(rawTitleArtist);
-    if (!split) continue;
+  for (const row of dataRows) {
+    const titolo = normalize(row[0] ?? "");
+    const artista = normalize(row[1] ?? "");
+    const testo = normalizeLyrics(row[2] ?? "");
 
-    const titolo = normalize(split.titolo);
-    const artista = normalize(split.artista);
-    const testo = normalizeLyrics(rawLyrics);
+    if (!titolo || !artista) continue;
+
     const slug = generateSlug(titolo, artista);
-
     songs.push({ titolo, artista, testo, slug });
   }
 
@@ -173,30 +150,34 @@ serve(async (req) => {
 
     const { csvContent, action } = await req.json();
     if (!csvContent) {
-      return new Response(JSON.stringify({ error: "csvContent missing" }), {
-        status: 400,
-        headers: corsHeaders,
-      });
+      return new Response(JSON.stringify({ error: "csvContent missing" }), { status: 400, headers: corsHeaders });
     }
 
     const parsed = parseSongs(csvContent);
 
     /* ---------------- PREVIEW ---------------- */
     if (action === "parse") {
-      const map = new Map<string, SongData>();
+      const uniqueMap = new Map<string, SongData>();
+      const duplicates: { titolo: string; artista: string; duplicateOf: string }[] = [];
+
       for (const s of parsed) {
-        const prev = map.get(s.slug);
-        if (!prev || s.testo.length > prev.testo.length) {
-          map.set(s.slug, s);
+        const prev = uniqueMap.get(s.slug);
+        if (!prev) {
+          uniqueMap.set(s.slug, s);
+          continue;
         }
+        duplicates.push({ titolo: s.titolo, artista: s.artista, duplicateOf: `${prev.titolo} – ${prev.artista}` });
+        if (s.testo.length > prev.testo.length) uniqueMap.set(s.slug, s);
       }
 
       return new Response(
         JSON.stringify({
           success: true,
-          totalRows: parsed.length,
-          uniqueSongs: map.size,
-          preview: [...map.values()].slice(0, 5),
+          count: parsed.length,
+          uniqueCount: uniqueMap.size,
+          duplicatesCount: duplicates.length,
+          duplicates,
+          preview: [...uniqueMap.values()].slice(0, 5),
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
@@ -204,44 +185,51 @@ serve(async (req) => {
 
     /* ---------------- IMPORT ---------------- */
     if (action === "import") {
-      const map = new Map<string, SongData>();
+      const uniqueMap = new Map<string, SongData>();
+      const duplicates: { titolo: string; artista: string; duplicateOf: string }[] = [];
+
       for (const s of parsed) {
-        const prev = map.get(s.slug);
-        if (!prev || s.testo.length > prev.testo.length) {
-          map.set(s.slug, s);
+        const prev = uniqueMap.get(s.slug);
+        if (!prev) {
+          uniqueMap.set(s.slug, s);
+          continue;
         }
+        duplicates.push({ titolo: s.titolo, artista: s.artista, duplicateOf: `${prev.titolo} – ${prev.artista}` });
+        if (s.testo.length > prev.testo.length) uniqueMap.set(s.slug, s);
       }
 
-      const uniqueSongs = [...map.values()];
+      const uniqueSongs = [...uniqueMap.values()];
       const chunkSize = 50;
       let imported = 0;
+      const errorDetails: string[] = [];
 
       for (let i = 0; i < uniqueSongs.length; i += chunkSize) {
         const chunk = uniqueSongs.slice(i, i + chunkSize);
         const { error } = await supabase.from("songs").upsert(chunk, { onConflict: "slug" });
-
-        if (error) throw error;
-        imported += chunk.length;
+        if (error) {
+          errorDetails.push(`Chunk ${i}-${i + chunk.length}: ${error.message}`);
+        } else {
+          imported += chunk.length;
+        }
       }
 
       return new Response(
         JSON.stringify({
           success: true,
-          rawRows: parsed.length,
           imported,
+          errors: errorDetails.length,
+          errorDetails: errorDetails.slice(0, 10),
+          total: uniqueSongs.length,
+          totalRaw: parsed.length,
+          duplicatesCount: duplicates.length,
+          duplicates,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    return new Response(JSON.stringify({ error: "Invalid action" }), {
-      status: 400,
-      headers: corsHeaders,
-    });
+    return new Response(JSON.stringify({ error: "Invalid action" }), { status: 400, headers: corsHeaders });
   } catch (err) {
-    return new Response(JSON.stringify({ error: String(err) }), {
-      status: 500,
-      headers: corsHeaders,
-    });
+    return new Response(JSON.stringify({ error: String(err) }), { status: 500, headers: corsHeaders });
   }
 });
