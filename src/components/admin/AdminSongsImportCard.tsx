@@ -1,11 +1,11 @@
-import React, { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle2, AlertCircle, RefreshCw, AlertTriangle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-import { ImportDuplicatesDialog } from './ImportDuplicatesDialog';
+import React, { useState, useRef } from "react";
+import { Upload, FileText, CheckCircle2, AlertCircle, RefreshCw, AlertTriangle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { ImportDuplicatesDialog } from "./ImportDuplicatesDialog";
 
 interface Duplicate {
   titolo: string;
@@ -37,6 +37,92 @@ export const AdminSongsImportCard: React.FC = () => {
   const [showDuplicatesDialog, setShowDuplicatesDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  /* ---------------------------------------------------------------- */
+  /* CSV Parsing semplice ma robusto                                  */
+  /* ---------------------------------------------------------------- */
+  const parseCsv = (csv: string): Array<[string, string, string]> => {
+    const rows: Array<[string, string, string]> = [];
+    let field = "";
+    let row: string[] = [];
+    let inQuotes = false;
+
+    const pushField = () => {
+      // rimuove eventuali virgolette esterne
+      const val = field
+        .trim()
+        .replace(/^"(.+)"$/s, "$1")
+        .replace(/""/g, '"');
+      row.push(val);
+      field = "";
+    };
+
+    const pushRow = () => {
+      if (row.length >= 2) {
+        // prendiamo sempre le prime 3 colonne
+        rows.push([row[0] ?? "", row[1] ?? "", row.slice(2).join(",") ?? ""]);
+      }
+      row = [];
+    };
+
+    for (let i = 0; i < csv.length; i++) {
+      const c = csv[i];
+
+      if (inQuotes) {
+        if (c === '"' && csv[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else if (c === '"') {
+          inQuotes = false;
+        } else {
+          field += c;
+        }
+        continue;
+      }
+
+      if (c === '"') {
+        inQuotes = true;
+        continue;
+      }
+
+      if (c === ",") {
+        pushField();
+        continue;
+      }
+
+      if (c === "\n") {
+        pushField();
+        pushRow();
+        continue;
+      }
+
+      if (c === "\r") continue;
+      field += c;
+    }
+
+    if (field.length || row.length) {
+      pushField();
+      pushRow();
+    }
+
+    return rows;
+  };
+
+  const normalize = (s: string) =>
+    (s ?? "")
+      .replace(/\u00A0/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+
+  const generateSlug = (titolo: string, artista: string) =>
+    `${normalize(titolo)}-${normalize(artista)}`
+      .normalize("NFKD")
+      .replace(/[^\w\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .toLowerCase();
+
+  /* ---------------------------------------------------------------- */
+  /* Handle CSV upload / parse                                         */
+  /* ---------------------------------------------------------------- */
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -49,9 +135,8 @@ export const AdminSongsImportCard: React.FC = () => {
       const content = await file.text();
       setCsvContent(content);
 
-      // Parse preview
-      const { data, error } = await supabase.functions.invoke('import-songs', {
-        body: { csvContent: content, action: 'parse' }
+      const { data, error } = await supabase.functions.invoke("import-songs", {
+        body: { csvContent: content, action: "parse" },
       });
 
       if (error) throw error;
@@ -59,17 +144,20 @@ export const AdminSongsImportCard: React.FC = () => {
       setResult(data);
       toast.success(`File analizzato: ${data.count} canzoni trovate`);
     } catch (error: any) {
-      console.error('Parse error:', error);
-      toast.error('Errore nella lettura del file');
+      console.error("Parse error:", error);
+      toast.error("Errore nella lettura del file");
       setResult({ success: false, errors: 1, errorDetails: [error.message] });
     } finally {
       setIsParsing(false);
     }
   };
 
+  /* ---------------------------------------------------------------- */
+  /* Handle import                                                      */
+  /* ---------------------------------------------------------------- */
   const handleImport = async () => {
     if (!csvContent) {
-      toast.error('Nessun file selezionato');
+      toast.error("Nessun file selezionato");
       return;
     }
 
@@ -78,9 +166,9 @@ export const AdminSongsImportCard: React.FC = () => {
 
     try {
       setProgress(30);
-      
-      const { data, error } = await supabase.functions.invoke('import-songs', {
-        body: { csvContent, action: 'import' }
+
+      const { data, error } = await supabase.functions.invoke("import-songs", {
+        body: { csvContent, action: "import" },
       });
 
       setProgress(90);
@@ -97,8 +185,8 @@ export const AdminSongsImportCard: React.FC = () => {
         toast.warning(`${data.errors} canzoni con errori`);
       }
     } catch (error: any) {
-      console.error('Import error:', error);
-      toast.error('Errore durante l\'importazione');
+      console.error("Import error:", error);
+      toast.error("Errore durante l'importazione");
       setResult({ success: false, errors: 1, errorDetails: [error.message] });
     } finally {
       setIsImporting(false);
@@ -110,9 +198,7 @@ export const AdminSongsImportCard: React.FC = () => {
     setFileName(null);
     setResult(null);
     setProgress(0);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   return (
@@ -125,47 +211,40 @@ export const AdminSongsImportCard: React.FC = () => {
           <div>
             <CardTitle className="text-lg">Importa Canzoni da CSV</CardTitle>
             <CardDescription className="text-xs">
-              Formato: "Titolo – Artista" nella prima colonna, testo nella seconda
+              Formato: "Titolo,Artista,Testo" (Google Sheets o Lovable)
             </CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* File Input */}
-        <div className="flex flex-col gap-3">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".csv"
-            onChange={handleFileSelect}
-            className="hidden"
-            id="csv-upload"
-          />
-          
-          {!fileName ? (
-            <label
-              htmlFor="csv-upload"
-              className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:border-primary/50 transition-colors"
-            >
-              <FileText className="w-8 h-8 text-muted-foreground mb-2" />
-              <span className="text-sm text-muted-foreground">
-                Clicca per selezionare un file CSV
-              </span>
-            </label>
-          ) : (
-            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-              <div className="flex items-center gap-2">
-                <FileText className="w-5 h-5 text-primary" />
-                <span className="text-sm font-medium">{fileName}</span>
-              </div>
-              <Button variant="ghost" size="sm" onClick={resetImport}>
-                Cambia
-              </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv"
+          onChange={handleFileSelect}
+          className="hidden"
+          id="csv-upload"
+        />
+        {!fileName ? (
+          <label
+            htmlFor="csv-upload"
+            className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:border-primary/50 transition-colors"
+          >
+            <FileText className="w-8 h-8 text-muted-foreground mb-2" />
+            <span className="text-sm text-muted-foreground">Clicca per selezionare un file CSV</span>
+          </label>
+        ) : (
+          <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+            <div className="flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              <span className="text-sm font-medium">{fileName}</span>
             </div>
-          )}
-        </div>
+            <Button variant="ghost" size="sm" onClick={resetImport}>
+              Cambia
+            </Button>
+          </div>
+        )}
 
-        {/* Parsing indicator */}
         {isParsing && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <RefreshCw className="w-4 h-4 animate-spin" />
@@ -173,51 +252,43 @@ export const AdminSongsImportCard: React.FC = () => {
           </div>
         )}
 
-        {/* Preview result */}
         {result?.preview && !result.imported && (
           <div className="space-y-3">
             <p className="text-sm font-medium text-primary">
               ✓ {result.uniqueCount ?? result.count} canzoni uniche pronte per l'importazione
             </p>
-            
-            {/* Duplicates warning */}
+
             {result.duplicatesCount && result.duplicatesCount > 0 && (
-              <div 
+              <div
                 className="flex items-center justify-between p-3 bg-accent/10 border border-accent/30 rounded-lg cursor-pointer hover:bg-accent/20 transition-colors"
                 onClick={() => setShowDuplicatesDialog(true)}
               >
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 text-accent" />
-                  <span className="text-sm">
-                    {result.duplicatesCount} duplicati trovati nel CSV
-                  </span>
+                  <span className="text-sm">{result.duplicatesCount} duplicati trovati nel CSV</span>
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  Clicca per vedere →
-                </span>
+                <span className="text-xs text-muted-foreground">Clicca per vedere →</span>
               </div>
             )}
 
             <div className="text-xs text-muted-foreground space-y-1">
               <p>Anteprima:</p>
               {result.preview.map((song, i) => (
-                <p key={i} className="pl-2">• {song.titolo} – {song.artista}</p>
+                <p key={i} className="pl-2">
+                  • {song.titolo} – {song.artista}
+                </p>
               ))}
             </div>
           </div>
         )}
 
-        {/* Progress bar */}
         {isImporting && (
           <div className="space-y-2">
             <Progress value={progress} className="h-2" />
-            <p className="text-xs text-muted-foreground text-center">
-              Importazione in corso... {progress}%
-            </p>
+            <p className="text-xs text-muted-foreground text-center">Importazione in corso... {progress}%</p>
           </div>
         )}
 
-        {/* Import result */}
         {result?.imported !== undefined && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
@@ -228,13 +299,12 @@ export const AdminSongsImportCard: React.FC = () => {
               )}
               <span className="text-sm font-medium">
                 {result.imported} canzoni importate
-                {result.errors ? `, ${result.errors} errori` : ''}
+                {result.errors ? `, ${result.errors} errori` : ""}
               </span>
             </div>
-            
-            {/* Duplicates info after import */}
+
             {result.duplicatesCount && result.duplicatesCount > 0 && (
-              <div 
+              <div
                 className="flex items-center justify-between p-3 bg-muted/50 border rounded-lg cursor-pointer hover:bg-muted transition-colors"
                 onClick={() => setShowDuplicatesDialog(true)}
               >
@@ -244,12 +314,10 @@ export const AdminSongsImportCard: React.FC = () => {
                     {result.duplicatesCount} duplicati nel CSV (saltati)
                   </span>
                 </div>
-                <span className="text-xs text-muted-foreground">
-                  Vedi lista →
-                </span>
+                <span className="text-xs text-muted-foreground">Vedi lista →</span>
               </div>
             )}
-            
+
             {result.errorDetails && result.errorDetails.length > 0 && (
               <div className="text-xs text-destructive bg-destructive/10 p-2 rounded">
                 {result.errorDetails.slice(0, 3).map((err, i) => (
@@ -260,13 +328,8 @@ export const AdminSongsImportCard: React.FC = () => {
           </div>
         )}
 
-        {/* Import button */}
         {csvContent && result?.uniqueCount && !result.imported && (
-          <Button 
-            onClick={handleImport} 
-            disabled={isImporting}
-            className="w-full neon-button-pink"
-          >
+          <Button onClick={handleImport} disabled={isImporting} className="w-full neon-button-pink">
             {isImporting ? (
               <>
                 <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
@@ -281,7 +344,6 @@ export const AdminSongsImportCard: React.FC = () => {
           </Button>
         )}
 
-        {/* Reset after import */}
         {result?.imported !== undefined && (
           <Button variant="outline" onClick={resetImport} className="w-full">
             Nuovo Import
@@ -289,7 +351,6 @@ export const AdminSongsImportCard: React.FC = () => {
         )}
       </CardContent>
 
-      {/* Duplicates Dialog */}
       <ImportDuplicatesDialog
         open={showDuplicatesDialog}
         onOpenChange={setShowDuplicatesDialog}
