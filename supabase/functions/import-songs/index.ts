@@ -25,13 +25,13 @@ interface SongData {
 function normalize(input: string): string {
   return (input ?? "")
     .toString()
-    .replace(/\u00A0/g, " ")
-    .replace(/\s+/g, " ")
+    .replace(/\u00A0/g, " ") // spazi non breaking
+    .replace(/\s+/g, " ") // più spazi consecutivi → 1
     .trim();
 }
 
 function normalizeLyrics(input: string): string {
-  let text = (input ?? "")
+  return (input ?? "")
     .toString()
     .replace(/\u00A0/g, " ")
     .replace(/\r\n/g, "\n")
@@ -39,23 +39,17 @@ function normalizeLyrics(input: string): string {
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  // Rimuove virgolette iniziali/finali se presenti
-  if (text.startsWith('"') && text.endsWith('"')) {
-    text = text.slice(1, -1);
-  }
-  return text;
 }
 
 function generateSlug(titolo: string, artista: string): string {
-  return `${normalize(titolo)}-${normalize(artista)}`
-    .normalize("NFKD")
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .toLowerCase();
+  return `${titolo.trim().toLowerCase()}-${artista.trim().toLowerCase()}`
+    .normalize("NFKD") // rimuove accenti
+    .replace(/[^\w\s-]/g, "") // rimuove simboli
+    .replace(/\s+/g, "-"); // spazi → trattini
 }
 
 /* ------------------------------------------------------------------ */
-/*  CSV Parsing robusto (supporto multilinea tra virgolette)         */
+/*  CSV Parser universale (gestisce virgolette e multilinea)          */
 /* ------------------------------------------------------------------ */
 function parseCsv(csv: string): string[][] {
   const rows: string[][] = [];
@@ -68,9 +62,11 @@ function parseCsv(csv: string): string[][] {
 
     if (inQuotes) {
       if (c === '"' && csv[i + 1] === '"') {
+        // doppia virgolette → escape
         field += '"';
         i++;
       } else if (c === '"') {
+        // chiusura virgolette
         inQuotes = false;
       } else {
         field += c;
@@ -83,7 +79,8 @@ function parseCsv(csv: string): string[][] {
       continue;
     }
 
-    if (c === ",") {
+    if (c === "," || c === ";") {
+      // supporta sia CSV Google (,) sia Lovable (;)
       row.push(field);
       field = "";
       continue;
@@ -118,12 +115,16 @@ function parseSongs(csv: string): SongData[] {
   if (!rows.length) return [];
 
   const songs: SongData[] = [];
-  const dataRows = rows.slice(1); // Salta header
+  const dataRows = rows.slice(1); // salta header
 
   for (const row of dataRows) {
-    const titolo = normalize(row[0] ?? "");
-    const artista = normalize(row[1] ?? "");
-    const testo = normalizeLyrics(row[2] ?? "");
+    const titoloRaw = row[0] ?? "";
+    const artistaRaw = row[1] ?? "";
+    const testoRaw = row[2] ?? "";
+
+    const titolo = normalize(titoloRaw.replace(/^"(.*)"$/, "$1")); // rimuove virgolette residue
+    const artista = normalize(artistaRaw.replace(/^"(.*)"$/, "$1"));
+    const testo = normalizeLyrics(testoRaw.replace(/^"(.*)"$/, "$1"));
 
     if (!titolo || !artista) continue;
 
