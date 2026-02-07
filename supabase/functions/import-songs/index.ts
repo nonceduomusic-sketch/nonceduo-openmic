@@ -31,7 +31,7 @@ function normalize(input: string): string {
 }
 
 function normalizeLyrics(input: string): string {
-  return (input ?? "")
+  let text = (input ?? "")
     .toString()
     .replace(/\u00A0/g, " ")
     .replace(/\r\n/g, "\n")
@@ -39,6 +39,11 @@ function normalizeLyrics(input: string): string {
     .replace(/[ \t]+/g, " ")
     .replace(/\n{3,}/g, "\n\n")
     .trim();
+  // Rimuove virgolette iniziali/finali se presenti
+  if (text.startsWith('"') && text.endsWith('"')) {
+    text = text.slice(1, -1);
+  }
+  return text;
 }
 
 function generateSlug(titolo: string, artista: string): string {
@@ -50,7 +55,7 @@ function generateSlug(titolo: string, artista: string): string {
 }
 
 /* ------------------------------------------------------------------ */
-/*  CSV Parsing robusto (virgolette + newline multilinea)            */
+/*  CSV Parsing robusto (supporto multilinea tra virgolette)         */
 /* ------------------------------------------------------------------ */
 function parseCsv(csv: string): string[][] {
   const rows: string[][] = [];
@@ -113,9 +118,7 @@ function parseSongs(csv: string): SongData[] {
   if (!rows.length) return [];
 
   const songs: SongData[] = [];
-
-  // Salta header
-  const dataRows = rows.slice(1);
+  const dataRows = rows.slice(1); // Salta header
 
   for (const row of dataRows) {
     const titolo = normalize(row[0] ?? "");
