@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { Mic2, Settings } from 'lucide-react';
-import { songs, Song } from '@/data/songs';
+import { Song } from '@/data/songs';
+import { useSongsCatalog } from '@/hooks/useSongsCatalog';
 import { SongCardWithStatus } from '@/components/SongCardWithStatus';
 import { SearchBar } from '@/components/SearchBar';
-import { ArtistFilter } from '@/components/ArtistFilter';
+import { ArtistFilterDynamic } from '@/components/ArtistFilterDynamic';
 import { BookingConfirmationModal } from '@/components/BookingConfirmationModal';
 import { Link } from 'react-router-dom';
 import { useStaffRole } from '@/hooks/useStaffRole';
@@ -16,6 +17,9 @@ const Index: React.FC = () => {
   const [search, setSearch] = useState('');
   const [artistFilter, setArtistFilter] = useState('all');
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
+  
+  // Load songs from database
+  const { songs, loading } = useSongsCatalog();
 
   const handleBookSong = (song: Song) => {
     if (isSongBooked(song.title, song.artist)) {
@@ -25,8 +29,13 @@ const Index: React.FC = () => {
   };
 
   const filteredSongs = useMemo(() => {
+    const searchLower = search.toLowerCase().trim();
+    
     return songs.filter((song) => {
-      const searchLower = search.toLowerCase();
+      if (!searchLower) {
+        return artistFilter === 'all' || song.artist === artistFilter;
+      }
+      
       const matchesSearch =
         song.title.toLowerCase().includes(searchLower) ||
         song.artist.toLowerCase().includes(searchLower);
@@ -36,7 +45,7 @@ const Index: React.FC = () => {
 
       return matchesSearch && matchesArtist;
     });
-  }, [search, artistFilter]);
+  }, [songs, search, artistFilter]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -73,7 +82,7 @@ const Index: React.FC = () => {
           {/* Search & Filter */}
           <div className="space-y-3">
             <SearchBar value={search} onChange={setSearch} />
-            <ArtistFilter value={artistFilter} onChange={setArtistFilter} />
+            <ArtistFilterDynamic value={artistFilter} onChange={setArtistFilter} songs={songs} />
           </div>
 
         </div>

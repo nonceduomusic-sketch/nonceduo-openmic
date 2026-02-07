@@ -1,9 +1,10 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mic2, Music, Eye, Lock, Search, ChevronLeft, Sparkles, Calendar, FileText, MessageCircle } from 'lucide-react';
-import { songs, Song } from '@/data/songs';
+import { Song } from '@/data/songs';
+import { useSongsCatalog } from '@/hooks/useSongsCatalog';
 import { SearchBar } from '@/components/SearchBar';
-import { ArtistFilter } from '@/components/ArtistFilter';
+import { ArtistFilterDynamic } from '@/components/ArtistFilterDynamic';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
@@ -66,8 +67,11 @@ export const ConsultableOpenMic: React.FC<ConsultableOpenMicProps> = ({
   const [artistFilter, setArtistFilter] = useState('all');
   const navigate = useNavigate();
   
+  // Load songs from database
+  const { songs, loading: songsLoading } = useSongsCatalog();
+  
   // Handler per aprire i testi direttamente
-  const handleLyrics = useCallback(async (song: Song) => {
+  const handleLyrics = useCallback(async (song: { title: string; artist: string }) => {
     if (!protectRepertoire) {
       await openLyrics(song.title, song.artist, navigate);
     }
@@ -85,13 +89,18 @@ export const ConsultableOpenMic: React.FC<ConsultableOpenMicProps> = ({
       return Math.ceil(songs.length * (limitValue / 100));
     }
     return limitValue;
-  }, [limitType, limitValue]);
+  }, [limitType, limitValue, songs.length]);
 
   const isLimited = maxSongsToShow < songs.length;
 
   const filteredSongs = useMemo(() => {
+    const searchLower = search.toLowerCase().trim();
+    
     let result = songs.filter((song) => {
-      const searchLower = search.toLowerCase();
+      if (!searchLower) {
+        return artistFilter === 'all' || song.artist === artistFilter;
+      }
+      
       const matchesSearch =
         song.title.toLowerCase().includes(searchLower) ||
         song.artist.toLowerCase().includes(searchLower);
@@ -103,14 +112,14 @@ export const ConsultableOpenMic: React.FC<ConsultableOpenMicProps> = ({
     });
 
     // Apply limit only when not searching
-    if (!search && !artistFilter || artistFilter === 'all') {
+    if (!search && artistFilter === 'all') {
       if (isLimited && result.length > maxSongsToShow) {
         result = result.slice(0, maxSongsToShow);
       }
     }
 
     return result;
-  }, [search, artistFilter, maxSongsToShow, isLimited]);
+  }, [songs, search, artistFilter, maxSongsToShow, isLimited]);
 
 
   // Show teaser message when songs are limited and no search active
@@ -174,7 +183,7 @@ export const ConsultableOpenMic: React.FC<ConsultableOpenMicProps> = ({
           {/* Search & Filter */}
           <div className="space-y-3">
             <SearchBar value={search} onChange={setSearch} />
-            <ArtistFilter value={artistFilter} onChange={setArtistFilter} />
+            <ArtistFilterDynamic value={artistFilter} onChange={setArtistFilter} songs={songs} />
           </div>
         </div>
       </header>
