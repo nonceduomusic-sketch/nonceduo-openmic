@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import Papa from "https://esm.sh/papaparse@5.4.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -13,51 +14,41 @@ serve(async (req) => {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { csvContent, action } = await req.json();
-    if (!csvContent) throw new Error("File vuoto");
+    if (!csvContent) throw new Error("Contenuto CSV mancante");
 
-    // Dividiamo il file riga per riga in modo brutale
-    const lines = csvContent.split(/\r?\n/);
+    // PAPA PARSE: La soluzione definitiva per CSV complessi
+    const parseResult = Papa.parse(csvContent, {
+      header: false, // Leggiamo come array per gestire meglio i nomi colonne variabili
+      skipEmptyLines: true,
+      relaxQuotes: true, // Gestisce meglio virgolette sporche
+    });
+
+    const rows = parseResult.data as string[][];
     const songs = [];
 
-    let currentSong = null;
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
 
-    for (let line of lines) {
-      const trimmedLine = line.trim();
-      if (!trimmedLine) continue;
+      // Pulizia dei campi
+      const titolo = (row[0] || "").trim();
+      const artista = (row[1] || "").trim();
+      const testo = (row[2] || "").trim();
 
-      // Cerchiamo di capire se questa riga è l'inizio di una nuova canzone
-      // Formato atteso: "Titolo";"Artista";"Inizio testo...
-      // Oppure: Titolo;Artista;Testo
-      const parts = line.split(";");
+      // Salta l'intestazione (se la prima riga contiene "Titolo")
+      if (i === 0 && titolo.toLowerCase().includes("titolo")) continue;
 
-      // Se la riga ha almeno 2 punti e virgola, probabilmente è un nuovo inizio
-      if (parts.length >= 3 && parts[0].length > 0 && parts[0].length < 100) {
-        // Se avevamo una canzone in sospeso, salviamola
-        if (currentSong) songs.push(currentSong);
+      if (titolo && artista) {
+        // Generiamo uno slug pulito ma unico
+        const slug = `${titolo}-${artista}`
+          .toLowerCase()
+          .normalize("NFKD")
+          .replace(/[^\w\s-]/g, "")
+          .replace(/\s+/g, "-")
+          .trim();
 
-        const titolo = parts[0].replace(/"/g, "").trim();
-        const artista = parts[1].replace(/"/g, "").trim();
-
-        // Salto l'intestazione
-        if (titolo.toLowerCase() === "titolo") {
-          currentSong = null;
-          continue;
-        }
-
-        currentSong = {
-          titolo,
-          artista,
-          testo: parts.slice(2).join(";").replace(/^"|"/g, "").trim(),
-          slug: `${titolo}-${artista}-${Math.floor(Math.random() * 1000)}`.toLowerCase().replace(/[^\w]/g, "-"),
-        };
-      } else if (currentSong) {
-        // Se non è un nuovo inizio, è il seguito del testo della canzone precedente
-        currentSong.testo += "\n" + line.replace(/"/g, "").trim();
+        songs.push({ titolo, artista, testo, slug });
       }
     }
-
-    // Aggiungi l'ultima canzone rimasta nel ciclo
-    if (currentSong) songs.push(currentSong);
 
     if (action === "parse") {
       return new Response(
@@ -65,14 +56,19 @@ serve(async (req) => {
           success: true,
           count: songs.length,
           preview: songs.slice(0, 3),
+          detectedDelimiter: parseResult.meta.delimiter, // Ci dice cosa ha trovato (, o ;)
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
     if (action === "import") {
-      const { error } = await supabase.from("songs").upsert(songs);
+      if (songs.length === 0) throw new Error("Nessuna canzone valida trovata");
+
+      // Usiamo upsert per aggiornare se esiste già o inserire se nuova
+      const { error } = await supabase.from("songs").upsert(songs, { onConflict: "slug" });
       if (error) throw error;
+
       return new Response(JSON.stringify({ success: true, imported: songs.length }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
