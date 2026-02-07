@@ -50,58 +50,74 @@ function generateSlug(titolo: string, artista: string): string {
 
 /* ------------------------------------------------------------------ */
 /*  CSV Parser universale (gestisce virgolette e multilinea)          */
+/*  Supporta: Google Sheets (,) e altri formati (;)                   */
+/*  Gestisce correttamente campi multilinea tra virgolette            */
 /* ------------------------------------------------------------------ */
 function parseCsv(csv: string): string[][] {
   const rows: string[][] = [];
   let row: string[] = [];
   let field = "";
   let inQuotes = false;
+  
+  // Normalizza line endings
+  const normalizedCsv = csv.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 
-  for (let i = 0; i < csv.length; i++) {
-    const c = csv[i];
+  for (let i = 0; i < normalizedCsv.length; i++) {
+    const c = normalizedCsv[i];
 
     if (inQuotes) {
-      if (c === '"' && csv[i + 1] === '"') {
-        // doppia virgolette → escape
-        field += '"';
-        i++;
-      } else if (c === '"') {
-        // chiusura virgolette
-        inQuotes = false;
+      if (c === '"') {
+        // Check for escaped quote ("") or end of quoted field
+        if (normalizedCsv[i + 1] === '"') {
+          // Escaped quote - add single quote and skip next
+          field += '"';
+          i++;
+        } else {
+          // End of quoted field
+          inQuotes = false;
+        }
       } else {
+        // Any character inside quotes (including newlines) is part of the field
         field += c;
       }
       continue;
     }
 
+    // Not inside quotes
     if (c === '"') {
+      // Start of quoted field (only valid at start of field or after delimiter)
       inQuotes = true;
       continue;
     }
 
     if (c === "," || c === ";") {
-      // supporta sia CSV Google (,) sia Lovable (;)
+      // Field delimiter - supporta sia CSV Google (,) sia altri (;)
       row.push(field);
       field = "";
       continue;
     }
 
     if (c === "\n") {
+      // End of row
       row.push(field);
       field = "";
-      rows.push([...row]);
+      if (row.length > 0 && row.some(f => f.trim())) {
+        rows.push([...row]);
+      }
       row = [];
       continue;
     }
 
-    if (c === "\r") continue;
-
+    // Regular character
     field += c;
   }
 
+  // Handle last field/row if file doesn't end with newline
   if (field.length || row.length) {
     row.push(field);
-    rows.push([...row]);
+    if (row.length > 0 && row.some(f => f.trim())) {
+      rows.push([...row]);
+    }
   }
 
   return rows;
@@ -109,23 +125,37 @@ function parseCsv(csv: string): string[][] {
 
 /* ------------------------------------------------------------------ */
 /*  Parse CSV → SongData                                               */
+/*  Deduplica basata su titolo + artista (normalizzati)               */
 /* ------------------------------------------------------------------ */
 function parseSongs(csv: string): SongData[] {
   const rows = parseCsv(csv);
   if (!rows.length) return [];
 
   const songs: SongData[] = [];
-  const dataRows = rows.slice(1); // salta header
+  
+  // Rileva se prima riga è header (contiene "titolo" o "artista")
+  const firstRow = rows[0];
+  const isHeader = firstRow.some(cell => 
+    cell.toLowerCase().includes('titolo') || 
+    cell.toLowerCase().includes('artista') ||
+    cell.toLowerCase().includes('testo')
+  );
+  
+  const dataRows = isHeader ? rows.slice(1) : rows;
 
   for (const row of dataRows) {
+    // Skip empty rows
+    if (!row.length || row.every(cell => !cell.trim())) continue;
+    
     const titoloRaw = row[0] ?? "";
     const artistaRaw = row[1] ?? "";
     const testoRaw = row[2] ?? "";
 
-    const titolo = normalize(titoloRaw.replace(/^"(.*)"$/, "$1")); // rimuove virgolette residue
-    const artista = normalize(artistaRaw.replace(/^"(.*)"$/, "$1"));
-    const testo = normalizeLyrics(testoRaw.replace(/^"(.*)"$/, "$1"));
+    const titolo = normalize(titoloRaw);
+    const artista = normalize(artistaRaw);
+    const testo = normalizeLyrics(testoRaw);
 
+    // Skip if missing title or artist
     if (!titolo || !artista) continue;
 
     const slug = generateSlug(titolo, artista);
