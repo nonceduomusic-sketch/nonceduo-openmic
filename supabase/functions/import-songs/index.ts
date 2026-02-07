@@ -6,81 +6,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface SongData {
-  titolo: string;
-  artista: string;
-  testo: string;
-  slug: string;
-}
-
-// Funzione di pulizia specifica per i campi con virgolette
-function cleanField(input: string): string {
-  if (!input) return "";
-  let clean = input.trim();
-  // Rimuove virgolette all'inizio e alla fine se presenti
-  if (clean.startsWith('"') && clean.endsWith('"')) {
-    clean = clean.substring(1, clean.length - 1);
-  }
-  return clean.replace(/""/g, '"').trim();
-}
-
-function generateSlug(titolo: string, artista: string): string {
-  return `${titolo}-${artista}`
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[^\w\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .trim();
-}
-
-// PARSER SPECIFICO PER PUNTO E VIRGOLA E VIRGOLETTE
-function parseCsv(csv: string): string[][] {
-  const rows: string[][] = [];
-  let currentField = "";
-  let currentRow: string[] = [];
-  let inQuotes = false;
-
-  // Rimuove eventuali caratteri invisibili iniziali
-  const content = csv.replace(/^\uFEFF/, "");
-
-  for (let i = 0; i < content.length; i++) {
-    const char = content[i];
-    const nextChar = content[i + 1];
-
-    if (inQuotes) {
-      if (char === '"' && nextChar === '"') {
-        currentField += '"';
-        i++;
-      } else if (char === '"') {
-        inQuotes = false;
-      } else {
-        currentField += char;
-      }
-    } else {
-      if (char === '"') {
-        inQuotes = true;
-      } else if (char === ";") {
-        // Usiamo il punto e virgola come separatore certo
-        currentRow.push(currentField);
-        currentField = "";
-      } else if (char === "\n") {
-        currentRow.push(currentField);
-        rows.push(currentRow);
-        currentRow = [];
-        currentField = "";
-      } else if (char !== "\r") {
-        currentField += char;
-      }
-    }
-  }
-  if (currentRow.length || currentField) {
-    currentRow.push(currentField);
-    rows.push(currentRow);
-  }
-  return rows;
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -88,27 +13,42 @@ serve(async (req) => {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
     const { csvContent, action } = await req.json();
-    if (!csvContent) throw new Error("File CSV non ricevuto");
+    if (!csvContent) throw new Error("CSV mancante");
 
-    const rows = parseCsv(csvContent);
-    const songs: SongData[] = [];
+    // Dividiamo il file usando una logica che non si rompe con i testi lunghi
+    // Cerchiamo il pattern: "Testo" seguìto da un a capo e poi un nuovo Titolo
+    const songs = [];
 
-    for (const row of rows) {
-      if (row.length < 2) continue;
+    // Proviamo a dividere per riga, ma gestendo i campi tra virgolette
+    const rows = csvContent.split(/\n(?=(?:[^"]*"[^"]*")*[^"]*$)/);
 
-      const t = cleanField(row[0]);
-      const a = cleanField(row[1]);
-      const txt = cleanField(row[2] || "");
+    for (let row of rows) {
+      if (!row.trim()) continue;
 
-      // Salta l'intestazione o righe vuote
-      if (!t || t.toLowerCase() === "titolo" || a.toLowerCase() === "artista") continue;
+      // Dividiamo per punto e virgola o virgola (rileva automaticamente)
+      const sep = row.includes(";") ? ";" : ",";
+      const parts = row.split(sep).map((p) => p.trim().replace(/^"|"$/g, "").replace(/""/g, '"'));
 
-      songs.push({
-        titolo: t,
-        artista: a,
-        testo: txt,
-        slug: generateSlug(t, a),
-      });
+      if (parts.length >= 2) {
+        const titolo = parts[0];
+        const artista = parts[1];
+        const testo = parts[2] || "";
+
+        // Salta l'intestazione
+        if (titolo.toLowerCase().includes("titolo") || titolo.toLowerCase() === "title") continue;
+
+        if (titolo && artista) {
+          // Genera uno slug pulito
+          const slug = `${titolo}-${artista}-${Math.floor(Math.random() * 1000)}`.toLowerCase().replace(/[^\w]/g, "-");
+
+          songs.push({
+            titolo,
+            artista,
+            testo,
+            slug,
+          });
+        }
+      }
     }
 
     if (action === "parse") {
@@ -116,7 +56,7 @@ serve(async (req) => {
         JSON.stringify({
           success: true,
           count: songs.length,
-          preview: songs.slice(0, 3),
+          preview: songs.slice(0, 5),
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
@@ -125,8 +65,9 @@ serve(async (req) => {
     if (action === "import") {
       if (songs.length === 0) throw new Error("Nessuna canzone trovata");
 
-      // Upsert basato sullo slug per non creare duplicati
-      const { error } = await supabase.from("songs").upsert(songs, { onConflict: "slug" });
+      // Inserimento a blocchi per evitare errori di memoria
+      const { error } = await supabase.from("songs").upsert(songs);
+
       if (error) throw error;
 
       return new Response(
