@@ -17,6 +17,10 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
+      // We register the PWA service worker manually in src/main.tsx so we can
+      // disable it inside the native (Capacitor) app to avoid "black screen"
+      // issues caused by stale SW caches.
+      injectRegister: null,
       registerType: "autoUpdate",
       includeAssets: ["favicon.ico", "og-home.jpg", "og-openmic.jpg", "og-partyband.jpg"],
       manifest: {
