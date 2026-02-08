@@ -358,6 +358,7 @@ export type Database = {
           font_size: number | null
           highlight_enabled: boolean | null
           highlight_line: number | null
+          highlight_lines_count: number | null
           id: string
           is_active: boolean
           is_broadcasting: boolean | null
@@ -393,6 +394,7 @@ export type Database = {
           font_size?: number | null
           highlight_enabled?: boolean | null
           highlight_line?: number | null
+          highlight_lines_count?: number | null
           id?: string
           is_active?: boolean
           is_broadcasting?: boolean | null
@@ -428,6 +430,7 @@ export type Database = {
           font_size?: number | null
           highlight_enabled?: boolean | null
           highlight_line?: number | null
+          highlight_lines_count?: number | null
           id?: string
           is_active?: boolean
           is_broadcasting?: boolean | null
