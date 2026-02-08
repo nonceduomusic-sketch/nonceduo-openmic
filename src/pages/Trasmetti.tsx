@@ -231,6 +231,25 @@ export default function Trasmetti() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
+  // SCREEN STREAM MODE - Redirect to ScreenStream URL directly
+  // This avoids Mixed Content issues (HTTPS page loading HTTP iframe)
+  // Only redirect if we're on a local network (HTTP) or user explicitly wants it
+  useEffect(() => {
+    if (isScreenStreamActive && screenStreamUrl) {
+      // Check if we're already on the ScreenStream URL
+      if (window.location.href.includes(screenStreamUrl.replace('http://', '').replace('https://', ''))) {
+        return;
+      }
+      // Check if current page is HTTP (local network)
+      const isHttpPage = window.location.protocol === 'http:';
+      if (isHttpPage) {
+        // Safe to redirect on HTTP
+        window.location.href = screenStreamUrl;
+      }
+      // On HTTPS, we'll show an overlay instead (handled in render)
+    }
+  }, [isScreenStreamActive, screenStreamUrl]);
+
   const getPosition = (elementId: string): React.CSSProperties => {
     const pos = tvSettings.positions[elementId] || DEFAULT_POSITIONS[elementId] || { x: 50, y: 50 };
     return {
@@ -249,16 +268,36 @@ export default function Trasmetti() {
     );
   }
 
-  // SCREEN STREAM MODE - Show iframe with ScreenStream URL
+  // SCREEN STREAM MODE - Show redirect message when on HTTPS
   if (isScreenStreamActive && screenStreamUrl) {
+    const isHttps = window.location.protocol === 'https:';
+    if (isHttps) {
+      return (
+        <div className="min-h-screen bg-black flex items-center justify-center p-8">
+          <div className="text-center space-y-6 max-w-lg">
+            <div className="w-20 h-20 mx-auto bg-primary/20 rounded-full flex items-center justify-center">
+              <Maximize className="w-10 h-10 text-primary" />
+            </div>
+            <h1 className="text-3xl font-bold text-white">ScreenStream Attivo</h1>
+            <p className="text-white/70 text-lg">
+              Per visualizzare lo stream, apri questo URL sulla TV:
+            </p>
+            <div className="bg-white/10 rounded-xl p-4">
+              <code className="text-xl text-primary font-mono break-all">
+                {screenStreamUrl}
+              </code>
+            </div>
+            <p className="text-white/50 text-sm">
+              Oppure apri <code className="text-primary">http://</code> (non https) su questa pagina per il redirect automatico
+            </p>
+          </div>
+        </div>
+      );
+    }
+    // On HTTP, we already redirected via useEffect
     return (
-      <div className="min-h-screen bg-black w-full h-screen">
-        <iframe
-          src={screenStreamUrl}
-          className="w-full h-full border-0"
-          allow="autoplay; fullscreen"
-          title="ScreenStream"
-        />
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="animate-pulse text-white/50">Reindirizzamento a ScreenStream...</div>
       </div>
     );
   }
