@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.7d19d02bb5ef46b99b90a42c481f8441',
+  appId: 'app.nonceduo.openmic',
   appName: 'NonceDuo OpenMic',
   webDir: 'dist',
   server: {
