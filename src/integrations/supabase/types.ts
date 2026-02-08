@@ -377,6 +377,12 @@ export type Database = {
           remote_scroll_enabled: boolean | null
           sala_code: string
           sala_name: string
+          screen_share_active: boolean | null
+          screen_share_answer: Json | null
+          screen_share_ice_candidates: Json | null
+          screen_share_offer: Json | null
+          screen_share_started_at: string | null
+          screen_share_stopped_reason: string | null
           scroll_position: number | null
           scroll_speed: number | null
           text_align: string | null
@@ -413,6 +419,12 @@ export type Database = {
           remote_scroll_enabled?: boolean | null
           sala_code?: string
           sala_name?: string
+          screen_share_active?: boolean | null
+          screen_share_answer?: Json | null
+          screen_share_ice_candidates?: Json | null
+          screen_share_offer?: Json | null
+          screen_share_started_at?: string | null
+          screen_share_stopped_reason?: string | null
           scroll_position?: number | null
           scroll_speed?: number | null
           text_align?: string | null
@@ -449,6 +461,12 @@ export type Database = {
           remote_scroll_enabled?: boolean | null
           sala_code?: string
           sala_name?: string
+          screen_share_active?: boolean | null
+          screen_share_answer?: Json | null
+          screen_share_ice_candidates?: Json | null
+          screen_share_offer?: Json | null
+          screen_share_started_at?: string | null
+          screen_share_stopped_reason?: string | null
           scroll_position?: number | null
           scroll_speed?: number | null
           text_align?: string | null

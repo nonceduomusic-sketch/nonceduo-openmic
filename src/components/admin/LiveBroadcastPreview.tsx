@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
 import brandLogoText from '@/assets/brand-logo-text.png';
 import QRCode from 'qrcode';
+import { ScreenShareButton } from './ScreenShareButton';
  
  interface Song {
    id: string;
@@ -541,14 +542,17 @@ import QRCode from 'qrcode';
                       </div>
                     </div>
                  {renderLyricsPreview()}
-                 {/* Controls */}
-                 <div className="p-3 bg-muted/50 rounded-xl">
-                   <div className="flex flex-wrap items-center justify-center gap-2">
-                     {isBroadcasting ? (
-                       <Button variant="destructive" size="sm" onClick={handleStopBroadcast} disabled={!canManage} className="h-10"><Square className="w-4 h-4 mr-1" />Ferma</Button>
-                     ) : (
-                       <Button size="sm" onClick={handleStartBroadcast} disabled={!canManage} className="h-10 bg-green-600 hover:bg-green-700"><Radio className="w-4 h-4 mr-1" />Avvia</Button>
-                     )}
+                  {/* Controls */}
+                  <div className="p-3 bg-muted/50 rounded-xl">
+                    <div className="flex flex-wrap items-center justify-center gap-2">
+                      {isBroadcasting ? (
+                        <Button variant="destructive" size="sm" onClick={handleStopBroadcast} disabled={!canManage} className="h-10"><Square className="w-4 h-4 mr-1" />Ferma</Button>
+                      ) : (
+                        <Button size="sm" onClick={handleStartBroadcast} disabled={!canManage} className="h-10 bg-primary hover:bg-primary/90"><Radio className="w-4 h-4 mr-1" />Avvia</Button>
+                      )}
+                      
+                      {/* Screen Share Button - accanto ad Avvia */}
+                      <ScreenShareButton salaCode="main" disabled={!canManage} />
                      <div className="flex items-center gap-1 bg-background rounded-lg p-1">
                        <Button variant="ghost" size="icon" onClick={() => handleLineChange('up')} disabled={!canManage || localHighlightLine === 0} className="h-9 w-9"><ChevronUp className="w-5 h-5" /></Button>
                        <span className="px-2 min-w-[50px] text-center font-medium text-sm">{localHighlightLine + 1}/{lines.length}</span>
