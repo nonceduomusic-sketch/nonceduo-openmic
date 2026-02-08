@@ -12,6 +12,11 @@ export interface AssistantSettings {
   proactive_delay_seconds: number;
   welcome_message: string;
   updated_at: string;
+  // Welcome message visibility per section
+  welcome_on_site: boolean;
+  welcome_on_openmic: boolean;
+  welcome_on_dediche: boolean;
+  welcome_on_community: boolean;
   // Telegram notifications
   telegram_enabled: boolean;
   telegram_chat_id: string;

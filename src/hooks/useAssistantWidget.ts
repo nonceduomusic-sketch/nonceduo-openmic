@@ -11,6 +11,11 @@ export interface AssistantSettings {
   enabled_on_community: boolean;
   proactive_delay_seconds: number;
   welcome_message: string;
+  // Welcome message visibility per section
+  welcome_on_site: boolean;
+  welcome_on_openmic: boolean;
+  welcome_on_dediche: boolean;
+  welcome_on_community: boolean;
 }
 
 export interface AssistantMessage {
@@ -207,9 +212,27 @@ export function useAssistantWidget(currentSection: Section = 'site') {
     }
   }, [settings, currentSection]);
 
-  // Proactive opening
+  // Check if welcome message should be shown for current section
+  const shouldShowWelcome = useCallback(() => {
+    if (!settings) return false;
+
+    switch (currentSection) {
+      case 'site':
+        return settings.welcome_on_site ?? true;
+      case 'openmic':
+        return settings.welcome_on_openmic ?? true;
+      case 'dediche':
+        return settings.welcome_on_dediche ?? true;
+      case 'community':
+        return settings.welcome_on_community ?? true;
+      default:
+        return true;
+    }
+  }, [settings, currentSection]);
+
+  // Proactive opening - only if welcome message is enabled for this section
   useEffect(() => {
-    if (!isEnabled() || isOpen) return;
+    if (!isEnabled() || isOpen || !shouldShowWelcome()) return;
 
     const delay = settings?.proactive_delay_seconds || 5;
     const timer = setTimeout(() => {
@@ -220,7 +243,7 @@ export function useAssistantWidget(currentSection: Section = 'site') {
     }, delay * 1000);
 
     return () => clearTimeout(timer);
-  }, [settings, isEnabled, isOpen]);
+  }, [settings, isEnabled, isOpen, shouldShowWelcome]);
 
   // Create or get conversation
   const getOrCreateConversation = useCallback(async (
@@ -380,6 +403,7 @@ export function useAssistantWidget(currentSection: Section = 'site') {
     isEnabled: isEnabled(),
     isOpen,
     showProactive,
+    showWelcomeMessage: shouldShowWelcome(),
     conversationId,
     messages,
     messagesLoading,
