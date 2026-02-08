@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useBroadcast } from '@/hooks/useBroadcast';
+import { useScrollPositionPublisher } from '@/hooks/useScrollPositionPublisher';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   ChevronUp, ChevronDown, Play, Pause, RotateCcw, ZoomIn, ZoomOut, Square, 
@@ -59,6 +60,17 @@ import QRCode from 'qrcode';
   const [remoteScrollEnabled, setRemoteScrollEnabled] = useState(true);
   const lyricsRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+
+  const { onScroll: onAdminLyricsScroll } = useScrollPositionPublisher({
+    enabled: !!canManage && remoteScrollEnabled,
+    publish: (ratio) => updateSession({ scroll_position: ratio } as any),
+  });
+
+  const handleLyricsScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
+    // In modalità evidenziazione usiamo highlight_line; in modalità "foglio" (highlight OFF) pubblichiamo lo scroll.
+    if (highlightEnabled) return;
+    onAdminLyricsScroll(e.currentTarget);
+  }, [highlightEnabled, onAdminLyricsScroll]);
  
    const tvSettings = useMemo(() => ({
      title: (session as any)?.tv_title || 'Open Mic',
@@ -166,6 +178,8 @@ import QRCode from 'qrcode';
  
   // Scroll within container only (no page scroll)
   useEffect(() => {
+    if (!highlightEnabled) return;
+
     if (lyricsRef.current && lines.length > 0) {
       const container = lyricsRef.current;
       const lineElement = container.querySelector(`[data-line="${localHighlightLine}"]`) as HTMLElement;
@@ -178,7 +192,7 @@ import QRCode from 'qrcode';
         container.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
       }
     }
-  }, [localHighlightLine, lines.length]);
+  }, [localHighlightLine, lines.length, highlightEnabled]);
  
    const handleLineChange = useCallback(async (direction: 'up' | 'down') => {
      if (!canManage) return;
@@ -307,7 +321,12 @@ import QRCode from 'qrcode';
              )}
            </div>
          </div>
-          <div ref={lyricsRef} className="relative z-10 px-3 overflow-y-auto" style={{ height: lyricsHeight }}>
+          <div
+            ref={lyricsRef}
+            onScroll={handleLyricsScroll}
+            className="relative z-10 px-3 overflow-y-auto"
+            style={{ height: lyricsHeight }}
+          >
             {viewMode === 'spotify' ? (
                <div className="bg-black/30 backdrop-blur-sm rounded-xl p-4 space-y-2 text-center">
                  {lines.map((line, index) => {
@@ -388,10 +407,34 @@ import QRCode from 'qrcode';
                <CardDescription className="text-xs md:text-sm">{isBroadcasting ? 'In onda sulla TV' : 'Anteprima'}</CardDescription>
              </div>
            </div>
-           <div className="flex items-center gap-2">
-             <Button variant="outline" size="sm" onClick={openTVPage} className="h-9"><ExternalLink className="w-4 h-4 mr-1" /><span className="hidden sm:inline">Apri</span> TV</Button>
-             <Button variant="outline" size="sm" onClick={() => setIsExpanded(!isExpanded)} className="h-9">{isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}</Button>
-           </div>
+            <div className="flex items-center gap-2 flex-wrap justify-end">
+              <div
+                className={cn(
+                  "flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-colors",
+                  remoteScrollEnabled ? "border-green-500/50 bg-green-500/10" : "border-yellow-500/50 bg-yellow-500/10",
+                )}
+              >
+                <Hand className={cn("w-4 h-4", remoteScrollEnabled ? "text-green-600" : "text-yellow-600")} />
+                <Label className="text-xs font-medium cursor-pointer" htmlFor="remote-scroll-toggle">
+                  Scroll
+                </Label>
+                <Switch
+                  id="remote-scroll-toggle"
+                  checked={remoteScrollEnabled}
+                  onCheckedChange={handleToggleRemoteScroll}
+                  disabled={!canManage}
+                  className="data-[state=checked]:bg-green-500"
+                />
+              </div>
+
+              <Button variant="outline" size="sm" onClick={openTVPage} className="h-9">
+                <ExternalLink className="w-4 h-4 mr-1" />
+                <span className="hidden sm:inline">Apri</span> TV
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setIsExpanded(!isExpanded)} className="h-9">
+                {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+              </Button>
+            </div>
          </div>
        </CardHeader>
        <CardContent className="px-3 md:px-6 space-y-4">
@@ -428,25 +471,6 @@ import QRCode from 'qrcode';
                        <Highlighter className="w-4 h-4 mr-2" />
                        Evidenziazione {highlightEnabled ? 'ON' : 'OFF'}
                      </Button>
-                     {/* REMOTE SCROLL TOGGLE - Always visible, critical for live use */}
-                     <div className={cn(
-                       "flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-colors",
-                       remoteScrollEnabled 
-                         ? "border-green-500/50 bg-green-500/10" 
-                         : "border-yellow-500/50 bg-yellow-500/10"
-                     )}>
-                       <Hand className={cn("w-4 h-4", remoteScrollEnabled ? "text-green-600" : "text-yellow-600")} />
-                       <Label className="text-xs font-medium cursor-pointer" htmlFor="remote-scroll-toggle">
-                         Scroll Telecomando
-                       </Label>
-                       <Switch
-                         id="remote-scroll-toggle"
-                         checked={remoteScrollEnabled}
-                         onCheckedChange={handleToggleRemoteScroll}
-                         disabled={!canManage}
-                         className="data-[state=checked]:bg-green-500"
-                       />
-                     </div>
                    </div>
                  {renderLyricsPreview()}
                  {/* Controls */}
