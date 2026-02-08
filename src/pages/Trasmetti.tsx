@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useBroadcast } from '@/hooks/useBroadcast';
+import { useScreenShareViewer } from '@/hooks/useScreenShare';
 import { supabase } from '@/integrations/supabase/client';
 import { Maximize, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { scrollElementToRatio } from '@/lib/scrollRatio';
 import QRCode from 'qrcode';
 import brandLogoText from '@/assets/brand-logo-text.png';
+import { ScreenShareViewer } from '@/components/broadcast/ScreenShareViewer';
 
 interface Song {
   id: string;
@@ -66,6 +68,12 @@ export default function Trasmetti() {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [highlightLine, setHighlightLine] = useState(0);
+  
+  // Screen share viewer hook
+  const { remoteStream, isConnecting: screenShareConnecting, isActive: screenShareActive } = useScreenShareViewer({ salaCode });
+  
+  // Check if screen share is active from database
+  const isScreenShareActive = (session as any)?.screen_share_active ?? false;
   
   // View mode from database (admin controlled)
   const viewMode: LyricsViewMode = ((session as any)?.tv_view_mode as LyricsViewMode) || 'karaoke';
@@ -234,6 +242,16 @@ export default function Trasmetti() {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="animate-pulse text-white/50">Caricamento...</div>
       </div>
+    );
+  }
+
+  // SCREEN SHARE MODE - Priority display when active
+  if (isScreenShareActive) {
+    return (
+      <ScreenShareViewer 
+        stream={remoteStream} 
+        isConnecting={screenShareConnecting} 
+      />
     );
   }
 

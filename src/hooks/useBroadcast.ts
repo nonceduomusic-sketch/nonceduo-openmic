@@ -22,6 +22,13 @@ export interface BroadcastSession {
   font_size: number; // Font size percentage (50-150)
   text_align: 'left' | 'center' | 'right'; // Text alignment
   remote_scroll_enabled: boolean; // When false, remote can only use buttons, no scroll sync
+  // Screen share fields (JSON types to match DB)
+  screen_share_active: boolean;
+  screen_share_offer: Record<string, unknown> | null;
+  screen_share_answer: Record<string, unknown> | null;
+  screen_share_ice_candidates: Record<string, unknown>[];
+  screen_share_started_at: string | null;
+  screen_share_stopped_reason: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -104,7 +111,7 @@ export function useBroadcast(salaCode: string = 'main') {
   const updateSession = useCallback(async (updates: Partial<BroadcastSession>) => {
     const { error } = await supabase
       .from('broadcast_sessions')
-      .update(updates)
+      .update(updates as any)
       .eq('sala_code', salaCode);
 
     if (error) {
