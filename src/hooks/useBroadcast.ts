@@ -18,6 +18,7 @@ export interface BroadcastSession {
   tv_view_mode: 'compact' | 'karaoke' | 'spotify';
   is_broadcasting: boolean;
   highlight_enabled: boolean; // When true, active line is highlighted; when false, all text visible
+  highlight_lines_count: number; // Number of lines to highlight (1, 2, or 3)
   font_size: number; // Font size percentage (50-150)
   text_align: 'left' | 'center' | 'right'; // Text alignment
   remote_scroll_enabled: boolean; // When false, remote can only use buttons, no scroll sync

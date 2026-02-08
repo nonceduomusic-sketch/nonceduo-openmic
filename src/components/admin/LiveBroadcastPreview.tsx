@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { 
   ChevronUp, ChevronDown, Play, Pause, RotateCcw, ZoomIn, ZoomOut, Square, 
   Mic, ExternalLink, Maximize, Monitor, Minimize2, Radio, Eye, QrCode, Highlighter,
-  AlignLeft, AlignCenter, AlignRight, Hand
+  AlignLeft, AlignCenter, AlignRight, Hand, Rows3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -56,6 +57,7 @@ import QRCode from 'qrcode';
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [isExpanded, setIsExpanded] = useState(false);
   const [highlightEnabled, setHighlightEnabled] = useState(true);
+  const [highlightLinesCount, setHighlightLinesCount] = useState<number>(1);
   const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center');
   const [remoteScrollEnabled, setRemoteScrollEnabled] = useState(true);
   const lyricsRef = useRef<HTMLDivElement>(null);
@@ -123,6 +125,14 @@ import QRCode from 'qrcode';
       setHighlightEnabled(sessionHighlight);
     }
   }, [(session as any)?.highlight_enabled]);
+
+  // Sync highlightLinesCount from session
+  useEffect(() => {
+    const sessionLinesCount = (session as any)?.highlight_lines_count;
+    if (sessionLinesCount !== undefined && sessionLinesCount !== null) {
+      setHighlightLinesCount(sessionLinesCount);
+    }
+  }, [(session as any)?.highlight_lines_count]);
 
   // Sync fontSize from session
   useEffect(() => {
@@ -248,6 +258,16 @@ import QRCode from 'qrcode';
     toast.success(newValue ? 'Evidenziazione attivata' : 'Evidenziazione disattivata');
   }, [highlightEnabled, updateSession]);
 
+  // Handle highlight lines count change
+  const handleHighlightLinesCountChange = useCallback(async (value: string) => {
+    const count = parseInt(value, 10);
+    if (count >= 1 && count <= 3) {
+      setHighlightLinesCount(count);
+      await updateSession({ highlight_lines_count: count } as any);
+      toast.success(`Righe evidenziate: ${count}`);
+    }
+  }, [updateSession]);
+
   // Font size change synced to DB
   const handleFontSizeChange = useCallback(async (delta: number) => {
     const newSize = Math.max(50, Math.min(150, fontSize + delta));
@@ -330,18 +350,24 @@ import QRCode from 'qrcode';
             {viewMode === 'spotify' ? (
                <div className="bg-black/30 backdrop-blur-sm rounded-xl p-4 space-y-2 text-center">
                  {lines.map((line, index) => {
-                   const isHighlighted = localHighlightLine === index;
+                   const isMainHighlight = localHighlightLine === index;
+                   const distanceFromMain = index - localHighlightLine;
+                   const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
                    const isPast = index < localHighlightLine;
-                   const distance = Math.abs(index - localHighlightLine);
                    // When highlight is OFF, show all lines fully visible
-                   const opacity = highlightEnabled 
-                     ? (isHighlighted ? 1 : isPast ? 0.35 : distance === 1 ? 0.85 : distance === 2 ? 0.65 : 0.45)
-                     : 1;
+                   let opacity = 1;
+                   if (highlightEnabled) {
+                     if (isMainHighlight) opacity = 1;
+                     else if (isInHighlightRange) opacity = 0.85 - (distanceFromMain * 0.1);
+                     else if (isPast) opacity = 0.35;
+                     else opacity = 0.45;
+                   }
                    return (
                      <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn(
                        "font-sans leading-loose transition-all duration-300 cursor-pointer py-2 px-4 -mx-1 rounded-lg text-white",
-                       highlightEnabled && isHighlighted && "bg-yellow-400/40 ring-2 ring-yellow-400/60 font-bold shadow-lg scale-[1.02]", 
-                       !isHighlighted && "hover:bg-white/10"
+                       highlightEnabled && isMainHighlight && "bg-yellow-400/40 ring-2 ring-yellow-400/60 font-bold shadow-lg scale-[1.02]",
+                       highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-yellow-400/20 ring-1 ring-yellow-400/40",
+                       !isInHighlightRange && "hover:bg-white/10"
                      )} style={{ fontSize: `${Math.max(14, 16 * fontSize / 100)}px`, opacity }}>{line || '\u00A0'}</p>
                    );
                  })}
@@ -349,22 +375,34 @@ import QRCode from 'qrcode';
              ) : viewMode === 'karaoke' ? (
                <div className="text-center space-y-2 py-4">
                  {lines.map((line, index) => {
-                   const isHighlighted = localHighlightLine === index;
+                   const isMainHighlight = localHighlightLine === index;
+                   const distanceFromMain = index - localHighlightLine;
+                   const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
                    const isPast = index < localHighlightLine;
                    const dist = Math.abs(index - localHighlightLine);
                    // When highlight is OFF, show all lines fully visible
-                   const opacity = highlightEnabled 
-                     ? (isHighlighted ? 1 : isPast ? 0.3 : dist === 1 ? 0.8 : dist === 2 ? 0.6 : dist === 3 ? 0.45 : 0.3)
-                     : 1;
+                   let opacity = 1;
+                   if (highlightEnabled) {
+                     if (isMainHighlight) opacity = 1;
+                     else if (isInHighlightRange) opacity = 0.9 - (distanceFromMain * 0.1);
+                     else if (isPast) opacity = 0.3;
+                     else if (dist <= highlightLinesCount + 1) opacity = 0.6;
+                     else opacity = 0.3;
+                   }
                    const baseFontSize = Math.max(14, 16 * fontSize / 100);
                    return (
                      <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn(
                        "font-bold transition-all duration-500 cursor-pointer text-white py-2",
-                       highlightEnabled && isHighlighted && "text-primary scale-110 bg-primary/20 rounded-lg px-4 shadow-lg"
+                       highlightEnabled && isMainHighlight && "text-primary scale-110 bg-primary/20 rounded-lg px-4 shadow-lg",
+                       highlightEnabled && isInHighlightRange && !isMainHighlight && "text-primary/80 scale-105 bg-primary/10 rounded-lg px-3"
                      )} style={{ 
-                       fontSize: (highlightEnabled && isHighlighted) ? `${baseFontSize * 1.4}px` : `${baseFontSize}px`, 
+                       fontSize: (highlightEnabled && isMainHighlight) ? `${baseFontSize * 1.4}px` 
+                         : (highlightEnabled && isInHighlightRange) ? `${baseFontSize * 1.2}px`
+                         : `${baseFontSize}px`, 
                        opacity, 
-                       textShadow: (highlightEnabled && isHighlighted) ? '0 0 40px hsl(var(--primary) / 0.6)' : 'none' 
+                       textShadow: (highlightEnabled && isMainHighlight) ? '0 0 40px hsl(var(--primary) / 0.6)' 
+                         : (highlightEnabled && isInHighlightRange && !isMainHighlight) ? '0 0 25px hsl(var(--primary) / 0.4)'
+                         : 'none' 
                      }}>{line || '\u00A0'}</p>
                    );
                  })}
@@ -373,16 +411,22 @@ import QRCode from 'qrcode';
                /* COMPACT MODE - No line numbers, centered, larger font, continuous text */
                <div className="text-center space-y-1 py-4">
                  {lines.map((line, index) => {
-                   const isHighlighted = localHighlightLine === index;
+                   const isMainHighlight = localHighlightLine === index;
+                   const distanceFromMain = index - localHighlightLine;
+                   const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
                    // When highlight is OFF, show all lines fully visible as continuous text
-                   const opacity = highlightEnabled 
-                     ? (isHighlighted ? 1 : 0.5)
-                     : 1;
+                   let opacity = 1;
+                   if (highlightEnabled) {
+                     if (isMainHighlight) opacity = 1;
+                     else if (isInHighlightRange) opacity = 0.9 - (distanceFromMain * 0.1);
+                     else opacity = 0.5;
+                   }
                    return (
                      <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn(
                        "transition-all duration-300 cursor-pointer px-4 py-2 rounded-lg leading-relaxed",
-                       highlightEnabled && isHighlighted && "bg-primary text-primary-foreground font-bold shadow-md ring-2 ring-primary/50", 
-                       !isHighlighted && "hover:bg-muted"
+                       highlightEnabled && isMainHighlight && "bg-primary text-primary-foreground font-bold shadow-md ring-2 ring-primary/50",
+                       highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-primary/70 text-primary-foreground ring-1 ring-primary/30",
+                       !isInHighlightRange && "hover:bg-muted"
                      )} style={{ fontSize: `${Math.max(14, 16 * fontSize / 100)}px`, opacity }}>{line || '\u00A0'}</p>
                    );
                  })}
@@ -455,23 +499,47 @@ import QRCode from 'qrcode';
                          <Button key={mode} variant={viewMode === mode ? 'default' : 'outline'} size="sm" onClick={() => handleViewModeChange(mode)} className="h-8 text-xs capitalize">{mode === 'compact' ? 'Compatta' : mode === 'karaoke' ? 'Karaoke' : 'Spotify'}</Button>
                        ))}
                      </div>
-                     {/* HIGHLIGHT TOGGLE - Always visible, critical for live use */}
-                     <Button
-                       variant={highlightEnabled ? 'default' : 'outline'}
-                       size="sm"
-                       onClick={handleToggleHighlight}
-                       disabled={!canManage}
-                       className={cn(
-                         "h-10 min-w-[130px] font-medium transition-all",
-                         highlightEnabled 
-                           ? "bg-yellow-500 hover:bg-yellow-600 text-yellow-950" 
-                           : "border-dashed"
-                       )}
-                     >
-                       <Highlighter className="w-4 h-4 mr-2" />
-                       Evidenziazione {highlightEnabled ? 'ON' : 'OFF'}
-                     </Button>
-                   </div>
+                      {/* HIGHLIGHT TOGGLE + LINES COUNT SELECTOR - Always visible, critical for live use */}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant={highlightEnabled ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={handleToggleHighlight}
+                          disabled={!canManage}
+                          className={cn(
+                            "h-10 min-w-[130px] font-medium transition-all",
+                            highlightEnabled 
+                              ? "bg-yellow-500 hover:bg-yellow-600 text-yellow-950" 
+                              : "border-dashed"
+                          )}
+                        >
+                          <Highlighter className="w-4 h-4 mr-2" />
+                          Evidenziazione {highlightEnabled ? 'ON' : 'OFF'}
+                        </Button>
+                        
+                        {/* Multi-line highlight selector - only visible when highlight is ON */}
+                        {highlightEnabled && (
+                          <div className="flex items-center gap-2 px-3 py-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                            <Rows3 className="w-4 h-4 text-yellow-600" />
+                            <Label className="text-xs font-medium text-yellow-700">Righe:</Label>
+                            <Select
+                              value={String(highlightLinesCount)}
+                              onValueChange={handleHighlightLinesCountChange}
+                              disabled={!canManage}
+                            >
+                              <SelectTrigger className="w-14 h-8 text-sm font-bold border-yellow-500/50 bg-yellow-500/20">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="1">1</SelectItem>
+                                <SelectItem value="2">2</SelectItem>
+                                <SelectItem value="3">3</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                  {renderLyricsPreview()}
                  {/* Controls */}
                  <div className="p-3 bg-muted/50 rounded-xl">

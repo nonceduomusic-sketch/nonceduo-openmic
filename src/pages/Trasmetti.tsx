@@ -73,6 +73,9 @@ export default function Trasmetti() {
   // Highlight enabled from database (admin controlled)
   const highlightEnabled = (session as any)?.highlight_enabled ?? true;
   
+  // Number of lines to highlight (1, 2, or 3)
+  const highlightLinesCount = (session as any)?.highlight_lines_count ?? 1;
+  
   // Is broadcasting? (admin controls when to show lyrics vs waiting screen)
   const isBroadcasting = (session as any)?.is_broadcasting ?? false;
   
@@ -292,13 +295,20 @@ export default function Trasmetti() {
               tvSettings.textAlign === 'right' && 'text-right'
             )}>
               {lines.map((line, index) => {
-                const isHighlighted = highlightLine === index;
+                const isMainHighlight = highlightLine === index;
+                // Check if this line is within the highlight range (next lines after the current one)
+                const distanceFromMain = index - highlightLine;
+                const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
                 const isPast = index < highlightLine;
                 
                 // When highlight is OFF, all lines fully visible
-                const opacity = highlightEnabled 
-                  ? (isHighlighted ? 1 : isPast ? 0.4 : 0.7)
-                  : 1;
+                let opacity = 1;
+                if (highlightEnabled) {
+                  if (isMainHighlight) opacity = 1;
+                  else if (isInHighlightRange) opacity = 0.85 - (distanceFromMain * 0.1); // Secondary lines slightly dimmer
+                  else if (isPast) opacity = 0.4;
+                  else opacity = 0.7;
+                }
                 
                 const baseFontSize = Math.max(14, 24 * tvSettings.fontSize / 100);
                 
@@ -308,7 +318,8 @@ export default function Trasmetti() {
                     data-line={index}
                     className={cn(
                       "font-sans leading-loose transition-all duration-300 py-3 px-6 -mx-4 rounded-xl",
-                      highlightEnabled && isHighlighted && "bg-yellow-400/30 ring-2 ring-yellow-400/50 scale-[1.02] font-bold"
+                      highlightEnabled && isMainHighlight && "bg-yellow-400/30 ring-2 ring-yellow-400/50 scale-[1.02] font-bold",
+                      highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-yellow-400/15 ring-1 ring-yellow-400/30"
                     )}
                     style={{ opacity, fontSize: `${baseFontSize}px` }}
                   >
@@ -390,23 +401,29 @@ export default function Trasmetti() {
               tvSettings.textAlign === 'right' && 'text-right'
             )}>
               {lines.map((line, index) => {
-                const isHighlighted = highlightLine === index;
+                const isMainHighlight = highlightLine === index;
+                // Check if this line is within the highlight range
+                const distanceFromMain = index - highlightLine;
+                const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
                 const isPast = index < highlightLine;
                 const distanceFromHighlight = Math.abs(index - highlightLine);
                 
                 // When highlight is OFF, all lines fully visible
                 let opacity = 1;
                 if (highlightEnabled) {
-                  if (isPast) opacity = 0.3;
-                  else if (distanceFromHighlight === 1) opacity = 0.7;
-                  else if (distanceFromHighlight === 2) opacity = 0.5;
-                  else if (distanceFromHighlight > 2) opacity = 0.35;
+                  if (isMainHighlight) opacity = 1;
+                  else if (isInHighlightRange) opacity = 0.9 - (distanceFromMain * 0.1);
+                  else if (isPast) opacity = 0.3;
+                  else if (distanceFromHighlight === highlightLinesCount) opacity = 0.7;
+                  else if (distanceFromHighlight === highlightLinesCount + 1) opacity = 0.5;
+                  else opacity = 0.35;
                 }
                 
                 // Font size from settings
                 const baseFontSize = Math.max(18, 32 * tvSettings.fontSize / 100);
                 const highlightedFontSize = baseFontSize * 1.4;
                 const nearFontSize = baseFontSize * 1.15;
+                const secondaryHighlightFontSize = baseFontSize * 1.25;
 
                 return (
                   <p
@@ -415,19 +432,25 @@ export default function Trasmetti() {
                     className={cn(
                       "font-bold leading-relaxed transition-all duration-700 ease-out",
                       "font-sans tracking-wide",
-                      highlightEnabled && isHighlighted && "text-primary scale-105"
+                      highlightEnabled && isMainHighlight && "text-primary scale-105",
+                      highlightEnabled && isInHighlightRange && !isMainHighlight && "text-primary/80"
                     )}
                     style={{
                       opacity,
-                      fontSize: (highlightEnabled && isHighlighted) 
+                      fontSize: (highlightEnabled && isMainHighlight) 
                         ? `${highlightedFontSize}px` 
-                        : (highlightEnabled && distanceFromHighlight <= 1)
-                          ? `${nearFontSize}px`
-                          : `${baseFontSize}px`,
-                      textShadow: (highlightEnabled && isHighlighted)
+                        : (highlightEnabled && isInHighlightRange && !isMainHighlight)
+                          ? `${secondaryHighlightFontSize}px`
+                          : (highlightEnabled && distanceFromHighlight <= highlightLinesCount)
+                            ? `${nearFontSize}px`
+                            : `${baseFontSize}px`,
+                      textShadow: (highlightEnabled && isMainHighlight)
                         ? '0 0 60px hsl(var(--primary) / 0.6), 0 0 120px hsl(var(--primary) / 0.3)'
-                        : 'none',
-                      transform: (highlightEnabled && isHighlighted) ? 'scale(1.05)' : 'scale(1)',
+                        : (highlightEnabled && isInHighlightRange && !isMainHighlight)
+                          ? '0 0 40px hsl(var(--primary) / 0.4)'
+                          : 'none',
+                      transform: (highlightEnabled && isMainHighlight) ? 'scale(1.05)' : 
+                                 (highlightEnabled && isInHighlightRange && !isMainHighlight) ? 'scale(1.02)' : 'scale(1)',
                     }}
                   >
                     {line || '\u00A0'}
@@ -499,12 +522,18 @@ export default function Trasmetti() {
             tvSettings.textAlign === 'right' && 'text-right'
           )}>
             {lines.map((line, index) => {
-              const isHighlighted = highlightLine === index;
+              const isMainHighlight = highlightLine === index;
+              // Check if this line is within the highlight range
+              const distanceFromMain = index - highlightLine;
+              const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
               
               // When highlight is OFF, show as continuous block
-              const opacity = highlightEnabled 
-                ? (isHighlighted ? 1 : 0.5)
-                : 1;
+              let opacity = 1;
+              if (highlightEnabled) {
+                if (isMainHighlight) opacity = 1;
+                else if (isInHighlightRange) opacity = 0.9 - (distanceFromMain * 0.1);
+                else opacity = 0.5;
+              }
               
               const baseFontSize = Math.max(16, 24 * tvSettings.fontSize / 100);
               
@@ -514,7 +543,8 @@ export default function Trasmetti() {
                   data-line={index}
                   className={cn(
                     "leading-relaxed transition-all duration-300 px-6 py-3 rounded-xl",
-                    highlightEnabled && isHighlighted && "bg-primary/20 text-primary font-bold ring-2 ring-primary/30"
+                    highlightEnabled && isMainHighlight && "bg-primary/20 text-primary font-bold ring-2 ring-primary/30",
+                    highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-primary/10 text-primary/80 ring-1 ring-primary/20"
                   )}
                   style={{ opacity, fontSize: `${baseFontSize}px` }}
                 >
