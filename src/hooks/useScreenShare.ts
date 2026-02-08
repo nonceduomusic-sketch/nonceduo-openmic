@@ -40,11 +40,20 @@ export function useScreenShareBroadcaster({ salaCode, onStreamStart, onStreamEnd
   useEffect(() => {
     const checkNativeAvailability = async () => {
       try {
+        // On native platforms, the plugin might not be registered
+        if (Capacitor.isNativePlatform()) {
+          // For now, native screen capture is not implemented
+          // The plugin needs to be properly integrated into the Android build
+          console.log('Native platform detected - screen capture plugin not yet integrated');
+          setState(prev => ({ ...prev, isNativeAvailable: false }));
+          return;
+        }
         const result = await ScreenCapture.isAvailable();
         setState(prev => ({ ...prev, isNativeAvailable: result.available }));
         console.log('Screen capture availability:', result);
       } catch (e) {
         console.log('Screen capture plugin not available:', e);
+        setState(prev => ({ ...prev, isNativeAvailable: false }));
       }
     };
     checkNativeAvailability();
@@ -108,36 +117,12 @@ export function useScreenShareBroadcaster({ salaCode, onStreamStart, onStreamEnd
       const isNative = Capacitor.isNativePlatform();
 
       if (isNative) {
-        // Use native plugin for Android/iOS
-        console.log('Using native screen capture plugin');
-        const result = await ScreenCapture.startCapture();
-        if (!result.success) {
-          throw new Error(result.message || 'Native screen capture failed');
-        }
-        // Note: Native plugin handles the actual capture - we just signal it's active
-        // For WebRTC streaming, we'd need additional native code to pipe frames
-        // For now, we just mark it as active in DB for the TV to show a placeholder
-        
-        // Update database state to indicate native capture is active
-        await supabase
-          .from('broadcast_sessions')
-          .update({
-            screen_share_active: true,
-            screen_share_started_at: new Date().toISOString(),
-            screen_share_stopped_reason: null,
-          } as any)
-          .eq('sala_code', salaCode);
-
-        setState(prev => ({
-          ...prev,
-          isSharing: true,
-          isConnecting: false,
-          countdown: null,
-        }));
-
-        onStreamStart?.();
-        toast.success('Screen share nativo avviato!');
-        return;
+        // Native screen capture is not yet fully integrated
+        // The plugin exists but needs to be registered in the Android build
+        throw new Error(
+          'Screen sharing non è ancora disponibile nell\'app nativa. ' +
+          'Per usare questa funzione, apri l\'admin da un browser desktop.'
+        );
       }
 
       // Web fallback - check platform compatibility
