@@ -12,6 +12,8 @@ const config: CapacitorConfig = {
   android: {
     // Allow mixed content for WebRTC
     allowMixedContent: true,
+    // Force cleartext traffic for development
+    useLegacyBridge: false,
   },
   plugins: {
     // Screen capture plugin configuration
