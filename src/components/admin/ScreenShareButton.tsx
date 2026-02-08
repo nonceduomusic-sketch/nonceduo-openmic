@@ -163,8 +163,9 @@ export function ScreenShareButton({
 
             <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
               <p>
-                <strong>Nota:</strong> Funziona meglio su tablet Android con Chrome.
-                Le funzioni testi Lovable restano disponibili.
+                <strong>⚠️ Importante:</strong> Funziona su tablet/desktop con Chrome o Edge.
+                Se hai installato l'app, <strong>devi aprire il sito dal browser</strong> 
+                (non dall'icona dell'app) per usare questa funzione.
               </p>
             </div>
           </div>
