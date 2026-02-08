@@ -29,6 +29,9 @@ export interface BroadcastSession {
   screen_share_ice_candidates: Record<string, unknown>[];
   screen_share_started_at: string | null;
   screen_share_stopped_reason: string | null;
+  // ScreenStream fields (external app streaming)
+  screen_stream_active: boolean;
+  screen_stream_url: string | null;
   created_at: string;
   updated_at: string;
 }
