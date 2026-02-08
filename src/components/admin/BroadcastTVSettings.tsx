@@ -183,8 +183,8 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
     }
   };
 
-  const handleReset = () => {
-    setSettings({
+  const handleReset = async () => {
+    const defaultSettings: TVSettings = {
       tv_title: 'Open Mic',
       tv_subtitle: 'NonceDuo Live Experience',
       tv_footer: 'Powered by NonceDuo',
@@ -198,9 +198,40 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
       tv_show_footer: true,
       tv_show_status: true,
       tv_element_positions: DEFAULT_POSITIONS,
-    });
-    setHasChanges(true);
-    toast.success('Impostazioni resettate');
+    };
+    
+    setSettings(defaultSettings);
+    setIsSaving(true);
+    
+    try {
+      const success = await updateSession({
+        tv_title: defaultSettings.tv_title,
+        tv_subtitle: defaultSettings.tv_subtitle,
+        tv_footer: defaultSettings.tv_footer,
+        tv_qr_url: null,
+        tv_logo_url: null,
+        tv_qr_cta: defaultSettings.tv_qr_cta,
+        tv_show_qr: defaultSettings.tv_show_qr,
+        tv_show_logo: defaultSettings.tv_show_logo,
+        tv_show_title: defaultSettings.tv_show_title,
+        tv_show_subtitle: defaultSettings.tv_show_subtitle,
+        tv_show_footer: defaultSettings.tv_show_footer,
+        tv_show_status: defaultSettings.tv_show_status,
+        tv_element_positions: defaultSettings.tv_element_positions,
+      } as any);
+      
+      if (success) {
+        setHasChanges(false);
+        toast.success('Impostazioni ripristinate ai valori predefiniti!');
+      } else {
+        toast.error('Errore nel ripristino');
+      }
+    } catch (err) {
+      console.error('Reset error:', err);
+      toast.error('Errore nel ripristino');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Draggable preview state
