@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
-import { ScreenCapture } from '@/plugins/screen-capture';
 
 interface ScreenShareState {
   isSharing: boolean;
@@ -36,27 +35,17 @@ export function useScreenShareBroadcaster({ salaCode, onStreamStart, onStreamEnd
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Check if native screen capture is available
+  // Check if screen sharing is available in this runtime
   useEffect(() => {
-    const checkNativeAvailability = async () => {
-      try {
-        // On native platforms, the plugin might not be registered
-        if (Capacitor.isNativePlatform()) {
-          // For now, native screen capture is not implemented
-          // The plugin needs to be properly integrated into the Android build
-          console.log('Native platform detected - screen capture plugin not yet integrated');
-          setState(prev => ({ ...prev, isNativeAvailable: false }));
-          return;
-        }
-        const result = await ScreenCapture.isAvailable();
-        setState(prev => ({ ...prev, isNativeAvailable: result.available }));
-        console.log('Screen capture availability:', result);
-      } catch (e) {
-        console.log('Screen capture plugin not available:', e);
-        setState(prev => ({ ...prev, isNativeAvailable: false }));
-      }
-    };
-    checkNativeAvailability();
+    // Screen sharing is supported only on desktop browsers (getDisplayMedia).
+    // On native (Android/iOS) we disable it to avoid calling an unregistered Capacitor plugin.
+    const isNative = Capacitor.isNativePlatform();
+    const hasDisplayMedia = !!navigator.mediaDevices?.getDisplayMedia;
+
+    setState(prev => ({
+      ...prev,
+      isNativeAvailable: !isNative && hasDisplayMedia,
+    }));
   }, []);
 
   // Cleanup function
@@ -78,14 +67,6 @@ export function useScreenShareBroadcaster({ salaCode, onStreamStart, onStreamEnd
       mediaStreamRef.current.getTracks().forEach(track => track.stop());
       mediaStreamRef.current = null;
     }
-
-    // Stop native capture if running
-    try {
-      await ScreenCapture.stopCapture();
-    } catch (e) {
-      // Plugin might not be available
-    }
-
     // Update database state
     await supabase
       .from('broadcast_sessions')
