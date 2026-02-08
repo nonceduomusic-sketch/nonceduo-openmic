@@ -69,6 +69,9 @@ export default function Trasmetti() {
   // View mode from database (admin controlled)
   const viewMode: LyricsViewMode = ((session as any)?.tv_view_mode as LyricsViewMode) || 'karaoke';
   
+  // Highlight enabled from database (admin controlled)
+  const highlightEnabled = (session as any)?.highlight_enabled ?? true;
+  
   // Is broadcasting? (admin controls when to show lyrics vs waiting screen)
   const isBroadcasting = (session as any)?.is_broadcasting ?? false;
   
@@ -127,9 +130,9 @@ export default function Trasmetti() {
     }
   }, [session?.highlight_line]);
 
-  // Scroll highlighted line into view
+  // Scroll highlighted line into view (only when highlight is enabled)
   useEffect(() => {
-    if (lyricsRef.current && lines.length > 0) {
+    if (lyricsRef.current && lines.length > 0 && highlightEnabled) {
       const lineElements = lyricsRef.current.querySelectorAll('[data-line]');
       const highlightedLine = lineElements[highlightLine];
       if (highlightedLine) {
@@ -139,7 +142,7 @@ export default function Trasmetti() {
         });
       }
     }
-  }, [highlightLine, lines.length]);
+  }, [highlightLine, lines.length, highlightEnabled]);
 
   // Generate QR code
   useEffect(() => {
@@ -261,21 +264,26 @@ export default function Trasmetti() {
             className="relative z-10 flex-1 px-4 md:px-8 py-4 overflow-y-auto"
             style={{ maxHeight: 'calc(100vh - 180px)' }}
           >
-            <div className="max-w-3xl mx-auto bg-black/30 backdrop-blur-sm rounded-2xl p-6 md:p-10 shadow-2xl space-y-4 md:space-y-5">
+            <div className="max-w-4xl mx-auto bg-black/30 backdrop-blur-sm rounded-2xl p-8 md:p-12 shadow-2xl space-y-4 md:space-y-6 text-center">
               {lines.map((line, index) => {
                 const isHighlighted = highlightLine === index;
                 const isPast = index < highlightLine;
+                
+                // When highlight is OFF, all lines fully visible
+                const opacity = highlightEnabled 
+                  ? (isHighlighted ? 1 : isPast ? 0.4 : 0.7)
+                  : 1;
                 
                 return (
                   <p
                     key={index}
                     data-line={index}
                     className={cn(
-                      "font-sans leading-loose transition-all duration-300 py-3 px-4 -mx-4 rounded-xl",
-                      "text-xl sm:text-2xl md:text-3xl",
-                      isHighlighted && "bg-yellow-400/30 ring-2 ring-yellow-400/50 scale-[1.02] font-bold",
-                      isPast && "opacity-40"
+                      "font-sans leading-loose transition-all duration-300 py-3 px-6 -mx-4 rounded-xl",
+                      "text-2xl sm:text-3xl md:text-4xl", // Larger font
+                      highlightEnabled && isHighlighted && "bg-yellow-400/30 ring-2 ring-yellow-400/50 scale-[1.02] font-bold"
                     )}
+                    style={{ opacity }}
                   >
                     {line || '\u00A0'}
                   </p>
@@ -354,19 +362,21 @@ export default function Trasmetti() {
                 const isPast = index < highlightLine;
                 const distanceFromHighlight = Math.abs(index - highlightLine);
                 
-                // Progressive opacity based on distance
+                // When highlight is OFF, all lines fully visible
                 let opacity = 1;
-                if (isPast) opacity = 0.3;
-                else if (distanceFromHighlight === 1) opacity = 0.7;
-                else if (distanceFromHighlight === 2) opacity = 0.5;
-                else if (distanceFromHighlight > 2) opacity = 0.35;
+                if (highlightEnabled) {
+                  if (isPast) opacity = 0.3;
+                  else if (distanceFromHighlight === 1) opacity = 0.7;
+                  else if (distanceFromHighlight === 2) opacity = 0.5;
+                  else if (distanceFromHighlight > 2) opacity = 0.35;
+                }
                 
-                // Font size based on highlight
-                const fontSizeClass = isHighlighted 
-                  ? 'text-3xl md:text-4xl lg:text-5xl' 
-                  : distanceFromHighlight <= 1 
-                    ? 'text-2xl md:text-3xl lg:text-4xl'
-                    : 'text-xl md:text-2xl lg:text-3xl';
+                // Font size based on highlight (only when enabled)
+                const fontSizeClass = (highlightEnabled && isHighlighted)
+                  ? 'text-4xl md:text-5xl lg:text-6xl' 
+                  : (highlightEnabled && distanceFromHighlight <= 1)
+                    ? 'text-3xl md:text-4xl lg:text-5xl'
+                    : 'text-2xl md:text-3xl lg:text-4xl'; // Larger base font
 
                 return (
                   <p
@@ -376,14 +386,14 @@ export default function Trasmetti() {
                       "font-bold leading-relaxed transition-all duration-700 ease-out",
                       "font-sans tracking-wide",
                       fontSizeClass,
-                      isHighlighted && "text-primary scale-105"
+                      highlightEnabled && isHighlighted && "text-primary scale-105"
                     )}
                     style={{
                       opacity,
-                      textShadow: isHighlighted 
+                      textShadow: (highlightEnabled && isHighlighted)
                         ? '0 0 60px hsl(var(--primary) / 0.6), 0 0 120px hsl(var(--primary) / 0.3)'
                         : 'none',
-                      transform: isHighlighted ? 'scale(1.05)' : 'scale(1)',
+                      transform: (highlightEnabled && isHighlighted) ? 'scale(1.05)' : 'scale(1)',
                     }}
                   >
                     {line || '\u00A0'}
@@ -404,7 +414,7 @@ export default function Trasmetti() {
       );
     }
     
-    // COMPACT MODE - Simple text display
+    // COMPACT MODE - Clean, centered text, no line numbers, larger font
     return (
       <div className="min-h-screen bg-background text-foreground relative overflow-hidden select-none">
         {/* Header with song info */}
@@ -421,11 +431,11 @@ export default function Trasmetti() {
                   }}
                 />
               )}
-              <div className="min-w-0">
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight truncate">
+              <div className="min-w-0 text-center flex-1">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight truncate">
                   {currentSong.titolo}
                 </h1>
-                <p className="text-base sm:text-lg md:text-xl text-muted-foreground mt-1 truncate">
+                <p className="text-lg sm:text-xl md:text-2xl text-muted-foreground mt-1 truncate">
                   {currentSong.artista}
                 </p>
               </div>
@@ -442,30 +452,32 @@ export default function Trasmetti() {
           </div>
         </div>
 
-        {/* Lyrics display - Compact list */}
+        {/* Lyrics display - Compact: centered, larger font, no line numbers */}
         <div 
           ref={lyricsRef}
-          className="relative z-10 flex-1 px-6 md:px-8 py-6 overflow-y-auto"
+          className="relative z-10 flex-1 px-6 md:px-8 py-8 overflow-y-auto"
           style={{ maxHeight: 'calc(100vh - 160px)' }}
         >
-          <div className="max-w-3xl mx-auto space-y-2">
+          <div className="max-w-4xl mx-auto text-center space-y-4">
             {lines.map((line, index) => {
               const isHighlighted = highlightLine === index;
-              const isPast = index < highlightLine;
+              
+              // When highlight is OFF, show as continuous block
+              const opacity = highlightEnabled 
+                ? (isHighlighted ? 1 : 0.5)
+                : 1;
               
               return (
                 <p
                   key={index}
                   data-line={index}
                   className={cn(
-                    "leading-relaxed transition-all duration-300 px-4 py-2 rounded-lg",
-                    "text-base sm:text-lg md:text-xl",
-                    isHighlighted && "bg-primary/20 text-primary font-semibold",
-                    isPast && "text-muted-foreground",
-                    !isHighlighted && !isPast && "text-foreground"
+                    "leading-relaxed transition-all duration-300 px-6 py-3 rounded-xl",
+                    "text-xl sm:text-2xl md:text-3xl", // Larger font, no line numbers
+                    highlightEnabled && isHighlighted && "bg-primary/20 text-primary font-bold ring-2 ring-primary/30"
                   )}
+                  style={{ opacity }}
                 >
-                  <span className="mr-3 text-sm text-muted-foreground">{index + 1}</span>
                   {line || '\u00A0'}
                 </p>
               );

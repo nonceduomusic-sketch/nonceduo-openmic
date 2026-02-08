@@ -355,6 +355,7 @@ export type Database = {
           current_reservation_id: string | null
           current_song_id: string | null
           display_mode: string
+          highlight_enabled: boolean | null
           highlight_line: number | null
           id: string
           is_active: boolean
@@ -386,6 +387,7 @@ export type Database = {
           current_reservation_id?: string | null
           current_song_id?: string | null
           display_mode?: string
+          highlight_enabled?: boolean | null
           highlight_line?: number | null
           id?: string
           is_active?: boolean
@@ -417,6 +419,7 @@ export type Database = {
           current_reservation_id?: string | null
           current_song_id?: string | null
           display_mode?: string
+          highlight_enabled?: boolean | null
           highlight_line?: number | null
           id?: string
           is_active?: boolean

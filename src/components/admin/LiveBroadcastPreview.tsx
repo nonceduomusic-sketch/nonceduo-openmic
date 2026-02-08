@@ -1,10 +1,10 @@
  import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
  import { useBroadcast } from '@/hooks/useBroadcast';
  import { supabase } from '@/integrations/supabase/client';
- import { 
-   ChevronUp, ChevronDown, Play, Pause, RotateCcw, ZoomIn, ZoomOut, Square, 
-   Mic, ExternalLink, Maximize, Monitor, Minimize2, Radio, Eye, QrCode
- } from 'lucide-react';
+import { 
+  ChevronUp, ChevronDown, Play, Pause, RotateCcw, ZoomIn, ZoomOut, Square, 
+  Mic, ExternalLink, Maximize, Monitor, Minimize2, Radio, Eye, QrCode, Highlighter
+} from 'lucide-react';
  import { Button } from '@/components/ui/button';
  import { Label } from '@/components/ui/label';
  import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -45,15 +45,16 @@
    const { session, updateSession } = useBroadcast('main');
    const [currentSong, setCurrentSong] = useState<Song | null>(null);
    const [localHighlightLine, setLocalHighlightLine] = useState(0);
-   const [autoScroll, setAutoScroll] = useState(false);
-   const [scrollSpeed, setScrollSpeed] = useState(3);
-   const [fontSize, setFontSize] = useState(100);
-   const [viewMode, setViewMode] = useState<ViewMode>('karaoke');
-   const [activeTab, setActiveTab] = useState<'waiting' | 'content'>('waiting');
-   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
-   const [isExpanded, setIsExpanded] = useState(false);
-   const lyricsRef = useRef<HTMLDivElement>(null);
-   const isMobile = useIsMobile();
+    const [autoScroll, setAutoScroll] = useState(false);
+    const [scrollSpeed, setScrollSpeed] = useState(3);
+    const [fontSize, setFontSize] = useState(100);
+    const [viewMode, setViewMode] = useState<ViewMode>('karaoke');
+    const [activeTab, setActiveTab] = useState<'waiting' | 'content'>('waiting');
+    const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [highlightEnabled, setHighlightEnabled] = useState(true);
+    const lyricsRef = useRef<HTMLDivElement>(null);
+    const isMobile = useIsMobile();
  
    const tvSettings = useMemo(() => ({
      title: (session as any)?.tv_title || 'Open Mic',
@@ -91,13 +92,21 @@
      if (isBroadcasting && currentSong) setActiveTab('content');
    }, [isBroadcasting, currentSong]);
  
-   // Sync viewMode from session
-   useEffect(() => {
-     const sessionViewMode = (session as any)?.tv_view_mode;
-     if (sessionViewMode && ['compact', 'karaoke', 'spotify'].includes(sessionViewMode)) {
-       setViewMode(sessionViewMode as ViewMode);
-     }
-   }, [(session as any)?.tv_view_mode]);
+    // Sync viewMode from session
+    useEffect(() => {
+      const sessionViewMode = (session as any)?.tv_view_mode;
+      if (sessionViewMode && ['compact', 'karaoke', 'spotify'].includes(sessionViewMode)) {
+        setViewMode(sessionViewMode as ViewMode);
+      }
+    }, [(session as any)?.tv_view_mode]);
+
+    // Sync highlightEnabled from session
+    useEffect(() => {
+      const sessionHighlight = (session as any)?.highlight_enabled;
+      if (sessionHighlight !== undefined) {
+        setHighlightEnabled(sessionHighlight);
+      }
+    }, [(session as any)?.highlight_enabled]);
  
    // Fetch current song
    useEffect(() => {
@@ -185,10 +194,17 @@
      if (newAutoScroll) toast.success('Auto-scroll attivato');
    }, [autoScroll, updateSession]);
  
-   const handleViewModeChange = useCallback(async (mode: ViewMode) => {
-     setViewMode(mode);
-     await updateSession({ tv_view_mode: mode } as any);
-   }, [updateSession]);
+    const handleViewModeChange = useCallback(async (mode: ViewMode) => {
+      setViewMode(mode);
+      await updateSession({ tv_view_mode: mode } as any);
+    }, [updateSession]);
+
+    const handleToggleHighlight = useCallback(async () => {
+      const newValue = !highlightEnabled;
+      setHighlightEnabled(newValue);
+      await updateSession({ highlight_enabled: newValue } as any);
+      toast.success(newValue ? 'Evidenziazione attivata' : 'Evidenziazione disattivata');
+    }, [highlightEnabled, updateSession]);
  
    const openTVPage = () => window.open('/trasmetti', '_blank');
  
@@ -245,45 +261,66 @@
          </div>
           <div ref={lyricsRef} className="relative z-10 px-3 overflow-y-auto" style={{ height: lyricsHeight }}>
             {viewMode === 'spotify' ? (
-              <div className="bg-black/30 backdrop-blur-sm rounded-xl p-3 space-y-1">
-                {lines.map((line, index) => {
-                  const isHighlighted = localHighlightLine === index;
-                  const isPast = index < localHighlightLine;
-                  const distance = Math.abs(index - localHighlightLine);
-                  // Show context: immediate neighbors more visible, fade gradually
-                  const opacity = isHighlighted ? 1 : isPast ? 0.35 : distance === 1 ? 0.85 : distance === 2 ? 0.65 : 0.45;
-                  return (
-                    <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn("font-sans leading-relaxed transition-all duration-300 cursor-pointer py-1.5 px-3 -mx-1 rounded-lg text-white", isHighlighted && "bg-yellow-400/40 ring-2 ring-yellow-400/60 font-bold shadow-lg scale-[1.02]", !isHighlighted && "hover:bg-white/10")} style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px`, opacity }}>{line || '\u00A0'}</p>
-                  );
-                })}
-              </div>
-            ) : viewMode === 'karaoke' ? (
-              <div className="text-center space-y-1 py-4">
-                {lines.map((line, index) => {
-                  const isHighlighted = localHighlightLine === index;
-                  const isPast = index < localHighlightLine;
-                  const dist = Math.abs(index - localHighlightLine);
-                  // Show context: neighbors visible, gradual fade
-                  const opacity = isHighlighted ? 1 : isPast ? 0.3 : dist === 1 ? 0.8 : dist === 2 ? 0.6 : dist === 3 ? 0.45 : 0.3;
-                  const baseFontSize = Math.max(12, 14 * fontSize / 100);
-                  return (
-                    <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn("font-bold transition-all duration-500 cursor-pointer text-white py-1", isHighlighted && "text-primary scale-110 bg-primary/20 rounded-lg px-4 shadow-lg")} style={{ fontSize: isHighlighted ? `${baseFontSize * 1.4}px` : `${baseFontSize}px`, opacity, textShadow: isHighlighted ? '0 0 40px hsl(var(--primary) / 0.6)' : 'none' }}>{line || '\u00A0'}</p>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="space-y-0.5 py-2">
-                {lines.map((line, index) => {
-                  const isHighlighted = localHighlightLine === index;
-                  const isPast = index < localHighlightLine;
-                  const distance = Math.abs(index - localHighlightLine);
-                  const opacity = isHighlighted ? 1 : isPast ? 0.4 : distance === 1 ? 0.85 : distance === 2 ? 0.65 : 0.5;
-                  return (
-                    <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn("transition-all duration-300 cursor-pointer px-2 py-1.5 rounded-md", isHighlighted && "bg-primary text-primary-foreground font-bold shadow-md ring-2 ring-primary/50", !isHighlighted && "hover:bg-muted")} style={{ fontSize: `${Math.max(11, 12 * fontSize / 100)}px`, opacity }}><span className="mr-2 text-xs opacity-60">{index + 1}</span>{line || '\u00A0'}</p>
-                  );
-                })}
-              </div>
-            )}
+               <div className="bg-black/30 backdrop-blur-sm rounded-xl p-4 space-y-2 text-center">
+                 {lines.map((line, index) => {
+                   const isHighlighted = localHighlightLine === index;
+                   const isPast = index < localHighlightLine;
+                   const distance = Math.abs(index - localHighlightLine);
+                   // When highlight is OFF, show all lines fully visible
+                   const opacity = highlightEnabled 
+                     ? (isHighlighted ? 1 : isPast ? 0.35 : distance === 1 ? 0.85 : distance === 2 ? 0.65 : 0.45)
+                     : 1;
+                   return (
+                     <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn(
+                       "font-sans leading-loose transition-all duration-300 cursor-pointer py-2 px-4 -mx-1 rounded-lg text-white",
+                       highlightEnabled && isHighlighted && "bg-yellow-400/40 ring-2 ring-yellow-400/60 font-bold shadow-lg scale-[1.02]", 
+                       !isHighlighted && "hover:bg-white/10"
+                     )} style={{ fontSize: `${Math.max(14, 16 * fontSize / 100)}px`, opacity }}>{line || '\u00A0'}</p>
+                   );
+                 })}
+               </div>
+             ) : viewMode === 'karaoke' ? (
+               <div className="text-center space-y-2 py-4">
+                 {lines.map((line, index) => {
+                   const isHighlighted = localHighlightLine === index;
+                   const isPast = index < localHighlightLine;
+                   const dist = Math.abs(index - localHighlightLine);
+                   // When highlight is OFF, show all lines fully visible
+                   const opacity = highlightEnabled 
+                     ? (isHighlighted ? 1 : isPast ? 0.3 : dist === 1 ? 0.8 : dist === 2 ? 0.6 : dist === 3 ? 0.45 : 0.3)
+                     : 1;
+                   const baseFontSize = Math.max(14, 16 * fontSize / 100);
+                   return (
+                     <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn(
+                       "font-bold transition-all duration-500 cursor-pointer text-white py-2",
+                       highlightEnabled && isHighlighted && "text-primary scale-110 bg-primary/20 rounded-lg px-4 shadow-lg"
+                     )} style={{ 
+                       fontSize: (highlightEnabled && isHighlighted) ? `${baseFontSize * 1.4}px` : `${baseFontSize}px`, 
+                       opacity, 
+                       textShadow: (highlightEnabled && isHighlighted) ? '0 0 40px hsl(var(--primary) / 0.6)' : 'none' 
+                     }}>{line || '\u00A0'}</p>
+                   );
+                 })}
+               </div>
+             ) : (
+               /* COMPACT MODE - No line numbers, centered, larger font, continuous text */
+               <div className="text-center space-y-1 py-4">
+                 {lines.map((line, index) => {
+                   const isHighlighted = localHighlightLine === index;
+                   // When highlight is OFF, show all lines fully visible as continuous text
+                   const opacity = highlightEnabled 
+                     ? (isHighlighted ? 1 : 0.5)
+                     : 1;
+                   return (
+                     <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn(
+                       "transition-all duration-300 cursor-pointer px-4 py-2 rounded-lg leading-relaxed",
+                       highlightEnabled && isHighlighted && "bg-primary text-primary-foreground font-bold shadow-md ring-2 ring-primary/50", 
+                       !isHighlighted && "hover:bg-muted"
+                     )} style={{ fontSize: `${Math.max(14, 16 * fontSize / 100)}px`, opacity }}>{line || '\u00A0'}</p>
+                   );
+                 })}
+               </div>
+             )}
           </div>
        </div>
      );
@@ -319,13 +356,31 @@
            <TabsContent value="content" className="mt-3 space-y-3">
              {currentSong ? (
                <>
-                 {/* Style selector */}
-                 <div className="flex flex-wrap items-center gap-2">
-                   <Label className="text-xs text-muted-foreground">Stile:</Label>
-                   {(['compact', 'karaoke', 'spotify'] as ViewMode[]).map((mode) => (
-                     <Button key={mode} variant={viewMode === mode ? 'default' : 'outline'} size="sm" onClick={() => handleViewModeChange(mode)} className="h-8 text-xs capitalize">{mode === 'compact' ? 'Compatta' : mode === 'karaoke' ? 'Karaoke' : 'Spotify'}</Button>
-                   ))}
-                 </div>
+                  {/* Style selector + Highlight toggle */}
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Label className="text-xs text-muted-foreground">Stile:</Label>
+                      {(['compact', 'karaoke', 'spotify'] as ViewMode[]).map((mode) => (
+                        <Button key={mode} variant={viewMode === mode ? 'default' : 'outline'} size="sm" onClick={() => handleViewModeChange(mode)} className="h-8 text-xs capitalize">{mode === 'compact' ? 'Compatta' : mode === 'karaoke' ? 'Karaoke' : 'Spotify'}</Button>
+                      ))}
+                    </div>
+                    {/* HIGHLIGHT TOGGLE - Always visible, critical for live use */}
+                    <Button
+                      variant={highlightEnabled ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={handleToggleHighlight}
+                      disabled={!canManage}
+                      className={cn(
+                        "h-10 min-w-[130px] font-medium transition-all",
+                        highlightEnabled 
+                          ? "bg-yellow-500 hover:bg-yellow-600 text-yellow-950" 
+                          : "border-dashed"
+                      )}
+                    >
+                      <Highlighter className="w-4 h-4 mr-2" />
+                      Evidenziazione {highlightEnabled ? 'ON' : 'OFF'}
+                    </Button>
+                  </div>
                  {renderLyricsPreview()}
                  {/* Controls */}
                  <div className="p-3 bg-muted/50 rounded-xl">

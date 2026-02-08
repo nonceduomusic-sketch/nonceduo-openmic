@@ -17,6 +17,7 @@ export interface BroadcastSession {
   scroll_speed: number;
   tv_view_mode: 'compact' | 'karaoke' | 'spotify';
   is_broadcasting: boolean;
+  highlight_enabled: boolean; // New field: when true, active line is highlighted; when false, all text visible
   created_at: string;
   updated_at: string;
 }

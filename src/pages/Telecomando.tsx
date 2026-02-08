@@ -143,6 +143,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
 
   const isBroadcasting = (session as any)?.is_broadcasting ?? false;
   const highlightLine = session?.highlight_line ?? 0;
+  const highlightEnabled = (session as any)?.highlight_enabled ?? true;
 
   const lines = useMemo(
     () => currentSong?.testo?.split("\n").filter((line) => line.trim()) || [],
@@ -215,6 +216,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
           <PreviewWithControls
             lines={lines}
             highlightLine={highlightLine}
+            highlightEnabled={highlightEnabled}
             isBroadcasting={isBroadcasting}
             onScrollUp={scrollUp}
             onScrollDown={scrollDown}
@@ -224,6 +226,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
           <RemoteOnlyControls
             lines={lines}
             highlightLine={highlightLine}
+            highlightEnabled={highlightEnabled}
             isBroadcasting={isBroadcasting}
             onScrollUp={scrollUp}
             onScrollDown={scrollDown}
@@ -240,6 +243,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
 function PreviewWithControls({
   lines,
   highlightLine,
+  highlightEnabled,
   isBroadcasting,
   onScrollUp,
   onScrollDown,
@@ -247,6 +251,7 @@ function PreviewWithControls({
 }: {
   lines: string[];
   highlightLine: number;
+  highlightEnabled: boolean;
   isBroadcasting: boolean;
   onScrollUp: () => void;
   onScrollDown: () => void;
@@ -266,9 +271,9 @@ function PreviewWithControls({
     return () => ro.disconnect();
   }, []);
 
-  // Scroll automatico alla riga evidenziata (centra sempre quando cambia highlightLine o viewMode)
+  // Auto-scroll only when highlight is enabled
   useLayoutEffect(() => {
-    if (!lyricsRef.current || !isBroadcasting) return;
+    if (!lyricsRef.current || !isBroadcasting || !highlightEnabled) return;
 
     const container = lyricsRef.current;
     const activeEl = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement | null;
@@ -279,7 +284,7 @@ function PreviewWithControls({
         block: "center",
       });
     }
-  }, [highlightLine, isBroadcasting]);
+  }, [highlightLine, isBroadcasting, highlightEnabled]);
 
   if (!isBroadcasting || lines.length === 0) {
     return (
@@ -301,13 +306,15 @@ function PreviewWithControls({
         ref={lyricsRef}
         className="flex-1 overflow-y-auto px-4 py-4"
         style={{
-          paddingBottom: controlsHeight > 0 ? controlsHeight + 120 : 260, // margine extra per ultima riga
+          paddingBottom: controlsHeight > 0 ? controlsHeight + 120 : 260,
         }}
       >
         <div className="space-y-2 max-w-lg mx-auto text-center">
           {lines.map((line, index) => {
             const isHighlighted = highlightLine === index;
             const isPast = index < highlightLine;
+            // When highlight is OFF, all lines fully visible
+            const opacity = highlightEnabled ? (isHighlighted ? 1 : isPast ? 0.5 : 0.8) : 1;
             return (
               <button
                 key={index}
@@ -315,11 +322,11 @@ function PreviewWithControls({
                 onClick={() => onScrollToLine(index)}
                 className={cn(
                   "w-full px-3 py-2 rounded-lg transition-all",
-                  "text-sm leading-relaxed",
-                  isHighlighted && "bg-primary/20 text-primary font-semibold ring-2 ring-primary/50",
-                  isPast && "text-muted-foreground/50",
-                  !isHighlighted && !isPast && "hover:bg-muted",
+                  "text-base leading-relaxed", // Larger font
+                  highlightEnabled && isHighlighted && "bg-primary/20 text-primary font-semibold ring-2 ring-primary/50",
+                  !isHighlighted && "hover:bg-muted",
                 )}
+                style={{ opacity }}
               >
                 {line || "\u00A0"}
               </button>
@@ -364,17 +371,19 @@ function PreviewWithControls({
 }
 
 // ──────────────────────────────────────────────
-//           PAGINA 2: Pulsantoni grandi (lasciata come la volevi)
+//           PAGINA 2: Pulsantoni grandi
 // ──────────────────────────────────────────────
 function RemoteOnlyControls({
   lines,
   highlightLine,
+  highlightEnabled,
   isBroadcasting,
   onScrollUp,
   onScrollDown,
 }: {
   lines: string[];
   highlightLine: number;
+  highlightEnabled: boolean;
   isBroadcasting: boolean;
   onScrollUp: () => void;
   onScrollDown: () => void;
@@ -393,8 +402,9 @@ function RemoteOnlyControls({
     return () => ro.disconnect();
   }, []);
 
+  // Auto-scroll only when highlight is enabled
   useLayoutEffect(() => {
-    if (!isBroadcasting || lines.length === 0 || !scrollContainerRef.current) return;
+    if (!isBroadcasting || lines.length === 0 || !scrollContainerRef.current || !highlightEnabled) return;
 
     const container = scrollContainerRef.current;
     const activeEl = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement | null;
@@ -405,7 +415,7 @@ function RemoteOnlyControls({
         block: "center",
       });
     }
-  }, [highlightLine, isBroadcasting, lines.length]);
+  }, [highlightLine, isBroadcasting, lines.length, highlightEnabled]);
 
   if (!isBroadcasting || lines.length === 0) {
     return (
@@ -432,18 +442,20 @@ function RemoteOnlyControls({
           {lines.map((line, index) => {
             const isHighlighted = highlightLine === index;
             const distance = Math.abs(highlightLine - index);
+            // When highlight is OFF, all lines fully visible
+            const opacity = highlightEnabled 
+              ? (isHighlighted ? 1 : distance === 1 ? 0.7 : distance === 2 ? 0.5 : 0.3)
+              : 1;
             return (
               <div
                 key={index}
                 data-line={index}
                 className={cn(
-                  "px-4 py-2 rounded-xl text-base leading-relaxed transition-colors duration-200",
-                  isHighlighted && "bg-primary text-primary-foreground font-semibold",
-                  !isHighlighted && "text-muted-foreground",
-                  distance === 1 && "opacity-70",
-                  distance === 2 && "opacity-50",
-                  distance > 2 && "opacity-30",
+                  "px-4 py-3 rounded-xl text-lg leading-relaxed transition-colors duration-200", // Larger font
+                  highlightEnabled && isHighlighted && "bg-primary text-primary-foreground font-semibold",
+                  !isHighlighted && "text-foreground",
                 )}
+                style={{ opacity }}
               >
                 {line || "\u00A0"}
               </div>
