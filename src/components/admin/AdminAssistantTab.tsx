@@ -550,6 +550,7 @@ const SettingsPanel: React.FC = () => {
             <MessageCircle className="w-4 h-4" />
             Messaggio di Benvenuto
           </CardTitle>
+          <CardDescription>Configura il messaggio e dove mostrarlo</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <Textarea
@@ -558,6 +559,29 @@ const SettingsPanel: React.FC = () => {
             placeholder="Ciao! Come posso aiutarti?"
             rows={3}
           />
+          
+          {/* Welcome message visibility flags */}
+          <div className="border rounded-lg p-4 bg-muted/30">
+            <Label className="text-sm font-medium mb-3 block">Mostra messaggio in:</Label>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { key: 'welcome_on_site', label: 'Sito Generale' },
+                { key: 'welcome_on_openmic', label: 'Open Mic' },
+                { key: 'welcome_on_dediche', label: 'Dediche' },
+                { key: 'welcome_on_community', label: 'Community' },
+              ].map((item) => (
+                <div key={item.key} className="flex items-center justify-between py-1.5 px-3 bg-background rounded-md">
+                  <Label className="text-sm cursor-pointer">{item.label}</Label>
+                  <Switch
+                    checked={(settings[item.key as keyof typeof settings] as boolean) ?? true}
+                    onCheckedChange={(checked) => updateSettings({ [item.key]: checked })}
+                    disabled={!settings.is_enabled}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
+          
           <div className="flex items-center gap-4">
             <div className="flex-1">
               <Label className="text-sm">Ritardo apertura (secondi)</Label>

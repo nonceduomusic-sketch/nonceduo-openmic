@@ -17,6 +17,7 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
     isEnabled,
     isOpen,
     showProactive,
+    showWelcomeMessage,
     isMobile,
     messages,
     open,
@@ -67,9 +68,9 @@ export const AssistantWidget: React.FC<AssistantWidgetProps> = ({
       {/* Bubble / Mini-card trigger */}
       <AssistantBubble
         isOpen={isOpen}
-        showProactive={showProactive}
+        showProactive={showProactive && showWelcomeMessage}
         isMobile={isMobile}
-        welcomeMessage={settings?.welcome_message}
+        welcomeMessage={showWelcomeMessage ? settings?.welcome_message : undefined}
         onOpen={handleOpen}
         onDismissProactive={dismissProactive}
         isMinimized={isMinimized}

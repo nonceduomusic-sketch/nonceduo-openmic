@@ -202,6 +202,10 @@ export type Database = {
           updated_at: string | null
           updated_by: string | null
           welcome_message: string
+          welcome_on_community: boolean | null
+          welcome_on_dediche: boolean | null
+          welcome_on_openmic: boolean | null
+          welcome_on_site: boolean | null
         }
         Insert: {
           enabled_on_community?: boolean
@@ -220,6 +224,10 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           welcome_message?: string
+          welcome_on_community?: boolean | null
+          welcome_on_dediche?: boolean | null
+          welcome_on_openmic?: boolean | null
+          welcome_on_site?: boolean | null
         }
         Update: {
           enabled_on_community?: boolean
@@ -238,6 +246,10 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           welcome_message?: string
+          welcome_on_community?: boolean | null
+          welcome_on_dediche?: boolean | null
+          welcome_on_openmic?: boolean | null
+          welcome_on_site?: boolean | null
         }
         Relationships: []
       }
