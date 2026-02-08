@@ -79,14 +79,25 @@ export function useScreenShareBroadcaster({ salaCode, onStreamStart, onStreamEnd
     try {
       setState(prev => ({ ...prev, isConnecting: true, error: null }));
 
+      // Check if running as PWA (standalone mode)
+      const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
+                    (window.navigator as any).standalone === true;
+
       // Check if Screen Capture API is available
       if (!navigator.mediaDevices?.getDisplayMedia) {
-        throw new Error('Screen sharing non supportato su questo browser');
+        if (isPWA) {
+          throw new Error('Screen sharing non disponibile in modalità app. Apri Chrome e vai su questo sito dal browser per usare questa funzione.');
+        }
+        throw new Error('Screen sharing non supportato. Usa Chrome o Edge su tablet/desktop.');
       }
 
       // Request screen capture immediately (before countdown)
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: true,
+        video: {
+          displaySurface: 'monitor',
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+        },
         audio: false,
       });
 
