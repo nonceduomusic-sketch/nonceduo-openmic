@@ -1,12 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Capacitor } from '@capacitor/core';
+import { ScreenCapture } from '@/plugins/screen-capture';
 
 interface ScreenShareState {
   isSharing: boolean;
   isConnecting: boolean;
   countdown: number | null;
   error: string | null;
+  isNativeAvailable: boolean;
 }
 
 interface UseScreenShareOptions {
@@ -26,11 +29,26 @@ export function useScreenShareBroadcaster({ salaCode, onStreamStart, onStreamEnd
     isConnecting: false,
     countdown: null,
     error: null,
+    isNativeAvailable: false,
   });
   
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Check if native screen capture is available
+  useEffect(() => {
+    const checkNativeAvailability = async () => {
+      try {
+        const result = await ScreenCapture.isAvailable();
+        setState(prev => ({ ...prev, isNativeAvailable: result.available }));
+        console.log('Screen capture availability:', result);
+      } catch (e) {
+        console.log('Screen capture plugin not available:', e);
+      }
+    };
+    checkNativeAvailability();
+  }, []);
 
   // Cleanup function
   const cleanup = useCallback(async (reason: string = 'user_stopped') => {
@@ -50,6 +68,13 @@ export function useScreenShareBroadcaster({ salaCode, onStreamStart, onStreamEnd
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(track => track.stop());
       mediaStreamRef.current = null;
+    }
+
+    // Stop native capture if running
+    try {
+      await ScreenCapture.stopCapture();
+    } catch (e) {
+      // Plugin might not be available
     }
 
     // Update database state
@@ -79,34 +104,69 @@ export function useScreenShareBroadcaster({ salaCode, onStreamStart, onStreamEnd
     try {
       setState(prev => ({ ...prev, isConnecting: true, error: null }));
 
-      // Platform compatibility notes:
-      // As of current browser support, Screen Capture API is generally NOT available on mobile browsers
-      // (Chrome/Edge on Android, Safari on iOS). We fail fast with a clearer message.
+      // Check if we're on a native platform (Capacitor)
+      const isNative = Capacitor.isNativePlatform();
+
+      if (isNative) {
+        // Use native plugin for Android/iOS
+        console.log('Using native screen capture plugin');
+        const result = await ScreenCapture.startCapture();
+        if (!result.success) {
+          throw new Error(result.message || 'Native screen capture failed');
+        }
+        // Note: Native plugin handles the actual capture - we just signal it's active
+        // For WebRTC streaming, we'd need additional native code to pipe frames
+        // For now, we just mark it as active in DB for the TV to show a placeholder
+        
+        // Update database state to indicate native capture is active
+        await supabase
+          .from('broadcast_sessions')
+          .update({
+            screen_share_active: true,
+            screen_share_started_at: new Date().toISOString(),
+            screen_share_stopped_reason: null,
+          } as any)
+          .eq('sala_code', salaCode);
+
+        setState(prev => ({
+          ...prev,
+          isSharing: true,
+          isConnecting: false,
+          countdown: null,
+        }));
+
+        onStreamStart?.();
+        toast.success('Screen share nativo avviato!');
+        return;
+      }
+
+      // Web fallback - check platform compatibility
       const ua = navigator.userAgent || '';
       const isAndroid = /Android/i.test(ua);
       const isIOS = /iPhone|iPad|iPod/i.test(ua);
 
       if (isAndroid || isIOS) {
         throw new Error(
-          'Screen sharing via browser non è supportato su Android/iOS (anche usando Chrome/Edge). ' +
-          'Per ora funziona solo da computer (Chrome o Edge).'
+          'Screen sharing via browser non supportato su Android/iOS. ' +
+          'Usa l\'app nativa NonceDuo per questa funzione.'
         );
       }
 
-      // Check if running as PWA (standalone mode)
-      const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
-        (window.navigator as any).standalone === true;
+      // Check if running inside iframe (editor preview)
+      if (window.self !== window.top) {
+        throw new Error(
+          'Screen share non può partire dentro l\'anteprima editor. ' +
+          'Apri /admin in una nuova scheda e riprova.'
+        );
+      }
 
       // Check if Screen Capture API is available
       if (!navigator.mediaDevices?.getDisplayMedia) {
-        if (isPWA) {
-          throw new Error('Screen sharing non disponibile in modalità app. Apri il sito nel browser per usare questa funzione.');
-        }
         throw new Error('Screen sharing non supportato su questo browser');
       }
 
       // Request screen capture immediately (before countdown)
-      const stream = await navigator.mediaDevices.getDisplayMedia({
+      const capturedStream = await navigator.mediaDevices.getDisplayMedia({
         video: {
           displaySurface: 'monitor',
           width: { ideal: 1920 },
@@ -115,10 +175,10 @@ export function useScreenShareBroadcaster({ salaCode, onStreamStart, onStreamEnd
         audio: false,
       });
 
-      mediaStreamRef.current = stream;
+      mediaStreamRef.current = capturedStream;
 
       // Handle user stopping share via browser controls
-      stream.getVideoTracks()[0].onended = () => {
+      capturedStream.getVideoTracks()[0].onended = () => {
         cleanup('user_cancelled');
         toast.info('Screen share terminato');
       };
@@ -146,8 +206,8 @@ export function useScreenShareBroadcaster({ salaCode, onStreamStart, onStreamEnd
       peerConnectionRef.current = pc;
 
       // Add tracks
-      stream.getTracks().forEach(track => {
-        pc.addTrack(track, stream);
+      capturedStream.getTracks().forEach(track => {
+        pc.addTrack(track, capturedStream);
       });
 
       // Collect ICE candidates
