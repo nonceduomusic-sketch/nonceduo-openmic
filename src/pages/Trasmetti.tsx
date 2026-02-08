@@ -75,6 +75,10 @@ export default function Trasmetti() {
   // Check if screen share is active from database
   const isScreenShareActive = (session as any)?.screen_share_active ?? false;
   
+  // Check if ScreenStream is active
+  const isScreenStreamActive = (session as any)?.screen_stream_active ?? false;
+  const screenStreamUrl = (session as any)?.screen_stream_url ?? '';
+  
   // View mode from database (admin controlled)
   const viewMode: LyricsViewMode = ((session as any)?.tv_view_mode as LyricsViewMode) || 'karaoke';
   
@@ -241,6 +245,20 @@ export default function Trasmetti() {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="animate-pulse text-white/50">Caricamento...</div>
+      </div>
+    );
+  }
+
+  // SCREEN STREAM MODE - Show iframe with ScreenStream URL
+  if (isScreenStreamActive && screenStreamUrl) {
+    return (
+      <div className="min-h-screen bg-black w-full h-screen">
+        <iframe
+          src={screenStreamUrl}
+          className="w-full h-full border-0"
+          allow="autoplay; fullscreen"
+          title="ScreenStream"
+        />
       </div>
     );
   }

@@ -383,6 +383,8 @@ export type Database = {
           screen_share_offer: Json | null
           screen_share_started_at: string | null
           screen_share_stopped_reason: string | null
+          screen_stream_active: boolean | null
+          screen_stream_url: string | null
           scroll_position: number | null
           scroll_speed: number | null
           text_align: string | null
@@ -425,6 +427,8 @@ export type Database = {
           screen_share_offer?: Json | null
           screen_share_started_at?: string | null
           screen_share_stopped_reason?: string | null
+          screen_stream_active?: boolean | null
+          screen_stream_url?: string | null
           scroll_position?: number | null
           scroll_speed?: number | null
           text_align?: string | null
@@ -467,6 +471,8 @@ export type Database = {
           screen_share_offer?: Json | null
           screen_share_started_at?: string | null
           screen_share_stopped_reason?: string | null
+          screen_stream_active?: boolean | null
+          screen_stream_url?: string | null
           scroll_position?: number | null
           scroll_speed?: number | null
           text_align?: string | null
