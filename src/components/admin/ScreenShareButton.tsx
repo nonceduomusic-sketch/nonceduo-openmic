@@ -163,9 +163,8 @@ export function ScreenShareButton({
 
             <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
               <p>
-                <strong>⚠️ Importante:</strong> Funziona su tablet/desktop con Chrome o Edge.
-                Se hai installato l'app, <strong>devi aprire il sito dal browser</strong> 
-                (non dall'icona dell'app) per usare questa funzione.
+                <strong>⚠️ Importante:</strong> Al momento lo screen sharing dal browser funziona solo da <strong>computer</strong> (Chrome/Edge).
+                Su Android/iOS (anche Chrome) l’API non è disponibile: per duplicare lo schermo usa il mirroring/casting del dispositivo (Chromecast/Miracast/HDMI).
               </p>
             </div>
           </div>
