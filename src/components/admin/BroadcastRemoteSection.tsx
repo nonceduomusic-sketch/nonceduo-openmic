@@ -1,17 +1,19 @@
- import React, { useState } from 'react';
- import { useBroadcastRemoteAdmin } from '@/hooks/useBroadcastRemote';
- import { Button } from '@/components/ui/button';
- import { Input } from '@/components/ui/input';
- import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
- import { Badge } from '@/components/ui/badge';
- import { Switch } from '@/components/ui/switch';
- import { 
-   Smartphone, Plus, Copy, RefreshCw, Users, Trash2, 
-   QrCode, Link2, Key, AlertTriangle, Check, Loader2
- } from 'lucide-react';
- import { cn } from '@/lib/utils';
- import { toast } from 'sonner';
- import QRCode from 'qrcode';
+import React, { useState } from 'react';
+import { useBroadcastRemoteAdmin } from '@/hooks/useBroadcastRemote';
+import { useBroadcast } from '@/hooks/useBroadcast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { 
+  Smartphone, Plus, Copy, RefreshCw, Users, Trash2, 
+  QrCode, Link2, Key, AlertTriangle, Check, Loader2, Hand
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import QRCode from 'qrcode';
 import { getProductionBaseUrl } from '@/lib/productionUrl';
 import { AdminRemotePreview } from './AdminRemotePreview';
  import {
@@ -33,19 +35,27 @@ import { AdminRemotePreview } from './AdminRemotePreview';
    AlertDialogTitle,
  } from '@/components/ui/alert-dialog';
  
- export function BroadcastRemoteSection() {
-   const {
-     accesses,
-     sessions,
-     loading,
-     createAccess,
-     regenerateToken,
-     regeneratePIN,
-     toggleAccess,
-     kickAllSessions,
-     deleteAccess,
-     getActiveSessionCount,
-   } = useBroadcastRemoteAdmin();
+export function BroadcastRemoteSection() {
+  const {
+    accesses,
+    sessions,
+    loading,
+    createAccess,
+    regenerateToken,
+    regeneratePIN,
+    toggleAccess,
+    kickAllSessions,
+    deleteAccess,
+    getActiveSessionCount,
+  } = useBroadcastRemoteAdmin();
+
+  const { session, updateSession } = useBroadcast('main');
+  const remoteScrollEnabled = (session as any)?.remote_scroll_enabled ?? true;
+
+  const handleToggleRemoteScroll = async (enabled: boolean) => {
+    await updateSession({ remote_scroll_enabled: enabled } as any);
+    toast.success(enabled ? 'Scroll da telecomando abilitato' : 'Scroll da telecomando disabilitato');
+  };
  
    const [showCreateDialog, setShowCreateDialog] = useState(false);
    const [newName, setNewName] = useState('');
@@ -99,24 +109,56 @@ import { AdminRemotePreview } from './AdminRemotePreview';
      );
    }
  
-   return (
-     <div className="space-y-4">
-       {/* Header */}
-       <div className="flex items-center justify-between">
-         <div>
-           <h3 className="text-lg font-semibold flex items-center gap-2">
-             <Smartphone className="w-5 h-5" />
-             Telecomando
-           </h3>
-           <p className="text-sm text-muted-foreground">
-             Condividi l'accesso allo scroll dei testi
-           </p>
-         </div>
-         <Button onClick={() => setShowCreateDialog(true)} size="sm">
-           <Plus className="w-4 h-4 mr-2" />
-           Nuovo
-         </Button>
-       </div>
+  return (
+    <div className="space-y-4">
+      {/* Remote Scroll Control - Always visible, critical for live use */}
+      <Card className={cn(
+        "border-2 transition-colors",
+        remoteScrollEnabled ? "border-green-500/50 bg-green-500/5" : "border-yellow-500/50 bg-yellow-500/5"
+      )}>
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className={cn(
+                "p-2 rounded-lg",
+                remoteScrollEnabled ? "bg-green-500/20" : "bg-yellow-500/20"
+              )}>
+                <Hand className={cn("w-5 h-5", remoteScrollEnabled ? "text-green-600" : "text-yellow-600")} />
+              </div>
+              <div>
+                <h4 className="font-semibold">Scroll da Telecomando</h4>
+                <p className="text-sm text-muted-foreground">
+                  {remoteScrollEnabled 
+                    ? "I telecomandi possono scorrere i testi" 
+                    : "Solo i pulsanti admin funzionano"}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={remoteScrollEnabled}
+              onCheckedChange={handleToggleRemoteScroll}
+              className="data-[state=checked]:bg-green-500"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold flex items-center gap-2">
+            <Smartphone className="w-5 h-5" />
+            Telecomando
+          </h3>
+          <p className="text-sm text-muted-foreground">
+            Condividi l'accesso allo scroll dei testi
+          </p>
+        </div>
+        <Button onClick={() => setShowCreateDialog(true)} size="sm">
+          <Plus className="w-4 h-4 mr-2" />
+          Nuovo
+        </Button>
+      </div>
  
        {/* Lista accessi */}
        {accesses.length === 0 ? (

@@ -1,20 +1,21 @@
- import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
- import { useBroadcast } from '@/hooks/useBroadcast';
- import { supabase } from '@/integrations/supabase/client';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { useBroadcast } from '@/hooks/useBroadcast';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   ChevronUp, ChevronDown, Play, Pause, RotateCcw, ZoomIn, ZoomOut, Square, 
-  Mic, ExternalLink, Maximize, Monitor, Minimize2, Radio, Eye, QrCode, Highlighter
+  Mic, ExternalLink, Maximize, Monitor, Minimize2, Radio, Eye, QrCode, Highlighter,
+  AlignLeft, AlignCenter, AlignRight
 } from 'lucide-react';
- import { Button } from '@/components/ui/button';
- import { Label } from '@/components/ui/label';
- import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
- import { Badge } from '@/components/ui/badge';
- import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
- import { cn } from '@/lib/utils';
- import { toast } from 'sonner';
- import { useIsMobile } from '@/hooks/use-mobile';
- import brandLogoText from '@/assets/brand-logo-text.png';
- import QRCode from 'qrcode';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
+import { useIsMobile } from '@/hooks/use-mobile';
+import brandLogoText from '@/assets/brand-logo-text.png';
+import QRCode from 'qrcode';
  
  interface Song {
    id: string;
@@ -43,18 +44,19 @@ import {
  
  export function LiveBroadcastPreview({ canManage = true }: LiveBroadcastPreviewProps) {
    const { session, updateSession } = useBroadcast('main');
-   const [currentSong, setCurrentSong] = useState<Song | null>(null);
-   const [localHighlightLine, setLocalHighlightLine] = useState(0);
-    const [autoScroll, setAutoScroll] = useState(false);
-    const [scrollSpeed, setScrollSpeed] = useState(3);
-    const [fontSize, setFontSize] = useState(100);
-    const [viewMode, setViewMode] = useState<ViewMode>('karaoke');
-    const [activeTab, setActiveTab] = useState<'waiting' | 'content'>('waiting');
-    const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
-    const [isExpanded, setIsExpanded] = useState(false);
-    const [highlightEnabled, setHighlightEnabled] = useState(true);
-    const lyricsRef = useRef<HTMLDivElement>(null);
-    const isMobile = useIsMobile();
+  const [currentSong, setCurrentSong] = useState<Song | null>(null);
+  const [localHighlightLine, setLocalHighlightLine] = useState(0);
+  const [autoScroll, setAutoScroll] = useState(false);
+  const [scrollSpeed, setScrollSpeed] = useState(3);
+  const [fontSize, setFontSize] = useState(100);
+  const [viewMode, setViewMode] = useState<ViewMode>('karaoke');
+  const [activeTab, setActiveTab] = useState<'waiting' | 'content'>('waiting');
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [highlightEnabled, setHighlightEnabled] = useState(true);
+  const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center');
+  const lyricsRef = useRef<HTMLDivElement>(null);
+  const isMobile = useIsMobile();
  
    const tvSettings = useMemo(() => ({
      title: (session as any)?.tv_title || 'Open Mic',
@@ -100,13 +102,29 @@ import {
       }
     }, [(session as any)?.tv_view_mode]);
 
-    // Sync highlightEnabled from session
-    useEffect(() => {
-      const sessionHighlight = (session as any)?.highlight_enabled;
-      if (sessionHighlight !== undefined) {
-        setHighlightEnabled(sessionHighlight);
-      }
-    }, [(session as any)?.highlight_enabled]);
+  // Sync highlightEnabled from session
+  useEffect(() => {
+    const sessionHighlight = (session as any)?.highlight_enabled;
+    if (sessionHighlight !== undefined) {
+      setHighlightEnabled(sessionHighlight);
+    }
+  }, [(session as any)?.highlight_enabled]);
+
+  // Sync fontSize from session
+  useEffect(() => {
+    const sessionFontSize = (session as any)?.font_size;
+    if (sessionFontSize !== undefined && sessionFontSize !== null) {
+      setFontSize(sessionFontSize);
+    }
+  }, [(session as any)?.font_size]);
+
+  // Sync textAlign from session
+  useEffect(() => {
+    const sessionTextAlign = (session as any)?.text_align;
+    if (sessionTextAlign && ['left', 'center', 'right'].includes(sessionTextAlign)) {
+      setTextAlign(sessionTextAlign);
+    }
+  }, [(session as any)?.text_align]);
  
    // Fetch current song
    useEffect(() => {
@@ -194,17 +212,30 @@ import {
      if (newAutoScroll) toast.success('Auto-scroll attivato');
    }, [autoScroll, updateSession]);
  
-    const handleViewModeChange = useCallback(async (mode: ViewMode) => {
-      setViewMode(mode);
-      await updateSession({ tv_view_mode: mode } as any);
-    }, [updateSession]);
+  const handleViewModeChange = useCallback(async (mode: ViewMode) => {
+    setViewMode(mode);
+    await updateSession({ tv_view_mode: mode } as any);
+  }, [updateSession]);
 
-    const handleToggleHighlight = useCallback(async () => {
-      const newValue = !highlightEnabled;
-      setHighlightEnabled(newValue);
-      await updateSession({ highlight_enabled: newValue } as any);
-      toast.success(newValue ? 'Evidenziazione attivata' : 'Evidenziazione disattivata');
-    }, [highlightEnabled, updateSession]);
+  const handleToggleHighlight = useCallback(async () => {
+    const newValue = !highlightEnabled;
+    setHighlightEnabled(newValue);
+    await updateSession({ highlight_enabled: newValue } as any);
+    toast.success(newValue ? 'Evidenziazione attivata' : 'Evidenziazione disattivata');
+  }, [highlightEnabled, updateSession]);
+
+  // Font size change synced to DB
+  const handleFontSizeChange = useCallback(async (delta: number) => {
+    const newSize = Math.max(50, Math.min(150, fontSize + delta));
+    setFontSize(newSize);
+    await updateSession({ font_size: newSize } as any);
+  }, [fontSize, updateSession]);
+
+  // Text align change synced to DB
+  const handleTextAlignChange = useCallback(async (align: 'left' | 'center' | 'right') => {
+    setTextAlign(align);
+    await updateSession({ text_align: align } as any);
+  }, [updateSession]);
  
    const openTVPage = () => window.open('/trasmetti', '_blank');
  
@@ -395,13 +426,19 @@ import {
                        <span className="px-2 min-w-[50px] text-center font-medium text-sm">{localHighlightLine + 1}/{lines.length}</span>
                        <Button variant="ghost" size="icon" onClick={() => handleLineChange('down')} disabled={!canManage || localHighlightLine >= lines.length - 1} className="h-9 w-9"><ChevronDown className="w-5 h-5" /></Button>
                      </div>
-                     <Button variant={autoScroll ? "destructive" : "outline"} size="icon" onClick={handleToggleAutoScroll} disabled={!canManage} className="h-9 w-9">{autoScroll ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}</Button>
-                     <div className="flex items-center gap-1 bg-background rounded-lg p-1">
-                       <Button variant="ghost" size="icon" onClick={() => setFontSize(Math.max(50, fontSize - 10))} className="h-8 w-8"><ZoomOut className="w-4 h-4" /></Button>
-                       <span className="text-xs min-w-[32px] text-center">{fontSize}%</span>
-                       <Button variant="ghost" size="icon" onClick={() => setFontSize(Math.min(150, fontSize + 10))} className="h-8 w-8"><ZoomIn className="w-4 h-4" /></Button>
-                     </div>
-                     <Button variant="outline" size="icon" onClick={handleReset} disabled={!canManage} className="h-9 w-9"><RotateCcw className="w-4 h-4" /></Button>
+                    <Button variant={autoScroll ? "destructive" : "outline"} size="icon" onClick={handleToggleAutoScroll} disabled={!canManage} className="h-9 w-9">{autoScroll ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}</Button>
+                    <div className="flex items-center gap-1 bg-background rounded-lg p-1">
+                      <Button variant="ghost" size="icon" onClick={() => handleFontSizeChange(-10)} className="h-8 w-8"><ZoomOut className="w-4 h-4" /></Button>
+                      <span className="text-xs min-w-[32px] text-center">{fontSize}%</span>
+                      <Button variant="ghost" size="icon" onClick={() => handleFontSizeChange(10)} className="h-8 w-8"><ZoomIn className="w-4 h-4" /></Button>
+                    </div>
+                    {/* Text Align Controls */}
+                    <div className="flex items-center gap-1 bg-background rounded-lg p-1">
+                      <Button variant={textAlign === 'left' ? 'secondary' : 'ghost'} size="icon" onClick={() => handleTextAlignChange('left')} className="h-8 w-8"><AlignLeft className="w-4 h-4" /></Button>
+                      <Button variant={textAlign === 'center' ? 'secondary' : 'ghost'} size="icon" onClick={() => handleTextAlignChange('center')} className="h-8 w-8"><AlignCenter className="w-4 h-4" /></Button>
+                      <Button variant={textAlign === 'right' ? 'secondary' : 'ghost'} size="icon" onClick={() => handleTextAlignChange('right')} className="h-8 w-8"><AlignRight className="w-4 h-4" /></Button>
+                    </div>
+                    <Button variant="outline" size="icon" onClick={handleReset} disabled={!canManage} className="h-9 w-9"><RotateCcw className="w-4 h-4" /></Button>
                    </div>
                  </div>
                </>

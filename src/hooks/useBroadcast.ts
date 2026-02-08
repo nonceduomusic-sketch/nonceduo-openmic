@@ -17,7 +17,10 @@ export interface BroadcastSession {
   scroll_speed: number;
   tv_view_mode: 'compact' | 'karaoke' | 'spotify';
   is_broadcasting: boolean;
-  highlight_enabled: boolean; // New field: when true, active line is highlighted; when false, all text visible
+  highlight_enabled: boolean; // When true, active line is highlighted; when false, all text visible
+  font_size: number; // Font size percentage (50-150)
+  text_align: 'left' | 'center' | 'right'; // Text alignment
+  remote_scroll_enabled: boolean; // When false, remote can only use buttons, no scroll sync
   created_at: string;
   updated_at: string;
 }

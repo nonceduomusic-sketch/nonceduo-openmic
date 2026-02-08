@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { ChevronUp, ChevronDown, Eye, Smartphone, WifiOff, AlertTriangle, Lock, Tv, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
 import brandLogoText from "@/assets/brand-logo-text.png";
@@ -144,6 +145,9 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
   const isBroadcasting = (session as any)?.is_broadcasting ?? false;
   const highlightLine = session?.highlight_line ?? 0;
   const highlightEnabled = (session as any)?.highlight_enabled ?? true;
+  const remoteScrollEnabled = (session as any)?.remote_scroll_enabled ?? true;
+  const fontSize = (session as any)?.font_size ?? 100;
+  const textAlign = ((session as any)?.text_align as 'left' | 'center' | 'right') || 'center';
 
   const lines = useMemo(
     () => currentSong?.testo?.split("\n").filter((line) => line.trim()) || [],
@@ -167,11 +171,13 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
   }, [session?.current_song_id]);
 
   const scrollUp = async () => {
+    if (!remoteScrollEnabled) return;
     const newLine = Math.max(0, highlightLine - 1);
     await updateHighlightLine(newLine);
   };
 
   const scrollDown = async () => {
+    if (!remoteScrollEnabled) return;
     const newLine = Math.min(lines.length - 1, highlightLine + 1);
     await updateHighlightLine(newLine);
   };
@@ -190,23 +196,31 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
             </div>
           </div>
 
-          <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-            <Button
-              variant={viewMode === "preview" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-8 px-3"
-              onClick={() => onViewModeChange("preview")}
-            >
-              <Eye className="w-4 h-4" />
-            </Button>
-            <Button
-              variant={viewMode === "remote" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-8 px-3"
-              onClick={() => onViewModeChange("remote")}
-            >
-              <Smartphone className="w-4 h-4" />
-            </Button>
+          <div className="flex items-center gap-2">
+            {/* Remote scroll status indicator */}
+            {!remoteScrollEnabled && (
+              <Badge variant="outline" className="text-yellow-600 border-yellow-500/50 text-xs">
+                Solo lettura
+              </Badge>
+            )}
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+              <Button
+                variant={viewMode === "preview" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-8 px-3"
+                onClick={() => onViewModeChange("preview")}
+              >
+                <Eye className="w-4 h-4" />
+              </Button>
+              <Button
+                variant={viewMode === "remote" ? "secondary" : "ghost"}
+                size="sm"
+                className="h-8 px-3"
+                onClick={() => onViewModeChange("remote")}
+              >
+                <Smartphone className="w-4 h-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </header>
@@ -218,9 +232,12 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
             highlightLine={highlightLine}
             highlightEnabled={highlightEnabled}
             isBroadcasting={isBroadcasting}
+            remoteScrollEnabled={remoteScrollEnabled}
+            fontSize={fontSize}
+            textAlign={textAlign}
             onScrollUp={scrollUp}
             onScrollDown={scrollDown}
-            onScrollToLine={(index) => updateHighlightLine(index)}
+            onScrollToLine={(index) => remoteScrollEnabled ? updateHighlightLine(index) : undefined}
           />
         ) : (
           <RemoteOnlyControls
@@ -228,6 +245,9 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
             highlightLine={highlightLine}
             highlightEnabled={highlightEnabled}
             isBroadcasting={isBroadcasting}
+            remoteScrollEnabled={remoteScrollEnabled}
+            fontSize={fontSize}
+            textAlign={textAlign}
             onScrollUp={scrollUp}
             onScrollDown={scrollDown}
           />
@@ -245,6 +265,9 @@ function PreviewWithControls({
   highlightLine,
   highlightEnabled,
   isBroadcasting,
+  remoteScrollEnabled,
+  fontSize,
+  textAlign,
   onScrollUp,
   onScrollDown,
   onScrollToLine,
@@ -253,6 +276,9 @@ function PreviewWithControls({
   highlightLine: number;
   highlightEnabled: boolean;
   isBroadcasting: boolean;
+  remoteScrollEnabled: boolean;
+  fontSize: number;
+  textAlign: 'left' | 'center' | 'right';
   onScrollUp: () => void;
   onScrollDown: () => void;
   onScrollToLine: (index: number) => void;
@@ -309,24 +335,32 @@ function PreviewWithControls({
           paddingBottom: controlsHeight > 0 ? controlsHeight + 120 : 260,
         }}
       >
-        <div className="space-y-2 max-w-lg mx-auto text-center">
+        <div className={cn(
+          "space-y-2 max-w-lg mx-auto",
+          textAlign === 'left' && 'text-left',
+          textAlign === 'center' && 'text-center',
+          textAlign === 'right' && 'text-right'
+        )}>
           {lines.map((line, index) => {
             const isHighlighted = highlightLine === index;
             const isPast = index < highlightLine;
             // When highlight is OFF, all lines fully visible
             const opacity = highlightEnabled ? (isHighlighted ? 1 : isPast ? 0.5 : 0.8) : 1;
+            const baseFontSize = Math.max(14, 16 * fontSize / 100);
             return (
               <button
                 key={index}
                 data-line={index}
-                onClick={() => onScrollToLine(index)}
+                onClick={() => remoteScrollEnabled && onScrollToLine(index)}
+                disabled={!remoteScrollEnabled}
                 className={cn(
                   "w-full px-3 py-2 rounded-lg transition-all",
-                  "text-base leading-relaxed", // Larger font
+                  "leading-relaxed",
                   highlightEnabled && isHighlighted && "bg-primary/20 text-primary font-semibold ring-2 ring-primary/50",
-                  !isHighlighted && "hover:bg-muted",
+                  !isHighlighted && remoteScrollEnabled && "hover:bg-muted",
+                  !remoteScrollEnabled && "cursor-default",
                 )}
-                style={{ opacity }}
+                style={{ opacity, fontSize: `${baseFontSize}px` }}
               >
                 {line || "\u00A0"}
               </button>
@@ -345,7 +379,7 @@ function PreviewWithControls({
             variant="outline"
             className="h-16 w-16 rounded-full"
             onClick={onScrollUp}
-            disabled={highlightLine === 0}
+            disabled={highlightLine === 0 || !remoteScrollEnabled}
           >
             <ChevronUp className="w-6 h-6" />
           </Button>
@@ -360,7 +394,7 @@ function PreviewWithControls({
             variant="outline"
             className="h-16 w-16 rounded-full"
             onClick={onScrollDown}
-            disabled={highlightLine >= lines.length - 1}
+            disabled={highlightLine >= lines.length - 1 || !remoteScrollEnabled}
           >
             <ChevronDown className="w-6 h-6" />
           </Button>
@@ -378,6 +412,9 @@ function RemoteOnlyControls({
   highlightLine,
   highlightEnabled,
   isBroadcasting,
+  remoteScrollEnabled,
+  fontSize,
+  textAlign,
   onScrollUp,
   onScrollDown,
 }: {
@@ -385,6 +422,9 @@ function RemoteOnlyControls({
   highlightLine: number;
   highlightEnabled: boolean;
   isBroadcasting: boolean;
+  remoteScrollEnabled: boolean;
+  fontSize: number;
+  textAlign: 'left' | 'center' | 'right';
   onScrollUp: () => void;
   onScrollDown: () => void;
 }) {
@@ -437,8 +477,14 @@ function RemoteOnlyControls({
       >
         <div className="text-sm text-muted-foreground mb-4 text-center sticky top-0 bg-background/80 backdrop-blur-sm py-2 -mx-4 px-4 z-10">
           Riga {highlightLine + 1} di {lines.length}
+          {!remoteScrollEnabled && <span className="ml-2 text-yellow-600">(Solo lettura)</span>}
         </div>
-        <div className="space-y-2 text-center max-w-lg mx-auto pb-6">
+        <div className={cn(
+          "space-y-2 max-w-lg mx-auto pb-6",
+          textAlign === 'left' && 'text-left',
+          textAlign === 'center' && 'text-center',
+          textAlign === 'right' && 'text-right'
+        )}>
           {lines.map((line, index) => {
             const isHighlighted = highlightLine === index;
             const distance = Math.abs(highlightLine - index);
@@ -446,16 +492,17 @@ function RemoteOnlyControls({
             const opacity = highlightEnabled 
               ? (isHighlighted ? 1 : distance === 1 ? 0.7 : distance === 2 ? 0.5 : 0.3)
               : 1;
+            const baseFontSize = Math.max(14, 18 * fontSize / 100);
             return (
               <div
                 key={index}
                 data-line={index}
                 className={cn(
-                  "px-4 py-3 rounded-xl text-lg leading-relaxed transition-colors duration-200", // Larger font
+                  "px-4 py-3 rounded-xl leading-relaxed transition-colors duration-200",
                   highlightEnabled && isHighlighted && "bg-primary text-primary-foreground font-semibold",
                   !isHighlighted && "text-foreground",
                 )}
-                style={{ opacity }}
+                style={{ opacity, fontSize: `${baseFontSize}px` }}
               >
                 {line || "\u00A0"}
               </div>
@@ -478,10 +525,10 @@ function RemoteOnlyControls({
               variant="outline"
               className={cn(
                 "h-20 text-xl font-bold rounded-2xl transition-all active:scale-95",
-                highlightLine === 0 && "opacity-30",
+                (highlightLine === 0 || !remoteScrollEnabled) && "opacity-30",
               )}
               onClick={onScrollUp}
-              disabled={highlightLine === 0}
+              disabled={highlightLine === 0 || !remoteScrollEnabled}
             >
               <ChevronUp className="w-10 h-10 mr-3" />
               INDIETRO
@@ -490,13 +537,13 @@ function RemoteOnlyControls({
               size="lg"
               className={cn(
                 "h-20 text-xl font-bold rounded-2xl transition-all active:scale-95",
-                highlightLine >= lines.length - 1 && "opacity-30",
+                (highlightLine >= lines.length - 1 || !remoteScrollEnabled) && "opacity-30",
               )}
               onClick={onScrollDown}
-              disabled={highlightLine >= lines.length - 1}
+              disabled={highlightLine >= lines.length - 1 || !remoteScrollEnabled}
             >
+              <ChevronDown className="w-10 h-10 mr-3" />
               AVANTI
-              <ChevronDown className="w-10 h-10 ml-3" />
             </Button>
           </div>
         </div>

@@ -355,15 +355,18 @@ export type Database = {
           current_reservation_id: string | null
           current_song_id: string | null
           display_mode: string
+          font_size: number | null
           highlight_enabled: boolean | null
           highlight_line: number | null
           id: string
           is_active: boolean
           is_broadcasting: boolean | null
+          remote_scroll_enabled: boolean | null
           sala_code: string
           sala_name: string
           scroll_position: number | null
           scroll_speed: number | null
+          text_align: string | null
           tv_element_positions: Json | null
           tv_footer: string | null
           tv_logo_url: string | null
@@ -387,15 +390,18 @@ export type Database = {
           current_reservation_id?: string | null
           current_song_id?: string | null
           display_mode?: string
+          font_size?: number | null
           highlight_enabled?: boolean | null
           highlight_line?: number | null
           id?: string
           is_active?: boolean
           is_broadcasting?: boolean | null
+          remote_scroll_enabled?: boolean | null
           sala_code?: string
           sala_name?: string
           scroll_position?: number | null
           scroll_speed?: number | null
+          text_align?: string | null
           tv_element_positions?: Json | null
           tv_footer?: string | null
           tv_logo_url?: string | null
@@ -419,15 +425,18 @@ export type Database = {
           current_reservation_id?: string | null
           current_song_id?: string | null
           display_mode?: string
+          font_size?: number | null
           highlight_enabled?: boolean | null
           highlight_line?: number | null
           id?: string
           is_active?: boolean
           is_broadcasting?: boolean | null
+          remote_scroll_enabled?: boolean | null
           sala_code?: string
           sala_name?: string
           scroll_position?: number | null
           scroll_speed?: number | null
+          text_align?: string | null
           tv_element_positions?: Json | null
           tv_footer?: string | null
           tv_logo_url?: string | null

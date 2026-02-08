@@ -93,6 +93,8 @@ export default function Trasmetti() {
     showStatus: (session as any)?.tv_show_status ?? true,
     positions: (session as any)?.tv_element_positions || DEFAULT_POSITIONS,
     scrollSpeed: (session as any)?.scroll_speed ?? 3,
+    fontSize: (session as any)?.font_size ?? 100,
+    textAlign: ((session as any)?.text_align as 'left' | 'center' | 'right') || 'center',
   }), [session]);
 
   const lines = useMemo(() => 
@@ -264,7 +266,12 @@ export default function Trasmetti() {
             className="relative z-10 flex-1 px-4 md:px-8 py-4 overflow-y-auto"
             style={{ maxHeight: 'calc(100vh - 180px)' }}
           >
-            <div className="max-w-4xl mx-auto bg-black/30 backdrop-blur-sm rounded-2xl p-8 md:p-12 shadow-2xl space-y-4 md:space-y-6 text-center">
+            <div className={cn(
+              "max-w-4xl mx-auto bg-black/30 backdrop-blur-sm rounded-2xl p-8 md:p-12 shadow-2xl space-y-4 md:space-y-6",
+              tvSettings.textAlign === 'left' && 'text-left',
+              tvSettings.textAlign === 'center' && 'text-center',
+              tvSettings.textAlign === 'right' && 'text-right'
+            )}>
               {lines.map((line, index) => {
                 const isHighlighted = highlightLine === index;
                 const isPast = index < highlightLine;
@@ -274,16 +281,17 @@ export default function Trasmetti() {
                   ? (isHighlighted ? 1 : isPast ? 0.4 : 0.7)
                   : 1;
                 
+                const baseFontSize = Math.max(14, 24 * tvSettings.fontSize / 100);
+                
                 return (
                   <p
                     key={index}
                     data-line={index}
                     className={cn(
                       "font-sans leading-loose transition-all duration-300 py-3 px-6 -mx-4 rounded-xl",
-                      "text-2xl sm:text-3xl md:text-4xl", // Larger font
                       highlightEnabled && isHighlighted && "bg-yellow-400/30 ring-2 ring-yellow-400/50 scale-[1.02] font-bold"
                     )}
-                    style={{ opacity }}
+                    style={{ opacity, fontSize: `${baseFontSize}px` }}
                   >
                     {line || '\u00A0'}
                   </p>
@@ -356,7 +364,12 @@ export default function Trasmetti() {
             className="relative z-10 flex-1 px-8 md:px-16 lg:px-24 py-8 overflow-y-auto"
             style={{ maxHeight: 'calc(100vh - 200px)' }}
           >
-            <div className="max-w-5xl mx-auto space-y-6 md:space-y-8 text-center py-[20vh]">
+            <div className={cn(
+              "max-w-5xl mx-auto space-y-6 md:space-y-8 py-[20vh]",
+              tvSettings.textAlign === 'left' && 'text-left',
+              tvSettings.textAlign === 'center' && 'text-center',
+              tvSettings.textAlign === 'right' && 'text-right'
+            )}>
               {lines.map((line, index) => {
                 const isHighlighted = highlightLine === index;
                 const isPast = index < highlightLine;
@@ -371,12 +384,10 @@ export default function Trasmetti() {
                   else if (distanceFromHighlight > 2) opacity = 0.35;
                 }
                 
-                // Font size based on highlight (only when enabled)
-                const fontSizeClass = (highlightEnabled && isHighlighted)
-                  ? 'text-4xl md:text-5xl lg:text-6xl' 
-                  : (highlightEnabled && distanceFromHighlight <= 1)
-                    ? 'text-3xl md:text-4xl lg:text-5xl'
-                    : 'text-2xl md:text-3xl lg:text-4xl'; // Larger base font
+                // Font size from settings
+                const baseFontSize = Math.max(18, 32 * tvSettings.fontSize / 100);
+                const highlightedFontSize = baseFontSize * 1.4;
+                const nearFontSize = baseFontSize * 1.15;
 
                 return (
                   <p
@@ -385,11 +396,15 @@ export default function Trasmetti() {
                     className={cn(
                       "font-bold leading-relaxed transition-all duration-700 ease-out",
                       "font-sans tracking-wide",
-                      fontSizeClass,
                       highlightEnabled && isHighlighted && "text-primary scale-105"
                     )}
                     style={{
                       opacity,
+                      fontSize: (highlightEnabled && isHighlighted) 
+                        ? `${highlightedFontSize}px` 
+                        : (highlightEnabled && distanceFromHighlight <= 1)
+                          ? `${nearFontSize}px`
+                          : `${baseFontSize}px`,
                       textShadow: (highlightEnabled && isHighlighted)
                         ? '0 0 60px hsl(var(--primary) / 0.6), 0 0 120px hsl(var(--primary) / 0.3)'
                         : 'none',
@@ -458,7 +473,12 @@ export default function Trasmetti() {
           className="relative z-10 flex-1 px-6 md:px-8 py-8 overflow-y-auto"
           style={{ maxHeight: 'calc(100vh - 160px)' }}
         >
-          <div className="max-w-4xl mx-auto text-center space-y-4">
+          <div className={cn(
+            "max-w-4xl mx-auto space-y-4",
+            tvSettings.textAlign === 'left' && 'text-left',
+            tvSettings.textAlign === 'center' && 'text-center',
+            tvSettings.textAlign === 'right' && 'text-right'
+          )}>
             {lines.map((line, index) => {
               const isHighlighted = highlightLine === index;
               
@@ -467,16 +487,17 @@ export default function Trasmetti() {
                 ? (isHighlighted ? 1 : 0.5)
                 : 1;
               
+              const baseFontSize = Math.max(16, 24 * tvSettings.fontSize / 100);
+              
               return (
                 <p
                   key={index}
                   data-line={index}
                   className={cn(
                     "leading-relaxed transition-all duration-300 px-6 py-3 rounded-xl",
-                    "text-xl sm:text-2xl md:text-3xl", // Larger font, no line numbers
                     highlightEnabled && isHighlighted && "bg-primary/20 text-primary font-bold ring-2 ring-primary/30"
                   )}
-                  style={{ opacity }}
+                  style={{ opacity, fontSize: `${baseFontSize}px` }}
                 >
                   {line || '\u00A0'}
                 </p>
