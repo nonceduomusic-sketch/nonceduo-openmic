@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from "re
 import { useParams } from "react-router-dom";
 import { useBroadcastRemoteUser, useRemoteControl } from "@/hooks/useBroadcastRemote";
 import { useBroadcast } from "@/hooks/useBroadcast";
+import { useScrollPositionPublisher } from "@/hooks/useScrollPositionPublisher";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -134,7 +135,7 @@ interface RemoteControlInterfaceProps {
 
 function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChange }: RemoteControlInterfaceProps) {
   const { session } = useBroadcast(salaCode);
-  const { updateHighlightLine } = useRemoteControl(sessionId, salaCode);
+  const { updateHighlightLine, updateScrollPosition } = useRemoteControl(sessionId, salaCode);
 
   const [currentSong, setCurrentSong] = useState<{
     titolo: string;
@@ -237,7 +238,8 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
             textAlign={textAlign}
             onScrollUp={scrollUp}
             onScrollDown={scrollDown}
-            onScrollToLine={(index) => remoteScrollEnabled ? updateHighlightLine(index) : undefined}
+            onScrollToLine={(index) => updateHighlightLine(index)}
+            onScrollPositionChange={(ratio) => updateScrollPosition(ratio)}
           />
         ) : (
           <RemoteOnlyControls
@@ -250,6 +252,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
             textAlign={textAlign}
             onScrollUp={scrollUp}
             onScrollDown={scrollDown}
+            onScrollPositionChange={(ratio) => updateScrollPosition(ratio)}
           />
         )}
       </main>
@@ -271,6 +274,7 @@ function PreviewWithControls({
   onScrollUp,
   onScrollDown,
   onScrollToLine,
+  onScrollPositionChange,
 }: {
   lines: string[];
   highlightLine: number;
@@ -279,9 +283,10 @@ function PreviewWithControls({
   remoteScrollEnabled: boolean;
   fontSize: number;
   textAlign: 'left' | 'center' | 'right';
-  onScrollUp: () => void;
-  onScrollDown: () => void;
-  onScrollToLine: (index: number) => void;
+  onScrollUp: () => void | Promise<void>;
+  onScrollDown: () => void | Promise<void>;
+  onScrollToLine: (index: number) => void | Promise<unknown>;
+  onScrollPositionChange?: (ratio: number) => void | Promise<unknown>;
 }) {
   const lyricsRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
@@ -296,6 +301,11 @@ function PreviewWithControls({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  const { onScroll: onLyricsScroll } = useScrollPositionPublisher({
+    enabled: remoteScrollEnabled,
+    publish: (ratio) => onScrollPositionChange?.(ratio),
+  });
 
   // Auto-scroll only when highlight is enabled
   useLayoutEffect(() => {
@@ -330,6 +340,7 @@ function PreviewWithControls({
     <div className="h-full flex flex-col">
       <div
         ref={lyricsRef}
+        onScroll={(e) => onLyricsScroll(e.currentTarget)}
         className="flex-1 overflow-y-auto px-4 py-4"
         style={{
           paddingBottom: controlsHeight > 0 ? controlsHeight + 120 : 260,
@@ -417,6 +428,7 @@ function RemoteOnlyControls({
   textAlign,
   onScrollUp,
   onScrollDown,
+  onScrollPositionChange,
 }: {
   lines: string[];
   highlightLine: number;
@@ -425,8 +437,9 @@ function RemoteOnlyControls({
   remoteScrollEnabled: boolean;
   fontSize: number;
   textAlign: 'left' | 'center' | 'right';
-  onScrollUp: () => void;
-  onScrollDown: () => void;
+  onScrollUp: () => void | Promise<void>;
+  onScrollDown: () => void | Promise<void>;
+  onScrollPositionChange?: (ratio: number) => void | Promise<unknown>;
 }) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const controlsRef = useRef<HTMLDivElement>(null);
@@ -441,6 +454,11 @@ function RemoteOnlyControls({
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  const { onScroll: onRemoteScroll } = useScrollPositionPublisher({
+    enabled: remoteScrollEnabled && !highlightEnabled,
+    publish: (ratio) => onScrollPositionChange?.(ratio),
+  });
 
   // Auto-scroll only when highlight is enabled
   useLayoutEffect(() => {
@@ -472,6 +490,7 @@ function RemoteOnlyControls({
     <div className="relative h-full overflow-hidden">
       <div
         ref={scrollContainerRef}
+        onScroll={(e) => onRemoteScroll(e.currentTarget)}
         className="absolute inset-0 overflow-y-scroll overscroll-contain px-4 pt-4"
         style={{ paddingBottom: Math.max(controlsHeight + 16, 140) }}
       >

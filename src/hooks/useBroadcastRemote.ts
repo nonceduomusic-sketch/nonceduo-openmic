@@ -388,7 +388,7 @@
    };
  }
 
-// Hook per controllo remoto - aggiorna highlight_line via RPC sicura
+// Hook per controllo remoto - aggiorna highlight_line / scroll_position via RPC sicure
 export function useRemoteControl(sessionId: string | null, salaCode: string) {
   const updateHighlightLine = useCallback(async (highlightLine: number): Promise<boolean> => {
     if (!sessionId) return false;
@@ -407,7 +407,24 @@ export function useRemoteControl(sessionId: string | null, salaCode: string) {
     return data === true;
   }, [sessionId, salaCode]);
 
-  return { updateHighlightLine };
+  const updateScrollPosition = useCallback(async (scrollPosition: number): Promise<boolean> => {
+    if (!sessionId) return false;
+
+    const { data, error } = await supabase.rpc('remote_update_scroll_position', {
+      p_session_id: sessionId,
+      p_sala_code: salaCode,
+      p_scroll_position: scrollPosition,
+    });
+
+    if (error) {
+      console.error('Error updating scroll position:', error);
+      return false;
+    }
+
+    return data === true;
+  }, [sessionId, salaCode]);
+
+  return { updateHighlightLine, updateScrollPosition };
 }
  
  // Helpers

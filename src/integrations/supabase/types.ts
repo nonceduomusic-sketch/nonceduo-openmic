@@ -2518,6 +2518,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      remote_update_scroll_position: {
+        Args: {
+          p_sala_code: string
+          p_scroll_position: number
+          p_session_id: string
+        }
+        Returns: boolean
+      }
       touch_pin_session: { Args: { p_token: string }; Returns: undefined }
       validate_event_pin: {
         Args: { p_format?: string; p_pin: string }

@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Maximize, Mic } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { scrollElementToRatio } from '@/lib/scrollRatio';
 import QRCode from 'qrcode';
 import brandLogoText from '@/assets/brand-logo-text.png';
 
@@ -145,6 +146,24 @@ export default function Trasmetti() {
       }
     }
   }, [highlightLine, lines.length, highlightEnabled]);
+
+  // When highlight is OFF, follow scroll_position (0-1000)
+  useEffect(() => {
+    if (!lyricsRef.current) return;
+    if (!isBroadcasting || session?.display_mode !== 'lyrics' || !currentSong) return;
+    if (highlightEnabled) return;
+
+    const scrollPosition = (session as any)?.scroll_position ?? 0;
+    scrollElementToRatio(lyricsRef.current, scrollPosition);
+  }, [
+    (session as any)?.scroll_position,
+    highlightEnabled,
+    isBroadcasting,
+    session?.display_mode,
+    currentSong?.id,
+    lines.length,
+    viewMode,
+  ]);
 
   // Generate QR code
   useEffect(() => {
