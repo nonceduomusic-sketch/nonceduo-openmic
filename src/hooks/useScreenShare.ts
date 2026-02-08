@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Capacitor } from '@capacitor/core';
+import { ScreenCapture } from '@/plugins/screen-capture';
 
 interface ScreenShareState {
   isSharing: boolean;
@@ -37,15 +38,28 @@ export function useScreenShareBroadcaster({ salaCode, onStreamStart, onStreamEnd
 
   // Check if screen sharing is available in this runtime
   useEffect(() => {
-    // Screen sharing is supported only on desktop browsers (getDisplayMedia).
-    // On native (Android/iOS) we disable it to avoid calling an unregistered Capacitor plugin.
-    const isNative = Capacitor.isNativePlatform();
-    const hasDisplayMedia = !!navigator.mediaDevices?.getDisplayMedia;
-
-    setState(prev => ({
-      ...prev,
-      isNativeAvailable: !isNative && hasDisplayMedia,
-    }));
+    const checkAvailability = async () => {
+      const isNative = Capacitor.isNativePlatform();
+      
+      if (isNative) {
+        // On native, check if the ScreenCapture plugin is properly registered
+        try {
+          const result = await ScreenCapture.isAvailable();
+          setState(prev => ({ ...prev, isNativeAvailable: result.available }));
+          console.log('Native ScreenCapture availability:', result);
+        } catch (e) {
+          // Plugin not registered - this is expected until user follows setup guide
+          console.log('ScreenCapture plugin not available (not registered):', e);
+          setState(prev => ({ ...prev, isNativeAvailable: false }));
+        }
+      } else {
+        // On web, check for getDisplayMedia
+        const hasDisplayMedia = !!navigator.mediaDevices?.getDisplayMedia;
+        setState(prev => ({ ...prev, isNativeAvailable: hasDisplayMedia }));
+      }
+    };
+    
+    checkAvailability();
   }, []);
 
   // Cleanup function
@@ -62,11 +76,22 @@ export function useScreenShareBroadcaster({ salaCode, onStreamStart, onStreamEnd
       peerConnectionRef.current = null;
     }
 
-    // Stop media tracks
+    // Stop media tracks (web)
     if (mediaStreamRef.current) {
       mediaStreamRef.current.getTracks().forEach(track => track.stop());
       mediaStreamRef.current = null;
     }
+    
+    // Stop native capture if running
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await ScreenCapture.stopCapture();
+      } catch (e) {
+        // Plugin might not be available or already stopped
+        console.log('stopCapture cleanup:', e);
+      }
+    }
+    
     // Update database state
     await supabase
       .from('broadcast_sessions')
@@ -98,12 +123,61 @@ export function useScreenShareBroadcaster({ salaCode, onStreamStart, onStreamEnd
       const isNative = Capacitor.isNativePlatform();
 
       if (isNative) {
-        // Native screen capture is not yet fully integrated
-        // The plugin exists but needs to be registered in the Android build
-        throw new Error(
-          'Screen sharing non è ancora disponibile nell\'app nativa. ' +
-          'Per usare questa funzione, apri l\'admin da un browser desktop.'
-        );
+        // Try to use the native ScreenCapture plugin
+        try {
+          const availability = await ScreenCapture.isAvailable();
+          if (!availability.available) {
+            throw new Error('Screen capture non disponibile su questo dispositivo');
+          }
+          
+          // Start native capture
+          const result = await ScreenCapture.startCapture();
+          if (!result.success) {
+            throw new Error(result.message || 'Errore avvio screen capture nativo');
+          }
+          
+          // Update database state to indicate native capture is active
+          await supabase
+            .from('broadcast_sessions')
+            .update({
+              screen_share_active: true,
+              screen_share_started_at: new Date().toISOString(),
+              screen_share_stopped_reason: null,
+            } as any)
+            .eq('sala_code', salaCode);
+
+          setState(prev => ({
+            ...prev,
+            isSharing: true,
+            isConnecting: false,
+            countdown: null,
+          }));
+
+          onStreamStart?.();
+          toast.success('Screen share nativo avviato!');
+          return;
+          
+        } catch (pluginError: any) {
+          // Plugin not registered or other error
+          console.error('Native ScreenCapture error:', pluginError);
+          
+          // Check if it's a "not implemented" error (plugin not registered)
+          if (pluginError?.message?.includes('not implemented') || 
+              pluginError?.code === 'UNIMPLEMENTED') {
+            throw new Error(
+              'Plugin ScreenCapture non registrato. ' +
+              'Segui la guida NATIVE_SCREEN_SHARE_SETUP.md per integrarlo.'
+            );
+          }
+          
+          // Permission denied or cancelled
+          if (pluginError?.message?.includes('denied') || 
+              pluginError?.message?.includes('cancelled')) {
+            throw new Error('Permesso screen capture negato');
+          }
+          
+          throw pluginError;
+        }
       }
 
       // Web fallback - check platform compatibility
