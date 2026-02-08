@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
+import android.os.Build;
 import android.util.Log;
 
 import com.getcapacitor.JSObject;
@@ -17,12 +18,12 @@ import com.getcapacitor.annotation.ActivityCallback;
 @CapacitorPlugin(name = "ScreenCapture")
 public class ScreenCapturePlugin extends Plugin {
     private static final String TAG = "ScreenCapturePlugin";
-    private static final int REQUEST_MEDIA_PROJECTION = 1001;
     
     private MediaProjectionManager projectionManager;
     private MediaProjection mediaProjection;
-    private PluginCall savedCall;
     private boolean isCapturing = false;
+    private Intent mediaProjectionIntent;
+    private int mediaProjectionResultCode;
 
     @Override
     public void load() {
@@ -45,8 +46,6 @@ public class ScreenCapturePlugin extends Plugin {
             call.reject("Screen capture already in progress");
             return;
         }
-
-        savedCall = call;
         
         try {
             Intent captureIntent = projectionManager.createScreenCaptureIntent();
@@ -61,20 +60,43 @@ public class ScreenCapturePlugin extends Plugin {
     private void handleCaptureResult(PluginCall call, android.app.Activity activity, android.content.Intent data, int resultCode) {
         if (resultCode == Activity.RESULT_OK && data != null) {
             try {
-                mediaProjection = projectionManager.getMediaProjection(resultCode, data);
-                isCapturing = true;
+                // Store the intent and result code for later use
+                mediaProjectionIntent = data;
+                mediaProjectionResultCode = resultCode;
                 
-                JSObject ret = new JSObject();
-                ret.put("success", true);
-                ret.put("message", "Screen capture started");
-                call.resolve(ret);
+                // Start the foreground service FIRST (required on Android 10+)
+                Intent serviceIntent = new Intent(getContext(), ScreenCaptureService.class);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    getContext().startForegroundService(serviceIntent);
+                } else {
+                    getContext().startService(serviceIntent);
+                }
                 
-                // Notify JS that capture is ready
-                notifyListeners("captureStarted", new JSObject());
+                // Small delay to ensure service is started
+                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                    try {
+                        // Now get the media projection
+                        mediaProjection = projectionManager.getMediaProjection(mediaProjectionResultCode, mediaProjectionIntent);
+                        isCapturing = true;
+                        
+                        JSObject ret = new JSObject();
+                        ret.put("success", true);
+                        ret.put("message", "Screen capture started");
+                        call.resolve(ret);
+                        
+                        // Notify JS that capture is ready
+                        notifyListeners("captureStarted", new JSObject());
+                        
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error getting media projection", e);
+                        stopService();
+                        call.reject("Failed to get media projection: " + e.getMessage());
+                    }
+                }, 100);
                 
             } catch (Exception e) {
-                Log.e(TAG, "Error getting media projection", e);
-                call.reject("Failed to get media projection: " + e.getMessage());
+                Log.e(TAG, "Error starting foreground service", e);
+                call.reject("Failed to start screen capture service: " + e.getMessage());
             }
         } else {
             call.reject("Screen capture permission denied");
@@ -88,6 +110,9 @@ public class ScreenCapturePlugin extends Plugin {
             mediaProjection = null;
         }
         isCapturing = false;
+        
+        // Stop the foreground service
+        stopService();
         
         JSObject ret = new JSObject();
         ret.put("success", true);
@@ -104,6 +129,15 @@ public class ScreenCapturePlugin extends Plugin {
         ret.put("capturing", isCapturing);
         call.resolve(ret);
     }
+    
+    private void stopService() {
+        try {
+            Intent serviceIntent = new Intent(getContext(), ScreenCaptureService.class);
+            getContext().stopService(serviceIntent);
+        } catch (Exception e) {
+            Log.e(TAG, "Error stopping service", e);
+        }
+    }
 
     @Override
     protected void handleOnDestroy() {
@@ -112,6 +146,7 @@ public class ScreenCapturePlugin extends Plugin {
             mediaProjection = null;
         }
         isCapturing = false;
+        stopService();
         super.handleOnDestroy();
     }
 }
