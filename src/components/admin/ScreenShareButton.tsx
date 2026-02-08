@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Monitor, MonitorOff, Timer } from 'lucide-react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { 
   Dialog, 
@@ -57,6 +58,13 @@ export function ScreenShareButton({
   };
 
   const handleConfirmStart = () => {
+    // Screen Capture API is blocked inside iframes unless explicitly allowed.
+    // The editor preview runs inside an iframe, so we must ask the user to open the app in a normal tab.
+    if (window.self !== window.top) {
+      toast.error('Lo Screen Share non può avviarsi dentro l\'anteprima (iframe). Apri /admin in una nuova scheda (URL pubblicato o preview) e riprova.');
+      return;
+    }
+
     startScreenShare(parseInt(selectedCountdown, 10));
   };
 
@@ -163,8 +171,7 @@ export function ScreenShareButton({
 
             <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
               <p>
-                <strong>⚠️ Importante:</strong> Al momento lo screen sharing dal browser funziona solo da <strong>computer</strong> (Chrome/Edge).
-                Su Android/iOS (anche Chrome) l’API non è disponibile: per duplicare lo schermo usa il mirroring/casting del dispositivo (Chromecast/Miracast/HDMI).
+                <strong>⚠️ Importante:</strong> Non funziona dentro l’anteprima dell’editor (iframe): apri la pagina /admin in una nuova scheda. Inoltre, lo screen sharing dal browser è affidabile soprattutto da <strong>computer</strong> (Chrome/Edge/Brave).
               </p>
             </div>
           </div>
