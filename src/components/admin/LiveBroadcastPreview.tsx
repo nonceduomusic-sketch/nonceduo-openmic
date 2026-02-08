@@ -4,10 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { 
   ChevronUp, ChevronDown, Play, Pause, RotateCcw, ZoomIn, ZoomOut, Square, 
   Mic, ExternalLink, Maximize, Monitor, Minimize2, Radio, Eye, QrCode, Highlighter,
-  AlignLeft, AlignCenter, AlignRight
+  AlignLeft, AlignCenter, AlignRight, Hand
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -55,6 +56,7 @@ import QRCode from 'qrcode';
   const [isExpanded, setIsExpanded] = useState(false);
   const [highlightEnabled, setHighlightEnabled] = useState(true);
   const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center');
+  const [remoteScrollEnabled, setRemoteScrollEnabled] = useState(true);
   const lyricsRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
  
@@ -125,6 +127,14 @@ import QRCode from 'qrcode';
       setTextAlign(sessionTextAlign);
     }
   }, [(session as any)?.text_align]);
+
+  // Sync remoteScrollEnabled from session
+  useEffect(() => {
+    const sessionRemoteScroll = (session as any)?.remote_scroll_enabled;
+    if (sessionRemoteScroll !== undefined) {
+      setRemoteScrollEnabled(sessionRemoteScroll);
+    }
+  }, [(session as any)?.remote_scroll_enabled]);
  
    // Fetch current song
    useEffect(() => {
@@ -235,6 +245,13 @@ import QRCode from 'qrcode';
   const handleTextAlignChange = useCallback(async (align: 'left' | 'center' | 'right') => {
     setTextAlign(align);
     await updateSession({ text_align: align } as any);
+  }, [updateSession]);
+
+  // Remote scroll toggle synced to DB
+  const handleToggleRemoteScroll = useCallback(async (enabled: boolean) => {
+    setRemoteScrollEnabled(enabled);
+    await updateSession({ remote_scroll_enabled: enabled } as any);
+    toast.success(enabled ? 'Scroll da telecomando abilitato' : 'Scroll da telecomando disabilitato');
   }, [updateSession]);
  
    const openTVPage = () => window.open('/trasmetti', '_blank');
@@ -384,34 +401,53 @@ import QRCode from 'qrcode';
              <TabsTrigger value="content" className="text-xs md:text-sm h-9"><Mic className="w-4 h-4 mr-1.5" />Contenuto Live</TabsTrigger>
            </TabsList>
            <TabsContent value="waiting" className="mt-3">{renderWaitingPreview()}</TabsContent>
-           <TabsContent value="content" className="mt-3 space-y-3">
-             {currentSong ? (
-               <>
-                  {/* Style selector + Highlight toggle */}
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Label className="text-xs text-muted-foreground">Stile:</Label>
-                      {(['compact', 'karaoke', 'spotify'] as ViewMode[]).map((mode) => (
-                        <Button key={mode} variant={viewMode === mode ? 'default' : 'outline'} size="sm" onClick={() => handleViewModeChange(mode)} className="h-8 text-xs capitalize">{mode === 'compact' ? 'Compatta' : mode === 'karaoke' ? 'Karaoke' : 'Spotify'}</Button>
-                      ))}
-                    </div>
-                    {/* HIGHLIGHT TOGGLE - Always visible, critical for live use */}
-                    <Button
-                      variant={highlightEnabled ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={handleToggleHighlight}
-                      disabled={!canManage}
-                      className={cn(
-                        "h-10 min-w-[130px] font-medium transition-all",
-                        highlightEnabled 
-                          ? "bg-yellow-500 hover:bg-yellow-600 text-yellow-950" 
-                          : "border-dashed"
-                      )}
-                    >
-                      <Highlighter className="w-4 h-4 mr-2" />
-                      Evidenziazione {highlightEnabled ? 'ON' : 'OFF'}
-                    </Button>
-                  </div>
+            <TabsContent value="content" className="mt-3 space-y-3">
+              {currentSong ? (
+                <>
+                   {/* Style selector + Highlight toggle + Remote scroll toggle */}
+                   <div className="flex flex-wrap items-center gap-3">
+                     <div className="flex flex-wrap items-center gap-2">
+                       <Label className="text-xs text-muted-foreground">Stile:</Label>
+                       {(['compact', 'karaoke', 'spotify'] as ViewMode[]).map((mode) => (
+                         <Button key={mode} variant={viewMode === mode ? 'default' : 'outline'} size="sm" onClick={() => handleViewModeChange(mode)} className="h-8 text-xs capitalize">{mode === 'compact' ? 'Compatta' : mode === 'karaoke' ? 'Karaoke' : 'Spotify'}</Button>
+                       ))}
+                     </div>
+                     {/* HIGHLIGHT TOGGLE - Always visible, critical for live use */}
+                     <Button
+                       variant={highlightEnabled ? 'default' : 'outline'}
+                       size="sm"
+                       onClick={handleToggleHighlight}
+                       disabled={!canManage}
+                       className={cn(
+                         "h-10 min-w-[130px] font-medium transition-all",
+                         highlightEnabled 
+                           ? "bg-yellow-500 hover:bg-yellow-600 text-yellow-950" 
+                           : "border-dashed"
+                       )}
+                     >
+                       <Highlighter className="w-4 h-4 mr-2" />
+                       Evidenziazione {highlightEnabled ? 'ON' : 'OFF'}
+                     </Button>
+                     {/* REMOTE SCROLL TOGGLE - Always visible, critical for live use */}
+                     <div className={cn(
+                       "flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-colors",
+                       remoteScrollEnabled 
+                         ? "border-green-500/50 bg-green-500/10" 
+                         : "border-yellow-500/50 bg-yellow-500/10"
+                     )}>
+                       <Hand className={cn("w-4 h-4", remoteScrollEnabled ? "text-green-600" : "text-yellow-600")} />
+                       <Label className="text-xs font-medium cursor-pointer" htmlFor="remote-scroll-toggle">
+                         Scroll Telecomando
+                       </Label>
+                       <Switch
+                         id="remote-scroll-toggle"
+                         checked={remoteScrollEnabled}
+                         onCheckedChange={handleToggleRemoteScroll}
+                         disabled={!canManage}
+                         className="data-[state=checked]:bg-green-500"
+                       />
+                     </div>
+                   </div>
                  {renderLyricsPreview()}
                  {/* Controls */}
                  <div className="p-3 bg-muted/50 rounded-xl">
