@@ -79,16 +79,30 @@ export function useScreenShareBroadcaster({ salaCode, onStreamStart, onStreamEnd
     try {
       setState(prev => ({ ...prev, isConnecting: true, error: null }));
 
+      // Platform compatibility notes:
+      // As of current browser support, Screen Capture API is generally NOT available on mobile browsers
+      // (Chrome/Edge on Android, Safari on iOS). We fail fast with a clearer message.
+      const ua = navigator.userAgent || '';
+      const isAndroid = /Android/i.test(ua);
+      const isIOS = /iPhone|iPad|iPod/i.test(ua);
+
+      if (isAndroid || isIOS) {
+        throw new Error(
+          'Screen sharing via browser non è supportato su Android/iOS (anche usando Chrome/Edge). ' +
+          'Per ora funziona solo da computer (Chrome o Edge).'
+        );
+      }
+
       // Check if running as PWA (standalone mode)
-      const isPWA = window.matchMedia('(display-mode: standalone)').matches || 
-                    (window.navigator as any).standalone === true;
+      const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+        (window.navigator as any).standalone === true;
 
       // Check if Screen Capture API is available
       if (!navigator.mediaDevices?.getDisplayMedia) {
         if (isPWA) {
-          throw new Error('Screen sharing non disponibile in modalità app. Apri Chrome e vai su questo sito dal browser per usare questa funzione.');
+          throw new Error('Screen sharing non disponibile in modalità app. Apri il sito nel browser per usare questa funzione.');
         }
-        throw new Error('Screen sharing non supportato. Usa Chrome o Edge su tablet/desktop.');
+        throw new Error('Screen sharing non supportato su questo browser');
       }
 
       // Request screen capture immediately (before countdown)
