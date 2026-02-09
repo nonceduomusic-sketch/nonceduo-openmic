@@ -14,7 +14,9 @@ import {
   FolderOpen,
   Plus,
   Eye,
+  Play,
 } from 'lucide-react';
+import { useBroadcast } from '@/hooks/useBroadcast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -55,6 +57,7 @@ interface SongbookTabProps {
 
 export function SongbookTab({ canManage = true, canFull = true }: SongbookTabProps) {
   const { files, loading, uploadFiles, updateFile, deleteFile, deleteAllFiles } = useSongbookFiles();
+  const { updateSession } = useBroadcast('main');
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isDragging, setIsDragging] = useState(false);
@@ -64,6 +67,20 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
   const [showChordsInPreview, setShowChordsInPreview] = useState(true);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Broadcast a file directly from catalog to TV
+  const handleBroadcastFile = (file: SongbookFile) => {
+    updateSession({
+      songbook_mode: true,
+      songbook_file_id: file.id,
+      songbook_show_chords_on_tv: false,
+      songbook_transpose: 0,
+      display_mode: 'lyrics',
+      is_active: true,
+      is_broadcasting: true,
+    });
+    toast.success(`"${file.title}" in trasmissione su TV!`);
+  };
 
   // Filtered and sorted files
   const filteredFiles = useMemo(() => {
@@ -306,6 +323,15 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
+                          {/* Broadcast button - blue primary, always visible */}
+                          <Button
+                            size="icon"
+                            onClick={() => handleBroadcastFile(file)}
+                            className="h-10 w-10 sm:h-11 sm:w-11 md:h-12 md:w-12 min-w-[40px] sm:min-w-[44px] md:min-w-[48px] bg-primary hover:bg-primary/90"
+                            title="Trasmetti su TV"
+                          >
+                            <Play className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+                          </Button>
                           <Button
                             size="icon"
                             variant="outline"
