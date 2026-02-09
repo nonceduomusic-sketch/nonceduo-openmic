@@ -1,5 +1,5 @@
 import React from "react";
-import { Bell, Calendar, Image, MessageSquare, Music, SlidersHorizontal } from "lucide-react";
+import { Bell, Calendar, Image, MessageSquare, Music, Tv } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { AdminMainTab } from "@/components/admin/AdminSidebar";
 
@@ -38,14 +38,14 @@ type Item = {
  * Mobile Tab Bar riorganizzata:
  * - Centro: Dashboard notifiche (sempre prima)
  * - Eventi: Gestione eventi liberi e programmati
- * - Formati: Toggle rapidi e votazioni
+ * - Trasmetti: Gestione broadcast TV e SongBook
  * - Open Mic / Dediche: Sezioni operative
- * - Community è nel menu hamburger per semplificare mobile
+ * - Formati e Community sono nel menu hamburger
  */
 const ITEMS: Item[] = [
   { key: "notifications", label: "Centro", icon: Bell, badge: (b) => b.totalNotifications },
   { key: "event", label: "Eventi", icon: Calendar },
-  { key: "formats", label: "Formati", icon: SlidersHorizontal },
+  { key: "trasmetti", label: "Trasmetti", icon: Tv },
   { key: "grafiche", label: "Grafiche", icon: Image },
   { key: "openmic", label: "Open Mic", icon: Music, badge: (b) => b.openmicActiveCount, gatedBy: "openmic" },
   { key: "dediche", label: "Dediche", icon: MessageSquare, badge: (b) => b.dedicheUnread, gatedBy: "dediche" },
