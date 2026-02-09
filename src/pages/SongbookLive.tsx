@@ -588,7 +588,7 @@ export default function SongbookLive() {
       </div>
 
       {/* Control Bar */}
-      <div className="sticky bottom-0 bg-background/95 backdrop-blur border-t px-4 py-3 space-y-3">
+      <div className="sticky bottom-0 bg-background/95 backdrop-blur border-t px-4 py-3 pb-[calc(12px+env(safe-area-inset-bottom))] space-y-3">
         {/* Transpose */}
         <div className="flex items-center justify-between">
           <Label className="text-sm">Tonalità</Label>
@@ -596,10 +596,10 @@ export default function SongbookLive() {
             <Button 
               variant="outline" 
               size="icon" 
-              className="h-9 w-9"
+              className="h-11 w-11"
               onClick={() => handleTranspose(-1)}
             >
-              <Minus className="w-4 h-4" />
+              <Minus className="w-5 h-5" />
             </Button>
             <span className="w-12 text-center font-mono text-sm">
               {transpose > 0 ? '+' : ''}{transpose}
@@ -607,10 +607,10 @@ export default function SongbookLive() {
             <Button 
               variant="outline" 
               size="icon" 
-              className="h-9 w-9"
+              className="h-11 w-11"
               onClick={() => handleTranspose(1)}
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-5 h-5" />
             </Button>
           </div>
         </div>
