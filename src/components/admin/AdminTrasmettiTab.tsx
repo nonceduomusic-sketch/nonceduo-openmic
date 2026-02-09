@@ -274,29 +274,29 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
 
       {/* Main content tabs */}
       <Tabs defaultValue="queue" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-6 h-auto p-1 gap-0.5">
-          <TabsTrigger value="queue" className="flex-col gap-1 py-2.5 px-1.5 text-xs sm:text-sm md:text-base sm:flex-row sm:gap-2 font-medium">
-            <List className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="leading-tight text-center">Scaletta<br className="sm:hidden" /><span className="hidden sm:inline"> </span>Live</span>
+        <TabsList className="grid w-full grid-cols-6 h-auto p-1.5 gap-1">
+          <TabsTrigger value="queue" className="flex-col gap-1 py-3 px-2 text-[11px] sm:text-sm md:text-base lg:text-lg sm:flex-row sm:gap-2 font-semibold">
+            <List className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+            <span className="leading-tight text-center">Scaletta<br className="md:hidden" /><span className="hidden md:inline"> </span>Live</span>
           </TabsTrigger>
-          <TabsTrigger value="catalog" className="flex-col gap-1 py-2.5 px-1.5 text-xs sm:text-sm md:text-base sm:flex-row sm:gap-2 font-medium">
-            <Music className="w-4 h-4 sm:w-5 sm:h-5" />
+          <TabsTrigger value="catalog" className="flex-col gap-1 py-3 px-2 text-[11px] sm:text-sm md:text-base lg:text-lg sm:flex-row sm:gap-2 font-semibold">
+            <Music className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
             <span className="leading-tight text-center">Catalogo</span>
           </TabsTrigger>
-          <TabsTrigger value="setlists" className="flex-col gap-1 py-2.5 px-1.5 text-xs sm:text-sm md:text-base sm:flex-row sm:gap-2 font-medium">
-            <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="leading-tight text-center">Le Mie<br className="sm:hidden" /><span className="hidden sm:inline"> </span>Scalette</span>
+          <TabsTrigger value="setlists" className="flex-col gap-1 py-3 px-2 text-[11px] sm:text-sm md:text-base lg:text-lg sm:flex-row sm:gap-2 font-semibold">
+            <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+            <span className="leading-tight text-center">Scalette</span>
           </TabsTrigger>
-          <TabsTrigger value="songbook" className="flex-col gap-1 py-2.5 px-1.5 text-xs sm:text-sm md:text-base sm:flex-row sm:gap-2 font-medium">
-            <Guitar className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="leading-tight text-center">Song<br className="sm:hidden" /><span className="hidden sm:inline">Song</span>Book</span>
+          <TabsTrigger value="songbook" className="flex-col gap-1 py-3 px-2 text-[11px] sm:text-sm md:text-base lg:text-lg sm:flex-row sm:gap-2 font-semibold">
+            <Guitar className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+            <span className="leading-tight text-center">SongBook</span>
           </TabsTrigger>
-          <TabsTrigger value="remote" className="flex-col gap-1 py-2.5 px-1.5 text-xs sm:text-sm md:text-base sm:flex-row sm:gap-2 font-medium">
-            <Monitor className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="leading-tight text-center">Tele<br className="sm:hidden" /><span className="hidden sm:inline">Tele</span>comando</span>
+          <TabsTrigger value="remote" className="flex-col gap-1 py-3 px-2 text-[11px] sm:text-sm md:text-base lg:text-lg sm:flex-row sm:gap-2 font-semibold">
+            <Monitor className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+            <span className="leading-tight text-center">Remote</span>
           </TabsTrigger>
-          <TabsTrigger value="tv-settings" className="flex-col gap-1 py-2.5 px-1.5 text-xs sm:text-sm md:text-base sm:flex-row sm:gap-2 font-medium">
-            <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+          <TabsTrigger value="tv-settings" className="flex-col gap-1 py-3 px-2 text-[11px] sm:text-sm md:text-base lg:text-lg sm:flex-row sm:gap-2 font-semibold">
+            <Settings className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
             <span className="leading-tight text-center">TV</span>
           </TabsTrigger>
         </TabsList>
