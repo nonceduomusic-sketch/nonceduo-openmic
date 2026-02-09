@@ -37,6 +37,7 @@ import Lyrics from "./pages/Lyrics";
 import Trasmetti from "./pages/Trasmetti";
 import Telecomando from "./pages/Telecomando";
 import SongbookLive from "./pages/SongbookLive";
+import Partiture from "./pages/Partiture";
 
 const queryClient = new QueryClient();
 
@@ -82,6 +83,7 @@ const AppContent = () => (
       
       {/* SongBook Live - ChordPro viewer with sync */}
       <Route path="/songbook-live" element={<SongbookLive />} />
+      <Route path="/partiture" element={<Partiture />} />
 
       {/* Legacy routes (keep existing behavior for now) */}
       <Route path="/openmic/live" element={<OpenMic />} />
