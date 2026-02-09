@@ -457,7 +457,7 @@ export default function Trasmetti() {
     
     return (
       <div className={cn(
-        'min-h-screen relative overflow-hidden select-none',
+        'h-screen relative overflow-hidden flex flex-col',
         viewMode === 'chordpro' ? 'bg-slate-900 text-white' : 
         viewMode === 'spotify' ? cn('text-white bg-gradient-to-b', backgroundColor) :
         viewMode === 'karaoke' ? 'bg-black text-white' :
@@ -541,8 +541,7 @@ export default function Trasmetti() {
         {/* ChordPro Content */}
         <div 
           ref={lyricsRef}
-          className="relative z-10 flex-1 px-6 md:px-12 lg:px-16 py-6 overflow-y-auto"
-          style={{ maxHeight: 'calc(100vh - 180px)' }}
+          className="relative z-10 flex-1 min-h-0 px-6 md:px-12 lg:px-16 py-6 overflow-y-auto"
         >
           <div className={cn(
             "max-w-5xl mx-auto space-y-1",
@@ -672,7 +671,7 @@ export default function Trasmetti() {
       const backgroundColor = getColorForSong(currentSong.id);
       
       return (
-        <div className={cn('min-h-screen text-white relative overflow-hidden select-none bg-gradient-to-b', backgroundColor)}>
+        <div className={cn('h-screen text-white relative overflow-hidden flex flex-col bg-gradient-to-b', backgroundColor)}>
           {/* Header with song info */}
           <div className="relative z-10 px-6 md:px-8 pt-6 md:pt-8 pb-4">
             <div className="flex items-center justify-between max-w-4xl mx-auto">
@@ -712,8 +711,7 @@ export default function Trasmetti() {
           {/* Lyrics display - Spotify-style with card */}
           <div 
             ref={lyricsRef}
-            className="relative z-10 flex-1 px-4 md:px-8 py-4 overflow-y-auto"
-            style={{ maxHeight: 'calc(100vh - 180px)' }}
+            className="relative z-10 flex-1 min-h-0 px-4 md:px-8 py-4 overflow-y-auto"
           >
             <div className={cn(
               "max-w-4xl mx-auto bg-black/30 backdrop-blur-sm rounded-2xl p-8 md:p-12 shadow-2xl space-y-4 md:space-y-6",
@@ -771,7 +769,7 @@ export default function Trasmetti() {
     // KARAOKE MODE - Dark with ambient glow (default)
     if (viewMode === 'karaoke') {
       return (
-        <div className="min-h-screen bg-black text-white relative overflow-hidden select-none">
+        <div className="h-screen bg-black text-white relative overflow-hidden flex flex-col">
           {/* Ambient background - subtle, professional */}
           <div className="absolute inset-0 pointer-events-none">
             <div className="absolute inset-0 bg-gradient-to-b from-gray-900/50 via-black to-gray-900/50" />
@@ -818,8 +816,7 @@ export default function Trasmetti() {
           {/* Lyrics display - Karaoke-style with glow */}
           <div 
             ref={lyricsRef}
-            className="relative z-10 flex-1 px-8 md:px-16 lg:px-24 py-8 overflow-y-auto"
-            style={{ maxHeight: 'calc(100vh - 200px)' }}
+            className="relative z-10 flex-1 min-h-0 px-8 md:px-16 lg:px-24 py-8 overflow-y-auto"
           >
             <div className={cn(
               "max-w-5xl mx-auto space-y-6 md:space-y-8 py-[20vh]",
@@ -900,7 +897,7 @@ export default function Trasmetti() {
     
     // COMPACT MODE - Clean, centered text, no line numbers, larger font
     return (
-      <div className="min-h-screen bg-background text-foreground relative overflow-hidden select-none">
+      <div className="h-screen bg-background text-foreground relative overflow-hidden flex flex-col">
         {/* Header with song info */}
         <div className="relative z-10 px-6 md:px-8 pt-6 md:pt-8 pb-4 border-b">
           <div className="flex items-center justify-between max-w-4xl mx-auto">
@@ -939,8 +936,7 @@ export default function Trasmetti() {
         {/* Lyrics display - Compact: centered, larger font, no line numbers */}
         <div 
           ref={lyricsRef}
-          className="relative z-10 flex-1 px-6 md:px-8 py-8 overflow-y-auto"
-          style={{ maxHeight: 'calc(100vh - 160px)' }}
+          className="relative z-10 flex-1 min-h-0 px-6 md:px-8 py-8 overflow-y-auto"
         >
           <div className={cn(
             "max-w-4xl mx-auto space-y-4",

@@ -87,7 +87,7 @@ export default function Partiture() {
   // Waiting state
   if (!isSongbookLive || !file) {
     return (
-      <div className="min-h-[100dvh] bg-background flex flex-col items-center justify-center gap-8 p-8">
+      <div className="h-[100dvh] bg-background flex flex-col items-center justify-center gap-8 p-8">
         <div className="relative">
           <div className="w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center">
             <Guitar className="w-12 h-12 text-primary" />
@@ -122,7 +122,7 @@ export default function Partiture() {
   }
 
   return (
-    <div className="min-h-[100dvh] bg-background flex flex-col">
+    <div className="h-[100dvh] bg-background flex flex-col overflow-hidden">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b px-4 py-3">
         <div className="flex items-center justify-between">
