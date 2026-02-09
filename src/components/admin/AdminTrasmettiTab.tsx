@@ -244,6 +244,10 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                 <ExternalLink className="w-4 h-4 mr-2" />
                 Apri TV
               </Button>
+              <Button variant="outline" size="sm" onClick={() => window.open('/partiture', '_blank')}>
+                <Guitar className="w-4 h-4 mr-2" />
+                Apri Partiture
+              </Button>
             </div>
           </div>
         </CardHeader>
