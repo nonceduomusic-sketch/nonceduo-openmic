@@ -556,13 +556,13 @@ export default function Trasmetti() {
               const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
               const isPast = index < highlightLine;
               
-              // Opacity logic
+              // Opacity logic - BRIGHTER for better readability
               let opacity = 1;
               if (highlightEnabled) {
                 if (isMainHighlight) opacity = 1;
-                else if (isInHighlightRange) opacity = 0.9 - (distanceFromMain * 0.1);
-                else if (isPast) opacity = 0.35;
-                else opacity = 0.6;
+                else if (isInHighlightRange) opacity = 0.95 - (distanceFromMain * 0.05);
+                else if (isPast) opacity = 0.55; // More visible for past lines
+                else opacity = 0.75; // Much brighter for upcoming lines
               }
               
               const baseFontSize = Math.max(16, 28 * tvSettings.fontSize / 100);
@@ -731,9 +731,9 @@ export default function Trasmetti() {
                 let opacity = 1;
                 if (highlightEnabled) {
                   if (isMainHighlight) opacity = 1;
-                  else if (isInHighlightRange) opacity = 0.85 - (distanceFromMain * 0.1); // Secondary lines slightly dimmer
-                  else if (isPast) opacity = 0.4;
-                  else opacity = 0.7;
+                  else if (isInHighlightRange) opacity = 0.92 - (distanceFromMain * 0.05); // Secondary lines visible
+                  else if (isPast) opacity = 0.55; // Brighter past lines
+                  else opacity = 0.8; // Much brighter upcoming
                 }
                 
                 const baseFontSize = Math.max(14, 24 * tvSettings.fontSize / 100);
@@ -838,11 +838,11 @@ export default function Trasmetti() {
                 let opacity = 1;
                 if (highlightEnabled) {
                   if (isMainHighlight) opacity = 1;
-                  else if (isInHighlightRange) opacity = 0.9 - (distanceFromMain * 0.1);
-                  else if (isPast) opacity = 0.3;
-                  else if (distanceFromHighlight === highlightLinesCount) opacity = 0.7;
-                  else if (distanceFromHighlight === highlightLinesCount + 1) opacity = 0.5;
-                  else opacity = 0.35;
+                  else if (isInHighlightRange) opacity = 0.95 - (distanceFromMain * 0.05);
+                  else if (isPast) opacity = 0.5; // Brighter
+                  else if (distanceFromHighlight === highlightLinesCount) opacity = 0.85;
+                  else if (distanceFromHighlight === highlightLinesCount + 1) opacity = 0.7;
+                  else opacity = 0.55; // Brighter
                 }
                 
                 // Font size from settings
@@ -957,8 +957,8 @@ export default function Trasmetti() {
               let opacity = 1;
               if (highlightEnabled) {
                 if (isMainHighlight) opacity = 1;
-                else if (isInHighlightRange) opacity = 0.9 - (distanceFromMain * 0.1);
-                else opacity = 0.5;
+                else if (isInHighlightRange) opacity = 0.95 - (distanceFromMain * 0.05);
+                else opacity = 0.7; // Brighter for all
               }
               
               const baseFontSize = Math.max(16, 24 * tvSettings.fontSize / 100);
