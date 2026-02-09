@@ -55,6 +55,13 @@ export function useLocalBroadcast({ enabled, serverUrl, onStateUpdate }: UseLoca
   const connect = useCallback(() => {
     if (!enabled) return;
 
+    // Cannot use ws:// from an HTTPS page — skip silently
+    if (window.location.protocol === 'https:' && serverUrl.startsWith('ws://')) {
+      console.warn('[LocalBroadcast] Impossibile usare ws:// da pagina HTTPS. Usa l\'app da http:// locale.');
+      setConnected(false);
+      return;
+    }
+
     try {
       const ws = new WebSocket(serverUrl);
       wsRef.current = ws;
@@ -62,14 +69,12 @@ export function useLocalBroadcast({ enabled, serverUrl, onStateUpdate }: UseLoca
       ws.onopen = () => {
         setConnected(true);
         console.log('[LocalBroadcast] Connesso a', serverUrl);
-        // Ping to measure latency
         ws.send(JSON.stringify({ type: 'ping' }));
       };
 
       ws.onmessage = (event) => {
         try {
           const msg = JSON.parse(event.data);
-
           switch (msg.type) {
             case 'state':
             case 'update':
@@ -81,7 +86,6 @@ export function useLocalBroadcast({ enabled, serverUrl, onStateUpdate }: UseLoca
               }
               break;
             case 'song_data':
-              // Handled by specific request callbacks
               break;
           }
         } catch (e) {
@@ -92,14 +96,12 @@ export function useLocalBroadcast({ enabled, serverUrl, onStateUpdate }: UseLoca
       ws.onclose = () => {
         setConnected(false);
         wsRef.current = null;
-        // Auto-reconnect
         if (enabled) {
           reconnectRef.current = setTimeout(connect, RECONNECT_INTERVAL);
         }
       };
 
-      ws.onerror = (err) => {
-        console.error('[LocalBroadcast] Error:', err);
+      ws.onerror = () => {
         ws.close();
       };
     } catch (e) {
