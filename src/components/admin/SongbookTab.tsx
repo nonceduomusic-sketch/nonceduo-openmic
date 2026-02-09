@@ -15,6 +15,9 @@ import {
   Plus,
   Eye,
   Play,
+  ArrowUpDown,
+  Sparkles,
+  SortAsc,
 } from 'lucide-react';
 import { useBroadcast } from '@/hooks/useBroadcast';
 import { Button } from '@/components/ui/button';
@@ -49,6 +52,15 @@ import { useSongbookFiles, SongbookFile } from '@/hooks/useSongbook';
 import { parseChordPro, renderWithChords, renderLyricsOnly } from '@/lib/chordpro';
 import { toast } from 'sonner';
 import { SongbookSetlistsTab } from './SongbookSetlistsTab';
+import { SongbookAdvancedSearch } from './SongbookAdvancedSearch';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+type SortMode = 'title-asc' | 'title-desc' | 'artist-asc' | 'artist-desc';
 
 interface SongbookTabProps {
   canManage?: boolean;
@@ -60,6 +72,9 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
   const { updateSession } = useBroadcast('main');
   
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortMode, setSortMode] = useState<SortMode>('title-asc');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [filterUnderscore, setFilterUnderscore] = useState<'all' | 'only_' | 'no_'>('all');
   const [isDragging, setIsDragging] = useState(false);
   const [editingFile, setEditingFile] = useState<SongbookFile | null>(null);
   const [editContent, setEditContent] = useState('');
@@ -85,19 +100,29 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
   // Filtered and sorted files
   const filteredFiles = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
-    return files
-      .filter(f => 
-        f.title.toLowerCase().includes(query) || 
-        (f.artist || '').toLowerCase().includes(query)
-      )
-      .sort((a, b) => {
-        // Variants (with _) go to bottom
-        if (a.is_variant !== b.is_variant) {
-          return a.is_variant ? 1 : -1;
-        }
-        return a.title.localeCompare(b.title);
-      });
-  }, [files, searchQuery]);
+    let result = files.filter(f => 
+      f.title.toLowerCase().includes(query) || 
+      (f.artist || '').toLowerCase().includes(query)
+    );
+
+    // Underscore filter
+    if (filterUnderscore === 'only_') {
+      result = result.filter(f => f.title.trim().endsWith('_'));
+    } else if (filterUnderscore === 'no_') {
+      result = result.filter(f => !f.title.trim().endsWith('_'));
+    }
+
+    // Sort
+    return result.sort((a, b) => {
+      switch (sortMode) {
+        case 'title-asc': return a.title.localeCompare(b.title);
+        case 'title-desc': return b.title.localeCompare(a.title);
+        case 'artist-asc': return (a.artist || '').localeCompare(b.artist || '');
+        case 'artist-desc': return (b.artist || '').localeCompare(a.artist || '');
+        default: return a.title.localeCompare(b.title);
+      }
+    });
+  }, [files, searchQuery, sortMode, filterUnderscore]);
 
   // Drag & Drop handlers
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -242,7 +267,7 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
 
           {/* Search and Actions */}
           <Card>
-            <CardHeader className="pb-4">
+             <CardHeader className="pb-4">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="relative flex-1 min-w-[200px]">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
@@ -253,38 +278,96 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
                     className="pl-10 sm:pl-11 h-11 sm:h-12 text-sm sm:text-base"
                   />
                 </div>
-                {canFull && files.length > 0 && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm" className="h-10 sm:h-11 text-sm sm:text-base">
-                        <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                        Elimina tutti
+                <div className="flex items-center gap-2 flex-wrap">
+                  {/* Sort dropdown */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="outline" size="sm" className="h-10 sm:h-11 text-sm">
+                        <ArrowUpDown className="w-4 h-4 mr-1.5" />
+                        <span className="hidden sm:inline">
+                          {sortMode === 'title-asc' ? 'Titolo A→Z' :
+                           sortMode === 'title-desc' ? 'Titolo Z→A' :
+                           sortMode === 'artist-asc' ? 'Artista A→Z' : 'Artista Z→A'}
+                        </span>
+                        <span className="sm:hidden">Ordina</span>
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
-                          <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-destructive" />
-                          Eliminare tutti i file?
-                        </AlertDialogTitle>
-                        <AlertDialogDescription className="text-sm sm:text-base">
-                          Questa azione eliminerà permanentemente tutti i {files.length} file ChordPro.
-                          L'operazione non può essere annullata.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel className="h-10 sm:h-11">Annulla</AlertDialogCancel>
-                        <AlertDialogAction 
-                          onClick={deleteAllFiles}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 sm:h-11"
-                        >
-                          Elimina tutti
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setSortMode('title-asc')}>Titolo A → Z</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSortMode('title-desc')}>Titolo Z → A</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSortMode('artist-asc')}>Artista A → Z</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setSortMode('artist-desc')}>Artista Z → A</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  {/* Underscore filter */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant={filterUnderscore !== 'all' ? 'default' : 'outline'} size="sm" className="h-10 sm:h-11 text-sm">
+                        <span className="font-mono mr-1">_</span>
+                        <span className="hidden sm:inline">
+                          {filterUnderscore === 'all' ? 'Tutti' : filterUnderscore === 'only_' ? 'Solo con _' : 'Senza _'}
+                        </span>
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => setFilterUnderscore('all')}>Tutti i file</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setFilterUnderscore('only_')}>Solo con _ (corretti)</DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => setFilterUnderscore('no_')}>Senza _ (non corretti)</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+
+                  {/* Advanced search */}
+                  <Button variant="outline" size="sm" className="h-10 sm:h-11 text-sm" onClick={() => setShowAdvanced(true)}>
+                    <Sparkles className="w-4 h-4 mr-1.5" />
+                    <span className="hidden sm:inline">Avanzata</span>
+                  </Button>
+
+                  {canFull && files.length > 0 && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm" className="h-10 sm:h-11 text-sm sm:text-base">
+                          <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                          <span className="hidden sm:inline">Elimina tutti</span>
+                          <span className="sm:hidden">Elimina</span>
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                            <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-destructive" />
+                            Eliminare tutti i file?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription className="text-sm sm:text-base">
+                            Questa azione eliminerà permanentemente tutti i {files.length} file ChordPro.
+                            L'operazione non può essere annullata.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="h-10 sm:h-11">Annulla</AlertDialogCancel>
+                          <AlertDialogAction 
+                            onClick={deleteAllFiles}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 sm:h-11"
+                          >
+                            Elimina tutti
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
               </div>
+              {/* Active filter info */}
+              {(filterUnderscore !== 'all' || searchQuery) && (
+                <div className="flex items-center gap-2 mt-3 text-sm text-muted-foreground">
+                  <span>{filteredFiles.length} risultati</span>
+                  {filterUnderscore !== 'all' && (
+                    <Badge variant="secondary" className="text-xs">
+                      {filterUnderscore === 'only_' ? 'Solo corretti (_)' : 'Solo non corretti'}
+                    </Badge>
+                  )}
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {loading ? (
@@ -470,6 +553,14 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
           </ScrollArea>
         </DialogContent>
       </Dialog>
+
+      {/* Advanced Search Dialog */}
+      <SongbookAdvancedSearch
+        open={showAdvanced}
+        onOpenChange={setShowAdvanced}
+        files={files}
+        onDeleteFile={deleteFile}
+      />
     </div>
   );
 }
