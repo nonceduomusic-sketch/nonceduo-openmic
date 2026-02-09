@@ -87,20 +87,36 @@ export default function Partiture() {
   // Waiting state
   if (!isSongbookLive || !file) {
     return (
-      <div className="min-h-[100dvh] bg-background flex flex-col items-center justify-center gap-6 p-8">
-        <div className="w-20 h-20 rounded-2xl bg-primary/10 flex items-center justify-center">
-          <Guitar className="w-10 h-10 text-primary" />
+      <div className="min-h-[100dvh] bg-background flex flex-col items-center justify-center gap-8 p-8">
+        <div className="relative">
+          <div className="w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center">
+            <Guitar className="w-12 h-12 text-primary" />
+          </div>
+          <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-muted-foreground/30 animate-pulse" />
         </div>
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl font-bold">Partiture Live</h1>
-          <p className="text-muted-foreground max-w-sm">
-            In attesa che la trasmissione inizi... Quando il direttore avvia un brano, gli accordi appariranno qui in tempo reale.
+        <div className="text-center space-y-3 max-w-md">
+          <h1 className="text-3xl font-bold tracking-tight">Partiture Live</h1>
+          <p className="text-muted-foreground text-lg leading-relaxed">
+            In attesa che la trasmissione inizi...
+          </p>
+          <p className="text-muted-foreground/70 text-sm">
+            Quando il direttore avvia un brano da SongBook Live, gli accordi e il testo appariranno qui in tempo reale, sincronizzati con la TV.
           </p>
         </div>
-        <Badge variant="outline" className="gap-2 px-4 py-2">
+        <Badge variant="outline" className="gap-2 px-5 py-2.5 text-sm">
           <WifiOff className="w-4 h-4" />
-          In attesa
+          In attesa della trasmissione
         </Badge>
+        <div className="flex items-center gap-6 text-xs text-muted-foreground/50 mt-4">
+          <div className="flex items-center gap-1.5">
+            <Music className="w-3.5 h-3.5" />
+            <span>Accordi + Testo</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <Wifi className="w-3.5 h-3.5" />
+            <span>Sync in tempo reale</span>
+          </div>
+        </div>
       </div>
     );
   }
