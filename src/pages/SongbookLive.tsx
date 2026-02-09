@@ -20,6 +20,8 @@ import {
   Palette,
   SkipBack,
   SkipForward,
+  WifiOff,
+  HardDrive,
 } from 'lucide-react';
 import { SongbookLiveDrawer } from '@/components/songbook/SongbookLiveDrawer';
 import { Button } from '@/components/ui/button';
@@ -31,7 +33,8 @@ import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { useSongbookFiles, SongbookFile, SongbookSetlistSong } from '@/hooks/useSongbook';
+import { SongbookFile, SongbookSetlistSong } from '@/hooks/useSongbook';
+import { useCachedSongbookFiles } from '@/hooks/useCachedSongbook';
 import { useBroadcast } from '@/hooks/useBroadcast';
 import { parseChordPro, transposeSong, renderWithChords, renderLyricsOnly, ChordProSong, ChordProLine } from '@/lib/chordpro';
 import { clampScrollRatio, getScrollRatioFromElement } from '@/lib/scrollRatio';
@@ -81,7 +84,7 @@ function renderWithColoredChords(song: ChordProSong): React.ReactNode[] {
 
 export default function SongbookLive() {
   const navigate = useNavigate();
-  const { files, loading } = useSongbookFiles();
+  const { files, loading, isFromCache, cacheStats, preCacheFileIds } = useCachedSongbookFiles();
   const { session, updateSession } = useBroadcast('main');
   
   const [selectedFile, setSelectedFile] = useState<SongbookFile | null>(null);
@@ -337,6 +340,8 @@ export default function SongbookLive() {
   const handleSelectFile = (file: SongbookFile) => {
     setSelectedFile(file);
     setTranspose((file as any).last_transpose ?? 0);
+    // Cache the selected file for offline access
+    preCacheFileIds([file.id]);
     // Don't clear setlist context when previewing
     if (scrollRef.current) {
       scrollRef.current.scrollTop = 0;
@@ -353,8 +358,13 @@ export default function SongbookLive() {
   const handleSetlistBroadcast = useCallback((file: SongbookFile, setlistSongs: SongbookSetlistSong[]) => {
     setActiveSetlistSongs(setlistSongs);
     broadcastFile(file);
+    // Pre-cache all songs in the setlist for offline resilience
+    const fileIds = setlistSongs.map(s => s.songbook_file_id);
+    preCacheFileIds(fileIds).then(() => {
+      console.log('[SongbookCache] Pre-cached setlist songs:', fileIds.length);
+    });
     toast.success('Trasmissione avviata su TV!');
-  }, [broadcastFile]);
+  }, [broadcastFile, preCacheFileIds]);
 
   // Navigate to prev/next in setlist
   const handleSetlistNav = useCallback((direction: 'prev' | 'next') => {
@@ -416,7 +426,21 @@ export default function SongbookLive() {
                 <h1 className="font-bold text-lg">SongBook Live</h1>
               </div>
             </div>
-            <Badge variant="outline">{filteredFiles.length} brani</Badge>
+            <div className="flex items-center gap-2">
+              {isFromCache && (
+                <Badge variant="outline" className="text-xs text-amber-500 border-amber-500/50">
+                  <WifiOff className="w-3 h-3 mr-1" />
+                  Offline
+                </Badge>
+              )}
+              {cacheStats.count > 0 && !isFromCache && (
+                <Badge variant="outline" className="text-xs text-green-500 border-green-500/50" title={`${cacheStats.count} brani in cache`}>
+                  <HardDrive className="w-3 h-3 mr-1" />
+                  {cacheStats.count}
+                </Badge>
+              )}
+              <Badge variant="outline">{filteredFiles.length} brani</Badge>
+            </div>
           </div>
         </header>
 
