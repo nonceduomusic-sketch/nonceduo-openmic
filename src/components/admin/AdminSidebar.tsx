@@ -13,6 +13,7 @@ import {
 import { 
   Bell, 
   Bot,
+  BookOpen,
   Calendar, 
   ListMusic, 
   MessageSquare, 
@@ -46,7 +47,8 @@ export type AdminMainTab =
   | "staff"
   | "permissions"
   | "settings"
-  | "audit";
+  | "audit"
+  | "manuale";
 
 type Item = {
   key: AdminMainTab;
@@ -84,6 +86,7 @@ const ITEMS: Item[] = [
   { key: "staff", label: "Staff", icon: Users, group: "Gestione", description: "Gestione team" },
   { key: "permissions", label: "Permessi", icon: Shield, group: "Gestione", description: "Controllo accessi" },
   { key: "audit", label: "Audit", icon: Database, group: "Gestione", description: "Log attività" },
+  { key: "manuale", label: "Manuale", icon: BookOpen, group: "Gestione", description: "Guida Admin" },
 ];
 
 export function AdminSidebar({

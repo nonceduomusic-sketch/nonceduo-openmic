@@ -122,7 +122,7 @@ const StatusBadge: React.FC<{
   );
 };
 
-const AdminManualContent: React.FC = () => {
+const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const { isLoggedIn, isLoading } = useAdmin();
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['user-intro']));
 
@@ -138,7 +138,7 @@ const AdminManualContent: React.FC = () => {
     });
   };
 
-  if (isLoading) {
+  if (!embedded && isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -149,35 +149,12 @@ const AdminManualContent: React.FC = () => {
     );
   }
 
-  if (!isLoggedIn) {
+  if (!embedded && !isLoggedIn) {
     return <AdminLogin />;
   }
 
-  return (
-    <>
-      <SEO 
-        title="Manuale | Non C'è Duo"
-        description="Guida completa per utenti e amministratori"
-      />
-      
-      <div className="min-h-screen bg-background">
-        {/* Header */}
-        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
-          <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
-              <Link to="/admin">
-                <ArrowLeft className="w-5 h-5" />
-              </Link>
-            </Button>
-            <div className="flex items-center gap-2">
-              <Book className="w-5 h-5 text-primary" />
-              <h1 className="font-display text-lg font-bold">Manuale</h1>
-            </div>
-          </div>
-        </header>
-
-        {/* Content */}
-        <main className="max-w-4xl mx-auto px-4 py-6 pb-24">
+  const manualContent = (
+    <main className={embedded ? "px-2 py-4 pb-24" : "max-w-4xl mx-auto px-4 py-6 pb-24"}>
           <Tabs defaultValue="user" className="space-y-6">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="user" className="gap-2">
@@ -858,16 +835,44 @@ const AdminManualContent: React.FC = () => {
               <p>👥 <strong>Delega con permessi</strong> - usa i ruoli per dividere il lavoro.</p>
             </CardContent>
           </Card>
-        </main>
+      </main>
+    );
+
+  if (embedded) return manualContent;
+
+  return (
+    <>
+      <SEO 
+        title="Manuale | Non C'è Duo"
+        description="Guida completa per utenti e amministratori"
+      />
+      <div className="min-h-screen bg-background">
+        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b">
+          <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-4">
+            <Button variant="ghost" size="icon" asChild>
+              <Link to="/admin">
+                <ArrowLeft className="w-5 h-5" />
+              </Link>
+            </Button>
+            <div className="flex items-center gap-2">
+              <Book className="w-5 h-5 text-primary" />
+              <h1 className="font-display text-lg font-bold">Manuale</h1>
+            </div>
+          </div>
+        </header>
+        {manualContent}
       </div>
     </>
   );
 };
 
-const AdminManual: React.FC = () => (
-  <AdminProvider>
-    <AdminManualContent />
-  </AdminProvider>
-);
+const AdminManual: React.FC<{ embedded?: boolean }> = ({ embedded }) => {
+  if (embedded) return <AdminManualContent embedded />;
+  return (
+    <AdminProvider>
+      <AdminManualContent />
+    </AdminProvider>
+  );
+};
 
 export default AdminManual;
