@@ -18,6 +18,8 @@ import {
   Square,
   Tv,
   Palette,
+  SkipBack,
+  SkipForward,
 } from 'lucide-react';
 import { SongbookLiveDrawer } from '@/components/songbook/SongbookLiveDrawer';
 import { Button } from '@/components/ui/button';
@@ -29,7 +31,7 @@ import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
-import { useSongbookFiles, SongbookFile } from '@/hooks/useSongbook';
+import { useSongbookFiles, SongbookFile, SongbookSetlistSong } from '@/hooks/useSongbook';
 import { useBroadcast } from '@/hooks/useBroadcast';
 import { parseChordPro, transposeSong, renderWithChords, renderLyricsOnly, ChordProSong, ChordProLine } from '@/lib/chordpro';
 import { clampScrollRatio, getScrollRatioFromElement } from '@/lib/scrollRatio';
@@ -57,25 +59,6 @@ function renderWithColoredChords(song: ChordProSong): React.ReactNode[] {
     }
     
     if (line.type === 'chord-text' && line.chords && line.chords.length > 0) {
-      // Build chord line with colored spans
-      const chordElements: React.ReactNode[] = [];
-      let chordLine = '';
-      
-      for (let i = 0; i < line.chords.length; i++) {
-        const { chord, position } = line.chords[i];
-        // Add spaces to reach the position
-        while (chordLine.length < position) {
-          chordLine += ' ';
-        }
-        chordElements.push(
-          <span key={`space-${i}`}>{' '.repeat(Math.max(0, position - (chordElements.length > 0 ? chordLine.length - chord.length : 0)))}</span>
-        );
-        chordElements.push(
-          <span key={`chord-${i}`} className="text-primary font-bold">{chord}</span>
-        );
-        chordLine += chord;
-      }
-      
       result.push(
         <div key={`chords-${lineIndex}`} className="text-primary font-bold whitespace-pre">
           {line.chords.map((c, i) => {
@@ -111,6 +94,9 @@ export default function SongbookLive() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<'title' | 'artist' | 'recent'>('title');
   
+  // Active setlist tracking for prev/next navigation
+  const [activeSetlistSongs, setActiveSetlistSongs] = useState<SongbookSetlistSong[] | null>(null);
+  
   // Get font size from session (synced with admin panel)
   const fontSize = (session as any)?.font_size ?? 100;
   
@@ -118,6 +104,15 @@ export default function SongbookLive() {
   const isBroadcasting = (session as any)?.songbook_mode && (session as any)?.is_broadcasting;
   // Check if THIS file is being broadcast
   const isThisFileBroadcasting = isBroadcasting && (session as any)?.songbook_file_id === selectedFile?.id;
+  
+  // Current song index in active setlist
+  const currentSetlistIndex = useMemo(() => {
+    if (!activeSetlistSongs || !selectedFile) return -1;
+    return activeSetlistSongs.findIndex(s => s.songbook_file_id === selectedFile.id);
+  }, [activeSetlistSongs, selectedFile]);
+
+  const canGoPrev = activeSetlistSongs && currentSetlistIndex > 0;
+  const canGoNext = activeSetlistSongs && currentSetlistIndex >= 0 && currentSetlistIndex < activeSetlistSongs.length - 1;
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef<number | null>(null);
@@ -167,7 +162,7 @@ export default function SongbookLive() {
     ? transposeSong(parseChordPro(selectedFile.content), transpose)
     : null;
 
-  // Sync scroll to TV - throttled to avoid flooding DB
+  // Sync scroll to TV - throttled
   const syncScrollToTV = useCallback(() => {
     if (!scrollRef.current) return;
     
@@ -176,7 +171,6 @@ export default function SongbookLive() {
     lastSyncRef.current = now;
     
     const ratio = getScrollRatioFromElement(scrollRef.current);
-    // Use direct supabase call to avoid stale closure issues
     supabase
       .from('broadcast_sessions')
       .update({ scroll_position: ratio })
@@ -193,7 +187,6 @@ export default function SongbookLive() {
     const newTop = scrollRef.current.scrollTop + (direction === 'up' ? -scrollAmount : scrollAmount);
     scrollRef.current.scrollTop = Math.max(0, newTop);
     
-    // Sync after DOM update - use direct call
     requestAnimationFrame(() => {
       if (scrollRef.current) {
         const ratio = getScrollRatioFromElement(scrollRef.current);
@@ -208,10 +201,27 @@ export default function SongbookLive() {
     });
   }, []);
 
+  // Broadcast a specific file (shared logic)
+  const broadcastFile = useCallback((file: SongbookFile) => {
+    const savedTranspose = (file as any).last_transpose ?? 0;
+    setSelectedFile(file);
+    setTranspose(savedTranspose);
+    isBroadcastingRef.current = true;
+    updateSession({
+      songbook_mode: true,
+      songbook_file_id: file.id,
+      songbook_show_chords_on_tv: showChordsOnTV,
+      songbook_transpose: savedTranspose,
+      display_mode: 'lyrics',
+      is_active: true,
+      is_broadcasting: true,
+      scroll_position: 0,
+    });
+  }, [showChordsOnTV, updateSession]);
+
   // Start broadcast to TV
   const handleStartBroadcast = useCallback(() => {
     if (!selectedFile) return;
-    // Set ref immediately to avoid race condition with scroll events
     isBroadcastingRef.current = true;
     updateSession({
       songbook_mode: true,
@@ -226,7 +236,7 @@ export default function SongbookLive() {
     toast.success('Trasmissione avviata su TV!');
   }, [selectedFile, showChordsOnTV, transpose, updateSession]);
 
-  // Stop broadcast - return TV to waiting/landing screen
+  // Stop broadcast
   const handleStopBroadcast = useCallback(() => {
     isBroadcastingRef.current = false;
     updateSession({
@@ -243,7 +253,7 @@ export default function SongbookLive() {
     toast.success('Trasmissione interrotta');
   }, [updateSession]);
 
-  // Handle scroll event from touch/finger scrolling
+  // Handle scroll event
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
     if (!isBroadcastingRef.current) return;
@@ -255,17 +265,15 @@ export default function SongbookLive() {
     if (autoScroll && scrollRef.current) {
       const scroll = () => {
         if (!scrollRef.current) return;
-        const speed = scrollSpeed / 1000; // pixels per frame
+        const speed = scrollSpeed / 1000;
         scrollRef.current.scrollTop += speed;
         
-        // Check if we reached the end
         const maxScroll = scrollRef.current.scrollHeight - scrollRef.current.clientHeight;
         if (scrollRef.current.scrollTop >= maxScroll) {
           setAutoScroll(false);
           return;
         }
         
-        // Sync scroll to TV during auto-scroll
         if (isBroadcastingRef.current) {
           syncScrollToTV();
         }
@@ -282,19 +290,17 @@ export default function SongbookLive() {
     };
   }, [autoScroll, scrollSpeed, syncScrollToTV]);
 
-  // DON'T auto-broadcast on file select - user controls with Avvia button
-  // Just prepare the session without broadcasting
+  // Reset scroll on file change
   useEffect(() => {
     if (selectedFile && session && scrollRef.current) {
       scrollRef.current.scrollTop = 0;
     }
   }, [selectedFile?.id]);
 
-  // Sync transpose to TV in real-time and persist to DB
+  // Sync transpose to TV and persist
   useEffect(() => {
     if (selectedFile && session) {
       updateSession({ songbook_transpose: transpose } as any);
-      // Save last transpose to songbook_files for persistence
       supabase
         .from('songbook_files')
         .update({ last_transpose: transpose } as any)
@@ -305,7 +311,7 @@ export default function SongbookLive() {
     }
   }, [transpose]);
 
-  // Sync chords toggle to TV in real-time
+  // Sync chords toggle to TV
   useEffect(() => {
     if (selectedFile && session) {
       updateSession({ songbook_show_chords_on_tv: showChordsOnTV } as any);
@@ -330,31 +336,50 @@ export default function SongbookLive() {
 
   const handleSelectFile = (file: SongbookFile) => {
     setSelectedFile(file);
-    // Restore last saved transpose for this song
     setTranspose((file as any).last_transpose ?? 0);
+    // Don't clear setlist context when previewing
     if (scrollRef.current) {
       scrollRef.current.scrollTop = 0;
     }
   };
 
+  const handleBroadcastFile = useCallback((file: SongbookFile) => {
+    setActiveSetlistSongs(null); // Clear setlist context for standalone broadcast
+    broadcastFile(file);
+    toast.success('Trasmissione avviata su TV!');
+  }, [broadcastFile]);
+
+  // Broadcast from setlist - preserves setlist context for prev/next
+  const handleSetlistBroadcast = useCallback((file: SongbookFile, setlistSongs: SongbookSetlistSong[]) => {
+    setActiveSetlistSongs(setlistSongs);
+    broadcastFile(file);
+    toast.success('Trasmissione avviata su TV!');
+  }, [broadcastFile]);
+
+  // Navigate to prev/next in setlist
+  const handleSetlistNav = useCallback((direction: 'prev' | 'next') => {
+    if (!activeSetlistSongs || currentSetlistIndex < 0) return;
+    const newIndex = direction === 'prev' ? currentSetlistIndex - 1 : currentSetlistIndex + 1;
+    if (newIndex < 0 || newIndex >= activeSetlistSongs.length) return;
+
+    const nextSong = activeSetlistSongs[newIndex];
+    const file = files.find(f => f.id === nextSong.songbook_file_id);
+    if (!file) return;
+
+    broadcastFile(file);
+  }, [activeSetlistSongs, currentSetlistIndex, files, broadcastFile]);
+
   const handleTranspose = (delta: number) => {
     setTranspose(prev => {
       const newVal = prev + delta;
-      // Keep in range -11 to +11
       if (newVal > 11) return newVal - 12;
       if (newVal < -11) return newVal + 12;
       return newVal;
     });
   };
 
-  // Quick transpose to specific key (for common transpositions)
-  const handleQuickTranspose = (semitones: number) => {
-    setTranspose(semitones);
-  };
-
   const handleBack = () => {
     if (selectedFile) {
-      // Stop songbook broadcast and return to file list — TV goes to waiting
       if (isBroadcasting) {
         updateSession({
           songbook_mode: false,
@@ -366,30 +391,11 @@ export default function SongbookLive() {
         });
       }
       setSelectedFile(null);
+      setActiveSetlistSongs(null);
     } else {
       navigate(-1);
     }
   };
-
-  // Broadcast a file directly (from drawer)
-  const handleBroadcastFile = useCallback((file: SongbookFile) => {
-    const savedTranspose = (file as any).last_transpose ?? 0;
-    setSelectedFile(file);
-    setTranspose(savedTranspose);
-    // Auto-start broadcast
-    isBroadcastingRef.current = true;
-    updateSession({
-      songbook_mode: true,
-      songbook_file_id: file.id,
-      songbook_show_chords_on_tv: showChordsOnTV,
-      songbook_transpose: savedTranspose,
-      display_mode: 'lyrics',
-      is_active: true,
-      is_broadcasting: true,
-      scroll_position: 0,
-    });
-    toast.success('Trasmissione avviata su TV!');
-  }, [showChordsOnTV, updateSession]);
 
   // File selection view
   if (!selectedFile) {
@@ -403,6 +409,7 @@ export default function SongbookLive() {
                 files={files}
                 onSelectFile={handleSelectFile}
                 onBroadcastFile={handleBroadcastFile}
+                onSetlistBroadcast={handleSetlistBroadcast}
               />
               <div className="flex items-center gap-2">
                 <Guitar className="w-5 h-5 text-primary" />
@@ -520,6 +527,7 @@ export default function SongbookLive() {
               files={files}
               onSelectFile={handleSelectFile}
               onBroadcastFile={handleBroadcastFile}
+              onSetlistBroadcast={handleSetlistBroadcast}
             />
             <Button variant="ghost" size="icon" onClick={handleBack}>
               <ArrowLeft className="w-5 h-5" />
@@ -537,7 +545,6 @@ export default function SongbookLive() {
                 {transpose > 0 ? '+' : ''}{transpose}
               </Badge>
             )}
-            {/* Broadcast indicator */}
             {isThisFileBroadcasting ? (
               <Badge className="bg-destructive text-destructive-foreground animate-pulse">
                 <Tv className="w-3 h-3 mr-1" />
@@ -553,8 +560,8 @@ export default function SongbookLive() {
         </div>
       </header>
 
-      {/* Broadcast Control Bar */}
-      <div className="bg-muted/50 border-b px-4 py-2">
+      {/* Broadcast Control Bar + Setlist Navigation */}
+      <div className="bg-muted/50 border-b px-4 py-2 shrink-0 space-y-2">
         <div className="flex items-center gap-2">
           {isThisFileBroadcasting ? (
             <Button 
@@ -577,6 +584,35 @@ export default function SongbookLive() {
             </Button>
           )}
         </div>
+
+        {/* Prev/Next setlist navigation */}
+        {activeSetlistSongs && activeSetlistSongs.length > 1 && (
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 h-10"
+              disabled={!canGoPrev}
+              onClick={() => handleSetlistNav('prev')}
+            >
+              <SkipBack className="w-4 h-4 mr-1.5" />
+              Precedente
+            </Button>
+            <Badge variant="secondary" className="shrink-0 text-xs px-2">
+              {currentSetlistIndex + 1}/{activeSetlistSongs.length}
+            </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 h-10"
+              disabled={!canGoNext}
+              onClick={() => handleSetlistNav('next')}
+            >
+              Successivo
+              <SkipForward className="w-4 h-4 ml-1.5" />
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Song Content */}
@@ -598,7 +634,7 @@ export default function SongbookLive() {
       </div>
 
       {/* Control Bar */}
-      <div className="sticky bottom-0 bg-background/95 backdrop-blur border-t px-4 py-3 pb-[calc(12px+env(safe-area-inset-bottom))] space-y-3">
+      <div className="sticky bottom-0 bg-background/95 backdrop-blur border-t px-4 py-3 pb-[calc(12px+env(safe-area-inset-bottom))] space-y-3 shrink-0">
         {/* Transpose */}
         <div className="flex items-center justify-between">
           <Label className="text-sm">Tonalità</Label>
@@ -625,7 +661,7 @@ export default function SongbookLive() {
           </div>
         </div>
 
-        {/* Colored chords toggle (local display) */}
+        {/* Colored chords toggle */}
         <div className="flex items-center justify-between">
           <Label className="text-sm flex items-center gap-2">
             <Palette className="w-4 h-4" />
@@ -677,7 +713,7 @@ export default function SongbookLive() {
           </div>
         </div>
 
-        {/* Quick scroll buttons - with instant TV sync */}
+        {/* Quick scroll buttons */}
         <div className="flex gap-2">
           <Button 
             variant="outline" 
@@ -700,4 +736,3 @@ export default function SongbookLive() {
     </div>
   );
 }
-
