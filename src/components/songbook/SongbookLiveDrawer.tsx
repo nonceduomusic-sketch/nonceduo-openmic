@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -44,13 +44,17 @@ import {
   Play,
   Trash2,
   GripVertical,
-  ChevronUp,
-  ChevronDown,
+  Eye,
   FolderOpen,
   ArrowUpDown,
+  Upload,
+  AlertTriangle,
+  Check,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { SongbookFile, useSongbookSetlists, useSongbookSetlistSongs } from '@/hooks/useSongbook';
+import { SongbookFile, SongbookSetlistSong, useSongbookSetlists, useSongbookSetlistSongs } from '@/hooks/useSongbook';
+import { extractChordProTitle } from '@/lib/chordpro';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 // --- Sortable setlist song item ---
@@ -62,6 +66,7 @@ function SortableSetlistItem({
   isFirst,
   isLast,
   onPlay,
+  onPreview,
   onRemove,
   onMoveUp,
   onMoveDown,
@@ -73,6 +78,7 @@ function SortableSetlistItem({
   isFirst: boolean;
   isLast: boolean;
   onPlay: () => void;
+  onPreview: () => void;
   onRemove: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -100,10 +106,13 @@ function SortableSetlistItem({
         <p className="text-xs text-muted-foreground truncate">{artist || 'Artista sconosciuto'}</p>
       </div>
       <div className="flex items-center gap-0.5 shrink-0">
-        <Button size="icon" variant="ghost" className="h-10 w-10" onClick={onPlay}>
+        <Button size="icon" variant="ghost" className="h-10 w-10" onClick={onPreview} title="Anteprima">
+          <Eye className="w-4 h-4" />
+        </Button>
+        <Button size="icon" variant="ghost" className="h-10 w-10" onClick={onPlay} title="Trasmetti">
           <Play className="w-4 h-4" />
         </Button>
-        <Button size="icon" variant="ghost" className="h-10 w-10 text-destructive" onClick={onRemove}>
+        <Button size="icon" variant="ghost" className="h-10 w-10 text-destructive" onClick={onRemove} title="Rimuovi">
           <Trash2 className="w-4 h-4" />
         </Button>
       </div>
@@ -111,14 +120,24 @@ function SortableSetlistItem({
   );
 }
 
+// --- Import duplicate resolution ---
+interface DuplicateInfo {
+  fileName: string;
+  title: string;
+  artist: string;
+  content: string;
+  existingFileId: string | null;
+}
+
 // --- Main Drawer ---
 interface SongbookLiveDrawerProps {
   files: SongbookFile[];
   onSelectFile: (file: SongbookFile) => void;
   onBroadcastFile: (file: SongbookFile) => void;
+  onSetlistBroadcast?: (file: SongbookFile, setlistSongs: SongbookSetlistSong[]) => void;
 }
 
-export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile }: SongbookLiveDrawerProps) {
+export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile, onSetlistBroadcast }: SongbookLiveDrawerProps) {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<'brani' | 'scalette'>('brani');
   const [searchQuery, setSearchQuery] = useState('');
@@ -136,6 +155,17 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile }: Son
   // Add to setlist dialog
   const [showAddSong, setShowAddSong] = useState(false);
   const [addSearchQuery, setAddSearchQuery] = useState('');
+
+  // Import state
+  const [importing, setImporting] = useState(false);
+  const [showImportDuplicates, setShowImportDuplicates] = useState(false);
+  const [importDuplicates, setImportDuplicates] = useState<DuplicateInfo[]>([]);
+  const [importResolvedFiles, setImportResolvedFiles] = useState<{ fileId: string; position: number }[]>([]);
+  const [duplicateChoice, setDuplicateChoice] = useState<'existing' | 'new' | null>(null);
+  const [applyToAll, setApplyToAll] = useState(false);
+  const [currentDuplicateIndex, setCurrentDuplicateIndex] = useState(0);
+  const [pendingImportSetlistId, setPendingImportSetlistId] = useState<string | null>(null);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   // DnD sensors
   const sensors = useSensors(
@@ -205,8 +235,200 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile }: Son
   const handlePlayFromSetlist = (song: typeof setlistSongs[0]) => {
     const file = files.find(f => f.id === song.songbook_file_id);
     if (file) {
-      onBroadcastFile(file);
+      if (onSetlistBroadcast) {
+        onSetlistBroadcast(file, setlistSongs);
+      } else {
+        onBroadcastFile(file);
+      }
       setOpen(false);
+    }
+  };
+
+  const handlePreviewFromSetlist = (song: typeof setlistSongs[0]) => {
+    const file = files.find(f => f.id === song.songbook_file_id);
+    if (file) {
+      onSelectFile(file);
+      setOpen(false);
+    }
+  };
+
+  // --- Import setlist from folder ---
+  const handleImportFolder = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (!fileList || fileList.length === 0) return;
+
+    setImporting(true);
+    try {
+      // Filter .cho files and sort by name (folder order)
+      const choFiles = Array.from(fileList)
+        .filter(f => f.name.toLowerCase().endsWith('.cho'))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      if (choFiles.length === 0) {
+        toast.warning('Nessun file .cho trovato nella cartella');
+        setImporting(false);
+        return;
+      }
+
+      // Read all files
+      const parsedFiles: { fileName: string; title: string; artist: string; content: string }[] = [];
+      for (const file of choFiles) {
+        const content = await file.text();
+        const { title, artist } = extractChordProTitle(content);
+        parsedFiles.push({
+          fileName: file.name,
+          title: title || file.name.replace(/\.cho$/i, ''),
+          artist: artist || '',
+          content,
+        });
+      }
+
+      // Check for existing files in DB
+      const duplicates: DuplicateInfo[] = [];
+      const resolvedFiles: { fileId: string; position: number }[] = [];
+
+      for (let i = 0; i < parsedFiles.length; i++) {
+        const pf = parsedFiles[i];
+        // Find match by title (case-insensitive)
+        const existing = files.find(f =>
+          f.title.toLowerCase().trim() === pf.title.toLowerCase().trim() &&
+          (f.artist || '').toLowerCase().trim() === pf.artist.toLowerCase().trim()
+        );
+
+        if (existing) {
+          duplicates.push({
+            fileName: pf.fileName,
+            title: pf.title,
+            artist: pf.artist,
+            content: pf.content,
+            existingFileId: existing.id,
+          });
+        } else {
+          // Upload new file
+          const { data, error } = await supabase
+            .from('songbook_files')
+            .insert({
+              title: pf.title,
+              artist: pf.artist || null,
+              content: pf.content,
+              filename: pf.fileName,
+            })
+            .select('id')
+            .single();
+
+          if (error) {
+            console.error('Import upload error:', error);
+          } else if (data) {
+            resolvedFiles.push({ fileId: data.id, position: i });
+          }
+        }
+      }
+
+      if (duplicates.length > 0) {
+        // Show duplicate resolution dialog
+        setImportDuplicates(duplicates);
+        setImportResolvedFiles(resolvedFiles);
+        setCurrentDuplicateIndex(0);
+        setDuplicateChoice(null);
+        setApplyToAll(false);
+
+        // Create the setlist first
+        const setlistName = choFiles[0]?.webkitRelativePath?.split('/')[0] || 'Scaletta Importata';
+        const newSetlist = await createSetlist(setlistName);
+        if (newSetlist) {
+          setPendingImportSetlistId(newSetlist.id);
+        }
+        setShowImportDuplicates(true);
+      } else {
+        // No duplicates - create setlist directly
+        const setlistName = choFiles[0]?.webkitRelativePath?.split('/')[0] || 'Scaletta Importata';
+        const newSetlist = await createSetlist(setlistName);
+        if (newSetlist) {
+          // Add all songs in order
+          for (const rf of resolvedFiles.sort((a, b) => a.position - b.position)) {
+            await supabase
+              .from('songbook_setlist_songs')
+              .insert({ setlist_id: newSetlist.id, songbook_file_id: rf.fileId, position: rf.position });
+          }
+          setSelectedSetlistId(newSetlist.id);
+          toast.success(`Scaletta importata con ${resolvedFiles.length} brani`);
+        }
+      }
+    } catch (err) {
+      console.error('Import error:', err);
+      toast.error('Errore durante l\'importazione');
+    } finally {
+      setImporting(false);
+      // Reset input
+      if (importInputRef.current) importInputRef.current.value = '';
+    }
+  };
+
+  const handleResolveDuplicate = async (choice: 'existing' | 'new') => {
+    if (!pendingImportSetlistId) return;
+
+    const processFrom = applyToAll ? currentDuplicateIndex : currentDuplicateIndex;
+    const processTo = applyToAll ? importDuplicates.length : currentDuplicateIndex + 1;
+
+    for (let i = processFrom; i < processTo; i++) {
+      const dup = importDuplicates[i];
+      let fileId: string;
+
+      if (choice === 'existing' && dup.existingFileId) {
+        fileId = dup.existingFileId;
+      } else {
+        // Upload as new
+        const { data, error } = await supabase
+          .from('songbook_files')
+          .insert({
+            title: dup.title,
+            artist: dup.artist || null,
+            content: dup.content,
+            filename: dup.fileName,
+          })
+          .select('id')
+          .single();
+
+        if (error || !data) {
+          console.error('Duplicate resolve upload error:', error);
+          continue;
+        }
+        fileId = data.id;
+      }
+
+      // Find original position based on file order
+      const allOriginal = [...importResolvedFiles, ...importDuplicates.map((d, idx) => ({
+        fileId: '', position: idx + importResolvedFiles.length
+      }))];
+      
+      await supabase
+        .from('songbook_setlist_songs')
+        .insert({
+          setlist_id: pendingImportSetlistId,
+          songbook_file_id: fileId,
+          position: i + importResolvedFiles.length,
+        });
+    }
+
+    if (applyToAll || currentDuplicateIndex >= importDuplicates.length - 1) {
+      // Also add the non-duplicate files
+      for (const rf of importResolvedFiles.sort((a, b) => a.position - b.position)) {
+        await supabase
+          .from('songbook_setlist_songs')
+          .insert({
+            setlist_id: pendingImportSetlistId,
+            songbook_file_id: rf.fileId,
+            position: rf.position,
+          });
+      }
+
+      setShowImportDuplicates(false);
+      setSelectedSetlistId(pendingImportSetlistId);
+      setPendingImportSetlistId(null);
+      toast.success('Scaletta importata con successo!');
+    } else {
+      setCurrentDuplicateIndex(prev => prev + 1);
+      setDuplicateChoice(null);
     }
   };
 
@@ -218,13 +440,13 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile }: Son
             <Menu className="w-6 h-6" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-[min(90vw,400px)] p-0 flex flex-col">
-          <SheetHeader className="px-4 pt-4 pb-2">
+        <SheetContent side="left" className="w-[min(90vw,400px)] p-0 flex flex-col h-full">
+          <SheetHeader className="px-4 pt-4 pb-2 shrink-0">
             <SheetTitle className="text-lg">SongBook</SheetTitle>
           </SheetHeader>
 
-          <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="flex-1 flex flex-col">
-            <TabsList className="mx-4 grid grid-cols-2">
+          <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="flex-1 flex flex-col min-h-0">
+            <TabsList className="mx-4 grid grid-cols-2 shrink-0">
               <TabsTrigger value="brani" className="gap-1.5">
                 <Music className="w-4 h-4" />
                 Brani
@@ -236,8 +458,8 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile }: Son
             </TabsList>
 
             {/* === BRANI TAB === */}
-            <TabsContent value="brani" className="flex-1 flex flex-col mt-0 px-4 pb-4">
-              <div className="py-3 space-y-2">
+            <TabsContent value="brani" className="flex-1 flex flex-col mt-0 px-4 pb-4 min-h-0">
+              <div className="py-3 space-y-2 shrink-0">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
@@ -262,7 +484,7 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile }: Son
                   ))}
                 </div>
               </div>
-              <ScrollArea className="flex-1">
+              <div className="flex-1 min-h-0 overflow-auto">
                 <div className="space-y-1.5">
                   {filteredFiles.map((file) => (
                     <div
@@ -289,21 +511,41 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile }: Son
                     <p className="text-center text-sm text-muted-foreground py-8">Nessun brano trovato</p>
                   )}
                 </div>
-              </ScrollArea>
+              </div>
             </TabsContent>
 
             {/* === SCALETTE TAB === */}
-            <TabsContent value="scalette" className="flex-1 flex flex-col mt-0 px-4 pb-4">
+            <TabsContent value="scalette" className="flex-1 flex flex-col mt-0 px-4 pb-4 min-h-0">
               {!selectedSetlistId ? (
                 // Setlist list
-                <div className="flex-1 flex flex-col">
-                  <div className="py-3">
+                <div className="flex-1 flex flex-col min-h-0">
+                  <div className="py-3 space-y-2 shrink-0">
                     <Button size="sm" className="w-full" onClick={() => setShowNewSetlist(true)}>
                       <Plus className="w-4 h-4 mr-2" />
                       Nuova Scaletta
                     </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => importInputRef.current?.click()}
+                      disabled={importing}
+                    >
+                      <Upload className="w-4 h-4 mr-2" />
+                      {importing ? 'Importazione...' : 'Importa da Cartella'}
+                    </Button>
+                    <input
+                      ref={importInputRef}
+                      type="file"
+                      className="hidden"
+                      // @ts-ignore webkitdirectory is non-standard
+                      webkitdirectory=""
+                      directory=""
+                      multiple
+                      onChange={handleImportFolder}
+                    />
                   </div>
-                  <ScrollArea className="flex-1">
+                  <div className="flex-1 min-h-0 overflow-auto">
                     <div className="space-y-2">
                       {setlists.length === 0 ? (
                         <div className="text-center py-8 text-muted-foreground">
@@ -338,12 +580,12 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile }: Son
                         ))
                       )}
                     </div>
-                  </ScrollArea>
+                  </div>
                 </div>
               ) : (
                 // Setlist detail with drag & drop
-                <div className="flex-1 flex flex-col">
-                  <div className="py-3 flex items-center gap-2">
+                <div className="flex-1 flex flex-col min-h-0">
+                  <div className="py-3 flex items-center gap-2 shrink-0">
                     <Button variant="ghost" size="sm" onClick={() => setSelectedSetlistId(null)}>
                       ← Indietro
                     </Button>
@@ -355,7 +597,7 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile }: Son
                       Aggiungi
                     </Button>
                   </div>
-                  <ScrollArea className="flex-1">
+                  <div className="flex-1 min-h-0 overflow-auto">
                     {setlistSongs.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
                         <Music className="w-10 h-10 mx-auto mb-3 opacity-50" />
@@ -376,6 +618,7 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile }: Son
                                 isFirst={index === 0}
                                 isLast={index === setlistSongs.length - 1}
                                 onPlay={() => handlePlayFromSetlist(song)}
+                                onPreview={() => handlePreviewFromSetlist(song)}
                                 onRemove={() => removeSong(song.id)}
                                 onMoveUp={() => handleMoveUp(index)}
                                 onMoveDown={() => handleMoveDown(index)}
@@ -385,7 +628,7 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile }: Son
                         </SortableContext>
                       </DndContext>
                     )}
-                  </ScrollArea>
+                  </div>
                 </div>
               )}
             </TabsContent>
@@ -430,23 +673,74 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile }: Son
           <ScrollArea className="flex-1 max-h-[400px]">
             <div className="space-y-1.5">
               {addSearchResults.map((file) => (
-                  <div
-                    key={file.id}
-                    className="flex items-center gap-2 p-3 rounded-lg hover:bg-muted/50 active:bg-muted cursor-pointer transition-colors min-h-[48px]"
-                    onClick={async () => {
-                      const ok = await addSong(file.id);
-                      if (ok) toast.success(`"${file.title}" aggiunto`);
-                    }}
-                  >
-                    <Plus className="w-5 h-5 text-primary shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{file.title}</p>
-                      {file.artist && <p className="text-xs text-muted-foreground truncate">{file.artist}</p>}
-                    </div>
+                <div
+                  key={file.id}
+                  className="flex items-center gap-2 p-3 rounded-lg hover:bg-muted/50 active:bg-muted cursor-pointer transition-colors min-h-[48px]"
+                  onClick={async () => {
+                    const ok = await addSong(file.id);
+                    if (ok) toast.success(`"${file.title}" aggiunto`);
+                  }}
+                >
+                  <Plus className="w-5 h-5 text-primary shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{file.title}</p>
+                    {file.artist && <p className="text-xs text-muted-foreground truncate">{file.artist}</p>}
                   </div>
+                </div>
               ))}
             </div>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Import Duplicate Resolution Dialog */}
+      <Dialog open={showImportDuplicates} onOpenChange={(open) => { if (!open) { setShowImportDuplicates(false); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-accent" />
+              Duplicato {currentDuplicateIndex + 1}/{importDuplicates.length}
+            </DialogTitle>
+          </DialogHeader>
+          {importDuplicates[currentDuplicateIndex] && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="font-medium text-sm">{importDuplicates[currentDuplicateIndex].title}</p>
+                <p className="text-xs text-muted-foreground">{importDuplicates[currentDuplicateIndex].artist || 'Artista sconosciuto'}</p>
+                <p className="text-xs text-muted-foreground mt-1">File: {importDuplicates[currentDuplicateIndex].fileName}</p>
+              </div>
+              <p className="text-sm">Questo brano esiste già nel catalogo. Quale versione vuoi usare nella scaletta?</p>
+              <div className="space-y-2">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => handleResolveDuplicate('existing')}
+                >
+                  <Check className="w-4 h-4 mr-2" />
+                  Usa brano esistente
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start"
+                  onClick={() => handleResolveDuplicate('new')}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Importa come nuovo
+                </Button>
+              </div>
+              {importDuplicates.length > 1 && (
+                <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={applyToAll}
+                    onChange={(e) => setApplyToAll(e.target.checked)}
+                    className="rounded"
+                  />
+                  Vale per tutti i duplicati rimanenti
+                </label>
+              )}
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </>
