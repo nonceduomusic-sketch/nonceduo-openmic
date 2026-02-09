@@ -1,0 +1,1 @@
+ALTER TABLE public.songbook_files ADD COLUMN IF NOT EXISTS last_transpose integer NOT NULL DEFAULT 0;
