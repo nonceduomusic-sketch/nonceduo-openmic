@@ -118,6 +118,12 @@ export default function SongbookLive() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef<number | null>(null);
   const lastSyncRef = useRef<number>(0);
+  const isBroadcastingRef = useRef(isThisFileBroadcasting);
+  
+  // Keep ref in sync
+  useEffect(() => {
+    isBroadcastingRef.current = isThisFileBroadcasting;
+  }, [isThisFileBroadcasting]);
 
   // Currently broadcasting file
   const broadcastingFile = useMemo(() => {
@@ -140,17 +146,17 @@ export default function SongbookLive() {
     ? transposeSong(parseChordPro(selectedFile.content), transpose)
     : null;
 
-  // Sync scroll to TV - instant update
+  // Sync scroll to TV - instant update (no session dep to avoid stale closures)
   const syncScrollToTV = useCallback(() => {
-    if (!scrollRef.current || !session) return;
+    if (!scrollRef.current) return;
     
     const now = Date.now();
-    if (now - lastSyncRef.current < 30) return; // Fast throttle
+    if (now - lastSyncRef.current < 30) return;
     lastSyncRef.current = now;
     
     const ratio = getScrollRatioFromElement(scrollRef.current);
     updateSession({ scroll_position: ratio });
-  }, [session, updateSession]);
+  }, [updateSession]);
 
   // Manual scroll with instant TV sync
   const handleManualScroll = useCallback((direction: 'up' | 'down') => {
@@ -159,13 +165,13 @@ export default function SongbookLive() {
     const newTop = scrollRef.current.scrollTop + (direction === 'up' ? -scrollAmount : scrollAmount);
     scrollRef.current.scrollTop = Math.max(0, newTop);
     
-    // Immediately sync to TV
-    setTimeout(() => {
+    // Sync after DOM update
+    requestAnimationFrame(() => {
       if (scrollRef.current) {
         const ratio = getScrollRatioFromElement(scrollRef.current);
         updateSession({ scroll_position: ratio });
       }
-    }, 10);
+    });
   }, [updateSession]);
 
   // Start broadcast to TV
@@ -200,14 +206,12 @@ export default function SongbookLive() {
     toast.success('Trasmissione interrotta');
   }, [updateSession]);
 
-  // Handle scroll event - sync to TV instantly when broadcasting
+  // Handle scroll event - use ref to avoid stale closure
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
-    // Always sync if this file is broadcasting
-    if (!isThisFileBroadcasting) return;
+    if (!isBroadcastingRef.current) return;
     syncScrollToTV();
-  }, [syncScrollToTV, isThisFileBroadcasting]);
-
+  }, [syncScrollToTV]);
   // Auto scroll effect
   useEffect(() => {
     if (autoScroll && scrollRef.current) {
