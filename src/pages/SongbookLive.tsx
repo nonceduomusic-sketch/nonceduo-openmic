@@ -102,9 +102,24 @@ export default function SongbookLive() {
         songbook_transpose: transpose,
         display_mode: 'lyrics',
         is_active: true,
+        is_broadcasting: true, // Avvia automaticamente la trasmissione
       });
     }
-  }, [selectedFile?.id, showChordsOnTV]);
+  }, [selectedFile?.id]);
+
+  // Sync transpose to TV in real-time
+  useEffect(() => {
+    if (selectedFile && session) {
+      updateSession({ songbook_transpose: transpose } as any);
+    }
+  }, [transpose]);
+
+  // Sync chords toggle to TV in real-time
+  useEffect(() => {
+    if (selectedFile && session) {
+      updateSession({ songbook_show_chords_on_tv: showChordsOnTV } as any);
+    }
+  }, [showChordsOnTV]);
 
   // Stop songbook mode on unmount
   useEffect(() => {
@@ -114,6 +129,7 @@ export default function SongbookLive() {
           songbook_mode: false,
           songbook_file_id: null,
           display_mode: 'waiting',
+          is_broadcasting: false,
         });
       }
     };
@@ -135,6 +151,11 @@ export default function SongbookLive() {
       if (newVal < -11) return newVal + 12;
       return newVal;
     });
+  };
+
+  // Quick transpose to specific key (for common transpositions)
+  const handleQuickTranspose = (semitones: number) => {
+    setTranspose(semitones);
   };
 
   const handleBack = () => {

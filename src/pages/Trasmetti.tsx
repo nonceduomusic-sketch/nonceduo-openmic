@@ -3,19 +3,27 @@ import { useParams } from 'react-router-dom';
 import { useBroadcast } from '@/hooks/useBroadcast';
 import { useScreenShareViewer } from '@/hooks/useScreenShare';
 import { supabase } from '@/integrations/supabase/client';
-import { Maximize, Mic } from 'lucide-react';
+import { Maximize, Mic, Guitar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { scrollElementToRatio } from '@/lib/scrollRatio';
 import QRCode from 'qrcode';
 import brandLogoText from '@/assets/brand-logo-text.png';
 import { ScreenShareViewer } from '@/components/broadcast/ScreenShareViewer';
+import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/chordpro';
 
 interface Song {
   id: string;
   titolo: string;
   artista: string;
   testo: string | null;
+}
+
+interface SongbookFile {
+  id: string;
+  title: string;
+  artist: string | null;
+  content: string;
 }
 
 interface ElementPosition {
@@ -59,12 +67,35 @@ const DEFAULT_POSITIONS: Record<string, ElementPosition> = {
   footer: { x: 50, y: 96 },
 };
 
-type LyricsViewMode = 'compact' | 'karaoke' | 'spotify';
+type LyricsViewMode = 'compact' | 'karaoke' | 'spotify' | 'chordpro';
+
+/**
+ * Render chords above lyrics with proper spacing alignment
+ */
+function renderChordsLine(line: ChordProLine, textAlign: 'left' | 'center' | 'right'): string {
+  if (!line.chords || line.chords.length === 0) return '';
+  
+  // Build a string with chords positioned above their syllables
+  let chordLine = '';
+  let lastEnd = 0;
+  
+  for (const { chord, position } of line.chords) {
+    // Add spaces to reach the chord position
+    while (chordLine.length < position) {
+      chordLine += ' ';
+    }
+    chordLine += chord;
+    lastEnd = chordLine.length;
+  }
+  
+  return chordLine;
+}
 
 export default function Trasmetti() {
   const { salaCode = 'main' } = useParams();
   const { session, loading } = useBroadcast(salaCode);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
+  const [currentSongbookFile, setCurrentSongbookFile] = useState<SongbookFile | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [highlightLine, setHighlightLine] = useState(0);
@@ -79,8 +110,17 @@ export default function Trasmetti() {
   const isScreenStreamActive = (session as any)?.screen_stream_active ?? false;
   const screenStreamUrl = (session as any)?.screen_stream_url ?? '';
   
+  // SongBook mode settings
+  const isSongbookMode = (session as any)?.songbook_mode ?? false;
+  const songbookFileId = (session as any)?.songbook_file_id ?? null;
+  const songbookShowChords = (session as any)?.songbook_show_chords_on_tv ?? false;
+  const songbookTranspose = (session as any)?.songbook_transpose ?? 0;
+  const songbookViewMode = ((session as any)?.songbook_view_mode as string) || 'chordpro';
+  
   // View mode from database (admin controlled)
-  const viewMode: LyricsViewMode = ((session as any)?.tv_view_mode as LyricsViewMode) || 'karaoke';
+  const viewMode: LyricsViewMode = isSongbookMode 
+    ? (songbookViewMode as LyricsViewMode) || 'chordpro'
+    : (((session as any)?.tv_view_mode as LyricsViewMode) || 'karaoke');
   
   // Highlight enabled from database (admin controlled)
   const highlightEnabled = (session as any)?.highlight_enabled ?? true;
@@ -117,7 +157,14 @@ export default function Trasmetti() {
     currentSong?.testo?.split('\n').filter(line => line.trim()) || []
   , [currentSong?.testo]);
 
-  // Fetch current song when it changes
+  // Parse songbook file with transpose
+  const parsedSongbook: ChordProSong | null = useMemo(() => {
+    if (!currentSongbookFile) return null;
+    const parsed = parseChordPro(currentSongbookFile.content);
+    return transposeSong(parsed, songbookTranspose);
+  }, [currentSongbookFile, songbookTranspose]);
+
+  // Fetch current song when it changes (regular catalog songs)
   useEffect(() => {
     const fetchSong = async () => {
       if (!session?.current_song_id) {
@@ -140,6 +187,28 @@ export default function Trasmetti() {
 
     fetchSong();
   }, [session?.current_song_id]);
+
+  // Fetch songbook file when in songbook mode
+  useEffect(() => {
+    const fetchSongbookFile = async () => {
+      if (!isSongbookMode || !songbookFileId) {
+        setCurrentSongbookFile(null);
+        return;
+      }
+
+      const { data } = await supabase
+        .from('songbook_files')
+        .select('id, title, artist, content')
+        .eq('id', songbookFileId)
+        .single();
+
+      if (data) {
+        setCurrentSongbookFile(data);
+      }
+    };
+
+    fetchSongbookFile();
+  }, [isSongbookMode, songbookFileId]);
 
   // CRITICAL: Always sync highlight line from session (admin controls via database)
   useEffect(() => {
@@ -165,7 +234,10 @@ export default function Trasmetti() {
   // When highlight is OFF, follow scroll_position (0-1000)
   useEffect(() => {
     if (!lyricsRef.current) return;
-    if (!isBroadcasting || session?.display_mode !== 'lyrics' || !currentSong) return;
+    if (!isBroadcasting) return;
+    // Apply to both regular lyrics and songbook mode
+    const hasContent = session?.display_mode === 'lyrics' && (currentSong || (isSongbookMode && parsedSongbook));
+    if (!hasContent) return;
     if (highlightEnabled) return;
 
     const scrollPosition = (session as any)?.scroll_position ?? 0;
@@ -176,9 +248,75 @@ export default function Trasmetti() {
     isBroadcasting,
     session?.display_mode,
     currentSong?.id,
+    parsedSongbook?.title,
+    isSongbookMode,
     lines.length,
     viewMode,
   ]);
+
+  // AUTO-SCROLL: Tempo-based auto-scroll when enabled
+  const autoScrollActive = (session as any)?.auto_scroll_active ?? false;
+  const autoScrollBpm = (session as any)?.auto_scroll_bpm ?? 60;
+  const autoScrollRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!lyricsRef.current) return;
+    if (!isBroadcasting) return;
+    if (!autoScrollActive) {
+      // Cancel any running auto-scroll
+      if (autoScrollRef.current) {
+        cancelAnimationFrame(autoScrollRef.current);
+        autoScrollRef.current = null;
+      }
+      return;
+    }
+
+    // Calculate scroll speed based on BPM
+    // At 60 BPM, scroll ~1 pixel per frame (60fps)
+    // At 120 BPM, scroll ~2 pixels per frame
+    const pixelsPerBeat = 30; // pixels to scroll per beat
+    const beatsPerSecond = autoScrollBpm / 60;
+    const pixelsPerSecond = pixelsPerBeat * beatsPerSecond;
+    const pixelsPerFrame = pixelsPerSecond / 60; // assuming 60fps
+
+    let lastTime = performance.now();
+    let accumulator = 0;
+
+    const scroll = (currentTime: number) => {
+      if (!lyricsRef.current) return;
+      
+      const deltaTime = currentTime - lastTime;
+      lastTime = currentTime;
+      
+      // Accumulate fractional pixels
+      accumulator += (pixelsPerSecond * deltaTime) / 1000;
+      
+      if (accumulator >= 1) {
+        const pixelsToScroll = Math.floor(accumulator);
+        accumulator -= pixelsToScroll;
+        
+        lyricsRef.current.scrollTop += pixelsToScroll;
+        
+        // Check if we reached the end
+        const maxScroll = lyricsRef.current.scrollHeight - lyricsRef.current.clientHeight;
+        if (lyricsRef.current.scrollTop >= maxScroll) {
+          // Stop auto-scroll when we reach the end
+          return;
+        }
+      }
+      
+      autoScrollRef.current = requestAnimationFrame(scroll);
+    };
+
+    autoScrollRef.current = requestAnimationFrame(scroll);
+
+    return () => {
+      if (autoScrollRef.current) {
+        cancelAnimationFrame(autoScrollRef.current);
+        autoScrollRef.current = null;
+      }
+    };
+  }, [autoScrollActive, autoScrollBpm, isBroadcasting]);
 
   // Generate QR code
   useEffect(() => {
@@ -309,6 +447,219 @@ export default function Trasmetti() {
         stream={remoteStream} 
         isConnecting={screenShareConnecting} 
       />
+    );
+  }
+
+  // SONGBOOK MODE - ChordPro display with optional chords
+  if (isBroadcasting && isSongbookMode && parsedSongbook) {
+    const backgroundColor = getColorForSong(currentSongbookFile?.id || 'default');
+    
+    return (
+      <div className={cn(
+        'min-h-screen relative overflow-hidden select-none',
+        viewMode === 'chordpro' ? 'bg-slate-900 text-white' : 
+        viewMode === 'spotify' ? cn('text-white bg-gradient-to-b', backgroundColor) :
+        viewMode === 'karaoke' ? 'bg-black text-white' :
+        'bg-background text-foreground'
+      )}>
+        {/* Ambient background for karaoke mode */}
+        {viewMode === 'karaoke' && (
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute inset-0 bg-gradient-to-b from-gray-900/50 via-black to-gray-900/50" />
+            <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[200px]" />
+            <div className="absolute bottom-0 right-1/4 w-[500px] h-[500px] bg-purple-600/10 rounded-full blur-[200px]" />
+          </div>
+        )}
+        
+        {/* Header with song info */}
+        <div className={cn(
+          "relative z-10 px-6 md:px-8 pt-6 md:pt-8 pb-4",
+          viewMode === 'compact' && 'border-b'
+        )}>
+          <div className="flex items-center justify-between max-w-5xl mx-auto">
+            <div className="flex items-center gap-4 md:gap-6 min-w-0 flex-1">
+              {tvSettings.showLogo && (
+                <img 
+                  src={tvSettings.logoUrl || brandLogoText} 
+                  alt="Logo" 
+                  className={cn(
+                    "w-auto object-contain flex-shrink-0",
+                    viewMode === 'karaoke' ? 'h-10 md:h-16 opacity-80' : 'h-10 md:h-14 opacity-90'
+                  )}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = brandLogoText;
+                  }}
+                />
+              )}
+              <div className="min-w-0">
+                <h1 className={cn(
+                  "font-bold tracking-tight truncate",
+                  viewMode === 'karaoke' ? 'text-2xl sm:text-3xl md:text-5xl lg:text-6xl' :
+                  'text-2xl sm:text-3xl md:text-4xl lg:text-5xl'
+                )}>
+                  {parsedSongbook.title || currentSongbookFile?.title}
+                </h1>
+                <p className={cn(
+                  "mt-1 font-medium truncate",
+                  viewMode === 'karaoke' ? 'text-lg sm:text-xl md:text-2xl lg:text-3xl text-white/60 font-light' :
+                  'text-lg sm:text-xl md:text-2xl text-white/80'
+                )}>
+                  {parsedSongbook.artist || currentSongbookFile?.artist}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 flex-shrink-0">
+              {/* Key indicator */}
+              {parsedSongbook.key && (
+                <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-full">
+                  <Guitar className="w-4 h-4" />
+                  <span className="font-mono text-sm">{parsedSongbook.key}</span>
+                </div>
+              )}
+              {songbookTranspose !== 0 && (
+                <div className="flex items-center gap-1 px-3 py-1.5 bg-primary/20 rounded-full text-sm">
+                  <span className="font-mono">
+                    {songbookTranspose > 0 ? '+' : ''}{songbookTranspose}
+                  </span>
+                </div>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleFullscreen}
+                className={cn(
+                  viewMode === 'compact' ? '' : 'text-white/60 hover:text-white hover:bg-white/10'
+                )}
+              >
+                <Maximize className="w-5 h-5" />
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* ChordPro Content */}
+        <div 
+          ref={lyricsRef}
+          className="relative z-10 flex-1 px-6 md:px-12 lg:px-16 py-6 overflow-y-auto"
+          style={{ maxHeight: 'calc(100vh - 180px)' }}
+        >
+          <div className={cn(
+            "max-w-5xl mx-auto space-y-1",
+            viewMode === 'spotify' && 'bg-black/30 backdrop-blur-sm rounded-2xl p-8 md:p-12 shadow-2xl',
+            tvSettings.textAlign === 'left' && 'text-left',
+            tvSettings.textAlign === 'center' && 'text-center',
+            tvSettings.textAlign === 'right' && 'text-right'
+          )}>
+            {parsedSongbook.lines.map((line, index) => {
+              const isMainHighlight = highlightLine === index;
+              const distanceFromMain = index - highlightLine;
+              const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
+              const isPast = index < highlightLine;
+              
+              // Opacity logic
+              let opacity = 1;
+              if (highlightEnabled) {
+                if (isMainHighlight) opacity = 1;
+                else if (isInHighlightRange) opacity = 0.9 - (distanceFromMain * 0.1);
+                else if (isPast) opacity = 0.35;
+                else opacity = 0.6;
+              }
+              
+              const baseFontSize = Math.max(16, 28 * tvSettings.fontSize / 100);
+              const chordFontSize = baseFontSize * 0.85;
+
+              // Skip directives and comments
+              if (line.type === 'directive' || line.type === 'comment') {
+                // Only show section markers
+                if (line.directiveKey && ['chorus', 'verse', 'bridge', 'intro', 'outro', 'tab'].includes(line.directiveKey)) {
+                  return (
+                    <div 
+                      key={index}
+                      data-line={index}
+                      className="py-2 mt-4"
+                      style={{ opacity }}
+                    >
+                      <span className="inline-block px-3 py-1 bg-primary/20 text-primary rounded-full text-sm font-medium uppercase tracking-wider">
+                        {line.directiveValue || line.directiveKey}
+                      </span>
+                    </div>
+                  );
+                }
+                return null;
+              }
+
+              if (line.type === 'empty') {
+                return <div key={index} className="h-4" />;
+              }
+
+              // Chord-text line
+              if (line.type === 'chord-text' && line.chords && songbookShowChords) {
+                return (
+                  <div 
+                    key={index}
+                    data-line={index}
+                    className={cn(
+                      "transition-all duration-300 py-2 px-4 -mx-2 rounded-lg",
+                      highlightEnabled && isMainHighlight && "bg-primary/20 ring-2 ring-primary/40 scale-[1.01]",
+                      highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-primary/10"
+                    )}
+                    style={{ opacity }}
+                  >
+                    {/* Chord line */}
+                    <div 
+                      className="font-mono text-primary font-bold whitespace-pre"
+                      style={{ fontSize: `${chordFontSize}px` }}
+                    >
+                      {renderChordsLine(line, tvSettings.textAlign)}
+                    </div>
+                    {/* Lyrics line */}
+                    <div 
+                      className={cn(
+                        "leading-relaxed",
+                        highlightEnabled && isMainHighlight && "font-semibold"
+                      )}
+                      style={{ fontSize: `${baseFontSize}px` }}
+                    >
+                      {line.text || '\u00A0'}
+                    </div>
+                  </div>
+                );
+              }
+
+              // Plain text line (or chord-text without showing chords)
+              return (
+                <div 
+                  key={index}
+                  data-line={index}
+                  className={cn(
+                    "transition-all duration-300 py-2 px-4 -mx-2 rounded-lg leading-relaxed",
+                    highlightEnabled && isMainHighlight && "bg-primary/20 ring-2 ring-primary/40 scale-[1.01] font-semibold",
+                    highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-primary/10"
+                  )}
+                  style={{ opacity, fontSize: `${baseFontSize}px` }}
+                >
+                  {line.text || '\u00A0'}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className={cn(
+          "absolute bottom-0 left-0 right-0 p-4 pointer-events-none",
+          viewMode === 'compact' ? 'bg-gradient-to-t from-background to-transparent' :
+          'bg-gradient-to-t from-black/60 to-transparent'
+        )}>
+          <div className={cn(
+            "flex items-center justify-center gap-2 text-sm",
+            viewMode === 'compact' ? 'text-muted-foreground' : 'text-white/40'
+          )}>
+            <Guitar className="w-4 h-4" />
+            <span>{tvSettings.title} • SongBook {songbookShowChords ? '(Accordi)' : ''}</span>
+          </div>
+        </div>
+      </div>
     );
   }
 
