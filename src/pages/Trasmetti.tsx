@@ -231,14 +231,15 @@ export default function Trasmetti() {
     }
   }, [highlightLine, lines.length, highlightEnabled]);
 
-  // When highlight is OFF, follow scroll_position (0-1000)
+  // Follow scroll_position (0-1000) — always for songbook, only when highlight OFF for normal
   useEffect(() => {
     if (!lyricsRef.current) return;
     if (!isBroadcasting) return;
-    // Apply to both regular lyrics and songbook mode
     const hasContent = session?.display_mode === 'lyrics' && (currentSong || (isSongbookMode && parsedSongbook));
     if (!hasContent) return;
-    if (highlightEnabled) return;
+    // In songbook mode, always follow scroll_position (no highlight system)
+    // In normal mode, only follow when highlight is disabled
+    if (!isSongbookMode && highlightEnabled) return;
 
     const scrollPosition = (session as any)?.scroll_position ?? 0;
     scrollElementToRatio(lyricsRef.current, scrollPosition);

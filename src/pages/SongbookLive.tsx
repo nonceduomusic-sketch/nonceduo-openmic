@@ -114,21 +114,27 @@ export default function SongbookLive() {
     toast.success('Trasmissione avviata su TV!');
   }, [selectedFile, showChordsOnTV, transpose, updateSession]);
 
-  // Stop broadcast
+  // Stop broadcast - return TV to waiting/landing screen
   const handleStopBroadcast = useCallback(() => {
     updateSession({
       songbook_mode: false,
       songbook_file_id: null,
+      songbook_transpose: 0,
+      songbook_show_chords_on_tv: false,
       display_mode: 'waiting',
       is_broadcasting: false,
+      is_active: false,
+      current_song_id: null,
+      scroll_position: 0,
     });
     toast.success('Trasmissione interrotta');
   }, [updateSession]);
 
-  // Handle scroll event
+  // Handle scroll event - sync to TV instantly
   const handleScroll = useCallback(() => {
+    if (!scrollRef.current || !isBroadcasting) return;
     syncScrollToTV();
-  }, [syncScrollToTV]);
+  }, [syncScrollToTV, isBroadcasting]);
 
   // Auto scroll effect
   useEffect(() => {
@@ -188,6 +194,8 @@ export default function SongbookLive() {
           songbook_file_id: null,
           display_mode: 'waiting',
           is_broadcasting: false,
+          is_active: false,
+          scroll_position: 0,
         });
       }
     };
@@ -218,12 +226,17 @@ export default function SongbookLive() {
 
   const handleBack = () => {
     if (selectedFile) {
-      // Stop broadcast and go back to file list
-      updateSession({
-        songbook_mode: false,
-        songbook_file_id: null,
-        display_mode: 'waiting',
-      });
+      // Stop songbook broadcast and return to file list — TV goes to waiting
+      if (isBroadcasting) {
+        updateSession({
+          songbook_mode: false,
+          songbook_file_id: null,
+          display_mode: 'waiting',
+          is_broadcasting: false,
+          is_active: false,
+          scroll_position: 0,
+        });
+      }
       setSelectedFile(null);
     } else {
       navigate(-1);
