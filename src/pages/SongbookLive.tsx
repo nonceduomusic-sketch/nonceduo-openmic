@@ -31,6 +31,7 @@ import { useSongbookFiles, SongbookFile } from '@/hooks/useSongbook';
 import { useBroadcast } from '@/hooks/useBroadcast';
 import { parseChordPro, transposeSong, renderWithChords, renderLyricsOnly, ChordProSong, ChordProLine } from '@/lib/chordpro';
 import { clampScrollRatio, getScrollRatioFromElement } from '@/lib/scrollRatio';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 // Render song with colored chords using React elements
@@ -151,12 +152,19 @@ export default function SongbookLive() {
     if (!scrollRef.current) return;
     
     const now = Date.now();
-    if (now - lastSyncRef.current < 60) return;
+    if (now - lastSyncRef.current < 50) return;
     lastSyncRef.current = now;
     
     const ratio = getScrollRatioFromElement(scrollRef.current);
-    updateSession({ scroll_position: ratio });
-  }, [updateSession]);
+    // Use direct supabase call to avoid stale closure issues
+    supabase
+      .from('broadcast_sessions')
+      .update({ scroll_position: ratio })
+      .eq('sala_code', 'main')
+      .then(({ error }) => {
+        if (error) console.error('Scroll sync error:', error);
+      });
+  }, []);
 
   // Manual scroll with instant TV sync
   const handleManualScroll = useCallback((direction: 'up' | 'down') => {
@@ -165,18 +173,26 @@ export default function SongbookLive() {
     const newTop = scrollRef.current.scrollTop + (direction === 'up' ? -scrollAmount : scrollAmount);
     scrollRef.current.scrollTop = Math.max(0, newTop);
     
-    // Sync after DOM update
+    // Sync after DOM update - use direct call
     requestAnimationFrame(() => {
       if (scrollRef.current) {
         const ratio = getScrollRatioFromElement(scrollRef.current);
-        updateSession({ scroll_position: ratio });
+        supabase
+          .from('broadcast_sessions')
+          .update({ scroll_position: ratio })
+          .eq('sala_code', 'main')
+          .then(({ error }) => {
+            if (error) console.error('Manual scroll sync error:', error);
+          });
       }
     });
-  }, [updateSession]);
+  }, []);
 
   // Start broadcast to TV
   const handleStartBroadcast = useCallback(() => {
     if (!selectedFile) return;
+    // Set ref immediately to avoid race condition with scroll events
+    isBroadcastingRef.current = true;
     updateSession({
       songbook_mode: true,
       songbook_file_id: selectedFile.id,
@@ -192,6 +208,7 @@ export default function SongbookLive() {
 
   // Stop broadcast - return TV to waiting/landing screen
   const handleStopBroadcast = useCallback(() => {
+    isBroadcastingRef.current = false;
     updateSession({
       songbook_mode: false,
       songbook_file_id: null,
