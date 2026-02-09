@@ -32,6 +32,12 @@ export interface BroadcastSession {
   // ScreenStream fields (external app streaming)
   screen_stream_active: boolean;
   screen_stream_url: string | null;
+  // SongBook fields
+  songbook_file_id: string | null;
+  songbook_mode: boolean;
+  songbook_show_chords_on_tv: boolean;
+  songbook_transpose: number;
+  songbook_view_mode: 'compact' | 'karaoke' | 'spotify' | 'chordpro';
   created_at: string;
   updated_at: string;
 }
