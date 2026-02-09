@@ -180,20 +180,35 @@ export function useSongbookFiles() {
   }, []);
 
   const deleteAllFiles = useCallback(async (): Promise<boolean> => {
-    const { error } = await supabase
-      .from('songbook_files')
-      .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+    try {
+      // Delete in batches to bypass the 1000-row limit
+      let totalDeleted = 0;
+      while (true) {
+        const { data, error } = await supabase
+          .from('songbook_files')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000')
+          .select('id')
+          .limit(500);
 
-    if (error) {
-      console.error('Error deleting all songbook files:', error);
+        if (error) {
+          console.error('Error deleting songbook files:', error);
+          toast.error('Errore eliminazione file');
+          return false;
+        }
+
+        totalDeleted += (data?.length ?? 0);
+        if (!data || data.length === 0) break;
+      }
+
+      toast.success(`Tutti i file eliminati (${totalDeleted})`);
+      await fetchFiles();
+      return true;
+    } catch (err) {
+      console.error('Error deleting all songbook files:', err);
       toast.error('Errore eliminazione file');
       return false;
     }
-
-    toast.success('Tutti i file eliminati');
-    await fetchFiles();
-    return true;
   }, [fetchFiles]);
 
   return {
