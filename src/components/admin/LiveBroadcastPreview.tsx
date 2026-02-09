@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useBroadcast } from '@/hooks/useBroadcast';
 import { useScrollPositionPublisher } from '@/hooks/useScrollPositionPublisher';
+import { useSongbookFiles } from '@/hooks/useSongbook';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   ChevronUp, ChevronDown, Play, Pause, RotateCcw, ZoomIn, ZoomOut, Square, 
   Mic, ExternalLink, Maximize, Monitor, Minimize2, Radio, Eye, QrCode, Highlighter,
-  AlignLeft, AlignCenter, AlignRight, Hand, Rows3
+  AlignLeft, AlignCenter, AlignRight, Hand, Rows3, Guitar
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -21,6 +22,7 @@ import brandLogoText from '@/assets/brand-logo-text.png';
 import QRCode from 'qrcode';
 import { ScreenShareButton } from './ScreenShareButton';
 import { ScreenStreamButton } from './ScreenStreamButton';
+import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/chordpro';
  
  interface Song {
    id: string;
@@ -28,12 +30,19 @@ import { ScreenStreamButton } from './ScreenStreamButton';
    artista: string;
    testo: string | null;
  }
+
+ interface SongbookFile {
+   id: string;
+   title: string;
+   artist: string | null;
+   content: string;
+ }
  
  interface LiveBroadcastPreviewProps {
    canManage?: boolean;
  }
  
- type ViewMode = 'compact' | 'karaoke' | 'spotify';
+ type ViewMode = 'compact' | 'karaoke' | 'spotify' | 'chordpro';
  
  const BACKGROUND_COLORS = [
    'from-purple-600 to-purple-900', 'from-blue-500 to-blue-800', 'from-green-500 to-green-800',
@@ -49,7 +58,9 @@ import { ScreenStreamButton } from './ScreenStreamButton';
  
  export function LiveBroadcastPreview({ canManage = true }: LiveBroadcastPreviewProps) {
    const { session, updateSession } = useBroadcast('main');
-  const [currentSong, setCurrentSong] = useState<Song | null>(null);
+   const { files: songbookFiles } = useSongbookFiles();
+   const [currentSong, setCurrentSong] = useState<Song | null>(null);
+   const [currentSongbookFile, setCurrentSongbookFile] = useState<SongbookFile | null>(null);
    const [localHighlightLine, setLocalHighlightLine] = useState(0);
    const [autoScroll, setAutoScroll] = useState(false);
    const [autoScrollBpm, setAutoScrollBpm] = useState(60);
@@ -63,8 +74,49 @@ import { ScreenStreamButton } from './ScreenStreamButton';
    const [highlightLinesCount, setHighlightLinesCount] = useState<number>(1);
    const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center');
    const [remoteScrollEnabled, setRemoteScrollEnabled] = useState(true);
-  const lyricsRef = useRef<HTMLDivElement>(null);
-  const isMobile = useIsMobile();
+   const lyricsRef = useRef<HTMLDivElement>(null);
+   const isMobile = useIsMobile();
+
+   // SongBook mode state from session
+   const isSongbookMode = (session as any)?.songbook_mode ?? false;
+   const songbookFileId = (session as any)?.songbook_file_id ?? null;
+   const songbookTranspose = (session as any)?.songbook_transpose ?? 0;
+   const songbookShowChords = (session as any)?.songbook_show_chords_on_tv ?? false;
+
+   // Parse songbook file
+   const parsedSongbook: ChordProSong | null = useMemo(() => {
+     if (!currentSongbookFile) return null;
+     const parsed = parseChordPro(currentSongbookFile.content);
+     return transposeSong(parsed, songbookTranspose);
+   }, [currentSongbookFile, songbookTranspose]);
+
+   // Fetch songbook file when in songbook mode
+   useEffect(() => {
+     if (isSongbookMode && songbookFileId && songbookFiles.length > 0) {
+       const file = songbookFiles.find(f => f.id === songbookFileId);
+       if (file) {
+         setCurrentSongbookFile(file);
+         setActiveTab('content');
+       }
+     } else if (!isSongbookMode) {
+       setCurrentSongbookFile(null);
+     }
+   }, [isSongbookMode, songbookFileId, songbookFiles]);
+
+   // Content lines (either normal lyrics or songbook)
+   const contentLines = useMemo(() => {
+     if (isSongbookMode && parsedSongbook) {
+       return parsedSongbook.lines
+         .filter(l => l.type === 'chord-text' || l.type === 'text')
+         .map(l => l.text || '');
+     }
+     return currentSong?.testo?.split('\n').filter(line => line.trim()) || [];
+   }, [isSongbookMode, parsedSongbook, currentSong?.testo]);
+
+   // Check if there's any content to show
+   const hasContent = isSongbookMode ? !!parsedSongbook : !!currentSong;
+   const contentTitle = isSongbookMode ? currentSongbookFile?.title : currentSong?.titolo;
+   const contentArtist = isSongbookMode ? currentSongbookFile?.artist : currentSong?.artista;
 
   const { onScroll: onAdminLyricsScroll } = useScrollPositionPublisher({
     enabled: !!canManage && remoteScrollEnabled,
@@ -93,7 +145,8 @@ import { ScreenStreamButton } from './ScreenStreamButton';
    }), [session]);
  
    const isBroadcasting = (session as any)?.is_broadcasting ?? false;
-   const lines = useMemo(() => currentSong?.testo?.split('\n').filter(line => line.trim()) || [], [currentSong?.testo]);
+   // Use contentLines instead of lines for highlight navigation
+   const lines = contentLines;
  
    // Generate QR code
    useEffect(() => {
@@ -108,10 +161,10 @@ import { ScreenStreamButton } from './ScreenStreamButton';
      generateQR();
    }, [tvSettings.qrUrl]);
  
-   // Auto-switch to content when broadcasting
+   // Auto-switch to content when broadcasting (either lyrics or songbook)
    useEffect(() => {
-     if (isBroadcasting && currentSong) setActiveTab('content');
-   }, [isBroadcasting, currentSong]);
+     if (isBroadcasting && hasContent) setActiveTab('content');
+   }, [isBroadcasting, hasContent]);
  
     // Sync viewMode from session
     useEffect(() => {
@@ -231,16 +284,39 @@ import { ScreenStreamButton } from './ScreenStreamButton';
  
    const handleStopBroadcast = useCallback(async () => {
      if (!canManage) return;
-     await updateSession({ is_broadcasting: false, display_mode: 'waiting', current_song_id: null, current_reservation_id: null, highlight_line: 0, auto_scroll: false } as any);
+     await updateSession({ 
+       is_broadcasting: false, 
+       display_mode: 'waiting', 
+       current_song_id: null, 
+       current_reservation_id: null, 
+       songbook_mode: false,
+       songbook_file_id: null,
+       highlight_line: 0, 
+       auto_scroll: false 
+     } as any);
      setAutoScroll(false);
+     setCurrentSongbookFile(null);
      toast.success('Trasmissione interrotta - TV in attesa');
    }, [canManage, updateSession]);
  
    const handleStartBroadcast = useCallback(async () => {
-     if (!canManage || !currentSong) return;
-     await updateSession({ is_broadcasting: true, display_mode: 'lyrics', tv_view_mode: viewMode } as any);
-     toast.success(`Trasmissione avviata! Stile: ${viewMode === 'spotify' ? 'Spotify' : viewMode === 'karaoke' ? 'Karaoke' : 'Compatta'}`);
-   }, [canManage, currentSong, viewMode, updateSession]);
+     if (!canManage || !hasContent) return;
+     
+     if (isSongbookMode && currentSongbookFile) {
+       // Already in SongBook mode - just ensure broadcasting
+       await updateSession({ 
+         is_broadcasting: true, 
+         display_mode: 'lyrics',
+         songbook_mode: true,
+         songbook_file_id: currentSongbookFile.id,
+       } as any);
+       toast.success('Trasmissione SongBook avviata!');
+     } else if (currentSong) {
+       // Normal lyrics mode
+       await updateSession({ is_broadcasting: true, display_mode: 'lyrics', tv_view_mode: viewMode } as any);
+       toast.success(`Trasmissione avviata! Stile: ${viewMode === 'spotify' ? 'Spotify' : viewMode === 'karaoke' ? 'Karaoke' : 'Compatta'}`);
+     }
+   }, [canManage, hasContent, isSongbookMode, currentSongbookFile, currentSong, viewMode, updateSession]);
  
    const handleToggleAutoScroll = useCallback(async () => {
      const newAutoScroll = !autoScroll;
@@ -326,14 +402,16 @@ import { ScreenStreamButton } from './ScreenStreamButton';
      </div>
    );
  
-   // Lyrics preview
+   // Lyrics preview (works for both normal songs and SongBook)
    const renderLyricsPreview = () => {
-     if (!currentSong) return null;
+     if (!hasContent) return null;
      const containerHeight = isExpanded ? (isMobile ? '50vh' : '60vh') : (isMobile ? '35vh' : '40vh');
      const lyricsHeight = isExpanded ? (isMobile ? 'calc(50vh - 140px)' : 'calc(60vh - 160px)') : (isMobile ? 'calc(35vh - 120px)' : 'calc(40vh - 140px)');
      
+     const contentId = isSongbookMode ? currentSongbookFile?.id : currentSong?.id;
+     
      return (
-       <div className={cn("relative rounded-xl overflow-hidden", viewMode === 'spotify' ? `bg-gradient-to-b ${getColorForSong(currentSong.id)}` : viewMode === 'karaoke' ? "bg-gradient-to-b from-gray-900 via-black to-gray-900" : "bg-card border")} style={{ minHeight: containerHeight }}>
+       <div className={cn("relative rounded-xl overflow-hidden", viewMode === 'spotify' ? `bg-gradient-to-b ${getColorForSong(contentId || 'default')}` : viewMode === 'karaoke' ? "bg-gradient-to-b from-gray-900 via-black to-gray-900" : "bg-card border")} style={{ minHeight: containerHeight }}>
          {viewMode === 'karaoke' && (
            <div className="absolute inset-0 pointer-events-none">
              <div className="absolute top-0 left-1/4 w-[150px] h-[150px] bg-primary/15 rounded-full blur-[80px]" />
@@ -343,8 +421,8 @@ import { ScreenStreamButton } from './ScreenStreamButton';
          <div className="relative z-10 px-3 pt-3 pb-2">
            <div className="flex items-center justify-between gap-2">
              <div className="min-w-0 flex-1">
-               <h2 className={cn("font-bold truncate text-base md:text-lg", viewMode === 'compact' ? "text-foreground" : "text-white")} style={{ fontSize: `${Math.max(14, 16 * fontSize / 100)}px` }}>{currentSong.titolo}</h2>
-               <p className={cn("truncate text-sm", viewMode === 'compact' ? "text-muted-foreground" : "text-white/60")} style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px` }}>{currentSong.artista}</p>
+               <h2 className={cn("font-bold truncate text-base md:text-lg", viewMode === 'compact' ? "text-foreground" : "text-white")} style={{ fontSize: `${Math.max(14, 16 * fontSize / 100)}px` }}>{contentTitle}</h2>
+               <p className={cn("truncate text-sm", viewMode === 'compact' ? "text-muted-foreground" : "text-white/60")} style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px` }}>{contentArtist}</p>
              </div>
              {isBroadcasting ? (
                <Badge className="bg-green-500/20 text-green-400 border-green-500/30 text-xs shrink-0"><div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse mr-1" />LIVE</Badge>
@@ -501,8 +579,17 @@ import { ScreenStreamButton } from './ScreenStreamButton';
            </TabsList>
            <TabsContent value="waiting" className="mt-3">{renderWaitingPreview()}</TabsContent>
             <TabsContent value="content" className="mt-3 space-y-3">
-              {currentSong ? (
+              {hasContent ? (
                 <>
+                   {/* SongBook indicator */}
+                   {isSongbookMode && (
+                     <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 border border-primary/30 rounded-lg">
+                       <Guitar className="w-4 h-4 text-primary" />
+                       <span className="text-sm font-medium text-primary">Modalità SongBook attiva</span>
+                       {songbookShowChords && <Badge variant="secondary" className="text-xs">Accordi ON</Badge>}
+                     </div>
+                   )}
+
                    {/* Style selector + Highlight toggle + Remote scroll toggle */}
                    <div className="flex flex-wrap items-center gap-3">
                      <div className="flex flex-wrap items-center gap-2">
@@ -559,7 +646,7 @@ import { ScreenStreamButton } from './ScreenStreamButton';
                       {isBroadcasting ? (
                         <Button variant="destructive" size="sm" onClick={handleStopBroadcast} disabled={!canManage} className="h-10"><Square className="w-4 h-4 mr-1" />Ferma</Button>
                       ) : (
-                        <Button size="sm" onClick={handleStartBroadcast} disabled={!canManage} className="h-10 bg-primary hover:bg-primary/90"><Radio className="w-4 h-4 mr-1" />Avvia</Button>
+                        <Button size="sm" onClick={handleStartBroadcast} disabled={!canManage || !hasContent} className="h-10 bg-primary hover:bg-primary/90"><Radio className="w-4 h-4 mr-1" />Avvia</Button>
                       )}
                       
                        {/* Screen Share Button - accanto ad Avvia */}
@@ -569,7 +656,7 @@ import { ScreenStreamButton } from './ScreenStreamButton';
                        <ScreenStreamButton salaCode="main" disabled={!canManage} />
                      <div className="flex items-center gap-1 bg-background rounded-lg p-1">
                        <Button variant="ghost" size="icon" onClick={() => handleLineChange('up')} disabled={!canManage || localHighlightLine === 0} className="h-9 w-9"><ChevronUp className="w-5 h-5" /></Button>
-                       <span className="px-2 min-w-[50px] text-center font-medium text-sm">{localHighlightLine + 1}/{lines.length}</span>
+                       <span className="px-2 min-w-[50px] text-center font-medium text-sm">{localHighlightLine + 1}/{lines.length || 1}</span>
                        <Button variant="ghost" size="icon" onClick={() => handleLineChange('down')} disabled={!canManage || localHighlightLine >= lines.length - 1} className="h-9 w-9"><ChevronDown className="w-5 h-5" /></Button>
                      </div>
                     {/* Auto-scroll controls with BPM */}
@@ -622,8 +709,8 @@ import { ScreenStreamButton } from './ScreenStreamButton';
              ) : (
                <div className="text-center py-12 text-muted-foreground">
                  <Mic className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                 <p className="text-base font-medium mb-2">Nessuna canzone selezionata</p>
-                 <p className="text-sm">Seleziona dalla Scaletta Live o dal Catalogo.</p>
+                 <p className="text-base font-medium mb-2">Nessun contenuto selezionato</p>
+                 <p className="text-sm">Seleziona dalla Scaletta, Catalogo o SongBook.</p>
                </div>
              )}
            </TabsContent>

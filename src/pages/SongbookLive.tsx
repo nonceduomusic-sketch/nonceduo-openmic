@@ -45,6 +45,9 @@ export default function SongbookLive() {
   const [highlightLines, setHighlightLines] = useState(2);
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Get font size from session (synced with admin panel)
+  const fontSize = (session as any)?.font_size ?? 100;
+  
   // Check if currently broadcasting this songbook
   const isBroadcasting = session?.songbook_mode && session?.songbook_file_id === selectedFile?.id && session?.is_broadcasting;
   
@@ -379,7 +382,10 @@ export default function SongbookLive() {
         onScroll={handleScroll}
       >
         {parsedSong && (
-          <pre className="font-mono text-sm whitespace-pre-wrap leading-relaxed text-foreground">
+          <pre 
+            className="font-mono whitespace-pre-wrap leading-relaxed text-foreground"
+            style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px` }}
+          >
             {renderWithChords(parsedSong)}
           </pre>
         )}
