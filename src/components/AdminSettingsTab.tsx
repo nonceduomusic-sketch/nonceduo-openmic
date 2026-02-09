@@ -21,7 +21,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { adminAuditLog } from '@/lib/adminAudit';
 import { useTheme } from 'next-themes';
 import { useConnectionMode, useLocalBroadcast } from '@/hooks/useLocalBroadcast';
-import { usePedalSettings, PedalPage } from '@/hooks/usePedalControl';
+import { usePedalSettings, PedalPage, PedalMode } from '@/hooks/usePedalControl';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -322,6 +322,31 @@ function PedalControlSection() {
 
       {settings.enabled && (
         <div className="space-y-4 pt-2 border-t border-border">
+          {/* Mode selection */}
+          <div>
+            <Label className="text-sm mb-2 block">Modalità pedale:</Label>
+            <div className="grid grid-cols-2 gap-2">
+              <Card
+                className={`cursor-pointer transition-all ${settings.mode === 'highlight' ? 'ring-2 ring-primary' : 'opacity-70'}`}
+                onClick={() => updateSettings({ mode: 'highlight' })}
+              >
+                <CardContent className="p-3 text-center">
+                  <p className="font-medium text-sm">🎯 Evidenziazione</p>
+                  <p className="text-xs text-muted-foreground mt-1">Muove la riga evidenziata in TV (come telecomando)</p>
+                </CardContent>
+              </Card>
+              <Card
+                className={`cursor-pointer transition-all ${settings.mode === 'scroll' ? 'ring-2 ring-primary' : 'opacity-70'}`}
+                onClick={() => updateSettings({ mode: 'scroll' })}
+              >
+                <CardContent className="p-3 text-center">
+                  <p className="font-medium text-sm">📜 Scroll locale</p>
+                  <p className="text-xs text-muted-foreground mt-1">Scrolla solo sul tuo dispositivo</p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+
           {/* Lines per press */}
           <div>
             <Label className="text-sm">Righe per pressione: <span className="font-bold text-primary">{settings.linesPerPress}</span></Label>
@@ -358,7 +383,9 @@ function PedalControlSection() {
           </div>
 
           <p className="text-xs text-muted-foreground">
-            💡 Collega il pedale via Bluetooth al tablet. I tasti PageUp/Down, Frecce Su/Giù o Sinistra/Destra verranno intercettati per controllare lo scorrimento.
+            💡 {settings.mode === 'highlight' 
+              ? 'Il pedale controllerà la riga evidenziata in TV. Se anche il telecomando è attivo, l\'ultimo comando vince.'
+              : 'Il pedale scorre il testo solo sul tuo dispositivo senza influenzare la TV.'}
           </p>
         </div>
       )}

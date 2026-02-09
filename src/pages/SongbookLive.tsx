@@ -43,7 +43,7 @@ import { parseChordPro, transposeSong, renderWithChords, renderLyricsOnly, Chord
 import { clampScrollRatio, getScrollRatioFromElement } from '@/lib/scrollRatio';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { usePedalScroll } from '@/hooks/usePedalControl';
+import { usePedalScroll, usePedalControl } from '@/hooks/usePedalControl';
 
 // Render song with colored chords using React elements
 function renderWithColoredChords(song: ChordProSong): React.ReactNode[] {
@@ -153,8 +153,8 @@ export default function SongbookLive() {
     isBroadcastingRef.current = isThisFileBroadcasting;
   }, [isThisFileBroadcasting]);
 
-  // Pedal control: scroll content on pedal press
-  const { isActive: pedalActive } = usePedalScroll({
+  // Pedal control: scroll mode (local scroll only)
+  const { isActive: pedalScrollActive } = usePedalScroll({
     page: 'songbook',
     scrollRef: scrollRef as React.RefObject<HTMLElement>,
     onAfterScroll: () => {
@@ -163,6 +163,25 @@ export default function SongbookLive() {
       }
     },
   });
+
+  // Pedal control: highlight mode (controls TV highlight_line)
+  const highlightLineFromSession = (session as any)?.highlight_line ?? 0;
+  const songTextLines = useMemo(() => {
+    if (!selectedFile) return 0;
+    const parsed = parseChordPro(selectedFile.content);
+    return parsed.lines.filter(l => l.type === 'text' || l.type === 'chord-text').length;
+  }, [selectedFile]);
+
+  const { isActive: pedalHighlightActive } = usePedalControl({
+    page: 'songbook',
+    highlightLine: highlightLineFromSession,
+    totalLines: songTextLines || 1,
+    onLineChange: (newLine) => {
+      syncUpdate({ highlight_line: newLine, auto_scroll: false });
+    },
+  });
+
+  const pedalActive = pedalScrollActive || pedalHighlightActive;
 
   // Currently broadcasting file
   const broadcastingFile = useMemo(() => {
