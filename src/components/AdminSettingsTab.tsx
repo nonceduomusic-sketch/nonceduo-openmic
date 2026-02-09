@@ -3,15 +3,23 @@ import {
   Moon,
   Sun,
   Monitor,
-  Palette
+  Palette,
+  Wifi,
+  Server,
+  Check,
+  AlertCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { adminAuditLog } from '@/lib/adminAudit';
 import { useTheme } from 'next-themes';
+import { useConnectionMode, useLocalBroadcast } from '@/hooks/useLocalBroadcast';
 
 type SectionKey = 'openmic' | 'dediche' | 'community';
 
@@ -266,6 +274,113 @@ export const AdminSettingsTab: React.FC = () => {
         </Button>
       </div>
 
+      {/* Connection Mode (Cloud/Local) */}
+      <ConnectionModeSection />
+
     </div>
   );
 };
+
+function ConnectionModeSection() {
+  const { mode, setMode, localIP, setLocalIP, serverUrl } = useConnectionMode();
+  const { connected, latency } = useLocalBroadcast({
+    enabled: mode === 'local',
+    serverUrl,
+    onStateUpdate: () => {},
+  });
+  const [ipInput, setIpInput] = useState(localIP);
+
+  const handleSaveIP = () => {
+    const cleaned = ipInput.trim().replace(/^https?:\/\//, '').replace(/:\d+$/, '');
+    setLocalIP(cleaned);
+  };
+
+  return (
+    <div className="glass-card p-4 space-y-4">
+      <div className="flex items-center gap-3">
+        <Server className="w-5 h-5 text-primary" />
+        <div>
+          <h3 className="font-medium text-foreground">Connessione Trasmissione</h3>
+          <p className="text-xs text-muted-foreground">
+            Scegli come sincronizzare TV, partiture e telecomando
+          </p>
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <Card
+          className={`cursor-pointer transition-all ${mode === 'cloud' ? 'ring-2 ring-primary' : 'opacity-70'}`}
+          onClick={() => setMode('cloud')}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Wifi className="w-6 h-6 text-primary shrink-0" />
+              <div className="flex-1">
+                <p className="font-medium">Cloud</p>
+                <p className="text-xs text-muted-foreground">Sincronizzazione via internet (default)</p>
+              </div>
+              {mode === 'cloud' && <Check className="w-5 h-5 text-primary shrink-0" />}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card
+          className={`cursor-pointer transition-all ${mode === 'local' ? 'ring-2 ring-primary' : 'opacity-70'}`}
+          onClick={() => setMode('local')}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <Server className="w-6 h-6 text-primary shrink-0" />
+              <div className="flex-1">
+                <p className="font-medium">Locale (WiFi)</p>
+                <p className="text-xs text-muted-foreground">Funziona senza internet — serve il server locale</p>
+              </div>
+              {mode === 'local' && <Check className="w-5 h-5 text-primary shrink-0" />}
+            </div>
+          </CardContent>
+        </Card>
+
+        {mode === 'local' && (
+          <div className="space-y-3 pt-2 border-t border-border">
+            <div>
+              <Label className="text-sm">Indirizzo IP del server</Label>
+              <div className="flex gap-2 mt-1.5">
+                <Input
+                  value={ipInput}
+                  onChange={(e) => setIpInput(e.target.value)}
+                  placeholder="192.168.1.100"
+                  className="font-mono text-sm"
+                />
+                <Button size="sm" onClick={handleSaveIP} className="shrink-0">
+                  Salva
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                L'IP viene mostrato all'avvio del server locale
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {connected ? (
+                <>
+                  <Badge className="bg-green-500/20 text-green-600 border-green-500/30">
+                    <Check className="w-3 h-3 mr-1" />
+                    Connesso
+                  </Badge>
+                  {latency !== null && (
+                    <span className="text-xs text-muted-foreground">{latency}ms</span>
+                  )}
+                </>
+              ) : (
+                <Badge variant="outline" className="text-red-500 border-red-500/30">
+                  <AlertCircle className="w-3 h-3 mr-1" />
+                  Non connesso
+                </Badge>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
