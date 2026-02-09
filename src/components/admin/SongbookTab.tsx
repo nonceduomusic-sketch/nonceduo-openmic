@@ -43,9 +43,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { useSongbookFiles, useSongbookSetlists, SongbookFile } from '@/hooks/useSongbook';
+import { useSongbookFiles, SongbookFile } from '@/hooks/useSongbook';
 import { parseChordPro, renderWithChords, renderLyricsOnly } from '@/lib/chordpro';
 import { toast } from 'sonner';
+import { SongbookSetlistsTab } from './SongbookSetlistsTab';
 
 interface SongbookTabProps {
   canManage?: boolean;
@@ -54,7 +55,6 @@ interface SongbookTabProps {
 
 export function SongbookTab({ canManage = true, canFull = true }: SongbookTabProps) {
   const { files, loading, uploadFiles, updateFile, deleteFile, deleteAllFiles } = useSongbookFiles();
-  const { setlists, createSetlist } = useSongbookSetlists();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [isDragging, setIsDragging] = useState(false);
@@ -367,21 +367,9 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
           </Card>
         </TabsContent>
 
-        {/* Setlists Tab - Placeholder for Phase 2 */}
+        {/* Setlists Tab */}
         <TabsContent value="setlists" className="space-y-4">
-          <Card>
-            <CardContent className="py-8 sm:py-10">
-              <div className="text-center text-muted-foreground">
-                <FolderOpen className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-4 opacity-50" />
-                <p className="font-semibold text-sm sm:text-base">Scalette SongBook</p>
-                <p className="text-xs sm:text-sm mt-1">
-                  Crea scalette personalizzate con i tuoi file ChordPro.
-                  <br />
-                  Funzionalità in arrivo nella Fase 2.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <SongbookSetlistsTab canManage={canManage} canFull={canFull} />
         </TabsContent>
       </Tabs>
 
