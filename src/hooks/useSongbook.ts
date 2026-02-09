@@ -42,17 +42,38 @@ export function useSongbookFiles() {
 
   const fetchFiles = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('songbook_files')
-      .select('*')
-      .order('is_variant', { ascending: true })
-      .order('title', { ascending: true });
+    
+    // Fetch all files (bypass 1000 row limit with pagination)
+    const allData: SongbookFile[] = [];
+    const pageSize = 1000;
+    let from = 0;
+    let hasMore = true;
 
-    if (error) {
-      console.error('Error fetching songbook files:', error);
-      toast.error('Errore caricamento file SongBook');
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from('songbook_files')
+        .select('*')
+        .order('is_variant', { ascending: true })
+        .order('title', { ascending: true })
+        .range(from, from + pageSize - 1);
+
+      if (error) {
+        console.error('Error fetching songbook files:', error);
+        toast.error('Errore caricamento file SongBook');
+        break;
+      }
+
+      if (data && data.length > 0) {
+        allData.push(...(data as SongbookFile[]));
+        from += pageSize;
+        hasMore = data.length === pageSize;
+      } else {
+        hasMore = false;
+      }
     }
-    setFiles((data || []) as SongbookFile[]);
+
+    setFiles(allData);
+    setLoading(false);
     setLoading(false);
   }, []);
 
