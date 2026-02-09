@@ -100,9 +100,9 @@ export function ConnectionSettings({
             <div className="space-y-3 pt-2 border-t">
               {window.location.protocol === 'https:' && (
                 <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3">
-                  <p className="text-xs text-amber-600 font-medium">⚠️ Modalità locale non disponibile da HTTPS</p>
+                  <p className="text-xs text-amber-600 font-medium">⚠️ Modalità locale non disponibile da questo indirizzo</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Per usare il server locale, apri l'app da <code className="bg-muted px-1 rounded">http://192.168.1.x:5173</code> (non da questo sito).
+                    Stai navigando su HTTPS, che blocca le connessioni al server locale. Per usare la modalità LAN, apri <strong>questo stesso sito</strong> dal PC dove gira il server, usando l'indirizzo locale: <code className="bg-muted px-1 rounded">http://192.168.1.x:5173</code>
                   </p>
                 </div>
               )}
