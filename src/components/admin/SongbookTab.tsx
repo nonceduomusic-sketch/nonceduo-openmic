@@ -305,12 +305,12 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                           <Button
                             size="icon"
-                            variant="ghost"
+                            variant="outline"
                             onClick={() => handlePreview(file)}
-                            className="h-9 w-9 sm:h-10 sm:w-10"
+                            className="h-10 w-10 sm:h-11 sm:w-11 min-w-[40px] min-h-[40px]"
                             title="Anteprima"
                           >
                             <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -319,9 +319,9 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
                             <>
                               <Button
                                 size="icon"
-                                variant="ghost"
+                                variant="outline"
                                 onClick={() => handleEdit(file)}
-                                className="h-9 w-9 sm:h-10 sm:w-10"
+                                className="h-10 w-10 sm:h-11 sm:w-11 min-w-[40px] min-h-[40px]"
                                 title="Modifica"
                               >
                                 <Edit2 className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -330,8 +330,8 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
                                 <AlertDialogTrigger asChild>
                                   <Button
                                     size="icon"
-                                    variant="ghost"
-                                    className="h-9 w-9 sm:h-10 sm:w-10 text-destructive hover:text-destructive"
+                                    variant="outline"
+                                    className="h-10 w-10 sm:h-11 sm:w-11 min-w-[40px] min-h-[40px] text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
                                     title="Elimina"
                                   >
                                     <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
