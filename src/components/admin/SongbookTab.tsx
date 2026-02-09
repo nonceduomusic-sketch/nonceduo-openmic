@@ -18,7 +18,11 @@ import {
   ArrowUpDown,
   Sparkles,
   SortAsc,
+  Download,
+  CheckSquare,
+  Square,
 } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useBroadcast } from '@/hooks/useBroadcast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -80,8 +84,72 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
   const [editContent, setEditContent] = useState('');
   const [previewFile, setPreviewFile] = useState<SongbookFile | null>(null);
   const [showChordsInPreview, setShowChordsInPreview] = useState(true);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredFiles.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredFiles.map(f => f.id)));
+    }
+  };
+
+  const exitSelectionMode = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const exportChoFiles = (filesToExport: SongbookFile[]) => {
+    if (filesToExport.length === 1) {
+      // Single file download
+      const f = filesToExport[0];
+      const blob = new Blob([f.content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = f.filename || `${f.title}.cho`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`"${f.title}" esportato`);
+    } else {
+      // Multiple files: download each one
+      for (const f of filesToExport) {
+        const blob = new Blob([f.content], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = f.filename || `${f.title}.cho`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      toast.success(`${filesToExport.length} file esportati`);
+    }
+  };
+
+  const handleExportSelected = () => {
+    const toExport = files.filter(f => selectedIds.has(f.id));
+    if (toExport.length === 0) {
+      toast.warning('Nessun file selezionato');
+      return;
+    }
+    exportChoFiles(toExport);
+  };
+
+  const handleExportAll = () => {
+    exportChoFiles(files);
+  };
 
   // Broadcast a file directly from catalog to TV
   const handleBroadcastFile = (file: SongbookFile) => {
@@ -323,6 +391,44 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
                     <span className="hidden sm:inline">Avanzata</span>
                   </Button>
 
+                  {/* Select / Export */}
+                  {files.length > 0 && (
+                    <>
+                      {!selectionMode ? (
+                        <Button variant="outline" size="sm" className="h-10 sm:h-11 text-sm" onClick={() => setSelectionMode(true)}>
+                          <CheckSquare className="w-4 h-4 mr-1.5" />
+                          <span className="hidden sm:inline">Seleziona</span>
+                        </Button>
+                      ) : (
+                        <div className="flex items-center gap-1.5">
+                          <Button variant="outline" size="sm" className="h-10 sm:h-11 text-sm" onClick={toggleSelectAll}>
+                            {selectedIds.size === filteredFiles.length ? <CheckSquare className="w-4 h-4 mr-1.5" /> : <Square className="w-4 h-4 mr-1.5" />}
+                            {selectedIds.size === filteredFiles.length ? 'Deseleziona' : 'Tutti'}
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            className="h-10 sm:h-11 text-sm" 
+                            onClick={handleExportSelected}
+                            disabled={selectedIds.size === 0}
+                          >
+                            <Download className="w-4 h-4 mr-1.5" />
+                            Export {selectedIds.size > 0 ? `(${selectedIds.size})` : ''}
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-10 sm:h-11 text-sm" onClick={exitSelectionMode}>
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      )}
+                      {!selectionMode && (
+                        <Button variant="outline" size="sm" className="h-10 sm:h-11 text-sm" onClick={handleExportAll}>
+                          <Download className="w-4 h-4 mr-1.5" />
+                          <span className="hidden sm:inline">Export tutti</span>
+                          <span className="sm:hidden">Export</span>
+                        </Button>
+                      )}
+                    </>
+                  )}
+
                   {canFull && files.length > 0 && (
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
@@ -393,6 +499,13 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
                       >
                         {/* Title row */}
                         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                          {selectionMode && (
+                            <Checkbox
+                              checked={selectedIds.has(file.id)}
+                              onCheckedChange={() => toggleSelect(file.id)}
+                              className="shrink-0"
+                            />
+                          )}
                           <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
@@ -424,6 +537,15 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
                           >
                             <Eye className="w-3.5 h-3.5" />
                             Mostra
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => exportChoFiles([file])}
+                            className="h-9 gap-1.5 text-xs sm:text-sm"
+                          >
+                            <Download className="w-3.5 h-3.5" />
+                            .cho
                           </Button>
                           {canFull && (
                             <>
