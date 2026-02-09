@@ -181,6 +181,35 @@ export function useSongbookFiles() {
 
   const deleteAllFiles = useCallback(async (): Promise<boolean> => {
     try {
+      // First, clear any broadcast_sessions referencing songbook_files
+      const { error: unlinkError } = await supabase
+        .from('broadcast_sessions')
+        .update({ songbook_file_id: null, songbook_mode: false })
+        .not('songbook_file_id', 'is', null);
+
+      if (unlinkError) {
+        console.error('Error unlinking broadcast sessions:', unlinkError);
+        toast.error('Errore: impossibile scollegare le sessioni attive');
+        return false;
+      }
+
+      // Also clear songbook_setlist_songs references
+      const { data: setlists } = await supabase
+        .from('songbook_setlist_songs')
+        .select('id')
+        .limit(1);
+      
+      if (setlists && setlists.length > 0) {
+        const { error: setlistError } = await supabase
+          .from('songbook_setlist_songs')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000');
+        
+        if (setlistError) {
+          console.error('Error clearing setlist songs:', setlistError);
+        }
+      }
+
       // Delete in batches to bypass the 1000-row limit
       let totalDeleted = 0;
       while (true) {
