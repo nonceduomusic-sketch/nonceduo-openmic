@@ -16,6 +16,7 @@ import {
   Search,
   Square,
   Tv,
+  Palette,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,9 +29,69 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { useSongbookFiles, SongbookFile } from '@/hooks/useSongbook';
 import { useBroadcast } from '@/hooks/useBroadcast';
-import { parseChordPro, transposeSong, renderWithChords, renderLyricsOnly, ChordProSong } from '@/lib/chordpro';
+import { parseChordPro, transposeSong, renderWithChords, renderLyricsOnly, ChordProSong, ChordProLine } from '@/lib/chordpro';
 import { clampScrollRatio, getScrollRatioFromElement } from '@/lib/scrollRatio';
 import { toast } from 'sonner';
+
+// Render song with colored chords using React elements
+function renderWithColoredChords(song: ChordProSong): React.ReactNode[] {
+  const result: React.ReactNode[] = [];
+  let lineIndex = 0;
+  
+  for (const line of song.lines) {
+    if (line.type === 'empty') {
+      result.push(<div key={`empty-${lineIndex++}`} className="h-4" />);
+      continue;
+    }
+    
+    if (line.type === 'comment' || line.type === 'directive') {
+      continue;
+    }
+    
+    if (line.type === 'text') {
+      result.push(<div key={`text-${lineIndex++}`}>{line.text}</div>);
+      continue;
+    }
+    
+    if (line.type === 'chord-text' && line.chords && line.chords.length > 0) {
+      // Build chord line with colored spans
+      const chordElements: React.ReactNode[] = [];
+      let chordLine = '';
+      
+      for (let i = 0; i < line.chords.length; i++) {
+        const { chord, position } = line.chords[i];
+        // Add spaces to reach the position
+        while (chordLine.length < position) {
+          chordLine += ' ';
+        }
+        chordElements.push(
+          <span key={`space-${i}`}>{' '.repeat(Math.max(0, position - (chordElements.length > 0 ? chordLine.length - chord.length : 0)))}</span>
+        );
+        chordElements.push(
+          <span key={`chord-${i}`} className="text-primary font-bold">{chord}</span>
+        );
+        chordLine += chord;
+      }
+      
+      result.push(
+        <div key={`chords-${lineIndex}`} className="text-primary font-bold whitespace-pre">
+          {line.chords.map((c, i) => {
+            const spaces = i === 0 ? c.position : c.position - (line.chords![i-1].position + line.chords![i-1].chord.length);
+            return (
+              <React.Fragment key={i}>
+                {' '.repeat(Math.max(0, spaces))}
+                <span className="text-primary">{c.chord}</span>
+              </React.Fragment>
+            );
+          })}
+        </div>
+      );
+      result.push(<div key={`text-${lineIndex++}`}>{line.text}</div>);
+    }
+  }
+  
+  return result;
+}
 
 export default function SongbookLive() {
   const navigate = useNavigate();
@@ -40,6 +101,7 @@ export default function SongbookLive() {
   const [selectedFile, setSelectedFile] = useState<SongbookFile | null>(null);
   const [transpose, setTranspose] = useState(0);
   const [showChordsOnTV, setShowChordsOnTV] = useState(false);
+  const [coloredChords, setColoredChords] = useState(true);
   const [autoScroll, setAutoScroll] = useState(false);
   const [scrollSpeed, setScrollSpeed] = useState(50);
   const [highlightLines, setHighlightLines] = useState(2);
@@ -48,8 +110,10 @@ export default function SongbookLive() {
   // Get font size from session (synced with admin panel)
   const fontSize = (session as any)?.font_size ?? 100;
   
-  // Check if currently broadcasting this songbook
-  const isBroadcasting = session?.songbook_mode && session?.songbook_file_id === selectedFile?.id && session?.is_broadcasting;
+  // Check if currently broadcasting ANY songbook content
+  const isBroadcasting = (session as any)?.songbook_mode && (session as any)?.is_broadcasting;
+  // Check if THIS file is being broadcast
+  const isThisFileBroadcasting = isBroadcasting && (session as any)?.songbook_file_id === selectedFile?.id;
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const autoScrollRef = useRef<number | null>(null);
@@ -130,11 +194,13 @@ export default function SongbookLive() {
     toast.success('Trasmissione interrotta');
   }, [updateSession]);
 
-  // Handle scroll event - sync to TV instantly
+  // Handle scroll event - sync to TV instantly when broadcasting
   const handleScroll = useCallback(() => {
-    if (!scrollRef.current || !isBroadcasting) return;
+    if (!scrollRef.current) return;
+    // Always sync if this file is broadcasting
+    if (!isThisFileBroadcasting) return;
     syncScrollToTV();
-  }, [syncScrollToTV, isBroadcasting]);
+  }, [syncScrollToTV, isThisFileBroadcasting]);
 
   // Auto scroll effect
   useEffect(() => {
@@ -347,7 +413,7 @@ export default function SongbookLive() {
               </Badge>
             )}
             {/* Broadcast indicator */}
-            {isBroadcasting ? (
+            {isThisFileBroadcasting ? (
               <Badge className="bg-destructive text-destructive-foreground animate-pulse">
                 <Tv className="w-3 h-3 mr-1" />
                 LIVE
@@ -365,7 +431,7 @@ export default function SongbookLive() {
       {/* Broadcast Control Bar */}
       <div className="bg-muted/50 border-b px-4 py-2">
         <div className="flex items-center gap-2">
-          {isBroadcasting ? (
+          {isThisFileBroadcasting ? (
             <Button 
               variant="destructive" 
               size="sm"
@@ -395,12 +461,14 @@ export default function SongbookLive() {
         onScroll={handleScroll}
       >
         {parsedSong && (
-          <pre 
+          <div 
             className="font-mono whitespace-pre-wrap leading-relaxed text-foreground"
             style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px` }}
           >
-            {renderWithChords(parsedSong)}
-          </pre>
+            {coloredChords ? renderWithColoredChords(parsedSong) : (
+              <pre className="whitespace-pre-wrap">{renderWithChords(parsedSong)}</pre>
+            )}
+          </div>
         )}
       </div>
 
@@ -430,6 +498,18 @@ export default function SongbookLive() {
               <Plus className="w-4 h-4" />
             </Button>
           </div>
+        </div>
+
+        {/* Colored chords toggle (local display) */}
+        <div className="flex items-center justify-between">
+          <Label className="text-sm flex items-center gap-2">
+            <Palette className="w-4 h-4" />
+            Accordi Colorati
+          </Label>
+          <Switch
+            checked={coloredChords}
+            onCheckedChange={setColoredChords}
+          />
         </div>
 
         {/* Show chords on TV toggle */}
