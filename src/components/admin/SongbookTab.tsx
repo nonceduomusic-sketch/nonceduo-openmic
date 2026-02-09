@@ -387,77 +387,78 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
                       <div
                         key={file.id}
                         className={cn(
-                          "flex items-center justify-between p-3 sm:p-4 md:p-5 rounded-xl hover:bg-muted/50 transition-colors gap-2 sm:gap-3 md:gap-4",
+                          "p-3 sm:p-4 rounded-xl hover:bg-muted/50 transition-colors space-y-2.5",
                           file.is_variant ? "bg-muted/20" : "bg-muted/30"
                         )}
                       >
-                        <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0 flex-1">
-                          <FileText className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-primary shrink-0" />
+                        {/* Title row */}
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                          <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
                           <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                              <p className="font-semibold text-sm sm:text-base md:text-lg truncate max-w-[120px] sm:max-w-[200px] md:max-w-none">{file.title}</p>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className="font-semibold text-sm sm:text-base truncate">{file.title}</p>
                               {file.is_variant && (
-                                <Badge variant="secondary" className="text-[10px] sm:text-xs md:text-sm px-1.5 py-0.5">Variante</Badge>
+                                <Badge variant="secondary" className="text-[10px] sm:text-xs px-1.5 py-0.5">Variante</Badge>
                               )}
                             </div>
                             {file.artist && (
-                              <p className="text-xs sm:text-sm md:text-base text-muted-foreground truncate max-w-[120px] sm:max-w-[200px] md:max-w-none">{file.artist}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground truncate">{file.artist}</p>
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
-                          {/* Broadcast button - blue primary, always visible */}
+                        {/* Action buttons - always visible below */}
+                        <div className="flex items-center gap-2 flex-wrap pl-7 sm:pl-9">
                           <Button
-                            size="icon"
+                            size="sm"
                             onClick={() => handleBroadcastFile(file)}
-                            className="h-10 w-10 sm:h-11 sm:w-11 md:h-12 md:w-12 min-w-[40px] sm:min-w-[44px] md:min-w-[48px] bg-primary hover:bg-primary/90"
-                            title="Trasmetti su TV"
+                            className="h-9 gap-1.5 text-xs sm:text-sm bg-primary hover:bg-primary/90"
                           >
-                            <Play className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+                            <Play className="w-3.5 h-3.5" />
+                            Avvia
                           </Button>
                           <Button
-                            size="icon"
+                            size="sm"
                             variant="outline"
                             onClick={() => handlePreview(file)}
-                            className="h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12"
-                            title="Anteprima"
+                            className="h-9 gap-1.5 text-xs sm:text-sm"
                           >
-                            <Eye className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+                            <Eye className="w-3.5 h-3.5" />
+                            Mostra
                           </Button>
                           {canFull && (
                             <>
                               <Button
-                                size="icon"
+                                size="sm"
                                 variant="outline"
                                 onClick={() => handleEdit(file)}
-                                className="h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12"
-                                title="Modifica"
+                                className="h-9 gap-1.5 text-xs sm:text-sm"
                               >
-                                <Edit2 className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+                                <Edit2 className="w-3.5 h-3.5" />
+                                Modifica
                               </Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button
-                                    size="icon"
+                                    size="sm"
                                     variant="outline"
-                                    className="h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
-                                    title="Elimina"
+                                    className="h-9 gap-1.5 text-xs sm:text-sm text-destructive border-destructive/30 hover:bg-destructive/10"
                                   >
-                                    <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    Elimina
                                   </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle className="text-lg sm:text-xl md:text-2xl">Eliminare "{file.title}"?</AlertDialogTitle>
-                                    <AlertDialogDescription className="text-sm sm:text-base md:text-lg">
+                                    <AlertDialogTitle>Eliminare "{file.title}"?</AlertDialogTitle>
+                                    <AlertDialogDescription>
                                       Questa azione non può essere annullata.
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel className="h-10 sm:h-11 md:h-12 text-sm sm:text-base">Annulla</AlertDialogCancel>
+                                    <AlertDialogCancel>Annulla</AlertDialogCancel>
                                     <AlertDialogAction 
                                       onClick={() => deleteFile(file.id)}
-                                      className="bg-destructive text-destructive-foreground h-10 sm:h-11 md:h-12 text-sm sm:text-base"
+                                      className="bg-destructive text-destructive-foreground"
                                     >
                                       Elimina
                                     </AlertDialogAction>
