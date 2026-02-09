@@ -1,11 +1,12 @@
 import React, { useState, useRef } from "react";
-import { Upload, FileText, CheckCircle2, AlertCircle, RefreshCw, AlertTriangle, Copy } from "lucide-react";
+import { Upload, FileText, CheckCircle2, AlertCircle, RefreshCw, AlertTriangle, Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { ImportDuplicatesDialog } from "./ImportDuplicatesDialog";
+import { ImportReviewDialog } from "./ImportReviewDialog";
 
 interface Duplicate {
   titolo: string;
@@ -22,8 +23,11 @@ interface ImportResult {
   errorDetails?: string[];
   count?: number;
   uniqueCount?: number;
+  existingCount?: number;
+  newCount?: number;
   duplicatesCount?: number;
   duplicates?: Duplicate[];
+  allSongs?: Array<{ titolo: string; artista: string; slug: string; hasText: boolean; existsInDb: boolean }>;
   preview?: Array<{ titolo: string; artista: string }>;
 }
 
@@ -35,6 +39,7 @@ export const AdminSongsImportCard: React.FC = () => {
   const [csvContent, setCsvContent] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [showDuplicatesDialog, setShowDuplicatesDialog] = useState(false);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   /* ---------------- FILE SELECT ---------------- */
@@ -68,8 +73,8 @@ export const AdminSongsImportCard: React.FC = () => {
     }
   };
 
-  /* ---------------- IMPORT ---------------- */
-  const handleImport = async () => {
+  /* ---------------- IMPORT (selective) ---------------- */
+  const handleImport = async (selectedSlugs?: string[]) => {
     if (!csvContent) {
       toast.error("Nessun file selezionato");
       return;
@@ -81,7 +86,7 @@ export const AdminSongsImportCard: React.FC = () => {
     try {
       setProgress(30);
       const { data, error } = await supabase.functions.invoke("import-songs", {
-        body: { csvContent, action: "import" },
+        body: { csvContent, action: "import", selectedSlugs },
       });
 
       setProgress(90);
@@ -89,6 +94,7 @@ export const AdminSongsImportCard: React.FC = () => {
 
       setResult(data);
       setProgress(100);
+      setShowReviewDialog(false);
 
       if (data.imported > 0) {
         toast.success(`🎉 Importate ${data.imported} canzoni con successo!`);
@@ -250,18 +256,9 @@ export const AdminSongsImportCard: React.FC = () => {
 
         {/* Import button */}
         {csvContent && result?.uniqueCount && !result.imported && (
-          <Button onClick={handleImport} disabled={isImporting} className="w-full neon-button-pink">
-            {isImporting ? (
-              <>
-                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                Importazione...
-              </>
-            ) : (
-              <>
-                <Upload className="w-4 h-4 mr-2" />
-                Importa {result.uniqueCount} Canzoni
-              </>
-            )}
+          <Button onClick={() => setShowReviewDialog(true)} className="w-full neon-button-pink">
+            <Filter className="w-4 h-4 mr-2" />
+            Revisiona e Importa ({result.uniqueCount} brani)
           </Button>
         )}
 
@@ -280,6 +277,17 @@ export const AdminSongsImportCard: React.FC = () => {
         duplicates={result?.duplicates ?? []}
         totalRaw={result?.totalRaw ?? result?.count ?? 0}
         uniqueCount={result?.uniqueCount ?? result?.imported ?? 0}
+      />
+
+      {/* Review Dialog */}
+      <ImportReviewDialog
+        open={showReviewDialog}
+        onOpenChange={setShowReviewDialog}
+        allSongs={result?.allSongs ?? []}
+        existingCount={result?.existingCount ?? 0}
+        newCount={result?.newCount ?? 0}
+        onImport={handleImport}
+        isImporting={isImporting}
       />
     </Card>
   );
