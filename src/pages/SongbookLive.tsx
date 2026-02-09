@@ -119,6 +119,12 @@ export default function SongbookLive() {
   const autoScrollRef = useRef<number | null>(null);
   const lastSyncRef = useRef<number>(0);
 
+  // Currently broadcasting file
+  const broadcastingFile = useMemo(() => {
+    if (!isBroadcasting || !(session as any)?.songbook_file_id) return null;
+    return files.find(f => f.id === (session as any).songbook_file_id) ?? null;
+  }, [files, isBroadcasting, session]);
+
   // Filter files by search query
   const filteredFiles = useMemo(() => {
     if (!searchQuery.trim()) return files;
@@ -342,6 +348,28 @@ export default function SongbookLive() {
             />
           </div>
         </div>
+
+        {/* Currently broadcasting banner */}
+        {broadcastingFile && (
+          <div 
+            className="mx-4 mt-3 p-3 rounded-lg bg-destructive/10 border border-destructive/30 cursor-pointer hover:bg-destructive/20 transition-colors"
+            onClick={() => handleSelectFile(broadcastingFile)}
+          >
+            <div className="flex items-center gap-3">
+              <Badge className="bg-destructive text-destructive-foreground animate-pulse shrink-0">
+                <Tv className="w-3 h-3 mr-1" />
+                LIVE
+              </Badge>
+              <div className="min-w-0 flex-1">
+                <p className="font-medium truncate text-sm">{broadcastingFile.title}</p>
+                {broadcastingFile.artist && (
+                  <p className="text-xs text-muted-foreground truncate">{broadcastingFile.artist}</p>
+                )}
+              </div>
+              <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 -rotate-90" />
+            </div>
+          </div>
+        )}
 
         {/* File List */}
         <ScrollArea className="flex-1 px-4 py-4">
