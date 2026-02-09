@@ -1,10 +1,11 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
-import { Guitar, Music, Wifi, WifiOff } from 'lucide-react';
+import { Guitar, Music, Wifi, WifiOff, Footprints } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { useBroadcast } from '@/hooks/useBroadcast';
 import { supabase } from '@/integrations/supabase/client';
 import { parseChordPro, transposeSong, ChordProSong } from '@/lib/chordpro';
 import { scrollElementToRatio } from '@/lib/scrollRatio';
+import { usePedalScroll } from '@/hooks/usePedalControl';
 
 interface SongbookFile {
   id: string;
@@ -50,6 +51,12 @@ export default function Partiture() {
   const remoteTranspose = (session as any)?.songbook_transpose ?? 0;
   const scrollPosition = (session as any)?.scroll_position ?? 0;
   const fontSize = (session as any)?.font_size ?? 100;
+
+  // Pedal control
+  const { isActive: pedalActive } = usePedalScroll({
+    page: 'partiture',
+    scrollRef: scrollRef as React.RefObject<HTMLElement>,
+  });
 
   // Fetch file when fileId changes
   useEffect(() => {
@@ -104,6 +111,12 @@ export default function Partiture() {
             <Wifi className="w-3.5 h-3.5" />
             <span>Sync in tempo reale</span>
           </div>
+          {pedalActive && (
+            <div className="flex items-center gap-1.5">
+              <Footprints className="w-3.5 h-3.5 text-primary" />
+              <span className="text-primary">Pedale attivo</span>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -129,6 +142,12 @@ export default function Partiture() {
             {remoteTranspose !== 0 && (
               <Badge variant="secondary" className="text-xs">
                 {remoteTranspose > 0 ? '+' : ''}{remoteTranspose}
+              </Badge>
+            )}
+            {pedalActive && (
+              <Badge variant="outline" className="text-xs text-primary border-primary/50">
+                <Footprints className="w-3 h-3 mr-1" />
+                Pedale
               </Badge>
             )}
             <Badge className="bg-destructive text-destructive-foreground animate-pulse">

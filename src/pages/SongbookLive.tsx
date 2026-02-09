@@ -23,6 +23,7 @@ import {
   WifiOff,
   HardDrive,
   Server,
+  Footprints,
 } from 'lucide-react';
 import { SongbookLiveDrawer } from '@/components/songbook/SongbookLiveDrawer';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ import { parseChordPro, transposeSong, renderWithChords, renderLyricsOnly, Chord
 import { clampScrollRatio, getScrollRatioFromElement } from '@/lib/scrollRatio';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { usePedalScroll } from '@/hooks/usePedalControl';
 
 // Render song with colored chords using React elements
 function renderWithColoredChords(song: ChordProSong): React.ReactNode[] {
@@ -150,6 +152,17 @@ export default function SongbookLive() {
   useEffect(() => {
     isBroadcastingRef.current = isThisFileBroadcasting;
   }, [isThisFileBroadcasting]);
+
+  // Pedal control: scroll content on pedal press
+  const { isActive: pedalActive } = usePedalScroll({
+    page: 'songbook',
+    scrollRef: scrollRef as React.RefObject<HTMLElement>,
+    onAfterScroll: () => {
+      if (isBroadcastingRef.current) {
+        syncScrollToTV();
+      }
+    },
+  });
 
   // Currently broadcasting file
   const broadcastingFile = useMemo(() => {
@@ -457,6 +470,12 @@ export default function SongbookLive() {
                 <Badge variant="outline" className="text-xs text-green-500 border-green-500/50">
                   <Server className="w-3 h-3 mr-1" />
                   LAN
+                </Badge>
+              )}
+              {pedalActive && (
+                <Badge variant="outline" className="text-xs text-primary border-primary/50">
+                  <Footprints className="w-3 h-3 mr-1" />
+                  Pedale
                 </Badge>
               )}
               <Badge variant="outline">{filteredFiles.length} brani</Badge>
