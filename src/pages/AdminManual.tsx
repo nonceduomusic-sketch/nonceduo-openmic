@@ -26,6 +26,11 @@ import {
   Ban,
   Crown,
   Undo2,
+  Wifi,
+  WifiOff,
+  Server,
+  Footprints,
+  Monitor,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -627,6 +632,168 @@ const AdminManualContent: React.FC = () => {
                       <span><strong>Sblocco:</strong> Riabilita immediatamente</span>
                     </li>
                   </ul>
+                </div>
+              </ManualCollapsible>
+
+              {/* Sezione: WiFi Locale (senza internet) */}
+              <ManualCollapsible
+                id="admin-local-wifi"
+                title="WiFi Locale (senza internet)"
+                icon={<Server className="w-5 h-5 text-primary" />}
+                isOpen={openSections.has('admin-local-wifi')}
+                onToggle={() => toggleSection('admin-local-wifi')}
+              >
+                <div className="space-y-4 text-sm">
+                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                    <p className="font-medium text-primary mb-1">🌐 A cosa serve?</p>
+                    <p className="text-muted-foreground">
+                      Quando sei in un locale <strong>senza internet</strong> ma hai un <strong>router WiFi</strong> acceso, 
+                      puoi sincronizzare TV, partiture e telecomando usando solo la rete locale.
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
+                    <p className="font-medium text-accent mb-2">⚠️ Cosa ti serve:</p>
+                    <ul className="space-y-1 text-muted-foreground">
+                      <li>• Un <strong>router WiFi</strong> acceso (anche senza internet!)</li>
+                      <li>• Un <strong>computer</strong> (Windows, Mac o Linux) collegato al WiFi</li>
+                      <li>• Il <strong>tablet/telefono</strong> collegato allo <strong>stesso WiFi</strong></li>
+                    </ul>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-3">📋 Guida passo passo:</p>
+                    <ol className="list-decimal list-inside space-y-3 text-muted-foreground">
+                      <li>
+                        <strong>Accendi il router WiFi</strong>
+                        <p className="ml-5 text-xs">Non serve che abbia internet. Basta che sia acceso e faccia la rete WiFi.</p>
+                      </li>
+                      <li>
+                        <strong>Collega TUTTI i dispositivi allo stesso WiFi</strong>
+                        <p className="ml-5 text-xs">Computer, tablet, telefono, TV — tutti sulla stessa rete!</p>
+                      </li>
+                      <li>
+                        <strong>Sul computer: avvia il server locale</strong>
+                        <p className="ml-5 text-xs">
+                          Apri la cartella <code className="bg-muted-foreground/20 px-1 rounded">local-server</code> e fai doppio clic su:
+                        </p>
+                        <ul className="ml-5 text-xs mt-1 space-y-0.5">
+                          <li>• Windows → <code className="bg-muted-foreground/20 px-1 rounded">start.bat</code></li>
+                          <li>• Mac/Linux → <code className="bg-muted-foreground/20 px-1 rounded">start.sh</code></li>
+                        </ul>
+                      </li>
+                      <li>
+                        <strong>Leggi l'indirizzo IP che appare</strong>
+                        <p className="ml-5 text-xs">
+                          Il server stampa qualcosa tipo: <code className="bg-muted-foreground/20 px-1 rounded">ws://192.168.1.100:3456</code>
+                        </p>
+                        <p className="ml-5 text-xs">
+                          Il numero dopo <code className="bg-muted-foreground/20 px-1 rounded">ws://</code> è l'IP (es. <strong>192.168.1.100</strong>).
+                        </p>
+                      </li>
+                      <li>
+                        <strong>Nell'app: vai su Impostazioni</strong>
+                        <p className="ml-5 text-xs">Pannello Admin → Impostazioni → "Connessione Trasmissione"</p>
+                      </li>
+                      <li>
+                        <strong>Seleziona "Locale (WiFi)"</strong>
+                        <p className="ml-5 text-xs">Apparirà un campo per l'IP. Inserisci quello del punto 4.</p>
+                      </li>
+                      <li>
+                        <strong>Premi "Salva" e aspetta il badge verde "Connesso"</strong>
+                        <p className="ml-5 text-xs">Se vedi "Connesso" con i millisecondi, sei pronto!</p>
+                      </li>
+                    </ol>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <p className="font-medium text-destructive mb-1">❌ Non funziona?</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• Controlla che TUTTI i dispositivi siano sullo <strong>stesso WiFi</strong></li>
+                      <li>• Controlla che il server sia <strong>acceso</strong> (deve mostrare "In attesa di connessioni...")</li>
+                      <li>• Controlla che l'IP sia <strong>copiato giusto</strong> (senza spazi)</li>
+                      <li>• Alcuni router bloccano la comunicazione tra dispositivi → prova a disabilitare "Client Isolation" nelle impostazioni del router</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-medium mb-1">💡 Cosa funziona in modalità locale:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>✅ Sincronizzazione testo tra SongBook, TV e Partiture</li>
+                      <li>✅ Cambio brano in tempo reale</li>
+                      <li>✅ Trasposizione sincronizzata</li>
+                      <li>✅ Scroll sincronizzato</li>
+                      <li>❌ Prenotazioni (servono internet)</li>
+                      <li>❌ Chat e dediche (servono internet)</li>
+                    </ul>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* Sezione: Pedale Bluetooth */}
+              <ManualCollapsible
+                id="admin-pedal"
+                title="Pedale Bluetooth"
+                icon={<Footprints className="w-5 h-5 text-primary" />}
+                isOpen={openSections.has('admin-pedal')}
+                onToggle={() => toggleSection('admin-pedal')}
+              >
+                <div className="space-y-4 text-sm">
+                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                    <p className="font-medium text-primary mb-1">🦶 A cosa serve?</p>
+                    <p className="text-muted-foreground">
+                      Se hai un pedale Bluetooth (come <strong>IK Multimedia BlueTurn</strong>), 
+                      puoi scorrere il testo del brano con i piedi mentre suoni!
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-3">📋 Come configurarlo:</p>
+                    <ol className="list-decimal list-inside space-y-3 text-muted-foreground">
+                      <li>
+                        <strong>Collega il pedale via Bluetooth al tablet</strong>
+                        <p className="ml-5 text-xs">Vai nelle impostazioni Bluetooth del tablet, cerca il pedale e collegalo.</p>
+                      </li>
+                      <li>
+                        <strong>Nell'app: Impostazioni → "Pedale Bluetooth"</strong>
+                        <p className="ml-5 text-xs">Attiva il toggle principale.</p>
+                      </li>
+                      <li>
+                        <strong>Scegli la modalità:</strong>
+                        <ul className="ml-5 text-xs mt-1 space-y-0.5">
+                          <li>• <strong>🎯 Evidenziazione</strong> — Muove la riga evidenziata in TV (come il telecomando)</li>
+                          <li>• <strong>📜 Scroll locale</strong> — Scorre solo sul tuo schermo</li>
+                        </ul>
+                      </li>
+                      <li>
+                        <strong>Imposta quante righe saltare</strong>
+                        <p className="ml-5 text-xs">Usa lo slider "Righe per pressione" (1-15). Se suoni, metti 3-5 righe così non devi premere troppo spesso.</p>
+                      </li>
+                      <li>
+                        <strong>Scegli dove attivarlo</strong>
+                        <p className="ml-5 text-xs">Puoi abilitare il pedale su SongBook Live, Trasmetti (TV) e/o Partiture.</p>
+                      </li>
+                    </ol>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
+                    <p className="font-medium text-accent mb-1">🎯 Pedale + Telecomando insieme?</p>
+                    <p className="text-muted-foreground text-xs">
+                      Sì! Se sono entrambi attivi in modalità "Evidenziazione", <strong>l'ultimo che agisce vince</strong>. 
+                      Puoi usare il pedale per le righe e il telecomando (o il pannello Admin) per correzioni manuali.
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-medium mb-1">⌨️ Tasti supportati:</p>
+                    <ul className="space-y-0.5 text-muted-foreground text-xs">
+                      <li>• <strong>Avanti:</strong> PageDown, Freccia Giù, Freccia Destra</li>
+                      <li>• <strong>Indietro:</strong> PageUp, Freccia Su, Freccia Sinistra</li>
+                    </ul>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      💡 Il BlueTurn può essere impostato su diverse modalità (PageUp/Down, Arrow, ecc.) — tutte funzionano!
+                    </p>
+                  </div>
                 </div>
               </ManualCollapsible>
 
