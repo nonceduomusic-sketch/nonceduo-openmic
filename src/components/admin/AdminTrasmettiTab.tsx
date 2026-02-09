@@ -246,7 +246,11 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
               </Button>
               <Button variant="outline" size="sm" onClick={() => window.open('/partiture', '_blank')}>
                 <Guitar className="w-4 h-4 mr-2" />
-                Apri Partiture
+                Partiture
+              </Button>
+              <Button variant="default" size="sm" onClick={() => window.open('/songbook-live', '_blank')}>
+                <Music className="w-4 h-4 mr-2" />
+                Apri SongBook
               </Button>
             </div>
           </div>
