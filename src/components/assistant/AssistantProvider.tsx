@@ -31,7 +31,7 @@ const getSectionFromPath = (pathname: string): 'site' | 'openmic' | 'dediche' | 
 };
 
 // Pages where we should NOT show the assistant
-const excludedPaths = ['/admin', '/privacy', '/installa', '/trasmetti', '/lyrics', '/telecomando', '/songbook-live'];
+const excludedPaths = ['/admin', '/privacy', '/installa', '/trasmetti', '/lyrics', '/telecomando', '/songbook-live', '/partiture'];
 
 export const AssistantProvider: React.FC = () => {
   const location = useLocation();
