@@ -41,12 +41,16 @@ interface DuplicateGroup {
   normalizedTitle: string;
   files: SongbookFile[];
   hasUnderscore: boolean;
+  hasCorrected: boolean; // has at least one _ title OR is_variant file
 }
 
 export function SongbookAdvancedSearch({ open, onOpenChange, files, onDeleteFile }: Props) {
   const [selectedForDeletion, setSelectedForDeletion] = useState<Set<string>>(new Set());
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  /** A file is "corrected" if its title ends with _ OR is_variant is true */
+  const isCorrectedFile = (f: SongbookFile) => f.title.trim().endsWith('_') || f.is_variant;
 
   // Find duplicate groups (same normalized title, possibly different _ suffix)
   const duplicateGroups = useMemo(() => {
@@ -65,20 +69,21 @@ export function SongbookAdvancedSearch({ open, onOpenChange, files, onDeleteFile
           normalizedTitle: key.split('|||')[0],
           files: groupFiles.sort((a, b) => a.title.localeCompare(b.title)),
           hasUnderscore: groupFiles.some(f => f.title.trim().endsWith('_')),
+          hasCorrected: groupFiles.some(f => isCorrectedFile(f)),
         });
       }
     }
     return groups.sort((a, b) => a.normalizedTitle.localeCompare(b.normalizedTitle));
   }, [files]);
 
-  // Files with _ suffix = corrected versions
-  const underscoreFiles = useMemo(() => 
-    files.filter(f => f.title.trim().endsWith('_')).sort((a, b) => a.title.localeCompare(b.title)),
+  // Files marked as corrected (title _ or is_variant)
+  const correctedFiles = useMemo(() => 
+    files.filter(f => isCorrectedFile(f)).sort((a, b) => a.title.localeCompare(b.title)),
   [files]);
 
-  // Groups where a _ version exists AND non-_ versions exist (candidates for cleanup)
+  // Groups where a corrected version exists AND non-corrected versions exist
   const cleanupCandidates = useMemo(() => 
-    duplicateGroups.filter(g => g.hasUnderscore),
+    duplicateGroups.filter(g => g.hasCorrected),
   [duplicateGroups]);
 
   const toggleSelection = (id: string) => {
@@ -90,11 +95,11 @@ export function SongbookAdvancedSearch({ open, onOpenChange, files, onDeleteFile
     });
   };
 
-  const selectAllNonUnderscore = () => {
+  const selectAllNonCorrected = () => {
     const ids = new Set<string>();
     for (const group of cleanupCandidates) {
       for (const f of group.files) {
-        if (!f.title.trim().endsWith('_')) {
+        if (!isCorrectedFile(f)) {
           ids.add(f.id);
         }
       }
@@ -146,8 +151,8 @@ export function SongbookAdvancedSearch({ open, onOpenChange, files, onDeleteFile
                 )}
               </TabsTrigger>
               <TabsTrigger value="underscore" className="py-2.5 text-xs sm:text-sm">
-                Con _
-                <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5">{underscoreFiles.length}</Badge>
+                Corretti
+                <Badge variant="secondary" className="ml-1.5 text-[10px] px-1.5">{correctedFiles.length}</Badge>
               </TabsTrigger>
               <TabsTrigger value="cleanup" className="py-2.5 text-xs sm:text-sm">
                 Pulizia
@@ -181,8 +186,8 @@ export function SongbookAdvancedSearch({ open, onOpenChange, files, onDeleteFile
                         <div key={gi} className="border rounded-lg p-3 space-y-1.5">
                           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                             Gruppo: {group.normalizedTitle}
-                            {group.hasUnderscore && (
-                              <Badge variant="default" className="ml-2 text-[10px]">Ha versione _</Badge>
+                            {group.hasCorrected && (
+                              <Badge variant="default" className="ml-2 text-[10px]">Ha versione corretta</Badge>
                             )}
                           </p>
                           {group.files.map(f => (
@@ -190,8 +195,11 @@ export function SongbookAdvancedSearch({ open, onOpenChange, files, onDeleteFile
                               <div className="min-w-0 flex-1">
                                 <span className="font-medium">{f.title}</span>
                                 {f.artist && <span className="text-muted-foreground ml-1.5">– {f.artist}</span>}
-                                {f.title.trim().endsWith('_') && (
+                                {isCorrectedFile(f) && (
                                   <Badge variant="default" className="ml-1.5 text-[10px] px-1">✓ corretta</Badge>
+                                )}
+                                {f.is_variant && !f.title.trim().endsWith('_') && (
+                                  <Badge variant="secondary" className="ml-1 text-[10px] px-1">Variante</Badge>
                                 )}
                               </div>
                             </div>
@@ -206,20 +214,23 @@ export function SongbookAdvancedSearch({ open, onOpenChange, files, onDeleteFile
 
             {/* UNDERSCORE TAB */}
             <TabsContent value="underscore" className="flex-1 min-h-0 mt-3">
-              {underscoreFiles.length === 0 ? (
+              {correctedFiles.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
-                  <p>Nessun file con suffisso _</p>
+                  <p>Nessun file corretto (con _ o variante)</p>
                 </div>
               ) : (
                 <ScrollArea className="h-[400px]">
                   <div className="space-y-1.5 pr-3">
-                    {underscoreFiles.map(f => (
+                    {correctedFiles.map(f => (
                       <div key={f.id} className="flex items-center justify-between py-2 px-3 rounded bg-muted/40 text-sm">
                         <div className="min-w-0 flex-1">
                           <span className="font-medium">{f.title}</span>
                           {f.artist && <span className="text-muted-foreground ml-1.5">– {f.artist}</span>}
                         </div>
-                        <Badge variant="default" className="text-[10px] shrink-0">corretta</Badge>
+                        <div className="flex gap-1 shrink-0">
+                          {f.title.trim().endsWith('_') && <Badge variant="default" className="text-[10px]">_</Badge>}
+                          {f.is_variant && <Badge variant="secondary" className="text-[10px]">Variante</Badge>}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -239,11 +250,11 @@ export function SongbookAdvancedSearch({ open, onOpenChange, files, onDeleteFile
                 <>
                   <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                     <p className="text-sm text-muted-foreground">
-                      Dove esiste una versione con _, puoi eliminare quelle senza.
+                      Dove esiste una versione corretta (_ o Variante), puoi eliminare le altre.
                     </p>
                     <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={selectAllNonUnderscore}>
-                        Seleziona tutte senza _
+                      <Button variant="outline" size="sm" onClick={selectAllNonCorrected}>
+                        Seleziona non corrette
                       </Button>
                       {selectedForDeletion.size > 0 && (
                         <Button
@@ -265,15 +276,15 @@ export function SongbookAdvancedSearch({ open, onOpenChange, files, onDeleteFile
                             {group.normalizedTitle}
                           </p>
                           {group.files.map(f => {
-                            const isCorrected = f.title.trim().endsWith('_');
+                            const corrected = isCorrectedFile(f);
                             return (
                               <div
                                 key={f.id}
                                 className={`flex items-center gap-2 py-2 px-2 rounded text-sm ${
-                                  isCorrected ? 'bg-primary/10 border border-primary/20' : 'bg-muted/40'
+                                  corrected ? 'bg-primary/10 border border-primary/20' : 'bg-muted/40'
                                 }`}
                               >
-                                {!isCorrected && (
+                                {!corrected && (
                                   <Checkbox
                                     checked={selectedForDeletion.has(f.id)}
                                     onCheckedChange={() => toggleSelection(f.id)}
@@ -283,8 +294,11 @@ export function SongbookAdvancedSearch({ open, onOpenChange, files, onDeleteFile
                                   <span className="font-medium">{f.title}</span>
                                   {f.artist && <span className="text-muted-foreground ml-1.5">– {f.artist}</span>}
                                 </div>
-                                {isCorrected ? (
-                                  <Badge variant="default" className="text-[10px] shrink-0">✓ corretta</Badge>
+                                {corrected ? (
+                                  <div className="flex gap-1 shrink-0">
+                                    <Badge variant="default" className="text-[10px]">✓ corretta</Badge>
+                                    {f.is_variant && <Badge variant="secondary" className="text-[10px]">Variante</Badge>}
+                                  </div>
                                 ) : (
                                   <Badge variant="outline" className="text-[10px] shrink-0 text-muted-foreground">da rimuovere?</Badge>
                                 )}
