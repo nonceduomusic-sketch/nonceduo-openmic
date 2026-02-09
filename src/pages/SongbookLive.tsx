@@ -6,6 +6,7 @@ import {
   ChevronUp, 
   ChevronDown,
   Minus,
+  ArrowUpDown,
   Plus,
   Play,
   Pause,
@@ -107,6 +108,7 @@ export default function SongbookLive() {
   const [scrollSpeed, setScrollSpeed] = useState(50);
   const [highlightLines, setHighlightLines] = useState(2);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortMode, setSortMode] = useState<'title' | 'artist' | 'recent'>('title');
   
   // Get font size from session (synced with admin panel)
   const fontSize = (session as any)?.font_size ?? 100;
@@ -132,15 +134,32 @@ export default function SongbookLive() {
     return files.find(f => f.id === (session as any).songbook_file_id) ?? null;
   }, [files, isBroadcasting, session]);
 
-  // Filter files by search query
+  // Filter and sort files
   const filteredFiles = useMemo(() => {
-    if (!searchQuery.trim()) return files;
-    const q = searchQuery.toLowerCase();
-    return files.filter(f => 
-      f.title.toLowerCase().includes(q) || 
-      (f.artist && f.artist.toLowerCase().includes(q))
-    );
-  }, [files, searchQuery]);
+    let result = [...files];
+    
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(f => 
+        f.title.toLowerCase().includes(q) || 
+        (f.artist && f.artist.toLowerCase().includes(q))
+      );
+    }
+    
+    switch (sortMode) {
+      case 'title':
+        result.sort((a, b) => a.title.localeCompare(b.title, 'it'));
+        break;
+      case 'artist':
+        result.sort((a, b) => (a.artist || '').localeCompare(b.artist || '', 'it') || a.title.localeCompare(b.title, 'it'));
+        break;
+      case 'recent':
+        result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        break;
+    }
+    
+    return result;
+  }, [files, searchQuery, sortMode]);
 
   // Parse selected song
   const parsedSong: ChordProSong | null = selectedFile 
@@ -362,8 +381,8 @@ export default function SongbookLive() {
           </div>
         </header>
 
-        {/* Search Bar */}
-        <div className="px-4 py-3 border-b bg-background/95 backdrop-blur">
+        {/* Search Bar + Sort */}
+        <div className="px-4 py-3 border-b bg-background/95 backdrop-blur space-y-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <Input
@@ -373,6 +392,20 @@ export default function SongbookLive() {
               placeholder="Cerca titolo o artista..."
               className="pl-10 h-12 bg-muted border-border focus:border-primary"
             />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <ArrowUpDown className="w-4 h-4 text-muted-foreground shrink-0" />
+            {(['title', 'artist', 'recent'] as const).map((mode) => (
+              <Button
+                key={mode}
+                variant={sortMode === mode ? 'default' : 'outline'}
+                size="sm"
+                className="h-7 text-xs px-2.5"
+                onClick={() => setSortMode(mode)}
+              >
+                {mode === 'title' ? 'A-Z Titolo' : mode === 'artist' ? 'A-Z Artista' : 'Recenti'}
+              </Button>
+            ))}
           </div>
         </div>
 
