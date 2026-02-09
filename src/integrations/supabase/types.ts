@@ -387,6 +387,11 @@ export type Database = {
           screen_stream_url: string | null
           scroll_position: number | null
           scroll_speed: number | null
+          songbook_file_id: string | null
+          songbook_mode: boolean | null
+          songbook_show_chords_on_tv: boolean | null
+          songbook_transpose: number | null
+          songbook_view_mode: string | null
           text_align: string | null
           tv_element_positions: Json | null
           tv_footer: string | null
@@ -431,6 +436,11 @@ export type Database = {
           screen_stream_url?: string | null
           scroll_position?: number | null
           scroll_speed?: number | null
+          songbook_file_id?: string | null
+          songbook_mode?: boolean | null
+          songbook_show_chords_on_tv?: boolean | null
+          songbook_transpose?: number | null
+          songbook_view_mode?: string | null
           text_align?: string | null
           tv_element_positions?: Json | null
           tv_footer?: string | null
@@ -475,6 +485,11 @@ export type Database = {
           screen_stream_url?: string | null
           scroll_position?: number | null
           scroll_speed?: number | null
+          songbook_file_id?: string | null
+          songbook_mode?: boolean | null
+          songbook_show_chords_on_tv?: boolean | null
+          songbook_transpose?: number | null
+          songbook_view_mode?: string | null
           text_align?: string | null
           tv_element_positions?: Json | null
           tv_footer?: string | null
@@ -506,6 +521,13 @@ export type Database = {
             columns: ["current_song_id"]
             isOneToOne: false
             referencedRelation: "songs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broadcast_sessions_songbook_file_id_fkey"
+            columns: ["songbook_file_id"]
+            isOneToOne: false
+            referencedRelation: "songbook_files"
             referencedColumns: ["id"]
           },
         ]
@@ -2188,6 +2210,117 @@ export type Database = {
           identifier?: string
           success?: boolean
           target_id?: string | null
+        }
+        Relationships: []
+      }
+      songbook_files: {
+        Row: {
+          artist: string | null
+          content: string
+          created_at: string
+          created_by: string | null
+          filename: string
+          id: string
+          is_variant: boolean | null
+          slug: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          artist?: string | null
+          content: string
+          created_at?: string
+          created_by?: string | null
+          filename: string
+          id?: string
+          is_variant?: boolean | null
+          slug?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          artist?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          filename?: string
+          id?: string
+          is_variant?: boolean | null
+          slug?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      songbook_setlist_songs: {
+        Row: {
+          created_at: string | null
+          id: string
+          notes: string | null
+          position: number
+          setlist_id: string
+          songbook_file_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          position?: number
+          setlist_id: string
+          songbook_file_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          position?: number
+          setlist_id?: string
+          songbook_file_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "songbook_setlist_songs_setlist_id_fkey"
+            columns: ["setlist_id"]
+            isOneToOne: false
+            referencedRelation: "songbook_setlists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "songbook_setlist_songs_songbook_file_id_fkey"
+            columns: ["songbook_file_id"]
+            isOneToOne: false
+            referencedRelation: "songbook_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      songbook_setlists: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          description: string | null
+          id: string
+          is_default: boolean | null
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          updated_at?: string | null
         }
         Relationships: []
       }

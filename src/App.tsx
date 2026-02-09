@@ -36,6 +36,7 @@ import Collabora from "./pages/Collabora";
 import Lyrics from "./pages/Lyrics";
 import Trasmetti from "./pages/Trasmetti";
 import Telecomando from "./pages/Telecomando";
+import SongbookLive from "./pages/SongbookLive";
 
 const queryClient = new QueryClient();
 
@@ -78,6 +79,9 @@ const AppContent = () => (
       
       {/* Telecomando - Remote control for broadcast (public access with PIN) */}
       <Route path="/telecomando/:token" element={<Telecomando />} />
+      
+      {/* SongBook Live - ChordPro viewer with sync */}
+      <Route path="/songbook-live" element={<SongbookLive />} />
 
       {/* Legacy routes (keep existing behavior for now) */}
       <Route path="/openmic/live" element={<OpenMic />} />
