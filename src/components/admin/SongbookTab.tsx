@@ -152,22 +152,22 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
     <div className="space-y-6">
       {/* Header */}
       <Card>
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-4">
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-xl">
-                <Guitar className="w-5 h-5 text-primary" />
+                <Guitar className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-lg">SongBook</CardTitle>
-                <CardDescription>Gestisci file ChordPro (.cho)</CardDescription>
+                <CardTitle className="text-base sm:text-lg">SongBook</CardTitle>
+                <CardDescription className="text-xs sm:text-sm">Gestisci file ChordPro (.cho)</CardDescription>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant="outline">{files.length} file</Badge>
-              <Button onClick={openSongbookLive} variant="outline" size="sm">
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Apri SongBookLive
+              <Badge variant="outline" className="text-xs sm:text-sm">{files.length} file</Badge>
+              <Button onClick={openSongbookLive} variant="outline" size="sm" className="h-10 sm:h-11 text-sm sm:text-base">
+                <ExternalLink className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
+                <span className="hidden sm:inline">Apri </span>SongBookLive
               </Button>
             </div>
           </div>
@@ -175,13 +175,13 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
       </Card>
 
       <Tabs defaultValue="catalog" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="catalog" className="gap-2">
-            <FileText className="w-4 h-4" />
+        <TabsList className="grid w-full grid-cols-2 h-auto p-1">
+          <TabsTrigger value="catalog" className="gap-2 py-2.5 text-sm sm:text-base font-medium">
+            <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
             Catalogo
           </TabsTrigger>
-          <TabsTrigger value="setlists" className="gap-2">
-            <FolderOpen className="w-4 h-4" />
+          <TabsTrigger value="setlists" className="gap-2 py-2.5 text-sm sm:text-base font-medium">
+            <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5" />
             Scalette SongBook
           </TabsTrigger>
         </TabsList>
@@ -199,16 +199,16 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
             onDrop={handleDrop}
             onClick={() => canFull && fileInputRef.current?.click()}
           >
-            <CardContent className="py-8">
+            <CardContent className="py-6 sm:py-8">
               <div className="flex flex-col items-center justify-center text-center">
                 <Upload className={cn(
-                  "w-10 h-10 mb-3 transition-colors",
+                  "w-8 h-8 sm:w-10 sm:h-10 mb-3 transition-colors",
                   isDragging ? "text-primary" : "text-muted-foreground"
                 )} />
-                <p className="text-sm font-medium">
+                <p className="text-sm sm:text-base font-medium">
                   {isDragging ? "Rilascia i file qui" : "Trascina file .cho oppure clicca per selezionare"}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                   Supporta upload multiplo
                 </p>
               </div>
@@ -225,41 +225,41 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
 
           {/* Search and Actions */}
           <Card>
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-4">
               <div className="flex items-center justify-between gap-3 flex-wrap">
                 <div className="relative flex-1 min-w-[200px]">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
                   <Input
                     placeholder="Cerca per titolo o artista..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10"
+                    className="pl-10 sm:pl-11 h-11 sm:h-12 text-sm sm:text-base"
                   />
                 </div>
                 {canFull && files.length > 0 && (
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="destructive" size="sm">
-                        <Trash2 className="w-4 h-4 mr-2" />
+                      <Button variant="destructive" size="sm" className="h-10 sm:h-11 text-sm sm:text-base">
+                        <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                         Elimina tutti
                       </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle className="flex items-center gap-2">
-                          <AlertTriangle className="w-5 h-5 text-destructive" />
+                        <AlertDialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
+                          <AlertTriangle className="w-5 h-5 sm:w-6 sm:h-6 text-destructive" />
                           Eliminare tutti i file?
                         </AlertDialogTitle>
-                        <AlertDialogDescription>
+                        <AlertDialogDescription className="text-sm sm:text-base">
                           Questa azione eliminerà permanentemente tutti i {files.length} file ChordPro.
                           L'operazione non può essere annullata.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Annulla</AlertDialogCancel>
+                        <AlertDialogCancel className="h-10 sm:h-11">Annulla</AlertDialogCancel>
                         <AlertDialogAction 
                           onClick={deleteAllFiles}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 sm:h-11"
                         >
                           Elimina tutti
                         </AlertDialogAction>
@@ -271,49 +271,49 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
             </CardHeader>
             <CardContent>
               {loading ? (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="text-center py-8 text-muted-foreground text-sm sm:text-base">
                   Caricamento...
                 </div>
               ) : filteredFiles.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
+                <div className="text-center py-8 text-muted-foreground text-sm sm:text-base">
                   {files.length === 0 
                     ? "Nessun file caricato. Trascina dei file .cho per iniziare."
                     : "Nessun file corrisponde alla ricerca"}
                 </div>
               ) : (
-                <ScrollArea className="h-[400px]">
-                  <div className="space-y-2">
+                <ScrollArea className="h-[400px] sm:h-[500px]">
+                  <div className="space-y-2 sm:space-y-3">
                     {filteredFiles.map((file) => (
                       <div
                         key={file.id}
                         className={cn(
-                          "flex items-center justify-between p-3 rounded-lg hover:bg-muted/50 transition-colors",
+                          "flex items-center justify-between p-3 sm:p-4 rounded-xl hover:bg-muted/50 transition-colors gap-3",
                           file.is_variant ? "bg-muted/20" : "bg-muted/30"
                         )}
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <FileText className="w-5 h-5 text-primary shrink-0" />
+                          <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <p className="font-medium truncate">{file.title}</p>
+                              <p className="font-semibold text-sm sm:text-base truncate">{file.title}</p>
                               {file.is_variant && (
-                                <Badge variant="secondary" className="text-[10px]">Variante</Badge>
+                                <Badge variant="secondary" className="text-[10px] sm:text-xs">Variante</Badge>
                               )}
                             </div>
                             {file.artist && (
-                              <p className="text-sm text-muted-foreground truncate">{file.artist}</p>
+                              <p className="text-xs sm:text-sm text-muted-foreground truncate">{file.artist}</p>
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                           <Button
                             size="icon"
                             variant="ghost"
                             onClick={() => handlePreview(file)}
-                            className="h-9 w-9"
+                            className="h-9 w-9 sm:h-10 sm:w-10"
                             title="Anteprima"
                           >
-                            <Eye className="w-4 h-4" />
+                            <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
                           </Button>
                           {canFull && (
                             <>
@@ -321,34 +321,34 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
                                 size="icon"
                                 variant="ghost"
                                 onClick={() => handleEdit(file)}
-                                className="h-9 w-9"
+                                className="h-9 w-9 sm:h-10 sm:w-10"
                                 title="Modifica"
                               >
-                                <Edit2 className="w-4 h-4" />
+                                <Edit2 className="w-4 h-4 sm:w-5 sm:h-5" />
                               </Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button
                                     size="icon"
                                     variant="ghost"
-                                    className="h-9 w-9 text-destructive hover:text-destructive"
+                                    className="h-9 w-9 sm:h-10 sm:w-10 text-destructive hover:text-destructive"
                                     title="Elimina"
                                   >
-                                    <Trash2 className="w-4 h-4" />
+                                    <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
                                   </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle>Eliminare "{file.title}"?</AlertDialogTitle>
-                                    <AlertDialogDescription>
+                                    <AlertDialogTitle className="text-lg sm:text-xl">Eliminare "{file.title}"?</AlertDialogTitle>
+                                    <AlertDialogDescription className="text-sm sm:text-base">
                                       Questa azione non può essere annullata.
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                    <AlertDialogCancel className="h-10 sm:h-11">Annulla</AlertDialogCancel>
                                     <AlertDialogAction 
                                       onClick={() => deleteFile(file.id)}
-                                      className="bg-destructive text-destructive-foreground"
+                                      className="bg-destructive text-destructive-foreground h-10 sm:h-11"
                                     >
                                       Elimina
                                     </AlertDialogAction>
@@ -370,11 +370,11 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
         {/* Setlists Tab - Placeholder for Phase 2 */}
         <TabsContent value="setlists" className="space-y-4">
           <Card>
-            <CardContent className="py-8">
+            <CardContent className="py-8 sm:py-10">
               <div className="text-center text-muted-foreground">
-                <FolderOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p className="font-medium">Scalette SongBook</p>
-                <p className="text-sm mt-1">
+                <FolderOpen className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-4 opacity-50" />
+                <p className="font-semibold text-sm sm:text-base">Scalette SongBook</p>
+                <p className="text-xs sm:text-sm mt-1">
                   Crea scalette personalizzate con i tuoi file ChordPro.
                   <br />
                   Funzionalità in arrivo nella Fase 2.
@@ -389,31 +389,31 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
       <Dialog open={!!editingFile} onOpenChange={(open) => !open && setEditingFile(null)}>
         <DialogContent className="max-w-3xl max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Edit2 className="w-5 h-5" />
+            <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <Edit2 className="w-5 h-5 sm:w-6 sm:h-6" />
               Modifica: {editingFile?.title}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-sm sm:text-base">
               Modifica il contenuto ChordPro del file
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Contenuto ChordPro</Label>
+              <Label className="text-sm sm:text-base">Contenuto ChordPro</Label>
               <Textarea
                 value={editContent}
                 onChange={(e) => setEditContent(e.target.value)}
-                className="font-mono text-sm h-[400px] resize-none"
+                className="font-mono text-xs sm:text-sm h-[350px] sm:h-[400px] resize-none mt-2"
                 placeholder="{title: Nome Canzone}&#10;{artist: Artista}&#10;&#10;[Am]Testo con [C]accordi..."
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingFile(null)}>
+            <Button variant="outline" onClick={() => setEditingFile(null)} className="h-10 sm:h-11">
               Annulla
             </Button>
-            <Button onClick={handleSaveEdit}>
-              <Save className="w-4 h-4 mr-2" />
+            <Button onClick={handleSaveEdit} className="h-10 sm:h-11">
+              <Save className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
               Salva
             </Button>
           </DialogFooter>
@@ -424,11 +424,11 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
       <Dialog open={!!previewFile} onOpenChange={(open) => !open && setPreviewFile(null)}>
         <DialogContent className="max-w-2xl max-h-[90vh]">
           <DialogHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-3">
               <div>
-                <DialogTitle>{previewFile?.title}</DialogTitle>
+                <DialogTitle className="text-lg sm:text-xl">{previewFile?.title}</DialogTitle>
                 {previewFile?.artist && (
-                  <DialogDescription>{previewFile.artist}</DialogDescription>
+                  <DialogDescription className="text-sm sm:text-base">{previewFile.artist}</DialogDescription>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -436,16 +436,17 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
                   variant={showChordsInPreview ? "default" : "outline"}
                   size="sm"
                   onClick={() => setShowChordsInPreview(!showChordsInPreview)}
+                  className="h-10 sm:h-11 text-sm sm:text-base"
                 >
-                  <Guitar className="w-4 h-4 mr-1" />
+                  <Guitar className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5" />
                   {showChordsInPreview ? "Nascondi Accordi" : "Mostra Accordi"}
                 </Button>
               </div>
             </div>
           </DialogHeader>
-          <ScrollArea className="h-[500px] mt-4">
+          <ScrollArea className="h-[400px] sm:h-[500px] mt-4">
             {previewFile && (
-              <pre className="font-mono text-sm whitespace-pre-wrap leading-relaxed">
+              <pre className="font-mono text-sm sm:text-base whitespace-pre-wrap leading-relaxed">
                 {showChordsInPreview 
                   ? renderWithChords(parseChordPro(previewFile.content))
                   : renderLyricsOnly(parseChordPro(previewFile.content))
