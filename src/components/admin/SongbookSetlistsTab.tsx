@@ -333,23 +333,22 @@ export function SongbookSetlistsTab({ canManage = true, canFull = true }: Songbo
                   {filteredFiles.map((file) => (
                     <div
                       key={file.id}
-                      className="flex items-center justify-between p-2.5 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors gap-2"
+                      className="flex items-center justify-between p-2.5 sm:p-3 md:p-4 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors gap-2 sm:gap-3"
                     >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                        <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground shrink-0" />
                         <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">{file.title}</p>
-                          <p className="text-xs text-muted-foreground truncate">{file.artist || 'Artista sconosciuto'}</p>
+                          <p className="text-sm sm:text-base font-medium truncate">{file.title}</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground truncate">{file.artist || 'Artista sconosciuto'}</p>
                         </div>
                       </div>
                       <Button
                         size="icon"
-                        variant="outline"
-                        className="h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11 shrink-0"
+                        className="h-10 w-10 sm:h-11 sm:w-11 md:h-12 md:w-12 shrink-0 bg-primary hover:bg-primary/90"
                         onClick={() => handleAddToSetlist(file.id)}
                         disabled={!canFull}
                       >
-                        <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
                       </Button>
                     </div>
                   ))}
