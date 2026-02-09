@@ -146,12 +146,12 @@ export default function SongbookLive() {
     ? transposeSong(parseChordPro(selectedFile.content), transpose)
     : null;
 
-  // Sync scroll to TV - instant update (no session dep to avoid stale closures)
+  // Sync scroll to TV - throttled to avoid flooding DB
   const syncScrollToTV = useCallback(() => {
     if (!scrollRef.current) return;
     
     const now = Date.now();
-    if (now - lastSyncRef.current < 30) return;
+    if (now - lastSyncRef.current < 60) return;
     lastSyncRef.current = now;
     
     const ratio = getScrollRatioFromElement(scrollRef.current);
@@ -206,12 +206,13 @@ export default function SongbookLive() {
     toast.success('Trasmissione interrotta');
   }, [updateSession]);
 
-  // Handle scroll event - use ref to avoid stale closure
+  // Handle scroll event from touch/finger scrolling
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
     if (!isBroadcastingRef.current) return;
     syncScrollToTV();
   }, [syncScrollToTV]);
+
   // Auto scroll effect
   useEffect(() => {
     if (autoScroll && scrollRef.current) {
@@ -227,6 +228,11 @@ export default function SongbookLive() {
           return;
         }
         
+        // Sync scroll to TV during auto-scroll
+        if (isBroadcastingRef.current) {
+          syncScrollToTV();
+        }
+        
         autoScrollRef.current = requestAnimationFrame(scroll);
       };
       autoScrollRef.current = requestAnimationFrame(scroll);
@@ -237,7 +243,7 @@ export default function SongbookLive() {
         cancelAnimationFrame(autoScrollRef.current);
       }
     };
-  }, [autoScroll, scrollSpeed]);
+  }, [autoScroll, scrollSpeed, syncScrollToTV]);
 
   // DON'T auto-broadcast on file select - user controls with Avvia button
   // Just prepare the session without broadcasting
