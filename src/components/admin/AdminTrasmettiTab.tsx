@@ -274,29 +274,29 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
 
       {/* Main content tabs */}
       <Tabs defaultValue="queue" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-6 h-auto">
-          <TabsTrigger value="queue" className="flex-col gap-0.5 py-2 px-1 text-[10px] sm:text-sm sm:flex-row sm:gap-2">
-            <List className="w-4 h-4" />
+        <TabsList className="grid w-full grid-cols-6 h-auto p-1 gap-0.5">
+          <TabsTrigger value="queue" className="flex-col gap-1 py-2.5 px-1.5 text-xs sm:text-sm md:text-base sm:flex-row sm:gap-2 font-medium">
+            <List className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="leading-tight text-center">Scaletta<br className="sm:hidden" /><span className="hidden sm:inline"> </span>Live</span>
           </TabsTrigger>
-          <TabsTrigger value="catalog" className="flex-col gap-0.5 py-2 px-1 text-[10px] sm:text-sm sm:flex-row sm:gap-2">
-            <Music className="w-4 h-4" />
+          <TabsTrigger value="catalog" className="flex-col gap-1 py-2.5 px-1.5 text-xs sm:text-sm md:text-base sm:flex-row sm:gap-2 font-medium">
+            <Music className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="leading-tight text-center">Catalogo</span>
           </TabsTrigger>
-          <TabsTrigger value="setlists" className="flex-col gap-0.5 py-2 px-1 text-[10px] sm:text-sm sm:flex-row sm:gap-2">
-            <FolderOpen className="w-4 h-4" />
+          <TabsTrigger value="setlists" className="flex-col gap-1 py-2.5 px-1.5 text-xs sm:text-sm md:text-base sm:flex-row sm:gap-2 font-medium">
+            <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="leading-tight text-center">Le Mie<br className="sm:hidden" /><span className="hidden sm:inline"> </span>Scalette</span>
           </TabsTrigger>
-          <TabsTrigger value="songbook" className="flex-col gap-0.5 py-2 px-1 text-[10px] sm:text-sm sm:flex-row sm:gap-2">
-            <Guitar className="w-4 h-4" />
+          <TabsTrigger value="songbook" className="flex-col gap-1 py-2.5 px-1.5 text-xs sm:text-sm md:text-base sm:flex-row sm:gap-2 font-medium">
+            <Guitar className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="leading-tight text-center">Song<br className="sm:hidden" /><span className="hidden sm:inline">Song</span>Book</span>
           </TabsTrigger>
-          <TabsTrigger value="remote" className="flex-col gap-0.5 py-2 px-1 text-[10px] sm:text-sm sm:flex-row sm:gap-2">
-            <Monitor className="w-4 h-4" />
-            <span className="leading-tight text-center">Tele-<br className="sm:hidden" /><span className="hidden sm:inline">Tele</span>comando</span>
+          <TabsTrigger value="remote" className="flex-col gap-1 py-2.5 px-1.5 text-xs sm:text-sm md:text-base sm:flex-row sm:gap-2 font-medium">
+            <Monitor className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="leading-tight text-center">Tele<br className="sm:hidden" /><span className="hidden sm:inline">Tele</span>comando</span>
           </TabsTrigger>
-          <TabsTrigger value="tv-settings" className="flex-col gap-0.5 py-2 px-1 text-[10px] sm:text-sm sm:flex-row sm:gap-2">
-            <Settings className="w-4 h-4" />
+          <TabsTrigger value="tv-settings" className="flex-col gap-1 py-2.5 px-1.5 text-xs sm:text-sm md:text-base sm:flex-row sm:gap-2 font-medium">
+            <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
             <span className="leading-tight text-center">TV</span>
           </TabsTrigger>
         </TabsList>
@@ -304,38 +304,38 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
         {/* Live Queue Tab */}
         <TabsContent value="queue" className="space-y-4">
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Music className="w-4 h-4" />
+            <CardHeader className="pb-4">
+              <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                <Music className="w-5 h-5" />
                 Prenotazioni da Completare ({pendingReservations.length})
               </CardTitle>
             </CardHeader>
             <CardContent>
               {pendingReservations.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">
+                <p className="text-muted-foreground text-center py-8 text-sm sm:text-base">
                   Nessuna prenotazione in coda
                 </p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {pendingReservations.map((reservation, index) => (
                     <div
                       key={reservation.id}
-                      className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
+                      className="flex items-center justify-between p-3 sm:p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors gap-3"
                     >
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline" className="w-8 h-8 flex items-center justify-center rounded-full">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <Badge variant="outline" className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full text-sm sm:text-base font-semibold shrink-0">
                           {index + 1}
                         </Badge>
-                        <div>
-                          <p className="font-medium">{reservation.song_title}</p>
-                          <p className="text-sm text-muted-foreground">
+                        <div className="min-w-0">
+                          <p className="font-semibold text-sm sm:text-base truncate">{reservation.song_title}</p>
+                          <p className="text-xs sm:text-sm text-muted-foreground truncate">
                             {reservation.song_artist} • {reservation.customer_name}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <Button
-                          size="sm"
+                          size="icon"
                           variant="outline"
                           onClick={() => {
                             const song = songs.find(s => 
@@ -343,8 +343,9 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                             );
                             if (song) openPreview(song.id);
                           }}
+                          className="h-10 w-10 sm:h-11 sm:w-11"
                         >
-                          <Eye className="w-4 h-4" />
+                          <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
                         </Button>
                         <Button
                           size="sm"
@@ -359,9 +360,11 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                             }
                           }}
                           disabled={!canManage}
+                          className="h-10 sm:h-11 px-3 sm:px-4 text-sm sm:text-base"
                         >
-                          <Play className="w-4 h-4 mr-1" />
-                          Trasmetti
+                          <Play className="w-4 h-4 mr-1.5" />
+                          <span className="hidden sm:inline">Trasmetti</span>
+                          <span className="sm:hidden">Play</span>
                         </Button>
                       </div>
                     </div>
@@ -375,11 +378,11 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
         {/* Catalog Tab - Shows all songs immediately */}
         <TabsContent value="catalog" className="space-y-4">
           <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Catalogo Canzoni ({songs.length})</CardTitle>
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <CardTitle className="text-base sm:text-lg">Catalogo Canzoni ({songs.length})</CardTitle>
                 {selectedSetlistId && (
-                  <Badge variant="secondary">
+                  <Badge variant="secondary" className="text-xs sm:text-sm">
                     Scaletta selezionata - clicca + per aggiungere
                   </Badge>
                 )}
@@ -387,60 +390,60 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
                 <Input
                   placeholder="Filtra per titolo o artista..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 sm:pl-11 h-11 sm:h-12 text-sm sm:text-base"
                 />
               </div>
 
-              <ScrollArea className="h-[400px]">
-                <div className="space-y-2">
+              <ScrollArea className="h-[400px] sm:h-[500px]">
+                <div className="space-y-2 sm:space-y-3">
                   {filteredSongs.map((song) => (
                     <div
                       key={song.id}
-                      className="flex items-center justify-between p-3 bg-muted/30 rounded-lg hover:bg-muted/50 transition-colors"
+                      className="flex items-center justify-between p-3 sm:p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors gap-3"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-medium truncate max-w-[150px] sm:max-w-none">{song.titolo}</p>
-                        {song.testo && (
-                          <Badge variant="outline" className="text-[10px] px-1.5 shrink-0">Testo</Badge>
-                        )}
+                          <p className="font-semibold text-sm sm:text-base truncate max-w-[200px] sm:max-w-none">{song.titolo}</p>
+                          {song.testo && (
+                            <Badge variant="outline" className="text-[10px] sm:text-xs px-1.5 sm:px-2 shrink-0">Testo</Badge>
+                          )}
                         </div>
-                        <p className="text-sm text-muted-foreground truncate">{song.artista}</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate">{song.artista}</p>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0 ml-2">
+                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                         <Button
                           size="icon"
                           variant="outline"
                           onClick={() => openPreview(song.id)}
-                          className="h-11 w-11 min-w-[44px] min-h-[44px]"
+                          className="h-10 w-10 sm:h-11 sm:w-11 min-w-[40px] min-h-[40px]"
                           title="Anteprima"
                         >
-                          <Eye className="w-5 h-5" />
+                          <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
                         </Button>
                         {selectedSetlistId && canFull && (
                           <Button
                             size="icon"
                             variant="outline"
                             onClick={() => addToSetlist(song.id)}
-                            className="h-11 w-11 min-w-[44px] min-h-[44px]"
+                            className="h-10 w-10 sm:h-11 sm:w-11 min-w-[40px] min-h-[40px]"
                             title="Aggiungi a scaletta"
                           >
-                            <Plus className="w-5 h-5" />
+                            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                           </Button>
                         )}
                         <Button
                           size="icon"
                           onClick={() => handleBroadcast(song.id)}
                           disabled={!canManage}
-                          className="h-11 w-11 min-w-[44px] min-h-[44px] bg-primary"
+                          className="h-10 w-10 sm:h-11 sm:w-11 min-w-[40px] min-h-[40px] bg-primary"
                           title="Trasmetti"
                         >
-                          <Play className="w-5 h-5" />
+                          <Play className="w-4 h-4 sm:w-5 sm:h-5" />
                         </Button>
                       </div>
                     </div>
@@ -449,7 +452,7 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
               </ScrollArea>
 
               {filteredSongs.length === 0 && (
-                <p className="text-muted-foreground text-center py-8">
+                <p className="text-muted-foreground text-center py-8 text-sm sm:text-base">
                   Nessuna canzone trovata
                 </p>
               )}
@@ -462,21 +465,21 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
           <div className="grid md:grid-cols-2 gap-4">
             {/* Setlist List */}
             <Card>
-              <CardHeader className="pb-3">
+              <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-base">Scalette Salvate</CardTitle>
+                  <CardTitle className="text-base sm:text-lg">Scalette Salvate</CardTitle>
                   {canFull && (
                     <Dialog open={showNewSetlistDialog} onOpenChange={setShowNewSetlistDialog}>
                       <DialogTrigger asChild>
-                        <Button size="sm" variant="outline">
-                          <Plus className="w-4 h-4 mr-2" />
+                        <Button size="sm" variant="outline" className="h-10 sm:h-11 px-3 sm:px-4 text-sm sm:text-base">
+                          <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2" />
                           Nuova
                         </Button>
                       </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
-                          <DialogTitle>Crea Nuova Scaletta</DialogTitle>
-                          <DialogDescription>
+                          <DialogTitle className="text-lg sm:text-xl">Crea Nuova Scaletta</DialogTitle>
+                          <DialogDescription className="text-sm sm:text-base">
                             Dai un nome alla tua nuova scaletta
                           </DialogDescription>
                         </DialogHeader>
@@ -484,10 +487,11 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                           placeholder="Nome scaletta..."
                           value={newSetlistName}
                           onChange={(e) => setNewSetlistName(e.target.value)}
+                          className="h-11 sm:h-12 text-sm sm:text-base"
                         />
                         <DialogFooter>
-                          <Button onClick={handleCreateSetlist} disabled={!newSetlistName.trim()}>
-                            <Save className="w-4 h-4 mr-2" />
+                          <Button onClick={handleCreateSetlist} disabled={!newSetlistName.trim()} className="h-10 sm:h-11">
+                            <Save className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                             Crea
                           </Button>
                         </DialogFooter>
@@ -498,62 +502,62 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
               </CardHeader>
               <CardContent>
                 {setlists.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">
+                  <p className="text-muted-foreground text-center py-8 text-sm sm:text-base">
                     Nessuna scaletta salvata
                   </p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-2 sm:space-y-3">
                     {setlists.map((setlist) => (
                       <div
                         key={setlist.id}
                         className={cn(
-                          "flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors",
+                          "flex items-center justify-between p-3 sm:p-4 rounded-xl cursor-pointer transition-colors",
                           selectedSetlistId === setlist.id
                             ? "bg-primary/10 border border-primary/20"
                             : "bg-muted/30 hover:bg-muted/50"
                         )}
                         onClick={() => setSelectedSetlistId(setlist.id)}
                       >
-                        <div className="flex items-center gap-2">
-                          <FolderOpen className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-medium">{setlist.name}</span>
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground" />
+                          <span className="font-semibold text-sm sm:text-base">{setlist.name}</span>
                         </div>
                         {canFull && (
                           <div className="flex items-center gap-1">
                             <Button
                               size="icon"
                               variant="ghost"
-                              className="h-8 w-8"
+                              className="h-9 w-9 sm:h-10 sm:w-10"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setEditingSetlist({ id: setlist.id, name: setlist.name });
                               }}
                             >
-                              <Edit2 className="w-4 h-4" />
+                              <Edit2 className="w-4 h-4 sm:w-5 sm:h-5" />
                             </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
                                   size="icon"
                                   variant="ghost"
-                                  className="h-8 w-8 text-destructive"
+                                  className="h-9 w-9 sm:h-10 sm:w-10 text-destructive"
                                   onClick={(e) => e.stopPropagation()}
                                 >
-                                  <Trash2 className="w-4 h-4" />
+                                  <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
                                 </Button>
                               </AlertDialogTrigger>
                               <AlertDialogContent>
                                 <AlertDialogHeader>
-                                  <AlertDialogTitle>Elimina Scaletta</AlertDialogTitle>
-                                  <AlertDialogDescription>
+                                  <AlertDialogTitle className="text-lg sm:text-xl">Elimina Scaletta</AlertDialogTitle>
+                                  <AlertDialogDescription className="text-sm sm:text-base">
                                     Sei sicuro di voler eliminare "{setlist.name}"?
                                   </AlertDialogDescription>
                                 </AlertDialogHeader>
                                 <AlertDialogFooter>
-                                  <AlertDialogCancel>Annulla</AlertDialogCancel>
+                                  <AlertDialogCancel className="h-10 sm:h-11">Annulla</AlertDialogCancel>
                                   <AlertDialogAction
                                     onClick={() => handleDeleteSetlist(setlist.id)}
-                                    className="bg-destructive text-destructive-foreground"
+                                    className="bg-destructive text-destructive-foreground h-10 sm:h-11"
                                   >
                                     Elimina
                                   </AlertDialogAction>
@@ -571,25 +575,25 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
 
             {/* Selected Setlist Songs with Drag & Drop */}
             <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base">
+              <CardHeader className="pb-4">
+                <CardTitle className="text-base sm:text-lg">
                   {selectedSetlistId
                     ? setlists.find(s => s.id === selectedSetlistId)?.name || 'Scaletta'
                     : 'Seleziona una Scaletta'}
                 </CardTitle>
                 {selectedSetlistId && setlistSongs.length > 0 && canFull && (
-                  <CardDescription className="text-xs">
+                  <CardDescription className="text-xs sm:text-sm">
                     Trascina per riordinare le canzoni
                   </CardDescription>
                 )}
               </CardHeader>
               <CardContent>
                 {!selectedSetlistId ? (
-                  <p className="text-muted-foreground text-center py-8">
+                  <p className="text-muted-foreground text-center py-8 text-sm sm:text-base">
                     Seleziona una scaletta per vedere le canzoni
                   </p>
                 ) : setlistSongs.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">
+                  <p className="text-muted-foreground text-center py-8 text-sm sm:text-base">
                     Scaletta vuota. Vai al Catalogo e clicca + per aggiungere canzoni.
                   </p>
                 ) : (
@@ -602,7 +606,7 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                       items={setlistSongs.map(s => s.id)}
                       strategy={verticalListSortingStrategy}
                     >
-                      <div className="space-y-2">
+                      <div className="space-y-2 sm:space-y-3">
                         {setlistSongs.map((item, index) => (
                           <SetlistSongItem
                             key={item.id}
