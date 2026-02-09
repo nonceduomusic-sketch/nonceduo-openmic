@@ -19,6 +19,7 @@ import {
   Tv,
   Palette,
 } from 'lucide-react';
+import { SongbookLiveDrawer } from '@/components/songbook/SongbookLiveDrawer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -361,6 +362,25 @@ export default function SongbookLive() {
     }
   };
 
+  // Broadcast a file directly (from drawer)
+  const handleBroadcastFile = useCallback((file: SongbookFile) => {
+    setSelectedFile(file);
+    setTranspose(0);
+    // Auto-start broadcast
+    isBroadcastingRef.current = true;
+    updateSession({
+      songbook_mode: true,
+      songbook_file_id: file.id,
+      songbook_show_chords_on_tv: showChordsOnTV,
+      songbook_transpose: 0,
+      display_mode: 'lyrics',
+      is_active: true,
+      is_broadcasting: true,
+      scroll_position: 0,
+    });
+    toast.success('Trasmissione avviata su TV!');
+  }, [showChordsOnTV, updateSession]);
+
   // File selection view
   if (!selectedFile) {
     return (
@@ -369,9 +389,11 @@ export default function SongbookLive() {
         <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
+              <SongbookLiveDrawer
+                files={files}
+                onSelectFile={handleSelectFile}
+                onBroadcastFile={handleBroadcastFile}
+              />
               <div className="flex items-center gap-2">
                 <Guitar className="w-5 h-5 text-primary" />
                 <h1 className="font-bold text-lg">SongBook Live</h1>
@@ -484,6 +506,11 @@ export default function SongbookLive() {
       <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
+            <SongbookLiveDrawer
+              files={files}
+              onSelectFile={handleSelectFile}
+              onBroadcastFile={handleBroadcastFile}
+            />
             <Button variant="ghost" size="icon" onClick={handleBack}>
               <ArrowLeft className="w-5 h-5" />
             </Button>
