@@ -25,7 +25,6 @@ import {
   Server,
 } from 'lucide-react';
 import { SongbookLiveDrawer } from '@/components/songbook/SongbookLiveDrawer';
-import { ConnectionSettings } from '@/components/songbook/ConnectionSettings';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -448,14 +447,6 @@ export default function SongbookLive() {
               </div>
             </div>
             <div className="flex items-center gap-1.5">
-              <ConnectionSettings
-                mode={mode}
-                setMode={setMode}
-                localIP={localIP}
-                setLocalIP={setLocalIP}
-                isLocalConnected={localConnected}
-                localLatency={localLatency}
-              />
               {isFromCache && (
                 <Badge variant="outline" className="text-xs text-amber-500 border-amber-500/50">
                   <WifiOff className="w-3 h-3 mr-1" />
@@ -593,14 +584,6 @@ export default function SongbookLive() {
             </div>
           </div>
           <div className="flex items-center gap-1.5">
-            <ConnectionSettings
-              mode={mode}
-              setMode={setMode}
-              localIP={localIP}
-              setLocalIP={setLocalIP}
-              isLocalConnected={localConnected}
-              localLatency={localLatency}
-            />
             {isLocalMode && localConnected && (
               <Badge variant="outline" className="text-xs text-green-500 border-green-500/50">
                 <Server className="w-3 h-3 mr-1" />
