@@ -8,6 +8,7 @@ import {
   Server,
   Check,
   AlertCircle,
+  Footprints,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -20,6 +21,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { adminAuditLog } from '@/lib/adminAudit';
 import { useTheme } from 'next-themes';
 import { useConnectionMode, useLocalBroadcast } from '@/hooks/useLocalBroadcast';
+import { usePedalSettings, PedalPage } from '@/hooks/usePedalControl';
+import { Slider } from '@/components/ui/slider';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type SectionKey = 'openmic' | 'dediche' | 'community';
 
@@ -274,12 +278,93 @@ export const AdminSettingsTab: React.FC = () => {
         </Button>
       </div>
 
+      {/* Pedal Control */}
+      <PedalControlSection />
+
       {/* Connection Mode (Cloud/Local) */}
       <ConnectionModeSection />
 
     </div>
   );
 };
+
+const PEDAL_PAGE_OPTIONS: { value: PedalPage; label: string }[] = [
+  { value: 'songbook', label: 'SongBook Live' },
+  { value: 'trasmetti', label: 'Trasmetti (TV)' },
+  { value: 'partiture', label: 'Partiture' },
+];
+
+function PedalControlSection() {
+  const { settings, updateSettings } = usePedalSettings();
+
+  const togglePage = (page: PedalPage, checked: boolean) => {
+    const pages = checked
+      ? [...settings.enabledPages, page]
+      : settings.enabledPages.filter(p => p !== page);
+    updateSettings({ enabledPages: pages });
+  };
+
+  return (
+    <div className="glass-card p-4 space-y-4">
+      <div className="flex items-center gap-3">
+        <Footprints className="w-5 h-5 text-primary" />
+        <div className="flex-1">
+          <h3 className="font-medium text-foreground">Pedale Bluetooth</h3>
+          <p className="text-xs text-muted-foreground">
+            Controlla lo scorrimento del testo con un pedale (es. IK Multimedia BlueTurn)
+          </p>
+        </div>
+        <Switch
+          checked={settings.enabled}
+          onCheckedChange={(checked) => updateSettings({ enabled: checked })}
+        />
+      </div>
+
+      {settings.enabled && (
+        <div className="space-y-4 pt-2 border-t border-border">
+          {/* Lines per press */}
+          <div>
+            <Label className="text-sm">Righe per pressione: <span className="font-bold text-primary">{settings.linesPerPress}</span></Label>
+            <Slider
+              value={[settings.linesPerPress]}
+              onValueChange={([v]) => updateSettings({ linesPerPress: v })}
+              min={1}
+              max={15}
+              step={1}
+              className="mt-2"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Quante righe avanza/retrocede ad ogni pressione del pedale
+            </p>
+          </div>
+
+          {/* Page selection */}
+          <div>
+            <Label className="text-sm mb-2 block">Attivo su:</Label>
+            <div className="space-y-2">
+              {PEDAL_PAGE_OPTIONS.map(({ value, label }) => (
+                <div key={value} className="flex items-center gap-2">
+                  <Checkbox
+                    id={`pedal-${value}`}
+                    checked={settings.enabledPages.includes(value)}
+                    onCheckedChange={(checked) => togglePage(value, !!checked)}
+                  />
+                  <Label htmlFor={`pedal-${value}`} className="text-sm cursor-pointer">
+                    {label}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            💡 Collega il pedale via Bluetooth al tablet. I tasti PageUp/Down, Frecce Su/Giù o Sinistra/Destra verranno intercettati per controllare lo scorrimento.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ConnectionModeSection() {
   const { mode, setMode, localIP, setLocalIP, serverUrl } = useConnectionMode();
