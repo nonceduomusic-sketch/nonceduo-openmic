@@ -22,8 +22,10 @@ import {
   SkipForward,
   WifiOff,
   HardDrive,
+  Server,
 } from 'lucide-react';
 import { SongbookLiveDrawer } from '@/components/songbook/SongbookLiveDrawer';
+import { ConnectionSettings } from '@/components/songbook/ConnectionSettings';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -36,6 +38,7 @@ import { cn } from '@/lib/utils';
 import { SongbookFile, SongbookSetlistSong } from '@/hooks/useSongbook';
 import { useCachedSongbookFiles } from '@/hooks/useCachedSongbook';
 import { useBroadcast } from '@/hooks/useBroadcast';
+import { useConnectionMode, useLocalBroadcast } from '@/hooks/useLocalBroadcast';
 import { parseChordPro, transposeSong, renderWithChords, renderLyricsOnly, ChordProSong, ChordProLine } from '@/lib/chordpro';
 import { clampScrollRatio, getScrollRatioFromElement } from '@/lib/scrollRatio';
 import { supabase } from '@/integrations/supabase/client';
@@ -86,6 +89,28 @@ export default function SongbookLive() {
   const navigate = useNavigate();
   const { files, loading, isFromCache, cacheStats, preCacheFileIds } = useCachedSongbookFiles();
   const { session, updateSession } = useBroadcast('main');
+  const { mode, setMode, localIP, setLocalIP, serverUrl } = useConnectionMode();
+  
+  const isLocalMode = mode === 'local';
+  
+  // Local broadcast connection
+  const { connected: localConnected, latency: localLatency, sendUpdate: localSendUpdate, cacheSong: localCacheSong } = useLocalBroadcast({
+    enabled: isLocalMode,
+    serverUrl,
+    onStateUpdate: (state) => {
+      // In local mode, incoming state updates are handled here
+      // (for TV/Partiture pages — on the controller side we mainly send)
+    },
+  });
+
+  // Unified update: sends to cloud OR local depending on mode
+  const syncUpdate = useCallback((updates: Record<string, unknown>) => {
+    if (isLocalMode) {
+      localSendUpdate(updates);
+    } else {
+      updateSession(updates as any);
+    }
+  }, [isLocalMode, localSendUpdate, updateSession]);
   
   const [selectedFile, setSelectedFile] = useState<SongbookFile | null>(null);
   const [transpose, setTranspose] = useState(0);
@@ -165,7 +190,7 @@ export default function SongbookLive() {
     ? transposeSong(parseChordPro(selectedFile.content), transpose)
     : null;
 
-  // Sync scroll to TV - throttled
+  // Sync scroll to TV - throttled (cloud or local)
   const syncScrollToTV = useCallback(() => {
     if (!scrollRef.current) return;
     
@@ -174,14 +199,8 @@ export default function SongbookLive() {
     lastSyncRef.current = now;
     
     const ratio = getScrollRatioFromElement(scrollRef.current);
-    supabase
-      .from('broadcast_sessions')
-      .update({ scroll_position: ratio })
-      .eq('sala_code', 'main')
-      .then(({ error }) => {
-        if (error) console.error('Scroll sync error:', error);
-      });
-  }, []);
+    syncUpdate({ scroll_position: ratio });
+  }, [syncUpdate]);
 
   // Manual scroll with instant TV sync
   const handleManualScroll = useCallback((direction: 'up' | 'down') => {
@@ -193,16 +212,10 @@ export default function SongbookLive() {
     requestAnimationFrame(() => {
       if (scrollRef.current) {
         const ratio = getScrollRatioFromElement(scrollRef.current);
-        supabase
-          .from('broadcast_sessions')
-          .update({ scroll_position: ratio })
-          .eq('sala_code', 'main')
-          .then(({ error }) => {
-            if (error) console.error('Manual scroll sync error:', error);
-          });
+        syncUpdate({ scroll_position: ratio });
       }
     });
-  }, []);
+  }, [syncUpdate]);
 
   // Broadcast a specific file (shared logic)
   const broadcastFile = useCallback((file: SongbookFile) => {
@@ -210,7 +223,7 @@ export default function SongbookLive() {
     setSelectedFile(file);
     setTranspose(savedTranspose);
     isBroadcastingRef.current = true;
-    updateSession({
+    const updates = {
       songbook_mode: true,
       songbook_file_id: file.id,
       songbook_show_chords_on_tv: showChordsOnTV,
@@ -219,14 +232,19 @@ export default function SongbookLive() {
       is_active: true,
       is_broadcasting: true,
       scroll_position: 0,
-    });
-  }, [showChordsOnTV, updateSession]);
+    };
+    syncUpdate(updates);
+    // In local mode, also send the song content so the server can serve it
+    if (isLocalMode) {
+      localCacheSong({ id: file.id, title: file.title, artist: file.artist, content: file.content });
+    }
+  }, [showChordsOnTV, syncUpdate, isLocalMode, localCacheSong]);
 
   // Start broadcast to TV
   const handleStartBroadcast = useCallback(() => {
     if (!selectedFile) return;
     isBroadcastingRef.current = true;
-    updateSession({
+    syncUpdate({
       songbook_mode: true,
       songbook_file_id: selectedFile.id,
       songbook_show_chords_on_tv: showChordsOnTV,
@@ -236,13 +254,16 @@ export default function SongbookLive() {
       is_broadcasting: true,
       scroll_position: 0,
     });
+    if (isLocalMode) {
+      localCacheSong({ id: selectedFile.id, title: selectedFile.title, artist: selectedFile.artist, content: selectedFile.content });
+    }
     toast.success('Trasmissione avviata su TV!');
-  }, [selectedFile, showChordsOnTV, transpose, updateSession]);
+  }, [selectedFile, showChordsOnTV, transpose, syncUpdate, isLocalMode, localCacheSong]);
 
   // Stop broadcast
   const handleStopBroadcast = useCallback(() => {
     isBroadcastingRef.current = false;
-    updateSession({
+    syncUpdate({
       songbook_mode: false,
       songbook_file_id: null,
       songbook_transpose: 0,
@@ -254,7 +275,7 @@ export default function SongbookLive() {
       scroll_position: 0,
     });
     toast.success('Trasmissione interrotta');
-  }, [updateSession]);
+  }, [syncUpdate]);
 
   // Handle scroll event
   const handleScroll = useCallback(() => {
@@ -303,7 +324,7 @@ export default function SongbookLive() {
   // Sync transpose to TV and persist
   useEffect(() => {
     if (selectedFile && session) {
-      updateSession({ songbook_transpose: transpose } as any);
+      syncUpdate({ songbook_transpose: transpose });
       supabase
         .from('songbook_files')
         .update({ last_transpose: transpose } as any)
@@ -317,7 +338,7 @@ export default function SongbookLive() {
   // Sync chords toggle to TV
   useEffect(() => {
     if (selectedFile && session) {
-      updateSession({ songbook_show_chords_on_tv: showChordsOnTV } as any);
+      syncUpdate({ songbook_show_chords_on_tv: showChordsOnTV });
     }
   }, [showChordsOnTV]);
 
@@ -391,7 +412,7 @@ export default function SongbookLive() {
   const handleBack = () => {
     if (selectedFile) {
       if (isBroadcasting) {
-        updateSession({
+        syncUpdate({
           songbook_mode: false,
           songbook_file_id: null,
           display_mode: 'waiting',
@@ -426,17 +447,25 @@ export default function SongbookLive() {
                 <h1 className="font-bold text-lg">SongBook Live</h1>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <ConnectionSettings
+                mode={mode}
+                setMode={setMode}
+                localIP={localIP}
+                setLocalIP={setLocalIP}
+                isLocalConnected={localConnected}
+                localLatency={localLatency}
+              />
               {isFromCache && (
                 <Badge variant="outline" className="text-xs text-amber-500 border-amber-500/50">
                   <WifiOff className="w-3 h-3 mr-1" />
                   Offline
                 </Badge>
               )}
-              {cacheStats.count > 0 && !isFromCache && (
-                <Badge variant="outline" className="text-xs text-green-500 border-green-500/50" title={`${cacheStats.count} brani in cache`}>
-                  <HardDrive className="w-3 h-3 mr-1" />
-                  {cacheStats.count}
+              {isLocalMode && localConnected && (
+                <Badge variant="outline" className="text-xs text-green-500 border-green-500/50">
+                  <Server className="w-3 h-3 mr-1" />
+                  LAN
                 </Badge>
               )}
               <Badge variant="outline">{filteredFiles.length} brani</Badge>
@@ -563,7 +592,21 @@ export default function SongbookLive() {
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <ConnectionSettings
+              mode={mode}
+              setMode={setMode}
+              localIP={localIP}
+              setLocalIP={setLocalIP}
+              isLocalConnected={localConnected}
+              localLatency={localLatency}
+            />
+            {isLocalMode && localConnected && (
+              <Badge variant="outline" className="text-xs text-green-500 border-green-500/50">
+                <Server className="w-3 h-3 mr-1" />
+                LAN
+              </Badge>
+            )}
             {transpose !== 0 && (
               <Badge variant="secondary" className="text-xs">
                 {transpose > 0 ? '+' : ''}{transpose}
@@ -707,7 +750,7 @@ export default function SongbookLive() {
             checked={showChordsOnTV}
             onCheckedChange={(checked) => {
               setShowChordsOnTV(checked);
-              updateSession({ songbook_show_chords_on_tv: checked });
+              syncUpdate({ songbook_show_chords_on_tv: checked });
             }}
           />
         </div>
