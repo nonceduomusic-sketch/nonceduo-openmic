@@ -175,14 +175,14 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
       </Card>
 
       <Tabs defaultValue="catalog" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 h-auto p-1.5">
-          <TabsTrigger value="catalog" className="gap-2 py-3 text-sm sm:text-base md:text-lg font-semibold">
-            <FileText className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
-            Catalogo
+        <TabsList className="grid w-full grid-cols-2 h-auto p-1.5 gap-1">
+          <TabsTrigger value="catalog" className="flex items-center justify-center gap-2 py-3 px-3 text-sm sm:text-base md:text-lg font-semibold">
+            <FileText className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            <span className="whitespace-nowrap">Catalogo</span>
           </TabsTrigger>
-          <TabsTrigger value="setlists" className="gap-2 py-3 text-sm sm:text-base md:text-lg font-semibold">
-            <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
-            Scalette SongBook
+          <TabsTrigger value="setlists" className="flex items-center justify-center gap-2 py-3 px-3 text-sm sm:text-base md:text-lg font-semibold">
+            <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            <span className="whitespace-nowrap">Scalette SongBook</span>
           </TabsTrigger>
         </TabsList>
 

@@ -344,7 +344,7 @@ export function SongbookSetlistsTab({ canManage = true, canFull = true }: Songbo
                       </div>
                       <Button
                         size="icon"
-                        className="h-10 w-10 sm:h-11 sm:w-11 md:h-12 md:w-12 shrink-0 bg-primary hover:bg-primary/90"
+                        className="h-10 w-10 sm:h-11 sm:w-11 md:h-12 md:w-12 min-w-[40px] sm:min-w-[44px] md:min-w-[48px] shrink-0 bg-primary hover:bg-primary/90"
                         onClick={() => handleAddToSetlist(file.id)}
                         disabled={!canFull}
                       >

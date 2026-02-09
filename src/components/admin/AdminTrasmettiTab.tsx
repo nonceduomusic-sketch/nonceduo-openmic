@@ -275,29 +275,29 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
       {/* Main content tabs */}
       <Tabs defaultValue="queue" className="space-y-4">
         <TabsList className="grid w-full grid-cols-6 h-auto p-1.5 gap-1">
-          <TabsTrigger value="queue" className="flex-col gap-1 py-3 px-2 text-[11px] sm:text-sm md:text-base lg:text-lg sm:flex-row sm:gap-2 font-semibold">
-            <List className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
-            <span className="leading-tight text-center">Scaletta<br className="md:hidden" /><span className="hidden md:inline"> </span>Live</span>
+          <TabsTrigger value="queue" className="flex-col gap-1 py-2.5 sm:py-3 px-1.5 sm:px-2 text-[10px] sm:text-xs md:text-sm lg:text-base font-semibold">
+            <List className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="leading-tight text-center whitespace-nowrap">Scaletta</span>
           </TabsTrigger>
-          <TabsTrigger value="catalog" className="flex-col gap-1 py-3 px-2 text-[11px] sm:text-sm md:text-base lg:text-lg sm:flex-row sm:gap-2 font-semibold">
-            <Music className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
-            <span className="leading-tight text-center">Catalogo</span>
+          <TabsTrigger value="catalog" className="flex-col gap-1 py-2.5 sm:py-3 px-1.5 sm:px-2 text-[10px] sm:text-xs md:text-sm lg:text-base font-semibold">
+            <Music className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="leading-tight text-center whitespace-nowrap">Catalogo</span>
           </TabsTrigger>
-          <TabsTrigger value="setlists" className="flex-col gap-1 py-3 px-2 text-[11px] sm:text-sm md:text-base lg:text-lg sm:flex-row sm:gap-2 font-semibold">
-            <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
-            <span className="leading-tight text-center">Scalette</span>
+          <TabsTrigger value="setlists" className="flex-col gap-1 py-2.5 sm:py-3 px-1.5 sm:px-2 text-[10px] sm:text-xs md:text-sm lg:text-base font-semibold">
+            <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="leading-tight text-center whitespace-nowrap">Scalette</span>
           </TabsTrigger>
-          <TabsTrigger value="songbook" className="flex-col gap-1 py-3 px-2 text-[11px] sm:text-sm md:text-base lg:text-lg sm:flex-row sm:gap-2 font-semibold">
-            <Guitar className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
-            <span className="leading-tight text-center">SongBook</span>
+          <TabsTrigger value="songbook" className="flex-col gap-1 py-2.5 sm:py-3 px-1.5 sm:px-2 text-[10px] sm:text-xs md:text-sm lg:text-base font-semibold">
+            <Guitar className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="leading-tight text-center whitespace-nowrap">SongBook</span>
           </TabsTrigger>
-          <TabsTrigger value="remote" className="flex-col gap-1 py-3 px-2 text-[11px] sm:text-sm md:text-base lg:text-lg sm:flex-row sm:gap-2 font-semibold">
-            <Monitor className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
-            <span className="leading-tight text-center">Remote</span>
+          <TabsTrigger value="remote" className="flex-col gap-1 py-2.5 sm:py-3 px-1.5 sm:px-2 text-[10px] sm:text-xs md:text-sm lg:text-base font-semibold">
+            <Monitor className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="leading-tight text-center whitespace-nowrap">Remote</span>
           </TabsTrigger>
-          <TabsTrigger value="tv-settings" className="flex-col gap-1 py-3 px-2 text-[11px] sm:text-sm md:text-base lg:text-lg sm:flex-row sm:gap-2 font-semibold">
-            <Settings className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
-            <span className="leading-tight text-center">TV</span>
+          <TabsTrigger value="tv-settings" className="flex-col gap-1 py-2.5 sm:py-3 px-1.5 sm:px-2 text-[10px] sm:text-xs md:text-sm lg:text-base font-semibold">
+            <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="leading-tight text-center whitespace-nowrap">TV</span>
           </TabsTrigger>
         </TabsList>
 
