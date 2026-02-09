@@ -50,6 +50,7 @@ import { AdminOperatorsTab } from '@/components/admin/AdminOperatorsTab';
 import { AdminNotificheLiveTab } from '@/components/admin/AdminNotificheLiveTab';
 import { AdminAssistantTab } from '@/components/admin/AdminAssistantTab';
 import { AdminTrasmettiTab } from '@/components/admin/AdminTrasmettiTab';
+import AdminManual from '@/pages/AdminManual';
 import { AdminSidebar, type AdminMainTab } from '@/components/admin/AdminSidebar';
 import {
   AlertDialog,
@@ -962,6 +963,8 @@ export const AdminDashboard: React.FC = () => {
             canManage={staffRole === 'owner' || staffRole === 'admin' || staffRole === 'moderator'}
             canFull={staffRole === 'owner' || staffRole === 'admin'}
           />
+        ) : mainTab === 'manuale' ? (
+          <AdminManual embedded />
         ) : mainTab === 'notifications' ? (
           <LiveCentroTab 
             onNavigate={(tab, subTab) => {
