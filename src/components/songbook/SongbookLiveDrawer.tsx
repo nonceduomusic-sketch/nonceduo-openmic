@@ -89,8 +89,8 @@ function SortableSetlistItem({
         isDragging && 'opacity-50 shadow-lg ring-2 ring-primary/50 z-50'
       )}
     >
-      <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none text-muted-foreground hover:text-foreground p-1 hidden sm:block">
-        <GripVertical className="w-4 h-4" />
+      <button {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing touch-none text-muted-foreground hover:text-foreground p-2 min-h-[44px] min-w-[44px] flex items-center justify-center">
+        <GripVertical className="w-5 h-5" />
       </button>
       <Badge variant="outline" className="w-7 h-7 flex items-center justify-center rounded-full text-xs shrink-0">
         {index + 1}
@@ -99,20 +99,12 @@ function SortableSetlistItem({
         <p className="font-medium text-sm truncate">{title}</p>
         <p className="text-xs text-muted-foreground truncate">{artist || 'Artista sconosciuto'}</p>
       </div>
-      <div className="flex items-center gap-1 shrink-0">
-        <div className="flex flex-col gap-0.5 sm:hidden">
-          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onMoveUp} disabled={isFirst}>
-            <ChevronUp className="w-3 h-3" />
-          </Button>
-          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={onMoveDown} disabled={isLast}>
-            <ChevronDown className="w-3 h-3" />
-          </Button>
-        </div>
-        <Button size="icon" variant="ghost" className="h-8 w-8" onClick={onPlay}>
+      <div className="flex items-center gap-0.5 shrink-0">
+        <Button size="icon" variant="ghost" className="h-10 w-10" onClick={onPlay}>
           <Play className="w-4 h-4" />
         </Button>
-        <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={onRemove}>
-          <Trash2 className="w-3.5 h-3.5" />
+        <Button size="icon" variant="ghost" className="h-10 w-10 text-destructive" onClick={onRemove}>
+          <Trash2 className="w-4 h-4" />
         </Button>
       </div>
     </div>
@@ -222,11 +214,11 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile }: Son
     <>
       <Sheet open={open} onOpenChange={setOpen}>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-10 w-10">
-            <Menu className="w-5 h-5" />
+          <Button variant="ghost" size="icon" className="h-12 w-12">
+            <Menu className="w-6 h-6" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-[340px] sm:w-[400px] p-0 flex flex-col">
+        <SheetContent side="left" className="w-[min(90vw,400px)] p-0 flex flex-col">
           <SheetHeader className="px-4 pt-4 pb-2">
             <SheetTitle className="text-lg">SongBook</SheetTitle>
           </SheetHeader>
@@ -275,7 +267,7 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile }: Son
                   {filteredFiles.map((file) => (
                     <div
                       key={file.id}
-                      className="flex items-center gap-2 p-2.5 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
+                      className="flex items-center gap-2 p-3 rounded-lg hover:bg-muted/50 active:bg-muted cursor-pointer transition-colors min-h-[52px]"
                       onClick={() => { onSelectFile(file); setOpen(false); }}
                     >
                       <Music className="w-4 h-4 text-primary shrink-0" />
@@ -286,10 +278,10 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile }: Son
                       <Button
                         size="icon"
                         variant="ghost"
-                        className="h-8 w-8 shrink-0"
+                        className="h-11 w-11 shrink-0"
                         onClick={(e) => { e.stopPropagation(); onBroadcastFile(file); setOpen(false); }}
                       >
-                        <Play className="w-4 h-4" />
+                        <Play className="w-5 h-5" />
                       </Button>
                     </div>
                   ))}
@@ -336,10 +328,10 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile }: Son
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-8 w-8 text-destructive shrink-0"
+                                className="h-11 w-11 text-destructive shrink-0"
                                 onClick={(e) => { e.stopPropagation(); deleteSetlist(setlist.id); }}
                               >
-                                <Trash2 className="w-3.5 h-3.5" />
+                                <Trash2 className="w-4 h-4" />
                               </Button>
                             </CardContent>
                           </Card>
@@ -438,20 +430,20 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile }: Son
           <ScrollArea className="flex-1 max-h-[400px]">
             <div className="space-y-1.5">
               {addSearchResults.map((file) => (
-                <div
-                  key={file.id}
-                  className="flex items-center gap-2 p-2.5 rounded-lg hover:bg-muted/50 cursor-pointer transition-colors"
-                  onClick={async () => {
-                    const ok = await addSong(file.id);
-                    if (ok) toast.success(`"${file.title}" aggiunto`);
-                  }}
-                >
-                  <Plus className="w-4 h-4 text-primary shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{file.title}</p>
-                    {file.artist && <p className="text-xs text-muted-foreground truncate">{file.artist}</p>}
+                  <div
+                    key={file.id}
+                    className="flex items-center gap-2 p-3 rounded-lg hover:bg-muted/50 active:bg-muted cursor-pointer transition-colors min-h-[48px]"
+                    onClick={async () => {
+                      const ok = await addSong(file.id);
+                      if (ok) toast.success(`"${file.title}" aggiunto`);
+                    }}
+                  >
+                    <Plus className="w-5 h-5 text-primary shrink-0" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{file.title}</p>
+                      {file.artist && <p className="text-xs text-muted-foreground truncate">{file.artist}</p>}
+                    </div>
                   </div>
-                </div>
               ))}
             </div>
           </ScrollArea>
