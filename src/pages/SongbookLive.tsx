@@ -290,10 +290,18 @@ export default function SongbookLive() {
     }
   }, [selectedFile?.id]);
 
-  // Sync transpose to TV in real-time
+  // Sync transpose to TV in real-time and persist to DB
   useEffect(() => {
     if (selectedFile && session) {
       updateSession({ songbook_transpose: transpose } as any);
+      // Save last transpose to songbook_files for persistence
+      supabase
+        .from('songbook_files')
+        .update({ last_transpose: transpose } as any)
+        .eq('id', selectedFile.id)
+        .then(({ error }) => {
+          if (error) console.error('Error saving transpose:', error);
+        });
     }
   }, [transpose]);
 
@@ -322,7 +330,8 @@ export default function SongbookLive() {
 
   const handleSelectFile = (file: SongbookFile) => {
     setSelectedFile(file);
-    setTranspose(0);
+    // Restore last saved transpose for this song
+    setTranspose((file as any).last_transpose ?? 0);
     if (scrollRef.current) {
       scrollRef.current.scrollTop = 0;
     }
@@ -364,15 +373,16 @@ export default function SongbookLive() {
 
   // Broadcast a file directly (from drawer)
   const handleBroadcastFile = useCallback((file: SongbookFile) => {
+    const savedTranspose = (file as any).last_transpose ?? 0;
     setSelectedFile(file);
-    setTranspose(0);
+    setTranspose(savedTranspose);
     // Auto-start broadcast
     isBroadcastingRef.current = true;
     updateSession({
       songbook_mode: true,
       songbook_file_id: file.id,
       songbook_show_chords_on_tv: showChordsOnTV,
-      songbook_transpose: 0,
+      songbook_transpose: savedTranspose,
       display_mode: 'lyrics',
       is_active: true,
       is_broadcasting: true,
@@ -501,9 +511,9 @@ export default function SongbookLive() {
 
   // Song view with controls
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-[100dvh] bg-background flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b px-4 py-3">
+      <header className="shrink-0 z-50 bg-background/95 backdrop-blur border-b px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <SongbookLiveDrawer
@@ -572,7 +582,7 @@ export default function SongbookLive() {
       {/* Song Content */}
       <div 
         ref={scrollRef}
-        className="flex-1 overflow-auto px-4 py-6"
+        className="flex-1 min-h-0 overflow-auto px-4 py-6"
         onScroll={handleScroll}
       >
         {parsedSong && (

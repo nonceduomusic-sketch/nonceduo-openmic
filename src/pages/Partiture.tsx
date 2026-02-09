@@ -1,8 +1,6 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
-import { Guitar, Music, Wifi, WifiOff, Minus, Plus } from 'lucide-react';
+import { Guitar, Music, Wifi, WifiOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { useBroadcast } from '@/hooks/useBroadcast';
 import { supabase } from '@/integrations/supabase/client';
 import { parseChordPro, transposeSong, ChordProSong } from '@/lib/chordpro';
@@ -46,7 +44,6 @@ export default function Partiture() {
   const { session } = useBroadcast('main');
   const scrollRef = useRef<HTMLDivElement>(null);
   const [file, setFile] = useState<SongbookFile | null>(null);
-  const [localTranspose, setLocalTranspose] = useState(0);
 
   const isSongbookLive = !!(session as any)?.songbook_mode && !!(session as any)?.is_broadcasting;
   const fileId = (session as any)?.songbook_file_id;
@@ -66,23 +63,14 @@ export default function Partiture() {
   // Parse and transpose
   const parsedSong = useMemo(() => {
     if (!file) return null;
-    return transposeSong(parseChordPro(file.content), remoteTranspose + localTranspose);
-  }, [file, remoteTranspose, localTranspose]);
+    return transposeSong(parseChordPro(file.content), remoteTranspose);
+  }, [file, remoteTranspose]);
 
   // Sync scroll from broadcast session
   useEffect(() => {
     if (!scrollRef.current || !isSongbookLive) return;
     scrollElementToRatio(scrollRef.current, scrollPosition);
   }, [scrollPosition, isSongbookLive]);
-
-  const handleLocalTranspose = (delta: number) => {
-    setLocalTranspose(prev => {
-      const v = prev + delta;
-      if (v > 11) return v - 12;
-      if (v < -11) return v + 12;
-      return v;
-    });
-  };
 
   // Waiting state
   if (!isSongbookLive || !file) {
@@ -138,9 +126,9 @@ export default function Partiture() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {(remoteTranspose + localTranspose) !== 0 && (
+            {remoteTranspose !== 0 && (
               <Badge variant="secondary" className="text-xs">
-                {(remoteTranspose + localTranspose) > 0 ? '+' : ''}{remoteTranspose + localTranspose}
+                {remoteTranspose > 0 ? '+' : ''}{remoteTranspose}
               </Badge>
             )}
             <Badge className="bg-destructive text-destructive-foreground animate-pulse">
@@ -166,23 +154,6 @@ export default function Partiture() {
         )}
       </div>
 
-      {/* Bottom bar - local transpose only */}
-      <div className="sticky bottom-0 bg-background/95 backdrop-blur border-t px-4 py-3">
-        <div className="flex items-center justify-between">
-          <Label className="text-sm">Tonalità locale</Label>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => handleLocalTranspose(-1)}>
-              <Minus className="w-4 h-4" />
-            </Button>
-            <span className="w-12 text-center font-mono text-sm">
-              {localTranspose > 0 ? '+' : ''}{localTranspose}
-            </span>
-            <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => handleLocalTranspose(1)}>
-              <Plus className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

@@ -2228,6 +2228,7 @@ export type Database = {
           filename: string
           id: string
           is_variant: boolean | null
+          last_transpose: number
           slug: string | null
           title: string
           updated_at: string
@@ -2240,6 +2241,7 @@ export type Database = {
           filename: string
           id?: string
           is_variant?: boolean | null
+          last_transpose?: number
           slug?: string | null
           title: string
           updated_at?: string
@@ -2252,6 +2254,7 @@ export type Database = {
           filename?: string
           id?: string
           is_variant?: boolean | null
+          last_transpose?: number
           slug?: string | null
           title?: string
           updated_at?: string
