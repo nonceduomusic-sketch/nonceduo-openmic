@@ -363,6 +363,8 @@ export type Database = {
       broadcast_sessions: {
         Row: {
           auto_scroll: boolean | null
+          auto_scroll_active: boolean | null
+          auto_scroll_bpm: number | null
           created_at: string | null
           current_reservation_id: string | null
           current_song_id: string | null
@@ -412,6 +414,8 @@ export type Database = {
         }
         Insert: {
           auto_scroll?: boolean | null
+          auto_scroll_active?: boolean | null
+          auto_scroll_bpm?: number | null
           created_at?: string | null
           current_reservation_id?: string | null
           current_song_id?: string | null
@@ -461,6 +465,8 @@ export type Database = {
         }
         Update: {
           auto_scroll?: boolean | null
+          auto_scroll_active?: boolean | null
+          auto_scroll_bpm?: number | null
           created_at?: string | null
           current_reservation_id?: string | null
           current_song_id?: string | null

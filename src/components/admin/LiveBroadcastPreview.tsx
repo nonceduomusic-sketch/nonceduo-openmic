@@ -50,18 +50,19 @@ import { ScreenStreamButton } from './ScreenStreamButton';
  export function LiveBroadcastPreview({ canManage = true }: LiveBroadcastPreviewProps) {
    const { session, updateSession } = useBroadcast('main');
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
-  const [localHighlightLine, setLocalHighlightLine] = useState(0);
-  const [autoScroll, setAutoScroll] = useState(false);
-  const [scrollSpeed, setScrollSpeed] = useState(3);
-  const [fontSize, setFontSize] = useState(100);
-  const [viewMode, setViewMode] = useState<ViewMode>('karaoke');
-  const [activeTab, setActiveTab] = useState<'waiting' | 'content'>('waiting');
-  const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [highlightEnabled, setHighlightEnabled] = useState(true);
-  const [highlightLinesCount, setHighlightLinesCount] = useState<number>(1);
-  const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center');
-  const [remoteScrollEnabled, setRemoteScrollEnabled] = useState(true);
+   const [localHighlightLine, setLocalHighlightLine] = useState(0);
+   const [autoScroll, setAutoScroll] = useState(false);
+   const [autoScrollBpm, setAutoScrollBpm] = useState(60);
+   const [scrollSpeed, setScrollSpeed] = useState(3);
+   const [fontSize, setFontSize] = useState(100);
+   const [viewMode, setViewMode] = useState<ViewMode>('karaoke');
+   const [activeTab, setActiveTab] = useState<'waiting' | 'content'>('waiting');
+   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
+   const [isExpanded, setIsExpanded] = useState(false);
+   const [highlightEnabled, setHighlightEnabled] = useState(true);
+   const [highlightLinesCount, setHighlightLinesCount] = useState<number>(1);
+   const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center');
+   const [remoteScrollEnabled, setRemoteScrollEnabled] = useState(true);
   const lyricsRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
@@ -244,9 +245,18 @@ import { ScreenStreamButton } from './ScreenStreamButton';
    const handleToggleAutoScroll = useCallback(async () => {
      const newAutoScroll = !autoScroll;
      setAutoScroll(newAutoScroll);
-     await updateSession({ auto_scroll: newAutoScroll } as any);
-     if (newAutoScroll) toast.success('Auto-scroll attivato');
-   }, [autoScroll, updateSession]);
+     await updateSession({ auto_scroll_active: newAutoScroll, auto_scroll_bpm: autoScrollBpm } as any);
+     if (newAutoScroll) toast.success(`Auto-scroll attivato (${autoScrollBpm} BPM)`);
+     else toast.info('Auto-scroll disattivato');
+   }, [autoScroll, autoScrollBpm, updateSession]);
+ 
+   const handleAutoScrollBpmChange = useCallback(async (delta: number) => {
+     const newBpm = Math.max(20, Math.min(200, autoScrollBpm + delta));
+     setAutoScrollBpm(newBpm);
+     if (autoScroll) {
+       await updateSession({ auto_scroll_bpm: newBpm } as any);
+     }
+   }, [autoScroll, autoScrollBpm, updateSession]);
  
   const handleViewModeChange = useCallback(async (mode: ViewMode) => {
     setViewMode(mode);
@@ -562,7 +572,38 @@ import { ScreenStreamButton } from './ScreenStreamButton';
                        <span className="px-2 min-w-[50px] text-center font-medium text-sm">{localHighlightLine + 1}/{lines.length}</span>
                        <Button variant="ghost" size="icon" onClick={() => handleLineChange('down')} disabled={!canManage || localHighlightLine >= lines.length - 1} className="h-9 w-9"><ChevronDown className="w-5 h-5" /></Button>
                      </div>
-                    <Button variant={autoScroll ? "destructive" : "outline"} size="icon" onClick={handleToggleAutoScroll} disabled={!canManage} className="h-9 w-9">{autoScroll ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}</Button>
+                    {/* Auto-scroll controls with BPM */}
+                    <div className="flex items-center gap-1 bg-background rounded-lg p-1">
+                      <Button 
+                        variant={autoScroll ? "destructive" : "outline"} 
+                        size="icon" 
+                        onClick={handleToggleAutoScroll} 
+                        disabled={!canManage} 
+                        className="h-9 w-9"
+                        title={autoScroll ? 'Ferma auto-scroll' : 'Avvia auto-scroll'}
+                      >
+                        {autoScroll ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleAutoScrollBpmChange(-10)} 
+                        disabled={!canManage || autoScrollBpm <= 20}
+                        className="h-8 w-8"
+                      >
+                        <ChevronDown className="w-4 h-4" />
+                      </Button>
+                      <span className="text-xs min-w-[48px] text-center font-mono">{autoScrollBpm} BPM</span>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleAutoScrollBpmChange(10)} 
+                        disabled={!canManage || autoScrollBpm >= 200}
+                        className="h-8 w-8"
+                      >
+                        <ChevronUp className="w-4 h-4" />
+                      </Button>
+                    </div>
                     <div className="flex items-center gap-1 bg-background rounded-lg p-1">
                       <Button variant="ghost" size="icon" onClick={() => handleFontSizeChange(-10)} className="h-8 w-8"><ZoomOut className="w-4 h-4" /></Button>
                       <span className="text-xs min-w-[32px] text-center">{fontSize}%</span>
