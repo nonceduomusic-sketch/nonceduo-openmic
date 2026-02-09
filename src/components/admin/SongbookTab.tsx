@@ -561,6 +561,7 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
         onOpenChange={setShowAdvanced}
         files={files}
         onDeleteFile={deleteFile}
+        onUpdateFile={updateFile}
       />
     </div>
   );
