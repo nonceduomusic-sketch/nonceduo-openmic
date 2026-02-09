@@ -345,11 +345,11 @@ export function SongbookSetlistsTab({ canManage = true, canFull = true }: Songbo
                       <Button
                         size="icon"
                         variant="outline"
-                        className="h-9 w-9 shrink-0"
+                        className="h-9 w-9 sm:h-10 sm:w-10 md:h-11 md:w-11 shrink-0"
                         onClick={() => handleAddToSetlist(file.id)}
                         disabled={!canFull}
                       >
-                        <Plus className="w-4 h-4" />
+                        <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
                       </Button>
                     </div>
                   ))}
