@@ -175,13 +175,13 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
       </Card>
 
       <Tabs defaultValue="catalog" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 h-auto p-1">
-          <TabsTrigger value="catalog" className="gap-2 py-2.5 text-sm sm:text-base font-medium">
-            <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+        <TabsList className="grid w-full grid-cols-2 h-auto p-1.5">
+          <TabsTrigger value="catalog" className="gap-2 py-3 text-sm sm:text-base md:text-lg font-semibold">
+            <FileText className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
             Catalogo
           </TabsTrigger>
-          <TabsTrigger value="setlists" className="gap-2 py-2.5 text-sm sm:text-base font-medium">
-            <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5" />
+          <TabsTrigger value="setlists" className="gap-2 py-3 text-sm sm:text-base md:text-lg font-semibold">
+            <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
             Scalette SongBook
           </TabsTrigger>
         </TabsList>
@@ -281,39 +281,39 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
                     : "Nessun file corrisponde alla ricerca"}
                 </div>
               ) : (
-                <ScrollArea className="h-[400px] sm:h-[500px]">
-                  <div className="space-y-2 sm:space-y-3">
+                <ScrollArea className="h-[400px] sm:h-[500px] md:h-[550px]">
+                  <div className="space-y-2 sm:space-y-3 md:space-y-4">
                     {filteredFiles.map((file) => (
                       <div
                         key={file.id}
                         className={cn(
-                          "flex items-center justify-between p-2.5 sm:p-4 rounded-xl hover:bg-muted/50 transition-colors gap-2 sm:gap-3",
+                          "flex items-center justify-between p-3 sm:p-4 md:p-5 rounded-xl hover:bg-muted/50 transition-colors gap-2 sm:gap-3 md:gap-4",
                           file.is_variant ? "bg-muted/20" : "bg-muted/30"
                         )}
                       >
-                        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                          <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
+                        <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0 flex-1">
+                          <FileText className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-primary shrink-0" />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                              <p className="font-semibold text-xs sm:text-sm md:text-base truncate max-w-[100px] sm:max-w-[180px] md:max-w-none">{file.title}</p>
+                              <p className="font-semibold text-sm sm:text-base md:text-lg truncate max-w-[120px] sm:max-w-[200px] md:max-w-none">{file.title}</p>
                               {file.is_variant && (
-                                <Badge variant="secondary" className="text-[9px] sm:text-[10px] px-1 py-0">Var</Badge>
+                                <Badge variant="secondary" className="text-[10px] sm:text-xs md:text-sm px-1.5 py-0.5">Variante</Badge>
                               )}
                             </div>
                             {file.artist && (
-                              <p className="text-[10px] sm:text-xs text-muted-foreground truncate max-w-[100px] sm:max-w-[180px] md:max-w-none">{file.artist}</p>
+                              <p className="text-xs sm:text-sm md:text-base text-muted-foreground truncate max-w-[120px] sm:max-w-[200px] md:max-w-none">{file.artist}</p>
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 md:gap-3 shrink-0">
                           <Button
                             size="icon"
                             variant="outline"
                             onClick={() => handlePreview(file)}
-                            className="h-8 w-8 sm:h-10 sm:w-10 md:h-11 md:w-11"
+                            className="h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12"
                             title="Anteprima"
                           >
-                            <Eye className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+                            <Eye className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
                           </Button>
                           {canFull && (
                             <>
@@ -321,34 +321,34 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
                                 size="icon"
                                 variant="outline"
                                 onClick={() => handleEdit(file)}
-                                className="h-8 w-8 sm:h-10 sm:w-10 md:h-11 md:w-11"
+                                className="h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12"
                                 title="Modifica"
                               >
-                                <Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+                                <Edit2 className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
                               </Button>
                               <AlertDialog>
                                 <AlertDialogTrigger asChild>
                                   <Button
                                     size="icon"
                                     variant="outline"
-                                    className="h-8 w-8 sm:h-10 sm:w-10 md:h-11 md:w-11 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
+                                    className="h-9 w-9 sm:h-11 sm:w-11 md:h-12 md:w-12 text-destructive border-destructive/30 hover:bg-destructive/10 hover:text-destructive"
                                     title="Elimina"
                                   >
-                                    <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5" />
+                                    <Trash2 className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6" />
                                   </Button>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle className="text-lg sm:text-xl">Eliminare "{file.title}"?</AlertDialogTitle>
-                                    <AlertDialogDescription className="text-sm sm:text-base">
+                                    <AlertDialogTitle className="text-lg sm:text-xl md:text-2xl">Eliminare "{file.title}"?</AlertDialogTitle>
+                                    <AlertDialogDescription className="text-sm sm:text-base md:text-lg">
                                       Questa azione non può essere annullata.
                                     </AlertDialogDescription>
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
-                                    <AlertDialogCancel className="h-10 sm:h-11">Annulla</AlertDialogCancel>
+                                    <AlertDialogCancel className="h-10 sm:h-11 md:h-12 text-sm sm:text-base">Annulla</AlertDialogCancel>
                                     <AlertDialogAction 
                                       onClick={() => deleteFile(file.id)}
-                                      className="bg-destructive text-destructive-foreground h-10 sm:h-11"
+                                      className="bg-destructive text-destructive-foreground h-10 sm:h-11 md:h-12 text-sm sm:text-base"
                                     >
                                       Elimina
                                     </AlertDialogAction>
