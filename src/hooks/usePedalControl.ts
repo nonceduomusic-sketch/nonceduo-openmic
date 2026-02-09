@@ -2,16 +2,22 @@
  * Pedal control hook for IK Multimedia BlueTurn and similar Bluetooth pedals.
  * Listens for keyboard events (PageUp/Down, ArrowUp/Down, ArrowLeft/Right)
  * and advances/retreats content by a configurable number of steps.
+ *
+ * Supports two modes:
+ * - 'scroll': scrolls the local container (default)
+ * - 'highlight': updates highlight_line in broadcast session (controls TV)
  */
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
 
 export type PedalPage = 'trasmetti' | 'partiture' | 'songbook';
+export type PedalMode = 'scroll' | 'highlight';
 
 export interface PedalSettings {
   enabled: boolean;
   linesPerPress: number; // 1-20
   enabledPages: PedalPage[];
+  mode: PedalMode;
 }
 
 const STORAGE_KEY = 'pedal_settings';
@@ -20,6 +26,7 @@ const DEFAULT_SETTINGS: PedalSettings = {
   enabled: false,
   linesPerPress: 3,
   enabledPages: ['trasmetti', 'partiture', 'songbook'],
+  mode: 'highlight',
 };
 
 // Keys that pedals typically send
@@ -47,7 +54,9 @@ export function usePedalSettings() {
 }
 
 /**
- * Pedal control for highlight_line based pages (Trasmetti, Admin LivePreview).
+ * Pedal control for highlight_line based pages.
+ * Updates highlight_line in the broadcast session → syncs to TV + all viewers.
+ * Works alongside the telecomando — last action wins.
  */
 interface UsePedalHighlightOptions {
   page: PedalPage;
@@ -72,7 +81,7 @@ export function usePedalControl({
   const totalLinesRef = useRef(totalLines);
   totalLinesRef.current = totalLines;
 
-  const isActive = settings.enabled && !disabled && settings.enabledPages.includes(page);
+  const isActive = settings.enabled && !disabled && settings.enabledPages.includes(page) && settings.mode === 'highlight';
 
   useEffect(() => {
     if (!isActive) return;
@@ -99,7 +108,7 @@ export function usePedalControl({
 }
 
 /**
- * Pedal control for scroll-based pages (SongbookLive, Partiture).
+ * Pedal control for scroll-based mode.
  * Scrolls a container by linesPerPress * estimated line height.
  */
 interface UsePedalScrollOptions {
@@ -121,7 +130,7 @@ export function usePedalScroll({
   const onAfterScrollRef = useRef(onAfterScroll);
   onAfterScrollRef.current = onAfterScroll;
 
-  const isActive = settings.enabled && !disabled && settings.enabledPages.includes(page);
+  const isActive = settings.enabled && !disabled && settings.enabledPages.includes(page) && settings.mode === 'scroll';
 
   useEffect(() => {
     if (!isActive) return;
