@@ -17,7 +17,7 @@ import {
   Play,
   ArrowUpDown,
   Sparkles,
-  SortAsc,
+  ArrowRightLeft,
   Download,
   CheckSquare,
   Square,
@@ -56,6 +56,7 @@ import { useSongbookFiles, SongbookFile } from '@/hooks/useSongbook';
 import { parseChordPro, renderWithChords, renderLyricsOnly } from '@/lib/chordpro';
 import { toast } from 'sonner';
 import { SongbookSetlistsTab } from './SongbookSetlistsTab';
+import { CatalogSongbookCompare } from './CatalogSongbookCompare';
 import { SongbookAdvancedSearch } from './SongbookAdvancedSearch';
 import {
   DropdownMenu,
@@ -285,14 +286,18 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
       </Card>
 
       <Tabs defaultValue="catalog" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-2 h-auto p-1.5 gap-1">
+        <TabsList className="grid w-full grid-cols-3 h-auto p-1.5 gap-1">
           <TabsTrigger value="catalog" className="flex items-center justify-center gap-2 py-3 px-3 text-sm sm:text-base md:text-lg font-semibold">
             <FileText className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
             <span className="whitespace-nowrap">Catalogo</span>
           </TabsTrigger>
           <TabsTrigger value="setlists" className="flex items-center justify-center gap-2 py-3 px-3 text-sm sm:text-base md:text-lg font-semibold">
             <FolderOpen className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
-            <span className="whitespace-nowrap">Scalette SongBook</span>
+            <span className="whitespace-nowrap">Scalette</span>
+          </TabsTrigger>
+          <TabsTrigger value="compare" className="flex items-center justify-center gap-2 py-3 px-3 text-sm sm:text-base md:text-lg font-semibold">
+            <ArrowRightLeft className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" />
+            <span className="whitespace-nowrap">Confronto</span>
           </TabsTrigger>
         </TabsList>
 
@@ -602,6 +607,11 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
         {/* Setlists Tab */}
         <TabsContent value="setlists" className="space-y-4">
           <SongbookSetlistsTab canManage={canManage} canFull={canFull} />
+        </TabsContent>
+
+        {/* Compare Tab */}
+        <TabsContent value="compare" className="space-y-4">
+          <CatalogSongbookCompare />
         </TabsContent>
       </Tabs>
 

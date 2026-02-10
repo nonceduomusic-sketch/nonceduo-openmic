@@ -9,7 +9,9 @@ import {
   Check,
   AlertCircle,
   Footprints,
+  ArrowRightLeft,
 } from 'lucide-react';
+import { CatalogSongbookCompare } from '@/components/admin/CatalogSongbookCompare';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -492,6 +494,11 @@ function ConnectionModeSection() {
             </div>
           </div>
         )}
+      </div>
+
+      {/* Confronto Catalogo ↔ SongBook */}
+      <div className="pt-6 border-t border-border">
+        <CatalogSongbookCompare />
       </div>
     </div>
   );
