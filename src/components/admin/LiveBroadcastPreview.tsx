@@ -103,15 +103,23 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
      }
    }, [isSongbookMode, songbookFileId, songbookFiles]);
 
-   // Content lines (either normal lyrics or songbook)
-   const contentLines = useMemo(() => {
+   // Line mapping preserving raw indices for cross-view sync in songbook mode
+   const lineMapping = useMemo(() => {
      if (isSongbookMode && parsedSongbook) {
        return parsedSongbook.lines
-         .filter(l => l.type === 'chord-text' || l.type === 'text')
-         .map(l => l.text || '');
+         .map((l, rawIdx) => ({ text: l.text || '', rawIndex: rawIdx, type: l.type }))
+         .filter(l => l.type === 'chord-text' || l.type === 'text');
      }
-     return currentSong?.testo?.split('\n').filter(line => line.trim()) || [];
+     const textLines = currentSong?.testo?.split('\n').filter(line => line.trim()) || [];
+     return textLines.map((text, i) => ({ text, rawIndex: i, type: 'text' as const }));
    }, [isSongbookMode, parsedSongbook, currentSong?.testo]);
+
+   const contentLines = lineMapping.map(l => l.text);
+
+   // Convert raw highlight_line to visual index for display
+   const highlightVisualIndex = useMemo(() => {
+     return lineMapping.findIndex(l => l.rawIndex === localHighlightLine);
+   }, [lineMapping, localHighlightLine]);
 
    // Check if there's any content to show
    const hasContent = isSongbookMode ? !!parsedSongbook : !!currentSong;
@@ -166,13 +174,15 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
      if (isBroadcasting && hasContent) setActiveTab('content');
    }, [isBroadcasting, hasContent]);
  
-    // Sync viewMode from session
+    // Sync viewMode from session (songbook uses songbook_view_mode, normal uses tv_view_mode)
     useEffect(() => {
-      const sessionViewMode = (session as any)?.tv_view_mode;
-      if (sessionViewMode && ['compact', 'karaoke', 'spotify'].includes(sessionViewMode)) {
+      const sessionViewMode = isSongbookMode 
+        ? (session as any)?.songbook_view_mode 
+        : (session as any)?.tv_view_mode;
+      if (sessionViewMode && ['compact', 'karaoke', 'spotify', 'chordpro'].includes(sessionViewMode)) {
         setViewMode(sessionViewMode as ViewMode);
       }
-    }, [(session as any)?.tv_view_mode]);
+    }, [(session as any)?.tv_view_mode, (session as any)?.songbook_view_mode, isSongbookMode]);
 
   // Sync highlightEnabled from session
   useEffect(() => {
@@ -231,16 +241,18 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
  
    // Auto-scroll
    useEffect(() => {
-     if (!autoScroll || !lines.length) return;
+     if (!autoScroll || !lineMapping.length) return;
      const interval = setInterval(async () => {
        setLocalHighlightLine(prev => {
-         const next = prev >= lines.length - 1 ? prev : prev + 1;
-         updateSession({ highlight_line: next, auto_scroll: true } as any);
-         return next;
+         const currentVisual = lineMapping.findIndex(l => l.rawIndex === prev);
+         const nextVisual = Math.min(lineMapping.length - 1, currentVisual + 1);
+         const nextRaw = lineMapping[nextVisual]?.rawIndex ?? prev;
+         updateSession({ highlight_line: nextRaw, auto_scroll: true } as any);
+         return nextRaw;
        });
      }, (6 - scrollSpeed) * 1500);
      return () => clearInterval(interval);
-   }, [autoScroll, lines.length, scrollSpeed, updateSession]);
+   }, [autoScroll, lineMapping, scrollSpeed, updateSession]);
  
   // Scroll within container only (no page scroll)
   useEffect(() => {
@@ -262,25 +274,29 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
  
    const handleLineChange = useCallback(async (direction: 'up' | 'down') => {
      if (!canManage) return;
-     const newLine = direction === 'up' ? Math.max(0, localHighlightLine - 1) : Math.min(lines.length - 1, localHighlightLine + 1);
-     setLocalHighlightLine(newLine);
+     const currentVisual = lineMapping.findIndex(l => l.rawIndex === localHighlightLine);
+     const newVisual = direction === 'up' ? Math.max(0, currentVisual - 1) : Math.min(lineMapping.length - 1, currentVisual + 1);
+     const newRaw = lineMapping[newVisual]?.rawIndex ?? 0;
+     setLocalHighlightLine(newRaw);
      setAutoScroll(false);
-     await updateSession({ highlight_line: newLine, auto_scroll: false } as any);
-   }, [canManage, localHighlightLine, lines.length, updateSession]);
+     await updateSession({ highlight_line: newRaw, auto_scroll: false } as any);
+   }, [canManage, localHighlightLine, lineMapping, updateSession]);
  
-   const handleLineClick = useCallback(async (index: number) => {
+   const handleLineClick = useCallback(async (visualIndex: number) => {
      if (!canManage) return;
-     setLocalHighlightLine(index);
+     const rawIndex = lineMapping[visualIndex]?.rawIndex ?? visualIndex;
+     setLocalHighlightLine(rawIndex);
      setAutoScroll(false);
-     await updateSession({ highlight_line: index, auto_scroll: false } as any);
-   }, [canManage, updateSession]);
+     await updateSession({ highlight_line: rawIndex, auto_scroll: false } as any);
+   }, [canManage, lineMapping, updateSession]);
  
    const handleReset = useCallback(async () => {
      if (!canManage) return;
-     setLocalHighlightLine(0);
+     const firstRaw = lineMapping[0]?.rawIndex ?? 0;
+     setLocalHighlightLine(firstRaw);
      setAutoScroll(false);
-     await updateSession({ highlight_line: 0, auto_scroll: false } as any);
-   }, [canManage, updateSession]);
+     await updateSession({ highlight_line: firstRaw, auto_scroll: false } as any);
+   }, [canManage, lineMapping, updateSession]);
  
    const handleStopBroadcast = useCallback(async () => {
      if (!canManage) return;
@@ -336,8 +352,12 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
  
   const handleViewModeChange = useCallback(async (mode: ViewMode) => {
     setViewMode(mode);
-    await updateSession({ tv_view_mode: mode } as any);
-  }, [updateSession]);
+    const updates: any = { tv_view_mode: mode };
+    if (isSongbookMode) {
+      updates.songbook_view_mode = mode;
+    }
+    await updateSession(updates);
+  }, [updateSession, isSongbookMode]);
 
   const handleToggleHighlight = useCallback(async () => {
     const newValue = !highlightEnabled;
@@ -440,10 +460,10 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
             {viewMode === 'spotify' ? (
                <div className="bg-black/30 backdrop-blur-sm rounded-xl p-4 space-y-2 text-center">
                  {lines.map((line, index) => {
-                   const isMainHighlight = localHighlightLine === index;
-                   const distanceFromMain = index - localHighlightLine;
-                   const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
-                   const isPast = index < localHighlightLine;
+                   const isMainHighlight = highlightVisualIndex === index;
+                    const distanceFromMain = index - highlightVisualIndex;
+                    const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
+                    const isPast = index < highlightVisualIndex;
                    // When highlight is OFF, show all lines fully visible
                    let opacity = 1;
                    if (highlightEnabled) {
@@ -465,11 +485,11 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
              ) : viewMode === 'karaoke' ? (
                <div className="text-center space-y-2 py-4">
                  {lines.map((line, index) => {
-                   const isMainHighlight = localHighlightLine === index;
-                   const distanceFromMain = index - localHighlightLine;
-                   const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
-                   const isPast = index < localHighlightLine;
-                   const dist = Math.abs(index - localHighlightLine);
+                   const isMainHighlight = highlightVisualIndex === index;
+                    const distanceFromMain = index - highlightVisualIndex;
+                    const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
+                    const isPast = index < highlightVisualIndex;
+                    const dist = Math.abs(index - highlightVisualIndex);
                    // When highlight is OFF, show all lines fully visible
                    let opacity = 1;
                    if (highlightEnabled) {
@@ -501,9 +521,9 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
                /* COMPACT MODE - No line numbers, centered, larger font, continuous text */
                <div className="text-center space-y-1 py-4">
                  {lines.map((line, index) => {
-                   const isMainHighlight = localHighlightLine === index;
-                   const distanceFromMain = index - localHighlightLine;
-                   const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
+                   const isMainHighlight = highlightVisualIndex === index;
+                    const distanceFromMain = index - highlightVisualIndex;
+                    const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
                    // When highlight is OFF, show all lines fully visible as continuous text
                    let opacity = 1;
                    if (highlightEnabled) {
@@ -655,9 +675,9 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
                        {/* ScreenStream Button - per l'app ScreenStream */}
                        <ScreenStreamButton salaCode="main" disabled={!canManage} />
                      <div className="flex items-center gap-1 bg-background rounded-lg p-1">
-                       <Button variant="ghost" size="icon" onClick={() => handleLineChange('up')} disabled={!canManage || localHighlightLine === 0} className="h-9 w-9"><ChevronUp className="w-5 h-5" /></Button>
-                       <span className="px-2 min-w-[50px] text-center font-medium text-sm">{localHighlightLine + 1}/{lines.length || 1}</span>
-                       <Button variant="ghost" size="icon" onClick={() => handleLineChange('down')} disabled={!canManage || localHighlightLine >= lines.length - 1} className="h-9 w-9"><ChevronDown className="w-5 h-5" /></Button>
+                       <Button variant="ghost" size="icon" onClick={() => handleLineChange('up')} disabled={!canManage || highlightVisualIndex <= 0} className="h-9 w-9"><ChevronUp className="w-5 h-5" /></Button>
+                       <span className="px-2 min-w-[50px] text-center font-medium text-sm">{(highlightVisualIndex >= 0 ? highlightVisualIndex + 1 : 1)}/{lines.length || 1}</span>
+                       <Button variant="ghost" size="icon" onClick={() => handleLineChange('down')} disabled={!canManage || highlightVisualIndex >= lines.length - 1} className="h-9 w-9"><ChevronDown className="w-5 h-5" /></Button>
                      </div>
                     {/* Auto-scroll controls with BPM */}
                     <div className="flex items-center gap-1 bg-background rounded-lg p-1">

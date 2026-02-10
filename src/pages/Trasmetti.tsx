@@ -217,19 +217,19 @@ export default function Trasmetti() {
     }
   }, [session?.highlight_line]);
 
-  // Scroll highlighted line into view (only when highlight is enabled)
+  // Scroll highlighted line into view
+  // In songbook mode: always follow highlight_line for cross-view text alignment
+  // In normal mode: only follow when highlight is enabled
   useEffect(() => {
-    if (lyricsRef.current && lines.length > 0 && highlightEnabled) {
-      const lineElements = lyricsRef.current.querySelectorAll('[data-line]');
-      const highlightedLine = lineElements[highlightLine];
-      if (highlightedLine) {
-        highlightedLine.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
-        });
-      }
+    if (!lyricsRef.current || !isBroadcasting) return;
+    const shouldFollow = isSongbookMode || (highlightEnabled && lines.length > 0);
+    if (!shouldFollow) return;
+    
+    const el = lyricsRef.current.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement;
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-  }, [highlightLine, lines.length, highlightEnabled]);
+  }, [highlightLine, lines.length, highlightEnabled, isSongbookMode, isBroadcasting]);
 
   // Follow scroll_position (0-1000) — always for songbook, only when highlight OFF for normal
   useEffect(() => {
@@ -239,7 +239,8 @@ export default function Trasmetti() {
     if (!hasContent) return;
     // In songbook mode, always follow scroll_position (no highlight system)
     // In normal mode, only follow when highlight is disabled
-    if (!isSongbookMode && highlightEnabled) return;
+    if (isSongbookMode) return; // songbook uses highlight_line for sync
+    if (highlightEnabled) return;
 
     const scrollPosition = (session as any)?.scroll_position ?? 0;
     scrollElementToRatio(lyricsRef.current, scrollPosition);
@@ -589,7 +590,7 @@ export default function Trasmetti() {
               }
 
               if (line.type === 'empty') {
-                return <div key={index} className="h-4" />;
+                return <div key={index} data-line={index} className="h-4" />;
               }
 
               // Chord-text line

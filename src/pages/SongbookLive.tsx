@@ -46,42 +46,39 @@ import { toast } from 'sonner';
 import { usePedalScroll, usePedalControl } from '@/hooks/usePedalControl';
 
 // Render song with colored chords using React elements
+// Render song with colored chords, using data-line={rawIndex} for cross-view sync
 function renderWithColoredChords(song: ChordProSong): React.ReactNode[] {
   const result: React.ReactNode[] = [];
-  let lineIndex = 0;
   
-  for (const line of song.lines) {
+  song.lines.forEach((line, index) => {
     if (line.type === 'empty') {
-      result.push(<div key={`empty-${lineIndex++}`} className="h-4" />);
-      continue;
+      result.push(<div key={`e-${index}`} data-line={index} className="h-4" />);
+      return;
     }
-    
-    if (line.type === 'comment' || line.type === 'directive') {
-      continue;
-    }
-    
+    if (line.type === 'comment' || line.type === 'directive') return;
     if (line.type === 'text') {
-      result.push(<div key={`text-${lineIndex++}`}>{line.text}</div>);
-      continue;
+      result.push(<div key={`t-${index}`} data-line={index}>{line.text}</div>);
+      return;
     }
-    
     if (line.type === 'chord-text' && line.chords && line.chords.length > 0) {
       result.push(
-        <div key={`chords-${lineIndex}`} className="text-primary font-bold whitespace-pre">
-          {line.chords.map((c, i) => {
-            const spaces = i === 0 ? c.position : c.position - (line.chords![i-1].position + line.chords![i-1].chord.length);
-            return (
-              <React.Fragment key={i}>
-                {' '.repeat(Math.max(0, spaces))}
-                <span className="text-primary">{c.chord}</span>
-              </React.Fragment>
-            );
-          })}
+        <div key={`ct-${index}`} data-line={index}>
+          <div className="text-primary font-bold whitespace-pre">
+            {line.chords.map((c, i) => {
+              const spaces = i === 0 ? c.position : c.position - (line.chords![i-1].position + line.chords![i-1].chord.length);
+              return (
+                <React.Fragment key={i}>
+                  {' '.repeat(Math.max(0, spaces))}
+                  <span className="text-primary">{c.chord}</span>
+                </React.Fragment>
+              );
+            })}
+          </div>
+          <div>{line.text}</div>
         </div>
       );
-      result.push(<div key={`text-${lineIndex++}`}>{line.text}</div>);
     }
-  }
+  });
   
   return result;
 }
@@ -221,7 +218,7 @@ export default function SongbookLive() {
     ? transposeSong(parseChordPro(selectedFile.content), transpose)
     : null;
 
-  // Sync scroll to TV - throttled (cloud or local)
+  // Sync scroll to TV - throttled, includes highlight_line for cross-view text alignment
   const syncScrollToTV = useCallback(() => {
     if (!scrollRef.current) return;
     
@@ -229,8 +226,26 @@ export default function SongbookLive() {
     if (now - lastSyncRef.current < 50) return;
     lastSyncRef.current = now;
     
-    const ratio = getScrollRatioFromElement(scrollRef.current);
-    syncUpdate({ scroll_position: ratio });
+    const container = scrollRef.current;
+    const ratio = getScrollRatioFromElement(container);
+    
+    // Find centered text line for cross-view sync
+    const centerY = container.scrollTop + container.clientHeight / 2;
+    const lineElements = container.querySelectorAll('[data-line]');
+    let closestLine = 0;
+    let closestDist = Infinity;
+    
+    lineElements.forEach((el) => {
+      const htmlEl = el as HTMLElement;
+      const lineCenter = htmlEl.offsetTop + htmlEl.offsetHeight / 2;
+      const dist = Math.abs(lineCenter - centerY);
+      if (dist < closestDist) {
+        closestDist = dist;
+        closestLine = parseInt(htmlEl.dataset.line || '0', 10);
+      }
+    });
+    
+    syncUpdate({ scroll_position: ratio, highlight_line: closestLine });
   }, [syncUpdate]);
 
   // Manual scroll with instant TV sync
@@ -241,12 +256,9 @@ export default function SongbookLive() {
     scrollRef.current.scrollTop = Math.max(0, newTop);
     
     requestAnimationFrame(() => {
-      if (scrollRef.current) {
-        const ratio = getScrollRatioFromElement(scrollRef.current);
-        syncUpdate({ scroll_position: ratio });
-      }
+      syncScrollToTV();
     });
-  }, [syncUpdate]);
+  }, [syncScrollToTV]);
 
   // Broadcast a specific file (shared logic)
   const broadcastFile = useCallback((file: SongbookFile) => {
