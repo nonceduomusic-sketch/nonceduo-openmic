@@ -24,6 +24,7 @@ import {
   HardDrive,
   Server,
   Footprints,
+  MoveHorizontal,
 } from 'lucide-react';
 import { SongbookLiveDrawer } from '@/components/songbook/SongbookLiveDrawer';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,7 @@ import { clampScrollRatio, getScrollRatioFromElement } from '@/lib/scrollRatio';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { usePedalScroll, usePedalControl } from '@/hooks/usePedalControl';
+import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
 
 // Render song with colored chords using React elements
 // Render song with colored chords, using data-line={rawIndex} for cross-view sync
@@ -119,6 +121,7 @@ export default function SongbookLive() {
   const [highlightLines, setHighlightLines] = useState(2);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<'title' | 'artist' | 'recent'>('title');
+  const [swipeEnabled, setSwipeEnabled] = useState(() => safeGetItem('local', 'songbook_swipe_enabled') === 'true');
   
   // Active setlist tracking for prev/next navigation
   const [activeSetlistSongs, setActiveSetlistSongs] = useState<SongbookSetlistSong[] | null>(null);
@@ -144,6 +147,10 @@ export default function SongbookLive() {
   const autoScrollRef = useRef<number | null>(null);
   const lastSyncRef = useRef<number>(0);
   const isBroadcastingRef = useRef(isThisFileBroadcasting);
+  
+  // Swipe tracking refs
+  const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const swipeLockedRef = useRef<'horizontal' | 'vertical' | null>(null);
   
   // Keep ref in sync
   useEffect(() => {
@@ -443,6 +450,56 @@ export default function SongbookLive() {
     broadcastFile(file);
   }, [activeSetlistSongs, currentSetlistIndex, files, broadcastFile]);
 
+  // Swipe toggle handler
+  const handleSwipeToggle = useCallback((enabled: boolean) => {
+    setSwipeEnabled(enabled);
+    safeSetItem('local', 'songbook_swipe_enabled', enabled ? 'true' : 'false');
+  }, []);
+
+  // Touch handlers for swipe navigation
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!swipeEnabled || !activeSetlistSongs) return;
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+    swipeLockedRef.current = null;
+  }, [swipeEnabled, activeSetlistSongs]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current || !swipeEnabled || !activeSetlistSongs) return;
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - touchStartRef.current.x);
+    const dy = Math.abs(touch.clientY - touchStartRef.current.y);
+    
+    // Lock direction after 10px movement
+    if (!swipeLockedRef.current && (dx > 10 || dy > 10)) {
+      swipeLockedRef.current = dx > dy ? 'horizontal' : 'vertical';
+    }
+    
+    // If horizontal swipe, prevent vertical scroll
+    if (swipeLockedRef.current === 'horizontal') {
+      e.preventDefault();
+    }
+  }, [swipeEnabled, activeSetlistSongs]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current || !swipeEnabled || !activeSetlistSongs) return;
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const elapsed = Date.now() - touchStartRef.current.time;
+    
+    touchStartRef.current = null;
+    
+    // Only trigger on horizontal swipe, min 60px, max 500ms
+    if (swipeLockedRef.current === 'horizontal' && Math.abs(dx) > 60 && elapsed < 500) {
+      if (dx < 0 && canGoNext) {
+        handleSetlistNav('next');
+      } else if (dx > 0 && canGoPrev) {
+        handleSetlistNav('prev');
+      }
+    }
+    swipeLockedRef.current = null;
+  }, [swipeEnabled, activeSetlistSongs, canGoNext, canGoPrev, handleSetlistNav]);
+
   const handleTranspose = (delta: number) => {
     setTranspose(prev => {
       const newVal = prev + delta;
@@ -720,6 +777,9 @@ export default function SongbookLive() {
         ref={scrollRef}
         className="flex-1 min-h-0 overflow-auto px-4 py-6"
         onScroll={handleScroll}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         {parsedSong && (
           <div 
@@ -787,6 +847,20 @@ export default function SongbookLive() {
             }}
           />
         </div>
+
+        {/* Swipe toggle (only when in setlist) */}
+        {activeSetlistSongs && activeSetlistSongs.length > 1 && (
+          <div className="flex items-center justify-between">
+            <Label className="text-sm flex items-center gap-2">
+              <MoveHorizontal className="w-4 h-4" />
+              Swipe cambio brano
+            </Label>
+            <Switch
+              checked={swipeEnabled}
+              onCheckedChange={handleSwipeToggle}
+            />
+          </div>
+        )}
 
         {/* Auto scroll */}
         <div className="flex items-center justify-between gap-4">
