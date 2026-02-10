@@ -6,7 +6,6 @@ import {
   ChevronUp, 
   ChevronDown,
   Minus,
-  ArrowUpDown,
   Plus,
   Play,
   Pause,
@@ -21,20 +20,23 @@ import {
   SkipBack,
   SkipForward,
   WifiOff,
-  HardDrive,
   Server,
   Footprints,
   MoveHorizontal,
+  Settings2,
+  ArrowUpDown,
+  Highlighter,
+  Radio,
 } from 'lucide-react';
 import { SongbookLiveDrawer } from '@/components/songbook/SongbookLiveDrawer';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { cn } from '@/lib/utils';
 import { SongbookFile, SongbookSetlistSong } from '@/hooks/useSongbook';
 import { useCachedSongbookFiles } from '@/hooks/useCachedSongbook';
@@ -47,7 +49,6 @@ import { toast } from 'sonner';
 import { usePedalScroll, usePedalControl } from '@/hooks/usePedalControl';
 import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
 
-// Render song with colored chords using React elements
 // Render song with colored chords, using data-line={rawIndex} for cross-view sync
 function renderWithColoredChords(song: ChordProSong): React.ReactNode[] {
   const result: React.ReactNode[] = [];
@@ -97,10 +98,7 @@ export default function SongbookLive() {
   const { connected: localConnected, latency: localLatency, sendUpdate: localSendUpdate, cacheSong: localCacheSong } = useLocalBroadcast({
     enabled: isLocalMode,
     serverUrl,
-    onStateUpdate: (state) => {
-      // In local mode, incoming state updates are handled here
-      // (for TV/Partiture pages — on the controller side we mainly send)
-    },
+    onStateUpdate: (state) => {},
   });
 
   // Unified update: sends to cloud OR local depending on mode
@@ -122,6 +120,7 @@ export default function SongbookLive() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<'title' | 'artist' | 'recent'>('title');
   const [swipeEnabled, setSwipeEnabled] = useState(() => safeGetItem('local', 'songbook_swipe_enabled') === 'true');
+  const [settingsOpen, setSettingsOpen] = useState(false);
   
   // Active setlist tracking for prev/next navigation
   const [activeSetlistSongs, setActiveSetlistSongs] = useState<SongbookSetlistSong[] | null>(null);
@@ -196,7 +195,6 @@ export default function SongbookLive() {
   // Filter and sort files
   const filteredFiles = useMemo(() => {
     let result = [...files];
-    
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(f => 
@@ -204,19 +202,11 @@ export default function SongbookLive() {
         (f.artist && f.artist.toLowerCase().includes(q))
       );
     }
-    
     switch (sortMode) {
-      case 'title':
-        result.sort((a, b) => a.title.localeCompare(b.title, 'it'));
-        break;
-      case 'artist':
-        result.sort((a, b) => (a.artist || '').localeCompare(b.artist || '', 'it') || a.title.localeCompare(b.title, 'it'));
-        break;
-      case 'recent':
-        result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        break;
+      case 'title': result.sort((a, b) => a.title.localeCompare(b.title, 'it')); break;
+      case 'artist': result.sort((a, b) => (a.artist || '').localeCompare(b.artist || '', 'it') || a.title.localeCompare(b.title, 'it')); break;
+      case 'recent': result.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()); break;
     }
-    
     return result;
   }, [files, searchQuery, sortMode]);
 
@@ -228,7 +218,6 @@ export default function SongbookLive() {
   // Sync scroll to TV - throttled, includes highlight_line for cross-view text alignment
   const syncScrollToTV = useCallback(() => {
     if (!scrollRef.current) return;
-    
     const now = Date.now();
     if (now - lastSyncRef.current < 50) return;
     lastSyncRef.current = now;
@@ -261,10 +250,7 @@ export default function SongbookLive() {
     const scrollAmount = 200;
     const newTop = scrollRef.current.scrollTop + (direction === 'up' ? -scrollAmount : scrollAmount);
     scrollRef.current.scrollTop = Math.max(0, newTop);
-    
-    requestAnimationFrame(() => {
-      syncScrollToTV();
-    });
+    requestAnimationFrame(() => { syncScrollToTV(); });
   }, [syncScrollToTV]);
 
   // Broadcast a specific file (shared logic)
@@ -284,7 +270,6 @@ export default function SongbookLive() {
       scroll_position: 0,
     };
     syncUpdate(updates);
-    // In local mode, also send the song content so the server can serve it
     if (isLocalMode) {
       localCacheSong({ id: file.id, title: file.title, artist: file.artist, content: file.content });
     }
@@ -341,27 +326,14 @@ export default function SongbookLive() {
         if (!scrollRef.current) return;
         const speed = scrollSpeed / 1000;
         scrollRef.current.scrollTop += speed;
-        
         const maxScroll = scrollRef.current.scrollHeight - scrollRef.current.clientHeight;
-        if (scrollRef.current.scrollTop >= maxScroll) {
-          setAutoScroll(false);
-          return;
-        }
-        
-        if (isBroadcastingRef.current) {
-          syncScrollToTV();
-        }
-        
+        if (scrollRef.current.scrollTop >= maxScroll) { setAutoScroll(false); return; }
+        if (isBroadcastingRef.current) { syncScrollToTV(); }
         autoScrollRef.current = requestAnimationFrame(scroll);
       };
       autoScrollRef.current = requestAnimationFrame(scroll);
     }
-    
-    return () => {
-      if (autoScrollRef.current) {
-        cancelAnimationFrame(autoScrollRef.current);
-      }
-    };
+    return () => { if (autoScrollRef.current) cancelAnimationFrame(autoScrollRef.current); };
   }, [autoScroll, scrollSpeed, syncScrollToTV]);
 
   // Reset scroll on file change
@@ -379,9 +351,7 @@ export default function SongbookLive() {
         .from('songbook_files')
         .update({ last_transpose: transpose } as any)
         .eq('id', selectedFile.id)
-        .then(({ error }) => {
-          if (error) console.error('Error saving transpose:', error);
-        });
+        .then(({ error }) => { if (error) console.error('Error saving transpose:', error); });
     }
   }, [transpose]);
 
@@ -411,25 +381,19 @@ export default function SongbookLive() {
   const handleSelectFile = (file: SongbookFile) => {
     setSelectedFile(file);
     setTranspose((file as any).last_transpose ?? 0);
-    // Cache the selected file for offline access
     preCacheFileIds([file.id]);
-    // Don't clear setlist context when previewing
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = 0;
-    }
+    if (scrollRef.current) scrollRef.current.scrollTop = 0;
   };
 
   const handleBroadcastFile = useCallback((file: SongbookFile) => {
-    setActiveSetlistSongs(null); // Clear setlist context for standalone broadcast
+    setActiveSetlistSongs(null);
     broadcastFile(file);
     toast.success('Trasmissione avviata su TV!');
   }, [broadcastFile]);
 
-  // Broadcast from setlist - preserves setlist context for prev/next
   const handleSetlistBroadcast = useCallback((file: SongbookFile, setlistSongs: SongbookSetlistSong[]) => {
     setActiveSetlistSongs(setlistSongs);
     broadcastFile(file);
-    // Pre-cache all songs in the setlist for offline resilience
     const fileIds = setlistSongs.map(s => s.songbook_file_id);
     preCacheFileIds(fileIds).then(() => {
       console.log('[SongbookCache] Pre-cached setlist songs:', fileIds.length);
@@ -442,11 +406,9 @@ export default function SongbookLive() {
     if (!activeSetlistSongs || currentSetlistIndex < 0) return;
     const newIndex = direction === 'prev' ? currentSetlistIndex - 1 : currentSetlistIndex + 1;
     if (newIndex < 0 || newIndex >= activeSetlistSongs.length) return;
-
     const nextSong = activeSetlistSongs[newIndex];
     const file = files.find(f => f.id === nextSong.songbook_file_id);
     if (!file) return;
-
     broadcastFile(file);
   }, [activeSetlistSongs, currentSetlistIndex, files, broadcastFile]);
 
@@ -469,16 +431,10 @@ export default function SongbookLive() {
     const touch = e.touches[0];
     const dx = Math.abs(touch.clientX - touchStartRef.current.x);
     const dy = Math.abs(touch.clientY - touchStartRef.current.y);
-    
-    // Lock direction after 10px movement
     if (!swipeLockedRef.current && (dx > 10 || dy > 10)) {
       swipeLockedRef.current = dx > dy ? 'horizontal' : 'vertical';
     }
-    
-    // If horizontal swipe, prevent vertical scroll
-    if (swipeLockedRef.current === 'horizontal') {
-      e.preventDefault();
-    }
+    if (swipeLockedRef.current === 'horizontal') e.preventDefault();
   }, [swipeEnabled, activeSetlistSongs]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
@@ -486,16 +442,10 @@ export default function SongbookLive() {
     const touch = e.changedTouches[0];
     const dx = touch.clientX - touchStartRef.current.x;
     const elapsed = Date.now() - touchStartRef.current.time;
-    
     touchStartRef.current = null;
-    
-    // Only trigger on horizontal swipe, min 60px, max 500ms
     if (swipeLockedRef.current === 'horizontal' && Math.abs(dx) > 60 && elapsed < 500) {
-      if (dx < 0 && canGoNext) {
-        handleSetlistNav('next');
-      } else if (dx > 0 && canGoPrev) {
-        handleSetlistNav('prev');
-      }
+      if (dx < 0 && canGoNext) handleSetlistNav('next');
+      else if (dx > 0 && canGoPrev) handleSetlistNav('prev');
     }
     swipeLockedRef.current = null;
   }, [swipeEnabled, activeSetlistSongs, canGoNext, canGoPrev, handleSetlistNav]);
@@ -528,14 +478,163 @@ export default function SongbookLive() {
     }
   };
 
-  // File selection view
+  // ─── Settings Drawer (right side) ───
+  const SettingsDrawer = (
+    <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl">
+          <Settings2 className="w-5 h-5" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="w-[min(85vw,340px)] p-0 flex flex-col">
+        <SheetHeader className="px-5 pt-5 pb-3 border-b">
+          <SheetTitle className="text-base font-semibold font-sans">Impostazioni</SheetTitle>
+        </SheetHeader>
+        <ScrollArea className="flex-1 px-5 py-4">
+          <div className="space-y-6">
+            {/* Tonalità */}
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Tonalità</p>
+              <div className="flex items-center justify-between bg-muted/40 rounded-xl px-4 py-3">
+                <Button variant="outline" size="icon" className="h-11 w-11 rounded-xl" onClick={() => handleTranspose(-1)}>
+                  <Minus className="w-5 h-5" />
+                </Button>
+                <span className="font-mono text-lg font-semibold w-14 text-center">
+                  {transpose > 0 ? '+' : ''}{transpose}
+                </span>
+                <Button variant="outline" size="icon" className="h-11 w-11 rounded-xl" onClick={() => handleTranspose(1)}>
+                  <Plus className="w-5 h-5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Toggles */}
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Visualizzazione</p>
+              
+              <SettingRow
+                icon={<Palette className="w-4 h-4" />}
+                label="Accordi Colorati"
+                checked={coloredChords}
+                onChange={setColoredChords}
+              />
+              <SettingRow
+                icon={showChordsOnTV ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                label="Accordi su TV"
+                checked={showChordsOnTV}
+                onChange={(checked) => {
+                  setShowChordsOnTV(checked);
+                  syncUpdate({ songbook_show_chords_on_tv: checked });
+                }}
+              />
+              <SettingRow
+                icon={<Highlighter className="w-4 h-4" />}
+                label="Evidenziazione testo"
+                description={`${highlightLines} righe`}
+                checked={highlightLines > 0}
+                onChange={(checked) => {
+                  const val = checked ? 2 : 0;
+                  setHighlightLines(val);
+                  syncUpdate({ highlight_lines_count: val, highlight_enabled: checked });
+                }}
+              />
+            </div>
+
+            {/* Swipe */}
+            {activeSetlistSongs && activeSetlistSongs.length > 1 && (
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Navigazione</p>
+                <SettingRow
+                  icon={<MoveHorizontal className="w-4 h-4" />}
+                  label="Swipe cambio brano"
+                  checked={swipeEnabled}
+                  onChange={handleSwipeToggle}
+                />
+              </div>
+            )}
+
+            {/* Auto scroll */}
+            <div className="space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Auto-scroll</p>
+              <div className="flex items-center justify-between">
+                <Button
+                  variant={autoScroll ? "default" : "outline"}
+                  size="sm"
+                  className="rounded-xl h-10 px-4"
+                  onClick={() => setAutoScroll(!autoScroll)}
+                >
+                  {autoScroll ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+                  {autoScroll ? 'Stop' : 'Avvia'}
+                </Button>
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Velocità</span>
+                  <span className="text-xs text-muted-foreground font-mono">{scrollSpeed}</span>
+                </div>
+                <Slider
+                  value={[scrollSpeed]}
+                  onValueChange={([v]) => setScrollSpeed(v)}
+                  min={10}
+                  max={200}
+                  step={10}
+                />
+              </div>
+            </div>
+
+            {/* Pedal status */}
+            {pedalActive && (
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Pedale</p>
+                <div className="flex items-center gap-3 bg-primary/10 rounded-xl px-4 py-3">
+                  <Footprints className="w-5 h-5 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium">Pedale connesso</p>
+                    <p className="text-xs text-muted-foreground">
+                      {pedalScrollActive ? 'Modalità scroll' : 'Modalità evidenziazione'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Connection info */}
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Connessione</p>
+              <div className="flex items-center gap-3 bg-muted/40 rounded-xl px-4 py-3">
+                {isLocalMode ? (
+                  <>
+                    <Server className="w-5 h-5 text-green-500" />
+                    <div>
+                      <p className="text-sm font-medium">Rete Locale (LAN)</p>
+                      <p className="text-xs text-muted-foreground">{localConnected ? 'Connesso' : 'Disconnesso'}</p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <Radio className="w-5 h-5 text-secondary" />
+                    <div>
+                      <p className="text-sm font-medium">Cloud</p>
+                      <p className="text-xs text-muted-foreground">Sincronizzazione attiva</p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </ScrollArea>
+      </SheetContent>
+    </Sheet>
+  );
+
+  // ─── FILE SELECTION VIEW ───
   if (!selectedFile) {
     return (
-      <div className="min-h-screen bg-background flex flex-col">
-        {/* Header */}
-        <header className="sticky top-0 z-50 bg-background/95 backdrop-blur border-b px-4 py-3">
+      <div className="h-[100dvh] bg-background flex flex-col overflow-hidden">
+        {/* Header - Apple style */}
+        <header className="shrink-0 z-50 bg-background/90 backdrop-blur-2xl border-b border-border/40 px-4 py-2.5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <SongbookLiveDrawer
                 files={files}
                 onSelectFile={handleSelectFile}
@@ -543,58 +642,55 @@ export default function SongbookLive() {
                 onSetlistBroadcast={handleSetlistBroadcast}
               />
               <div className="flex items-center gap-2">
-                <Guitar className="w-5 h-5 text-primary" />
-                <h1 className="font-bold text-lg">SongBook Live</h1>
+                <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Guitar className="w-4 h-4 text-primary" />
+                </div>
+                <h1 className="font-bold text-lg font-sans">SongBook</h1>
               </div>
             </div>
             <div className="flex items-center gap-1.5">
               {isFromCache && (
-                <Badge variant="outline" className="text-xs text-amber-500 border-amber-500/50">
-                  <WifiOff className="w-3 h-3 mr-1" />
-                  Offline
+                <Badge variant="outline" className="text-xs text-amber-500 border-amber-500/30 bg-amber-500/5 rounded-lg">
+                  <WifiOff className="w-3 h-3 mr-1" /> Offline
                 </Badge>
               )}
               {isLocalMode && localConnected && (
-                <Badge variant="outline" className="text-xs text-green-500 border-green-500/50">
-                  <Server className="w-3 h-3 mr-1" />
-                  LAN
+                <Badge variant="outline" className="text-xs text-green-500 border-green-500/30 bg-green-500/5 rounded-lg">
+                  <Server className="w-3 h-3 mr-1" /> LAN
                 </Badge>
               )}
-              {pedalActive && (
-                <Badge variant="outline" className="text-xs text-primary border-primary/50">
-                  <Footprints className="w-3 h-3 mr-1" />
-                  Pedale
-                </Badge>
-              )}
-              <Badge variant="outline">{filteredFiles.length} brani</Badge>
+              <Badge variant="secondary" className="text-xs rounded-lg">{filteredFiles.length}</Badge>
             </div>
           </div>
         </header>
 
         {/* Search Bar + Sort */}
-        <div className="px-4 py-3 border-b bg-background/95 backdrop-blur space-y-2">
+        <div className="px-4 py-3 border-b border-border/40 bg-background/90 backdrop-blur-xl space-y-2 shrink-0">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cerca titolo o artista..."
-              className="pl-10 h-12 bg-muted border-border focus:border-primary"
+              className="pl-10 h-11 bg-muted/50 border-0 rounded-xl focus:bg-muted/80 transition-colors"
             />
           </div>
-          <div className="flex items-center gap-1.5">
-            <ArrowUpDown className="w-4 h-4 text-muted-foreground shrink-0" />
-            {(['title', 'artist', 'recent'] as const).map((mode) => (
-              <Button
-                key={mode}
-                variant={sortMode === mode ? 'default' : 'outline'}
-                size="sm"
-                className="h-7 text-xs px-2.5"
-                onClick={() => setSortMode(mode)}
+          <div className="flex items-center gap-1">
+            <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            {(['title', 'artist', 'recent'] as const).map((m) => (
+              <button
+                key={m}
+                className={cn(
+                  "px-3 py-1 rounded-lg text-xs font-medium transition-all",
+                  sortMode === m 
+                    ? "bg-foreground text-background" 
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+                onClick={() => setSortMode(m)}
               >
-                {mode === 'title' ? 'A-Z Titolo' : mode === 'artist' ? 'A-Z Artista' : 'Recenti'}
-              </Button>
+                {m === 'title' ? 'Titolo' : m === 'artist' ? 'Artista' : 'Recenti'}
+              </button>
             ))}
           </div>
         </div>
@@ -602,16 +698,18 @@ export default function SongbookLive() {
         {/* Currently broadcasting banner */}
         {broadcastingFile && (
           <div 
-            className="mx-4 mt-3 p-3 rounded-lg bg-destructive/10 border border-destructive/30 cursor-pointer hover:bg-destructive/20 transition-colors"
+            className="mx-4 mt-3 p-3 rounded-2xl bg-destructive/5 border border-destructive/20 cursor-pointer hover:bg-destructive/10 transition-all active:scale-[0.98]"
             onClick={() => handleSelectFile(broadcastingFile)}
           >
             <div className="flex items-center gap-3">
-              <Badge className="bg-destructive text-destructive-foreground animate-pulse shrink-0">
-                <Tv className="w-3 h-3 mr-1" />
-                LIVE
-              </Badge>
+              <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
+                <Tv className="w-5 h-5 text-destructive animate-pulse" />
+              </div>
               <div className="min-w-0 flex-1">
-                <p className="font-medium truncate text-sm">{broadcastingFile.title}</p>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0 h-4 rounded-md">LIVE</Badge>
+                  <p className="font-semibold truncate text-sm">{broadcastingFile.title}</p>
+                </div>
                 {broadcastingFile.artist && (
                   <p className="text-xs text-muted-foreground truncate">{broadcastingFile.artist}</p>
                 )}
@@ -622,151 +720,152 @@ export default function SongbookLive() {
         )}
 
         {/* File List */}
-        <ScrollArea className="flex-1 px-4 py-4">
+        <div className="flex-1 min-h-0 overflow-auto px-4 py-3">
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
             </div>
           ) : filteredFiles.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Guitar className="w-12 h-12 mx-auto mb-4 opacity-50" />
+            <div className="text-center py-16 text-muted-foreground">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-muted/50 flex items-center justify-center">
+                <Guitar className="w-8 h-8 opacity-40" />
+              </div>
               {searchQuery ? (
-                <p>Nessun risultato per "{searchQuery}"</p>
+                <p className="font-medium">Nessun risultato per "{searchQuery}"</p>
               ) : (
                 <>
-                  <p>Nessun file ChordPro caricato</p>
-                  <p className="text-sm mt-1">Carica file .cho dalla sezione Admin</p>
+                  <p className="font-medium">Nessun file ChordPro</p>
+                  <p className="text-sm mt-1 opacity-70">Carica file .cho dalla sezione Admin</p>
                 </>
               )}
             </div>
           ) : (
-            <div className="space-y-2">
+            <div className="space-y-1">
               {filteredFiles.map((file) => (
-                <Card 
+                <button
                   key={file.id}
-                  className="cursor-pointer hover:border-primary/50 transition-colors"
+                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 active:bg-muted/70 active:scale-[0.98] transition-all text-left"
                   onClick={() => handleSelectFile(file)}
                 >
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <Music className="w-5 h-5 text-primary shrink-0" />
-                      <div className="min-w-0">
-                        <p className="font-medium truncate">{file.title}</p>
-                        {file.artist && (
-                          <p className="text-sm text-muted-foreground truncate">{file.artist}</p>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                  <div className="w-10 h-10 rounded-xl bg-primary/8 flex items-center justify-center shrink-0">
+                    <Music className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm truncate">{file.title}</p>
+                    {file.artist && (
+                      <p className="text-xs text-muted-foreground truncate">{file.artist}</p>
+                    )}
+                  </div>
+                </button>
               ))}
             </div>
           )}
-        </ScrollArea>
+        </div>
       </div>
     );
   }
 
-  // Song view with controls
+  // ─── SONG VIEW ───
   return (
     <div className="h-[100dvh] bg-background flex flex-col overflow-hidden">
-      {/* Header */}
-      <header className="shrink-0 z-50 bg-background/95 backdrop-blur border-b px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+      {/* Header - clean Apple style */}
+      <header className="shrink-0 z-50 bg-background/90 backdrop-blur-2xl border-b border-border/40 px-3 py-2">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
             <SongbookLiveDrawer
               files={files}
               onSelectFile={handleSelectFile}
               onBroadcastFile={handleBroadcastFile}
               onSetlistBroadcast={handleSetlistBroadcast}
             />
-            <Button variant="ghost" size="icon" onClick={handleBack}>
-              <ArrowLeft className="w-5 h-5" />
+            <Button variant="ghost" size="icon" onClick={handleBack} className="h-9 w-9 rounded-xl shrink-0">
+              <ArrowLeft className="w-4 h-4" />
             </Button>
-            <div className="min-w-0">
-              <h1 className="font-bold text-base truncate">{selectedFile.title}</h1>
+            <div className="min-w-0 flex-1">
+              <h1 className="font-semibold text-sm truncate font-sans">{selectedFile.title}</h1>
               {selectedFile.artist && (
-                <p className="text-xs text-muted-foreground truncate">{selectedFile.artist}</p>
+                <p className="text-[11px] text-muted-foreground truncate">{selectedFile.artist}</p>
               )}
             </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            {isLocalMode && localConnected && (
-              <Badge variant="outline" className="text-xs text-green-500 border-green-500/50">
-                <Server className="w-3 h-3 mr-1" />
-                LAN
-              </Badge>
-            )}
+          <div className="flex items-center gap-1 shrink-0">
             {transpose !== 0 && (
-              <Badge variant="secondary" className="text-xs">
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-5 rounded-md font-mono">
                 {transpose > 0 ? '+' : ''}{transpose}
               </Badge>
             )}
             {isThisFileBroadcasting ? (
-              <Badge className="bg-destructive text-destructive-foreground animate-pulse">
-                <Tv className="w-3 h-3 mr-1" />
-                LIVE
+              <Badge className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0 h-5 rounded-md animate-pulse">
+                <Tv className="w-3 h-3 mr-0.5" /> LIVE
               </Badge>
             ) : (
-              <Badge variant="outline" className="text-muted-foreground">
-                <Tv className="w-3 h-3 mr-1" />
-                OFF
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 rounded-md text-muted-foreground">
+                <Tv className="w-3 h-3 mr-0.5" /> OFF
               </Badge>
             )}
+            {SettingsDrawer}
           </div>
         </div>
       </header>
 
-      {/* Broadcast Control Bar + Setlist Navigation */}
-      <div className="bg-muted/50 border-b px-4 py-2 shrink-0 space-y-2">
+      {/* Broadcast + Setlist Nav - compact bar */}
+      <div className="bg-muted/30 border-b border-border/30 px-3 py-2 shrink-0 space-y-1.5">
+        {/* Broadcast button */}
         <div className="flex items-center gap-2">
           {isThisFileBroadcasting ? (
             <Button 
               variant="destructive" 
               size="sm"
-              className="flex-1"
+              className="flex-1 rounded-xl h-10 font-semibold"
               onClick={handleStopBroadcast}
             >
               <Square className="w-4 h-4 mr-2" />
-              Arresta Trasmissione
+              Arresta
             </Button>
           ) : (
             <Button 
               size="sm"
-              className="flex-1 bg-primary hover:bg-primary/90"
+              className="flex-1 rounded-xl h-10 bg-primary hover:bg-primary/90 font-semibold"
               onClick={handleStartBroadcast}
             >
               <Play className="w-4 h-4 mr-2" />
-              Avvia Trasmissione TV
+              Trasmetti su TV
             </Button>
           )}
+          {/* Quick scroll */}
+          <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl shrink-0" onClick={() => handleManualScroll('up')}>
+            <ChevronUp className="w-4 h-4" />
+          </Button>
+          <Button variant="outline" size="icon" className="h-10 w-10 rounded-xl shrink-0" onClick={() => handleManualScroll('down')}>
+            <ChevronDown className="w-4 h-4" />
+          </Button>
         </div>
 
-        {/* Prev/Next setlist navigation */}
+        {/* Prev/Next */}
         {activeSetlistSongs && activeSetlistSongs.length > 1 && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 h-10"
+              className="flex-1 h-9 rounded-xl text-xs"
               disabled={!canGoPrev}
               onClick={() => handleSetlistNav('prev')}
             >
-              <SkipBack className="w-4 h-4 mr-1.5" />
-              Precedente
+              <SkipBack className="w-3.5 h-3.5 mr-1" />
+              Prec
             </Button>
-            <Badge variant="secondary" className="shrink-0 text-xs px-2">
+            <Badge variant="secondary" className="shrink-0 text-[10px] px-2 py-0.5 rounded-lg font-mono">
               {currentSetlistIndex + 1}/{activeSetlistSongs.length}
             </Badge>
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 h-10"
+              className="flex-1 h-9 rounded-xl text-xs"
               disabled={!canGoNext}
               onClick={() => handleSetlistNav('next')}
             >
-              Successivo
-              <SkipForward className="w-4 h-4 ml-1.5" />
+              Succ
+              <SkipForward className="w-3.5 h-3.5 ml-1" />
             </Button>
           </div>
         )}
@@ -793,120 +892,37 @@ export default function SongbookLive() {
         )}
       </div>
 
-      {/* Control Bar */}
-      <div className="sticky bottom-0 bg-background/95 backdrop-blur border-t px-4 py-3 pb-[calc(12px+env(safe-area-inset-bottom))] space-y-3 shrink-0">
-        {/* Transpose */}
-        <div className="flex items-center justify-between">
-          <Label className="text-sm">Tonalità</Label>
-          <div className="flex items-center gap-2">
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="h-11 w-11"
-              onClick={() => handleTranspose(-1)}
-            >
-              <Minus className="w-5 h-5" />
-            </Button>
-            <span className="w-12 text-center font-mono text-sm">
-              {transpose > 0 ? '+' : ''}{transpose}
-            </span>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="h-11 w-11"
-              onClick={() => handleTranspose(1)}
-            >
-              <Plus className="w-5 h-5" />
-            </Button>
-          </div>
+      {/* Pedal indicator (floating, non-intrusive) */}
+      {pedalActive && (
+        <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+8px)] left-1/2 -translate-x-1/2 z-40">
+          <Badge variant="outline" className="bg-background/90 backdrop-blur-sm text-primary border-primary/30 rounded-full px-3 py-1 shadow-lg">
+            <Footprints className="w-3.5 h-3.5 mr-1.5" />
+            {pedalScrollActive ? 'Pedale scroll' : 'Pedale highlight'}
+          </Badge>
         </div>
+      )}
+    </div>
+  );
+}
 
-        {/* Colored chords toggle */}
-        <div className="flex items-center justify-between">
-          <Label className="text-sm flex items-center gap-2">
-            <Palette className="w-4 h-4" />
-            Accordi Colorati
-          </Label>
-          <Switch
-            checked={coloredChords}
-            onCheckedChange={setColoredChords}
-          />
-        </div>
-
-        {/* Show chords on TV toggle */}
-        <div className="flex items-center justify-between">
-          <Label className="text-sm flex items-center gap-2">
-            {showChordsOnTV ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-            Accordi su TV
-          </Label>
-          <Switch
-            checked={showChordsOnTV}
-            onCheckedChange={(checked) => {
-              setShowChordsOnTV(checked);
-              syncUpdate({ songbook_show_chords_on_tv: checked });
-            }}
-          />
-        </div>
-
-        {/* Swipe toggle (only when in setlist) */}
-        {activeSetlistSongs && activeSetlistSongs.length > 1 && (
-          <div className="flex items-center justify-between">
-            <Label className="text-sm flex items-center gap-2">
-              <MoveHorizontal className="w-4 h-4" />
-              Swipe cambio brano
-            </Label>
-            <Switch
-              checked={swipeEnabled}
-              onCheckedChange={handleSwipeToggle}
-            />
-          </div>
-        )}
-
-        {/* Auto scroll */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Button
-              variant={autoScroll ? "default" : "outline"}
-              size="sm"
-              onClick={() => setAutoScroll(!autoScroll)}
-            >
-              {autoScroll ? <Pause className="w-4 h-4 mr-1" /> : <Play className="w-4 h-4 mr-1" />}
-              {autoScroll ? 'Stop' : 'Auto'}
-            </Button>
-          </div>
-          <div className="flex-1 flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Velocità</span>
-            <Slider
-              value={[scrollSpeed]}
-              onValueChange={([v]) => setScrollSpeed(v)}
-              min={10}
-              max={200}
-              step={10}
-              className="flex-1"
-            />
-          </div>
-        </div>
-
-        {/* Quick scroll buttons */}
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            className="flex-1 h-12"
-            onClick={() => handleManualScroll('up')}
-          >
-            <ChevronUp className="w-5 h-5 mr-1" />
-            Su
-          </Button>
-          <Button 
-            variant="outline" 
-            className="flex-1 h-12"
-            onClick={() => handleManualScroll('down')}
-          >
-            <ChevronDown className="w-5 h-5 mr-1" />
-            Giù
-          </Button>
+// ─── Setting Row Component ───
+function SettingRow({ icon, label, description, checked, onChange }: {
+  icon: React.ReactNode;
+  label: string;
+  description?: string;
+  checked: boolean;
+  onChange: (val: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between py-3 px-1">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="text-muted-foreground">{icon}</div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium">{label}</p>
+          {description && <p className="text-[11px] text-muted-foreground">{description}</p>}
         </div>
       </div>
+      <Switch checked={checked} onCheckedChange={onChange} />
     </div>
   );
 }
