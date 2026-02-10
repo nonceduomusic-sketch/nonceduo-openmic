@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { useBroadcast } from '@/hooks/useBroadcast';
 import { supabase } from '@/integrations/supabase/client';
 import { parseChordPro, transposeSong, ChordProSong } from '@/lib/chordpro';
-import { scrollElementToRatio } from '@/lib/scrollRatio';
+// highlight_line based sync - no longer needs scrollRatio
 import { usePedalScroll } from '@/hooks/usePedalControl';
 
 interface SongbookFile {
@@ -16,28 +16,29 @@ interface SongbookFile {
 
 function renderColoredChords(song: ChordProSong): React.ReactNode[] {
   const result: React.ReactNode[] = [];
-  let lineIndex = 0;
-  for (const line of song.lines) {
-    if (line.type === 'empty') { result.push(<div key={`e-${lineIndex++}`} className="h-4" />); continue; }
-    if (line.type === 'comment' || line.type === 'directive') continue;
-    if (line.type === 'text') { result.push(<div key={`t-${lineIndex++}`}>{line.text}</div>); continue; }
+  song.lines.forEach((line, index) => {
+    if (line.type === 'empty') { result.push(<div key={`e-${index}`} data-line={index} className="h-4" />); return; }
+    if (line.type === 'comment' || line.type === 'directive') return;
+    if (line.type === 'text') { result.push(<div key={`t-${index}`} data-line={index}>{line.text}</div>); return; }
     if (line.type === 'chord-text' && line.chords?.length) {
       result.push(
-        <div key={`c-${lineIndex}`} className="text-primary font-bold whitespace-pre">
-          {line.chords.map((c, i) => {
-            const spaces = i === 0 ? c.position : c.position - (line.chords![i - 1].position + line.chords![i - 1].chord.length);
-            return (
-              <React.Fragment key={i}>
-                {' '.repeat(Math.max(0, spaces))}
-                <span className="text-primary">{c.chord}</span>
-              </React.Fragment>
-            );
-          })}
+        <div key={`ct-${index}`} data-line={index}>
+          <div className="text-primary font-bold whitespace-pre">
+            {line.chords.map((c, i) => {
+              const spaces = i === 0 ? c.position : c.position - (line.chords![i - 1].position + line.chords![i - 1].chord.length);
+              return (
+                <React.Fragment key={i}>
+                  {' '.repeat(Math.max(0, spaces))}
+                  <span className="text-primary">{c.chord}</span>
+                </React.Fragment>
+              );
+            })}
+          </div>
+          <div>{line.text}</div>
         </div>
       );
-      result.push(<div key={`t-${lineIndex++}`}>{line.text}</div>);
     }
-  }
+  });
   return result;
 }
 
@@ -49,7 +50,7 @@ export default function Partiture() {
   const isSongbookLive = !!(session as any)?.songbook_mode && !!(session as any)?.is_broadcasting;
   const fileId = (session as any)?.songbook_file_id;
   const remoteTranspose = (session as any)?.songbook_transpose ?? 0;
-  const scrollPosition = (session as any)?.scroll_position ?? 0;
+  const remoteHighlightLine = (session as any)?.highlight_line ?? 0;
   const fontSize = (session as any)?.font_size ?? 100;
 
   // Pedal control
@@ -73,11 +74,14 @@ export default function Partiture() {
     return transposeSong(parseChordPro(file.content), remoteTranspose);
   }, [file, remoteTranspose]);
 
-  // Sync scroll from broadcast session
+  // Sync scroll from broadcast session using highlight_line for cross-view text alignment
   useEffect(() => {
     if (!scrollRef.current || !isSongbookLive) return;
-    scrollElementToRatio(scrollRef.current, scrollPosition);
-  }, [scrollPosition, isSongbookLive]);
+    const el = scrollRef.current.querySelector(`[data-line="${remoteHighlightLine}"]`) as HTMLElement;
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [remoteHighlightLine, isSongbookLive]);
 
   // Waiting state
   if (!isSongbookLive || !file) {
