@@ -44,49 +44,14 @@ import { SongbookFile, SongbookSetlistSong, useSongbookSetlists, useSongbookSetl
 import { useCachedSongbookFiles } from '@/hooks/useCachedSongbook';
 import { useBroadcast } from '@/hooks/useBroadcast';
 import { useConnectionMode, useLocalBroadcast } from '@/hooks/useLocalBroadcast';
-import { parseChordPro, transposeSong, renderWithChords, renderLyricsOnly, ChordProSong, ChordProLine } from '@/lib/chordpro';
+import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/chordpro';
 import { clampScrollRatio, getScrollRatioFromElement } from '@/lib/scrollRatio';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { usePedalScroll, usePedalControl } from '@/hooks/usePedalControl';
 import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
 
-// Render song with colored chords, using data-line={rawIndex} for cross-view sync
-function renderWithColoredChords(song: ChordProSong): React.ReactNode[] {
-  const result: React.ReactNode[] = [];
-  
-  song.lines.forEach((line, index) => {
-    if (line.type === 'empty') {
-      result.push(<div key={`e-${index}`} data-line={index} className="h-4" />);
-      return;
-    }
-    if (line.type === 'comment' || line.type === 'directive') return;
-    if (line.type === 'text') {
-      result.push(<div key={`t-${index}`} data-line={index}>{line.text}</div>);
-      return;
-    }
-    if (line.type === 'chord-text' && line.chords && line.chords.length > 0) {
-      result.push(
-        <div key={`ct-${index}`} data-line={index}>
-          <div className="text-primary font-bold whitespace-pre">
-            {line.chords.map((c, i) => {
-              const spaces = i === 0 ? c.position : c.position - (line.chords![i-1].position + line.chords![i-1].chord.length);
-              return (
-                <React.Fragment key={i}>
-                  {' '.repeat(Math.max(0, spaces))}
-                  <span className="text-primary">{c.chord}</span>
-                </React.Fragment>
-              );
-            })}
-          </div>
-          <div>{line.text}</div>
-        </div>
-      );
-    }
-  });
-  
-  return result;
-}
+import { renderResponsiveSong, renderLyricsOnlyNodes } from '@/lib/chordproRenderer';
 
 export default function SongbookLive() {
   const navigate = useNavigate();
@@ -125,11 +90,23 @@ export default function SongbookLive() {
   const [swipeEnabled, setSwipeEnabled] = useState(() => safeGetItem('local', 'songbook_swipe_enabled') === 'true');
   const [settingsOpen, setSettingsOpen] = useState(false);
   
+  // Local text scale (50-200%, persisted)
+  const [localTextScale, setLocalTextScale] = useState<number>(() => {
+    const saved = safeGetItem('local', 'songbook_text_scale');
+    const val = saved ? parseInt(saved, 10) : 100;
+    return val >= 50 && val <= 200 ? val : 100;
+  });
+  
+  const handleTextScaleChange = useCallback((val: number) => {
+    setLocalTextScale(val);
+    safeSetItem('local', 'songbook_text_scale', String(val));
+  }, []);
+  
   // Active setlist tracking for prev/next navigation
   const [activeSetlistSongs, setActiveSetlistSongs] = useState<SongbookSetlistSong[] | null>(null);
   
-  // Get font size from session (synced with admin panel)
-  const fontSize = (session as any)?.font_size ?? 100;
+  // Get font size from session (synced with admin panel) combined with local scale
+  const fontSize = ((session as any)?.font_size ?? 100) * localTextScale / 100;
   
   // Check if currently broadcasting ANY songbook content
   const isBroadcasting = (session as any)?.songbook_mode && (session as any)?.is_broadcasting;
@@ -597,6 +574,32 @@ export default function SongbookLive() {
                   syncUpdate({ highlight_lines_count: val, highlight_enabled: checked });
                 }}
               />
+
+
+              {/* Text scale slider */}
+              <div className="space-y-2 pt-2 border-t border-border/40">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm">Dimensione testo</span>
+                  <span className="text-xs font-mono text-muted-foreground">{localTextScale}%</span>
+                </div>
+                <Slider
+                  value={[localTextScale]}
+                  onValueChange={([v]) => handleTextScaleChange(v)}
+                  min={50}
+                  max={200}
+                  step={10}
+                />
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                  <span>50%</span>
+                  <button 
+                    className="underline"
+                    onClick={() => handleTextScaleChange(100)}
+                  >
+                    Reset 100%
+                  </button>
+                  <span>200%</span>
+                </div>
+              </div>
             </div>
 
             {/* Destinazioni broadcast */}
@@ -1009,9 +1012,10 @@ export default function SongbookLive() {
             className="font-mono whitespace-pre-wrap leading-relaxed text-foreground"
             style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px` }}
           >
-            {coloredChords ? renderWithColoredChords(parsedSong) : (
-              <pre className="whitespace-pre-wrap">{renderWithChords(parsedSong)}</pre>
-            )}
+            {coloredChords 
+              ? renderResponsiveSong(parsedSong, { coloredChords: true }) 
+              : renderLyricsOnlyNodes(parsedSong)
+            }
           </div>
         )}
       </div>
