@@ -275,25 +275,30 @@ export default function SongbookLive() {
     }
   }, [showChordsOnTV, syncUpdate, isLocalMode, localCacheSong]);
 
-  // Start broadcast to TV
+  // Start broadcast
   const handleStartBroadcast = useCallback(() => {
     if (!selectedFile) return;
+    const broadcastToTV = (session as any)?.broadcast_to_tv ?? true;
+    const broadcastToPartiture = (session as any)?.broadcast_to_partiture ?? true;
     isBroadcastingRef.current = true;
     syncUpdate({
       songbook_mode: true,
       songbook_file_id: selectedFile.id,
       songbook_show_chords_on_tv: showChordsOnTV,
       songbook_transpose: transpose,
-      display_mode: 'lyrics',
+      display_mode: broadcastToTV ? 'lyrics' : 'waiting',
       is_active: true,
-      is_broadcasting: true,
+      is_broadcasting: broadcastToTV,
+      broadcast_to_tv: broadcastToTV,
+      broadcast_to_partiture: broadcastToPartiture,
       scroll_position: 0,
     });
     if (isLocalMode) {
       localCacheSong({ id: selectedFile.id, title: selectedFile.title, artist: selectedFile.artist, content: selectedFile.content });
     }
-    toast.success('Trasmissione avviata su TV!');
-  }, [selectedFile, showChordsOnTV, transpose, syncUpdate, isLocalMode, localCacheSong]);
+    const targets = [broadcastToTV && 'TV', broadcastToPartiture && 'Partiture'].filter(Boolean).join(' + ');
+    toast.success(`Trasmissione avviata: ${targets}`);
+  }, [selectedFile, showChordsOnTV, transpose, syncUpdate, isLocalMode, localCacheSong, session]);
 
   // Stop broadcast
   const handleStopBroadcast = useCallback(() => {
@@ -312,12 +317,12 @@ export default function SongbookLive() {
     toast.success('Trasmissione interrotta');
   }, [syncUpdate]);
 
-  // Handle scroll event
+  // Handle scroll event - sync whenever songbook_mode is active (not just full broadcast)
   const handleScroll = useCallback(() => {
     if (!scrollRef.current) return;
-    if (!isBroadcastingRef.current) return;
+    if (!(session as any)?.songbook_mode) return;
     syncScrollToTV();
-  }, [syncScrollToTV]);
+  }, [syncScrollToTV, session]);
 
   // Auto scroll effect
   useEffect(() => {
@@ -328,7 +333,7 @@ export default function SongbookLive() {
         scrollRef.current.scrollTop += speed;
         const maxScroll = scrollRef.current.scrollHeight - scrollRef.current.clientHeight;
         if (scrollRef.current.scrollTop >= maxScroll) { setAutoScroll(false); return; }
-        if (isBroadcastingRef.current) { syncScrollToTV(); }
+        if ((session as any)?.songbook_mode) { syncScrollToTV(); }
         autoScrollRef.current = requestAnimationFrame(scroll);
       };
       autoScrollRef.current = requestAnimationFrame(scroll);
@@ -536,6 +541,29 @@ export default function SongbookLive() {
                   const val = checked ? 2 : 0;
                   setHighlightLines(val);
                   syncUpdate({ highlight_lines_count: val, highlight_enabled: checked });
+                }}
+              />
+            </div>
+
+            {/* Destinazioni broadcast */}
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Destinazione</p>
+              <SettingRow
+                icon={<Tv className="w-4 h-4" />}
+                label="Invia a TV"
+                description="Trasmetti su /trasmetti"
+                checked={(session as any)?.broadcast_to_tv ?? true}
+                onChange={(checked) => {
+                  syncUpdate({ broadcast_to_tv: checked });
+                }}
+              />
+              <SettingRow
+                icon={<Music className="w-4 h-4" />}
+                label="Invia a Partiture"
+                description="Trasmetti su /partiture"
+                checked={(session as any)?.broadcast_to_partiture ?? true}
+                onChange={(checked) => {
+                  syncUpdate({ broadcast_to_partiture: checked });
                 }}
               />
             </div>
@@ -829,7 +857,7 @@ export default function SongbookLive() {
               onClick={handleStartBroadcast}
             >
               <Play className="w-4 h-4 mr-2" />
-              Trasmetti su TV
+              Trasmetti
             </Button>
           )}
           {/* Quick scroll */}

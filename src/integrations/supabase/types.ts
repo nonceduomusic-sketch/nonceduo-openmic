@@ -365,6 +365,8 @@ export type Database = {
           auto_scroll: boolean | null
           auto_scroll_active: boolean | null
           auto_scroll_bpm: number | null
+          broadcast_to_partiture: boolean
+          broadcast_to_tv: boolean
           created_at: string | null
           current_reservation_id: string | null
           current_song_id: string | null
@@ -416,6 +418,8 @@ export type Database = {
           auto_scroll?: boolean | null
           auto_scroll_active?: boolean | null
           auto_scroll_bpm?: number | null
+          broadcast_to_partiture?: boolean
+          broadcast_to_tv?: boolean
           created_at?: string | null
           current_reservation_id?: string | null
           current_song_id?: string | null
@@ -467,6 +471,8 @@ export type Database = {
           auto_scroll?: boolean | null
           auto_scroll_active?: boolean | null
           auto_scroll_bpm?: number | null
+          broadcast_to_partiture?: boolean
+          broadcast_to_tv?: boolean
           created_at?: string | null
           current_reservation_id?: string | null
           current_song_id?: string | null

@@ -38,6 +38,8 @@ export interface BroadcastSession {
   songbook_show_chords_on_tv: boolean;
   songbook_transpose: number;
   songbook_view_mode: 'compact' | 'karaoke' | 'spotify' | 'chordpro';
+  broadcast_to_tv: boolean;
+  broadcast_to_partiture: boolean;
   created_at: string;
   updated_at: string;
 }
