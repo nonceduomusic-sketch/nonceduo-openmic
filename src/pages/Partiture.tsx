@@ -47,7 +47,8 @@ export default function Partiture() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [file, setFile] = useState<SongbookFile | null>(null);
 
-  const isSongbookLive = !!(session as any)?.songbook_mode && !!(session as any)?.is_broadcasting;
+  const broadcastToPartiture = (session as any)?.broadcast_to_partiture ?? true;
+  const isSongbookLive = !!(session as any)?.songbook_mode && broadcastToPartiture;
   const fileId = (session as any)?.songbook_file_id;
   const remoteTranspose = (session as any)?.songbook_transpose ?? 0;
   const remoteHighlightLine = (session as any)?.highlight_line ?? 0;
