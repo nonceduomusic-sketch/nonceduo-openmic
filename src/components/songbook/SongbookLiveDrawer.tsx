@@ -167,6 +167,28 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile, onSet
   const [pendingImportSetlistId, setPendingImportSetlistId] = useState<string | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
+  // Quick add to first setlist
+  const addSongToFirstSetlist = useCallback(async (fileId: string) => {
+    if (setlists.length === 0) return;
+    const targetSetlistId = setlists[0].id;
+    const { data: existing } = await supabase
+      .from('songbook_setlist_songs')
+      .select('position')
+      .eq('setlist_id', targetSetlistId)
+      .order('position', { ascending: false })
+      .limit(1);
+    const nextPos = existing && existing.length > 0 ? existing[0].position + 1 : 0;
+    const { error } = await supabase
+      .from('songbook_setlist_songs')
+      .insert({ setlist_id: targetSetlistId, songbook_file_id: fileId, position: nextPos });
+    if (error) {
+      toast.error('Errore aggiunta brano');
+    } else {
+      const file = files.find(f => f.id === fileId);
+      toast.success(`"${file?.title}" aggiunto a "${setlists[0].name}"`);
+    }
+  }, [setlists, files]);
+
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -489,22 +511,56 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile, onSet
                   {filteredFiles.map((file) => (
                     <div
                       key={file.id}
-                      className="flex items-center gap-2 p-3 rounded-lg hover:bg-muted/50 active:bg-muted cursor-pointer transition-colors min-h-[52px]"
-                      onClick={() => { onSelectFile(file); setOpen(false); }}
+                      className="rounded-lg hover:bg-muted/50 active:bg-muted transition-colors px-2.5 py-1.5"
                     >
-                      <Music className="w-4 h-4 text-primary shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{file.title}</p>
-                        {file.artist && <p className="text-xs text-muted-foreground truncate">{file.artist}</p>}
-                      </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-11 w-11 shrink-0"
-                        onClick={(e) => { e.stopPropagation(); onBroadcastFile(file); setOpen(false); }}
+                      <div
+                        className="flex items-center gap-2 cursor-pointer"
+                        onClick={() => { onSelectFile(file); setOpen(false); }}
                       >
-                        <Play className="w-5 h-5" />
-                      </Button>
+                        <Music className="w-3.5 h-3.5 text-primary shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate leading-snug">{file.title}</p>
+                          {file.artist && <p className="text-[11px] text-muted-foreground truncate leading-snug">{file.artist}</p>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 mt-1 pl-5">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 text-[11px] px-2"
+                          onClick={(e) => { e.stopPropagation(); onBroadcastFile(file); setOpen(false); }}
+                        >
+                          <Play className="w-3 h-3 mr-1" />
+                          Avvia
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-[11px] px-2"
+                          onClick={(e) => { e.stopPropagation(); onSelectFile(file); setOpen(false); }}
+                        >
+                          <Eye className="w-3 h-3 mr-1" />
+                          Mostra
+                        </Button>
+                        {setlists.length > 0 && selectedSetlistId == null && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-[11px] px-2"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (setlists.length === 1) {
+                                addSongToFirstSetlist(file.id);
+                              } else {
+                                setTab('scalette');
+                              }
+                            }}
+                          >
+                            <Plus className="w-3 h-3 mr-1" />
+                            Scaletta
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                   {filteredFiles.length === 0 && (
