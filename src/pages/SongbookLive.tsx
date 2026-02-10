@@ -27,6 +27,7 @@ import {
   ArrowUpDown,
   Highlighter,
   Radio,
+  ListPlus,
 } from 'lucide-react';
 import { SongbookLiveDrawer } from '@/components/songbook/SongbookLiveDrawer';
 import { Button } from '@/components/ui/button';
@@ -37,8 +38,9 @@ import { Slider } from '@/components/ui/slider';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { SongbookFile, SongbookSetlistSong } from '@/hooks/useSongbook';
+import { SongbookFile, SongbookSetlistSong, useSongbookSetlists, useSongbookSetlistSongs } from '@/hooks/useSongbook';
 import { useCachedSongbookFiles } from '@/hooks/useCachedSongbook';
 import { useBroadcast } from '@/hooks/useBroadcast';
 import { useConnectionMode, useLocalBroadcast } from '@/hooks/useLocalBroadcast';
@@ -90,6 +92,7 @@ export default function SongbookLive() {
   const navigate = useNavigate();
   const { files, loading, isFromCache, cacheStats, preCacheFileIds } = useCachedSongbookFiles();
   const { session, updateSession } = useBroadcast('main');
+  const { setlists } = useSongbookSetlists();
   const { mode, setMode, localIP, setLocalIP, serverUrl } = useConnectionMode();
   
   const isLocalMode = mode === 'local';
@@ -383,12 +386,54 @@ export default function SongbookLive() {
     };
   }, []);
 
+  // Auto-sync file to partiture when browsing (if broadcast_to_partiture is enabled)
+  const autoSyncToPartiture = useCallback((file: SongbookFile) => {
+    const broadcastToPartiture = (session as any)?.broadcast_to_partiture ?? true;
+    if (broadcastToPartiture) {
+      syncUpdate({
+        songbook_mode: true,
+        songbook_file_id: file.id,
+        songbook_transpose: (file as any).last_transpose ?? 0,
+        songbook_show_chords_on_tv: showChordsOnTV,
+        broadcast_to_partiture: true,
+        scroll_position: 0,
+        highlight_line: 0,
+      });
+      if (isLocalMode) {
+        localCacheSong({ id: file.id, title: file.title, artist: file.artist, content: file.content });
+      }
+    }
+  }, [session, syncUpdate, showChordsOnTV, isLocalMode, localCacheSong]);
+
   const handleSelectFile = (file: SongbookFile) => {
     setSelectedFile(file);
     setTranspose((file as any).last_transpose ?? 0);
     preCacheFileIds([file.id]);
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
+    // Auto-send to partiture when browsing
+    autoSyncToPartiture(file);
   };
+
+  // Quick add song to a setlist
+  const handleAddToSetlist = useCallback(async (file: SongbookFile, setlistId: string) => {
+    const { data: existingSongs } = await supabase
+      .from('songbook_setlist_songs')
+      .select('position')
+      .eq('setlist_id', setlistId)
+      .order('position', { ascending: false })
+      .limit(1);
+    
+    const nextPos = existingSongs && existingSongs.length > 0 ? existingSongs[0].position + 1 : 0;
+    const { error } = await supabase
+      .from('songbook_setlist_songs')
+      .insert({ setlist_id: setlistId, songbook_file_id: file.id, position: nextPos });
+    
+    if (error) {
+      toast.error('Errore aggiunta brano');
+    } else {
+      toast.success(`"${file.title}" aggiunto alla scaletta`);
+    }
+  }, []);
 
   const handleBroadcastFile = useCallback((file: SongbookFile) => {
     setActiveSetlistSongs(null);
@@ -406,7 +451,7 @@ export default function SongbookLive() {
     toast.success('Trasmissione avviata su TV!');
   }, [broadcastFile, preCacheFileIds]);
 
-  // Navigate to prev/next in setlist
+  // Navigate to prev/next in setlist (auto-syncs to partiture even without full broadcast)
   const handleSetlistNav = useCallback((direction: 'prev' | 'next') => {
     if (!activeSetlistSongs || currentSetlistIndex < 0) return;
     const newIndex = direction === 'prev' ? currentSetlistIndex - 1 : currentSetlistIndex + 1;
@@ -414,8 +459,17 @@ export default function SongbookLive() {
     const nextSong = activeSetlistSongs[newIndex];
     const file = files.find(f => f.id === nextSong.songbook_file_id);
     if (!file) return;
-    broadcastFile(file);
-  }, [activeSetlistSongs, currentSetlistIndex, files, broadcastFile]);
+    
+    // If full broadcasting, use broadcastFile. Otherwise auto-sync to partiture
+    if (isBroadcasting) {
+      broadcastFile(file);
+    } else {
+      setSelectedFile(file);
+      setTranspose((file as any).last_transpose ?? 0);
+      if (scrollRef.current) scrollRef.current.scrollTop = 0;
+      autoSyncToPartiture(file);
+    }
+  }, [activeSetlistSongs, currentSetlistIndex, files, broadcastFile, isBroadcasting, autoSyncToPartiture]);
 
   // Swipe toggle handler
   const handleSwipeToggle = useCallback((enabled: boolean) => {
@@ -768,23 +822,65 @@ export default function SongbookLive() {
               )}
             </div>
           ) : (
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {filteredFiles.map((file) => (
-                <button
+                <div
                   key={file.id}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 active:bg-muted/70 active:scale-[0.98] transition-all text-left"
-                  onClick={() => handleSelectFile(file)}
+                  className="rounded-xl hover:bg-muted/40 active:bg-muted/60 transition-colors px-2.5 py-2"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-primary/8 flex items-center justify-center shrink-0">
-                    <Music className="w-4 h-4 text-primary" />
+                  <div 
+                    className="flex items-center gap-2 cursor-pointer"
+                    onClick={() => handleSelectFile(file)}
+                  >
+                    <Music className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm truncate leading-snug">{file.title}</p>
+                      {file.artist && (
+                        <p className="text-[11px] text-muted-foreground truncate leading-snug">{file.artist}</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm truncate">{file.title}</p>
-                    {file.artist && (
-                      <p className="text-xs text-muted-foreground truncate">{file.artist}</p>
+                  <div className="flex items-center gap-1.5 mt-1.5 pl-5">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[11px] px-2.5 rounded-lg"
+                      onClick={() => handleBroadcastFile(file)}
+                    >
+                      <Play className="w-3 h-3 mr-1" />
+                      Avvia
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-[11px] px-2.5 rounded-lg"
+                      onClick={() => handleSelectFile(file)}
+                    >
+                      <Eye className="w-3 h-3 mr-1" />
+                      Mostra
+                    </Button>
+                    {setlists.length > 0 && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button size="sm" variant="ghost" className="h-7 text-[11px] px-2.5 rounded-lg">
+                            <ListPlus className="w-3 h-3 mr-1" />
+                            Scaletta
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="min-w-[160px]">
+                          {setlists.map((sl) => (
+                            <DropdownMenuItem 
+                              key={sl.id}
+                              onClick={() => handleAddToSetlist(file, sl.id)}
+                            >
+                              {sl.name}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           )}
