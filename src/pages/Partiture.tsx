@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
-import { Guitar, Music, Wifi, WifiOff, Footprints } from 'lucide-react';
+import { Guitar, Music, Wifi, WifiOff, Footprints, Minus, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Slider } from '@/components/ui/slider';
 import { useBroadcast } from '@/hooks/useBroadcast';
 import { supabase } from '@/integrations/supabase/client';
 import { parseChordPro, transposeSong, ChordProSong } from '@/lib/chordpro';
-// highlight_line based sync - no longer needs scrollRatio
+import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
 import { usePedalScroll } from '@/hooks/usePedalControl';
 
 interface SongbookFile {
@@ -14,45 +16,25 @@ interface SongbookFile {
   content: string;
 }
 
-function renderColoredChords(song: ChordProSong): React.ReactNode[] {
-  const result: React.ReactNode[] = [];
-  song.lines.forEach((line, index) => {
-    if (line.type === 'empty') { result.push(<div key={`e-${index}`} data-line={index} className="h-4" />); return; }
-    if (line.type === 'comment' || line.type === 'directive') return;
-    if (line.type === 'text') { result.push(<div key={`t-${index}`} data-line={index}>{line.text}</div>); return; }
-    if (line.type === 'chord-text' && line.chords?.length) {
-      result.push(
-        <div key={`ct-${index}`} data-line={index}>
-          <div className="text-primary font-bold whitespace-pre">
-            {line.chords.map((c, i) => {
-              const spaces = i === 0 ? c.position : c.position - (line.chords![i - 1].position + line.chords![i - 1].chord.length);
-              return (
-                <React.Fragment key={i}>
-                  {' '.repeat(Math.max(0, spaces))}
-                  <span className="text-primary">{c.chord}</span>
-                </React.Fragment>
-              );
-            })}
-          </div>
-          <div>{line.text}</div>
-        </div>
-      );
-    }
-  });
-  return result;
-}
+import { renderResponsiveSong } from '@/lib/chordproRenderer';
 
 export default function Partiture() {
   const { session } = useBroadcast('main');
   const scrollRef = useRef<HTMLDivElement>(null);
   const [file, setFile] = useState<SongbookFile | null>(null);
+  const [localTextScale, setLocalTextScale] = useState<number>(() => {
+    const saved = safeGetItem('local', 'partiture_text_scale');
+    const val = saved ? parseInt(saved, 10) : 100;
+    return val >= 50 && val <= 200 ? val : 100;
+  });
 
   const broadcastToPartiture = (session as any)?.broadcast_to_partiture ?? true;
   const isSongbookLive = !!(session as any)?.songbook_mode && broadcastToPartiture;
   const fileId = (session as any)?.songbook_file_id;
   const remoteTranspose = (session as any)?.songbook_transpose ?? 0;
   const remoteHighlightLine = (session as any)?.highlight_line ?? 0;
-  const fontSize = (session as any)?.font_size ?? 100;
+  const baseFontSize = (session as any)?.font_size ?? 100;
+  const fontSize = baseFontSize * localTextScale / 100;
 
   // Pedal control
   const { isActive: pedalActive } = usePedalScroll({
@@ -160,6 +142,34 @@ export default function Partiture() {
               LIVE
             </Badge>
           </div>
+          {/* Text scale controls */}
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg"
+              onClick={() => {
+                const v = Math.max(50, localTextScale - 10);
+                setLocalTextScale(v);
+                safeSetItem('local', 'partiture_text_scale', String(v));
+              }}
+            >
+              <Minus className="w-3.5 h-3.5" />
+            </Button>
+            <span className="text-xs font-mono w-10 text-center">{localTextScale}%</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg"
+              onClick={() => {
+                const v = Math.min(200, localTextScale + 10);
+                setLocalTextScale(v);
+                safeSetItem('local', 'partiture_text_scale', String(v));
+              }}
+            >
+              <Plus className="w-3.5 h-3.5" />
+            </Button>
+          </div>
         </div>
       </header>
 
@@ -173,7 +183,7 @@ export default function Partiture() {
             className="font-mono whitespace-pre-wrap leading-relaxed text-foreground"
             style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px` }}
           >
-            {renderColoredChords(parsedSong)}
+            {renderResponsiveSong(parsedSong, { coloredChords: true })}
           </div>
         )}
       </div>

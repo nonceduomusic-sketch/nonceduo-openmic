@@ -11,6 +11,7 @@ import QRCode from 'qrcode';
 import brandLogoText from '@/assets/brand-logo-text.png';
 import { ScreenShareViewer } from '@/components/broadcast/ScreenShareViewer';
 import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/chordpro';
+import { renderResponsiveChordLine } from '@/lib/chordproRenderer';
 
 interface Song {
   id: string;
@@ -604,25 +605,12 @@ export default function Trasmetti() {
                       highlightEnabled && isMainHighlight && "bg-primary/20 ring-2 ring-primary/40 scale-[1.01]",
                       highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-primary/10"
                     )}
-                    style={{ opacity }}
+                    style={{ opacity, fontSize: `${baseFontSize}px` }}
                   >
-                    {/* Chord line */}
-                    <div 
-                      className="font-mono text-primary font-bold whitespace-pre"
-                      style={{ fontSize: `${chordFontSize}px` }}
-                    >
-                      {renderChordsLine(line, tvSettings.textAlign)}
-                    </div>
-                    {/* Lyrics line */}
-                    <div 
-                      className={cn(
-                        "leading-relaxed",
-                        highlightEnabled && isMainHighlight && "font-semibold"
-                      )}
-                      style={{ fontSize: `${baseFontSize}px` }}
-                    >
-                      {line.text || '\u00A0'}
-                    </div>
+                    {renderResponsiveChordLine(line, { 
+                      coloredChords: true,
+                      chordClassName: 'text-primary'
+                    })}
                   </div>
                 );
               }
