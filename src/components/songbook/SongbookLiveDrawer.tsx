@@ -463,42 +463,42 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile, onSet
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="w-[min(90vw,400px)] p-0 flex flex-col h-full">
-          <SheetHeader className="px-4 pt-4 pb-2 shrink-0">
-            <SheetTitle className="text-lg">SongBook</SheetTitle>
+          <SheetHeader className="px-3 pt-2 pb-1 shrink-0">
+            <SheetTitle className="text-base">SongBook</SheetTitle>
           </SheetHeader>
 
           <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="flex-1 flex flex-col min-h-0">
-            <TabsList className="mx-4 grid grid-cols-2 shrink-0">
-              <TabsTrigger value="brani" className="gap-1.5">
-                <Music className="w-4 h-4" />
+            <TabsList className="mx-3 h-8 grid grid-cols-2 shrink-0">
+              <TabsTrigger value="brani" className="gap-1 text-xs h-7">
+                <Music className="w-3.5 h-3.5" />
                 Brani
               </TabsTrigger>
-              <TabsTrigger value="scalette" className="gap-1.5">
-                <ListMusic className="w-4 h-4" />
+              <TabsTrigger value="scalette" className="gap-1 text-xs h-7">
+                <ListMusic className="w-3.5 h-3.5" />
                 Scalette
               </TabsTrigger>
             </TabsList>
 
             {/* === BRANI TAB === */}
-            <TabsContent value="brani" className="flex-1 flex flex-col mt-0 px-4 pb-4 min-h-0">
-              <div className="py-3 space-y-2 shrink-0">
+            <TabsContent value="brani" className="flex-1 flex flex-col mt-0 px-3 pb-2 min-h-0">
+              <div className="py-1.5 space-y-1 shrink-0">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
                   <Input
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Cerca brano..."
-                    className="pl-9 h-10"
+                    className="pl-8 h-8 text-sm"
                   />
                 </div>
-                <div className="flex items-center gap-1">
-                  <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                <div className="flex items-center gap-0.5">
+                  <ArrowUpDown className="w-3 h-3 text-muted-foreground shrink-0" />
                   {(['title', 'artist', 'recent'] as const).map((mode) => (
                     <Button
                       key={mode}
                       variant={sortMode === mode ? 'default' : 'ghost'}
                       size="sm"
-                      className="h-6 text-[10px] px-2"
+                      className="h-5 text-[9px] px-1.5"
                       onClick={() => setSortMode(mode)}
                     >
                       {mode === 'title' ? 'Titolo' : mode === 'artist' ? 'Artista' : 'Recenti'}
