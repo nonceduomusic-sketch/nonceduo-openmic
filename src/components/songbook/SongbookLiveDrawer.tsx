@@ -507,46 +507,46 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile, onSet
                 </div>
               </div>
               <div className="flex-1 min-h-0 overflow-auto">
-                <div className="space-y-1.5">
+                <div className="space-y-0.5">
                   {filteredFiles.map((file) => (
                     <div
                       key={file.id}
-                      className="rounded-lg hover:bg-muted/50 active:bg-muted transition-colors px-2.5 py-1.5"
+                      className="rounded-lg hover:bg-muted/50 active:bg-muted transition-colors px-2 py-1"
                     >
                       <div
-                        className="flex items-center gap-2 cursor-pointer"
+                        className="flex items-center gap-1.5 cursor-pointer"
                         onClick={() => { onSelectFile(file); setOpen(false); }}
                       >
-                        <Music className="w-3.5 h-3.5 text-primary shrink-0" />
+                        <Music className="w-3 h-3 text-primary shrink-0" />
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium truncate leading-snug">{file.title}</p>
-                          {file.artist && <p className="text-[11px] text-muted-foreground truncate leading-snug">{file.artist}</p>}
+                          <p className="text-[13px] font-medium truncate leading-tight">{file.title}</p>
+                          {file.artist && <p className="text-[10px] text-muted-foreground truncate leading-tight">{file.artist}</p>}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 mt-1 pl-5">
+                      <div className="flex items-center gap-0.5 mt-0.5 pl-4">
                         <Button
                           size="sm"
                           variant="outline"
-                          className="h-7 text-[11px] px-2"
+                          className="h-6 text-[10px] px-1.5"
                           onClick={(e) => { e.stopPropagation(); onBroadcastFile(file); setOpen(false); }}
                         >
-                          <Play className="w-3 h-3 mr-1" />
+                          <Play className="w-2.5 h-2.5 mr-0.5" />
                           Avvia
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-7 text-[11px] px-2"
+                          className="h-6 text-[10px] px-1.5"
                           onClick={(e) => { e.stopPropagation(); onSelectFile(file); setOpen(false); }}
                         >
-                          <Eye className="w-3 h-3 mr-1" />
+                          <Eye className="w-2.5 h-2.5 mr-0.5" />
                           Mostra
                         </Button>
                         {setlists.length > 0 && selectedSetlistId == null && (
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="h-7 text-[11px] px-2"
+                            className="h-6 text-[10px] px-1.5"
                             onClick={(e) => {
                               e.stopPropagation();
                               if (setlists.length === 1) {
@@ -556,7 +556,7 @@ export function SongbookLiveDrawer({ files, onSelectFile, onBroadcastFile, onSet
                               }
                             }}
                           >
-                            <Plus className="w-3 h-3 mr-1" />
+                            <Plus className="w-2.5 h-2.5 mr-0.5" />
                             Scaletta
                           </Button>
                         )}
