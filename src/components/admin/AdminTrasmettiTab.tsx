@@ -70,7 +70,8 @@ import { TVPreviewDialog } from './TVPreviewDialog';
 import { SetlistSongItem } from './SetlistSongItem';
 import { LiveBroadcastPreview } from './LiveBroadcastPreview';
 import { SongbookTab } from './SongbookTab';
- import { BroadcastRemoteSection } from './BroadcastRemoteSection';
+import { BroadcastRemoteSection } from './BroadcastRemoteSection';
+import { LocalLinksCard } from './LocalLinksCard';
 
 interface AdminTrasmettiTabProps {
   canManage?: boolean;
@@ -279,6 +280,9 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
           )}
         </CardContent>
       </Card>
+
+      {/* Local Links */}
+      <LocalLinksCard filter={['tv', 'partiture', 'songbook']} />
 
       {/* Main content tabs */}
       <Tabs defaultValue="queue" className="space-y-4">

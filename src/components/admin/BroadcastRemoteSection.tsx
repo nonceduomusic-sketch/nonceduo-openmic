@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import QRCode from 'qrcode';
 import { getProductionBaseUrl } from '@/lib/productionUrl';
 import { AdminRemotePreview } from './AdminRemotePreview';
+import { LocalLinksCard } from './LocalLinksCard';
  import {
    Dialog,
    DialogContent,
@@ -289,6 +290,11 @@ export function BroadcastRemoteSection() {
                      >
                        <Trash2 className="w-3.5 h-3.5" />
                      </Button>
+                   </div>
+
+                   {/* Local link for this remote */}
+                   <div className="mt-2 pt-2 border-t border-dashed">
+                     <LocalLinksCard filter={['telecomando']} telecomandoToken={access.access_token} inline />
                    </div>
                  </CardContent>
                </Card>
