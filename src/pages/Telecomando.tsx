@@ -30,6 +30,7 @@ export default function Telecomando() {
   } = useBroadcastRemoteUser(token);
 
   const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState<string | null>(null);
   const [validating, setValidating] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("remote");
 
@@ -39,11 +40,23 @@ export default function Telecomando() {
 
   const handlePINSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pin.trim()) return;
+    const value = pin.trim().toUpperCase();
+    if (!value) return;
 
     setValidating(true);
-    await validatePIN(pin);
-    setValidating(false);
+    setPinError(null);
+
+    try {
+      const ok = await validatePIN(value);
+      if (!ok) {
+        setPinError("PIN non valido (o connessione assente).");
+      }
+    } catch (err) {
+      console.error("[Telecomando] PIN validation error:", err);
+      setPinError("Errore durante la verifica. Controlla la connessione e riprova.");
+    } finally {
+      setValidating(false);
+    }
   };
 
   if (authLoading) {
@@ -103,7 +116,10 @@ export default function Telecomando() {
                   type="text"
                   placeholder="ABC123"
                   value={pin}
-                  onChange={(e) => setPin(e.target.value.toUpperCase())}
+                  onChange={(e) => {
+                    setPin(e.target.value.toUpperCase());
+                    if (pinError) setPinError(null);
+                  }}
                   className="text-center text-2xl tracking-widest h-14 font-mono"
                   maxLength={6}
                   autoFocus
@@ -112,6 +128,7 @@ export default function Telecomando() {
               <Button type="submit" className="w-full h-12" disabled={validating || pin.length < 4}>
                 {validating ? "Verifica..." : "Accedi"}
               </Button>
+              {pinError && <p className="text-sm text-destructive text-center">{pinError}</p>}
             </form>
           </CardContent>
         </Card>
