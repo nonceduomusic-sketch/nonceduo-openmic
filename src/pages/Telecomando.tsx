@@ -49,11 +49,11 @@ export default function Telecomando() {
     try {
       const ok = await validatePIN(value);
       if (!ok) {
-        setPinError("PIN non valido (o connessione assente).");
+        setPinError("PIN non valido.");
       }
     } catch (err) {
       console.error("[Telecomando] PIN validation error:", err);
-      setPinError("Errore durante la verifica. Controlla la connessione e riprova.");
+      setPinError("Connessione assente: il PIN si verifica online. Controlla internet e riprova.");
     } finally {
       setValidating(false);
     }
