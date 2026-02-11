@@ -582,10 +582,12 @@ function RemoteOnlyControls({
     const activeEl = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement | null;
 
     if (activeEl) {
-      activeEl.scrollIntoView({
-        behavior: "smooth",
-        block: "center",
-      });
+      const containerRect = container.getBoundingClientRect();
+      const elRect = activeEl.getBoundingClientRect();
+      // Position highlighted line at ~35% from top to keep it well above the bottom controls
+      const targetOffset = containerRect.height * 0.35;
+      const scrollTo = container.scrollTop + (elRect.top - containerRect.top) - targetOffset;
+      container.scrollTo({ top: Math.max(0, scrollTo), behavior: "smooth" });
     }
   }, [highlightLine, isBroadcasting, lines.length, highlightEnabled]);
 
@@ -606,7 +608,7 @@ function RemoteOnlyControls({
         ref={scrollContainerRef}
         onScroll={(e) => onRemoteScroll(e.currentTarget)}
         className="absolute inset-0 overflow-y-scroll overscroll-contain px-4 pt-4"
-        style={{ paddingBottom: Math.max(controlsHeight + 16, 140) }}
+        style={{ paddingBottom: Math.max(controlsHeight + 80, 300) }}
       >
         <div className="text-sm text-muted-foreground mb-4 text-center sticky top-0 bg-background/80 backdrop-blur-sm py-2 -mx-4 px-4 z-10">
           Riga {highlightLine + 1} di {lines.length}
