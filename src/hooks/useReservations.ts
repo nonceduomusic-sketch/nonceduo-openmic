@@ -116,8 +116,24 @@ export const useReservations = () => {
         }
       });
 
+    // Polling fallback: refetch every 15s to catch missed realtime events
+    // (covers silent WebSocket disconnects on local/unstable networks)
+    const pollInterval = setInterval(() => {
+      fetchReservations();
+    }, 15000);
+
+    // Refetch when tab becomes visible again (covers phone sleep, tab switch)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        fetchReservations();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(pollInterval);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [fetchReservations, normalizeReservations]);
 
