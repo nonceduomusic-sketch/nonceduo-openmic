@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useBroadcast } from "@/hooks/useBroadcast";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,68 +11,81 @@ interface AdminRemotePreviewProps {
   salaCode?: string;
 }
 
+interface Song {
+  titolo: string;
+  artista: string;
+  testo: string | null;
+}
+
 export function AdminRemotePreview({ salaCode = "main" }: AdminRemotePreviewProps) {
-  const { session, updateSession } = useBroadcast(salaCode);
-  const [currentSong, setCurrentSong] = useState<{ titolo: string; artista: string; testo: string | null } | null>(
-    null,
-  );
+  const [currentSong, setCurrentSong] = useState<Song | null>(null);
+  const [highlightLine, setHighlightLine] = useState(0);
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [lines, setLines] = useState<string[]>([]);
 
-  const isBroadcasting = (session as any)?.is_broadcasting ?? false;
-  const highlightLine = session?.highlight_line ?? 0;
+  // 🔹 Fetch song quando cambia la canzone
+  const fetchSong = async (songId: string | null) => {
+    if (!songId) {
+      setCurrentSong(null);
+      setLines([]);
+      return;
+    }
+    const { data } = await supabase.from("songs").select("titolo, artista, testo").eq("id", songId).single();
 
-  const lines = useMemo(
-    () => currentSong?.testo?.split("\n").filter((line) => line.trim()) || [],
-    [currentSong?.testo],
-  );
+    if (data) {
+      setCurrentSong(data);
+      setLines(data.testo?.split("\n").filter((l) => l.trim()) || []);
+      setHighlightLine(0); // reset highlight quando cambia canzone
+    }
+  };
 
-  // Fetch current song
+  // 🔹 Subscriptions realtime alla sessione
   useEffect(() => {
-    const fetchSong = async () => {
-      if (!session?.current_song_id) {
-        setCurrentSong(null);
-        return;
-      }
+    const channel = supabase
+      .channel(`admin-remote-${salaCode}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "sessions", filter: `sala_code=eq.${salaCode}` },
+        (payload) => {
+          const session = payload.new;
+          setIsBroadcasting(session.is_broadcasting);
+          setHighlightLine(session.highlight_line ?? 0);
+          fetchSong(session.current_song_id);
+        },
+      )
+      .subscribe();
 
-      const { data } = await supabase
-        .from("songs")
-        .select("titolo, artista, testo")
-        .eq("id", session.current_song_id)
-        .single();
-
-      if (data) setCurrentSong(data);
+    return () => {
+      supabase.removeChannel(channel);
     };
+  }, [salaCode]);
 
-    fetchSong();
-  }, [session?.current_song_id]);
-
-  // Auto-scroll to highlighted line (replica /trasmetti)
+  // 🔹 Scroll immediato e centrato alla linea evidenziata
   useEffect(() => {
-    if (!scrollContainerRef.current || !showPreview || lines.length === 0) return;
-
+    if (!scrollContainerRef.current || lines.length === 0) return;
     const container = scrollContainerRef.current;
     const lineElement = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement;
     if (!lineElement) return;
 
-    // scrollIntoView mantiene la riga centrata come in /trasmetti
-    lineElement.scrollIntoView({ behavior: "smooth", block: "center" });
-  }, [highlightLine, showPreview, lines.length]);
+    const containerRect = container.getBoundingClientRect();
+    const lineRect = lineElement.getBoundingClientRect();
+    const containerCenter = containerRect.height / 2;
+    const lineCenter = lineRect.top - containerRect.top + lineRect.height / 2;
+    const scrollOffset = lineCenter - containerCenter;
 
-  // Controlli scroll (admin ha permessi diretti)
-  const scrollUp = async () => {
-    const newLine = Math.max(0, highlightLine - 1);
-    await updateSession({ highlight_line: newLine });
+    container.scrollTo({ top: container.scrollTop + scrollOffset, behavior: "auto" });
+  }, [highlightLine, lines]);
+
+  // 🔹 Funzioni admin per scroll manuale
+  const updateHighlight = async (newLine: number) => {
+    await supabase.from("sessions").update({ highlight_line: newLine }).eq("sala_code", salaCode);
   };
 
-  const scrollDown = async () => {
-    const newLine = Math.min(lines.length - 1, highlightLine + 1);
-    await updateSession({ highlight_line: newLine });
-  };
-
-  const scrollToLine = async (lineIndex: number) => {
-    await updateSession({ highlight_line: lineIndex });
-  };
+  const scrollUp = () => updateHighlight(Math.max(0, highlightLine - 1));
+  const scrollDown = () => updateHighlight(Math.min(lines.length - 1, highlightLine + 1));
+  const scrollToLine = (index: number) => updateHighlight(index);
 
   return (
     <Card className="mt-4">
@@ -113,7 +125,7 @@ export function AdminRemotePreview({ salaCode = "main" }: AdminRemotePreviewProp
                 </div>
               </div>
 
-              {/* Lyrics preview - scrollable div with prominent highlight */}
+              {/* Lyrics preview */}
               <div
                 ref={scrollContainerRef}
                 className="h-48 rounded-lg border bg-muted/30 overflow-y-auto p-2 space-y-0.5"
@@ -136,7 +148,7 @@ export function AdminRemotePreview({ salaCode = "main" }: AdminRemotePreviewProp
                         isPast && !isHighlighted && "text-muted-foreground",
                         !isHighlighted && !isPast && "text-foreground hover:bg-muted",
                       )}
-                      style={{ opacity: isHighlighted ? 1 : opacity }}
+                      style={{ opacity }}
                     >
                       {line || "\u00A0"}
                     </button>
@@ -155,7 +167,6 @@ export function AdminRemotePreview({ salaCode = "main" }: AdminRemotePreviewProp
                 >
                   <ChevronUp className="w-5 h-5" />
                 </Button>
-
                 <Button
                   size="sm"
                   variant="outline"
