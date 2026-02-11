@@ -14,7 +14,11 @@ interface LocalBroadcastState {
 interface UseLocalBroadcastOptions {
   enabled: boolean;
   serverUrl: string; // e.g. "ws://192.168.1.100:3456"
+  /** Called ONLY for incremental 'update' messages from peers */
   onStateUpdate?: (state: LocalBroadcastState) => void;
+  /** Called once when the WS connects and sends the full initial state.
+   *  Consumers should NOT blindly merge this into overrides. */
+  onInitialState?: (state: LocalBroadcastState) => void;
 }
 
 const STORAGE_KEY_MODE = 'broadcast_connection_mode';
@@ -44,13 +48,15 @@ export function useConnectionMode() {
   return { mode, setMode, localIP, setLocalIP, serverUrl };
 }
 
-export function useLocalBroadcast({ enabled, serverUrl, onStateUpdate }: UseLocalBroadcastOptions) {
+export function useLocalBroadcast({ enabled, serverUrl, onStateUpdate, onInitialState }: UseLocalBroadcastOptions) {
   const [connected, setConnected] = useState(false);
   const [latency, setLatency] = useState<number | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onStateUpdateRef = useRef(onStateUpdate);
+  const onInitialStateRef = useRef(onInitialState);
   onStateUpdateRef.current = onStateUpdate;
+  onInitialStateRef.current = onInitialState;
 
   const connect = useCallback(() => {
     if (!enabled) return;
@@ -77,7 +83,11 @@ export function useLocalBroadcast({ enabled, serverUrl, onStateUpdate }: UseLoca
           const msg = JSON.parse(event.data);
           switch (msg.type) {
             case 'state':
+              // Initial full state — call separate handler (do NOT merge as overrides)
+              onInitialStateRef.current?.(msg.data);
+              break;
             case 'update':
+              // Incremental update from a peer — safe to merge as override
               onStateUpdateRef.current?.(msg.data);
               break;
             case 'pong':

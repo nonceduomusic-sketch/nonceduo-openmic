@@ -23,19 +23,32 @@ export function useHybridBroadcast(salaCode: string = 'main') {
   const { connected: localConnected, latency: localLatency, sendUpdate: localSendUpdate, cacheSong: localCacheSong } = useLocalBroadcast({
     enabled: isLocalMode,
     serverUrl,
+    // Only apply INCREMENTAL updates as overrides (peer sends via WS)
     onStateUpdate: useCallback((state: Record<string, unknown>) => {
       setLocalOverrides(prev => ({ ...prev, ...state }));
     }, []),
+    // Initial state from WS: do NOT merge — cloud session is the source of truth.
+    // We only track it so we know the WS is alive; cloud.session is always the base.
+    onInitialState: useCallback((_state: Record<string, unknown>) => {
+      // Intentionally ignored: cloud session already has the correct values.
+      // localOverrides should only contain fields explicitly pushed by a peer.
+      console.log('[HybridBroadcast] WS initial state received (not applied as override)');
+    }, []),
   });
+
+  // Clear local overrides when switching to cloud mode
+  useEffect(() => {
+    if (!isLocalMode) {
+      setLocalOverrides({});
+    }
+  }, [isLocalMode]);
 
   // Merged session: cloud base + local overrides when in local mode
   const session: BroadcastSession | null = cloud.session
     ? isLocalMode
       ? { ...cloud.session, ...localOverrides } as BroadcastSession
       : cloud.session
-    : isLocalMode && Object.keys(localOverrides).length > 0
-      ? localOverrides as unknown as BroadcastSession
-      : null;
+    : null;
 
   // Unified update: sends to local WS or cloud (with instant broadcast) based on mode
   const syncUpdate = useCallback((updates: Record<string, unknown>) => {
