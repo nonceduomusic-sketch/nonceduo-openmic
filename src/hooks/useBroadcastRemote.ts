@@ -459,19 +459,35 @@ export function useRemoteControl(sessionId: string | null, salaCode: string) {
    return 'Browser';
  }
  
- async function getDeviceFingerprint(): Promise<string> {
-   const canvas = document.createElement('canvas');
-   const ctx = canvas.getContext('2d');
-   if (ctx) {
-     ctx.textBaseline = 'top';
-     ctx.font = '14px Arial';
-     ctx.fillText('fingerprint', 2, 2);
-   }
-   const canvasData = canvas.toDataURL();
-   
-   const data = `${navigator.userAgent}|${screen.width}x${screen.height}|${canvasData}`;
-   const encoder = new TextEncoder();
-   const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(data));
-   const hashArray = Array.from(new Uint8Array(hashBuffer));
-   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
- }
+async function getDeviceFingerprint(): Promise<string> {
+    try {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.textBaseline = 'top';
+        ctx.font = '14px Arial';
+        ctx.fillText('fingerprint', 2, 2);
+      }
+      const canvasData = canvas.toDataURL();
+      const data = `${navigator.userAgent}|${screen.width}x${screen.height}|${canvasData}`;
+
+      // crypto.subtle is only available in secure contexts (HTTPS / localhost)
+      if (typeof crypto !== 'undefined' && crypto.subtle) {
+        const encoder = new TextEncoder();
+        const hashBuffer = await crypto.subtle.digest('SHA-256', encoder.encode(data));
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        return hashArray.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 32);
+      }
+
+      // Fallback: simple hash for HTTP (non-secure) contexts
+      let hash = 0;
+      for (let i = 0; i < data.length; i++) {
+        const char = data.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash |= 0;
+      }
+      return Math.abs(hash).toString(16).padStart(16, '0').slice(0, 32);
+    } catch {
+      return 'unknown';
+    }
+  }
