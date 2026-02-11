@@ -295,44 +295,51 @@
    }, [token]);
  
    // Valida PIN e crea sessione
-   const validatePIN = useCallback(async (pin: string): Promise<boolean> => {
-     if (!token || !accessInfo) return false;
- 
-     const { data, error } = await supabase.rpc('validate_remote_access', {
-       p_token: token,
-       p_pin: pin,
-     });
- 
-     if (error || !data || data.length === 0 || !data[0].is_valid) {
-       toast.error('PIN non valido');
-       return false;
-     }
- 
-     // Crea sessione
-     const deviceName = getDeviceName();
-     const fingerprint = await getDeviceFingerprint();
- 
-     const { data: session, error: sessionError } = await supabase
-       .from('broadcast_remote_sessions')
-       .insert({
-         access_id: data[0].access_id,
-         device_fingerprint: fingerprint,
-         device_name: deviceName,
-       })
-       .select('id')
-       .single();
- 
-     if (sessionError) {
-       console.error('Error creating session:', sessionError);
-       toast.error('Errore creazione sessione');
-       return false;
-     }
- 
-     setSessionId(session.id);
-     setIsValidated(true);
-     toast.success('Accesso consentito!');
-     return true;
-   }, [token, accessInfo]);
+    const validatePIN = useCallback(async (pin: string): Promise<boolean> => {
+      if (!token || !accessInfo) return false;
+
+      const { data, error } = await supabase.rpc('validate_remote_access', {
+        p_token: token,
+        p_pin: pin,
+      });
+
+      if (error) {
+        console.error('[RemoteUser] validate_remote_access error:', error);
+        toast.error('Errore connessione: verifica PIN non riuscita');
+        throw error;
+      }
+
+      const row = Array.isArray(data) ? data[0] : (data as any);
+      if (!row?.is_valid) {
+        toast.error('PIN non valido');
+        return false;
+      }
+
+      // Crea sessione
+      const deviceName = getDeviceName();
+      const fingerprint = await getDeviceFingerprint();
+
+      const { data: session, error: sessionError } = await supabase
+        .from('broadcast_remote_sessions')
+        .insert({
+          access_id: row.access_id,
+          device_fingerprint: fingerprint,
+          device_name: deviceName,
+        })
+        .select('id')
+        .single();
+
+      if (sessionError) {
+        console.error('[RemoteUser] Error creating session:', sessionError);
+        toast.error('Errore creazione sessione');
+        throw sessionError;
+      }
+
+      setSessionId(session.id);
+      setIsValidated(true);
+      toast.success('Accesso consentito!');
+      return true;
+    }, [token, accessInfo]);
  
    // Ascolta espulsioni
    useEffect(() => {
