@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import QRCode from 'qrcode';
 import { getProductionBaseUrl } from '@/lib/productionUrl';
 import { AdminRemotePreview } from './AdminRemotePreview';
-import { LocalLinksCard, OnlineLinksCard } from './LocalLinksCard';
+// Links centralized in AdminTrasmettiTab → BroadcastLinksCards
  import {
    Dialog,
    DialogContent,
@@ -292,11 +292,7 @@ export function BroadcastRemoteSection() {
                      </Button>
                    </div>
 
-                    {/* Links for this remote */}
-                    <div className="mt-2 pt-2 border-t border-dashed space-y-2">
-                      <OnlineLinksCard filter={['telecomando']} telecomandoToken={access.access_token} />
-                      <LocalLinksCard filter={['telecomando']} telecomandoToken={access.access_token} inline />
-                    </div>
+                    {/* Links removed - centralized in BroadcastLinksCards */}
                  </CardContent>
                </Card>
              );

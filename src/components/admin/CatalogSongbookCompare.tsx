@@ -332,11 +332,90 @@ export const CatalogSongbookCompare: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* Results table */}
+      {/* Results - Card list for mobile, table hidden */}
       <Card>
-        <CardContent className="p-0">
+        <CardContent className="p-2 sm:p-0">
           <div className="max-h-[60vh] overflow-auto">
-            <Table>
+            {/* Mobile card list */}
+            <div className="sm:hidden space-y-2">
+              {filteredItems.length === 0 ? (
+                <div className="text-center py-12">
+                  <ArrowRightLeft className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-50" />
+                  <p className="text-muted-foreground text-sm">
+                    {searchQuery || filterMode !== 'all' || onlyDifferences
+                      ? 'Nessun risultato con i filtri selezionati'
+                      : 'Nessun brano trovato'}
+                  </p>
+                </div>
+              ) : (
+                filteredItems.map((item) => {
+                  const isMissing = !item.inCatalog || !item.inSongbook;
+                  return (
+                    <div
+                      key={item.key}
+                      className={cn(
+                        "p-3 rounded-lg border",
+                        isMissing ? 'bg-amber-500/5 border-amber-500/20' : 'border-border'
+                      )}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div className="min-w-0">
+                          <p className="font-medium text-sm truncate">{item.title}</p>
+                          <p className="text-xs text-muted-foreground truncate">{item.artist || '—'}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {item.isVariant && <Badge variant="secondary" className="text-[9px] px-1 font-mono">_</Badge>}
+                          {item.hasMultipleSongbookVersions && <Badge variant="outline" className="text-[9px] px-1">multi</Badge>}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-3 text-xs">
+                          <span className="flex items-center gap-1">
+                            <Music className="w-3 h-3" />
+                            {item.inCatalog ? <Check className="w-3.5 h-3.5 text-green-500" /> : <X className="w-3.5 h-3.5 text-red-400" />}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Guitar className="w-3 h-3" />
+                            {item.inSongbook ? <Check className="w-3.5 h-3.5 text-green-500" /> : <X className="w-3.5 h-3.5 text-red-400" />}
+                          </span>
+                        </div>
+                        <div>
+                          {!item.inCatalog && item.inSongbook && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 text-xs"
+                              disabled={addingToCatalog.has(item.key)}
+                              onClick={() => handleAddToCatalog(item)}
+                            >
+                              {addingToCatalog.has(item.key) ? (
+                                <RefreshCw className="w-3 h-3 mr-1 animate-spin" />
+                              ) : (
+                                <Plus className="w-3 h-3 mr-1" />
+                              )}
+                              Catalogo
+                            </Button>
+                          )}
+                          {item.inCatalog && !item.inSongbook && (
+                            <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500/30">
+                              Manca SB
+                            </Badge>
+                          )}
+                          {item.inCatalog && item.inSongbook && (
+                            <Badge variant="outline" className="text-[10px] text-green-600 border-green-500/30">
+                              OK
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Desktop table */}
+            <Table className="hidden sm:table">
               <TableHeader className="sticky top-0 bg-card z-10">
                 <TableRow>
                   <TableHead className="w-[35%]">Titolo</TableHead>
@@ -364,37 +443,23 @@ export const CatalogSongbookCompare: React.FC = () => {
                     return (
                       <TableRow
                         key={item.key}
-                        className={cn(
-                          isMissing && 'bg-amber-500/5',
-                        )}
+                        className={cn(isMissing && 'bg-amber-500/5')}
                       >
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <span className="truncate max-w-[220px]">{item.title}</span>
-                            {item.isVariant && (
-                              <Badge variant="secondary" className="text-[9px] px-1 font-mono">_</Badge>
-                            )}
-                            {item.hasMultipleSongbookVersions && (
-                              <Badge variant="outline" className="text-[9px] px-1">multi</Badge>
-                            )}
+                            {item.isVariant && <Badge variant="secondary" className="text-[9px] px-1 font-mono">_</Badge>}
+                            {item.hasMultipleSongbookVersions && <Badge variant="outline" className="text-[9px] px-1">multi</Badge>}
                           </div>
                         </TableCell>
                         <TableCell className="text-muted-foreground">
                           <span className="truncate max-w-[160px] block">{item.artist || '—'}</span>
                         </TableCell>
                         <TableCell className="text-center">
-                          {item.inCatalog ? (
-                            <Check className="w-5 h-5 text-green-500 mx-auto" />
-                          ) : (
-                            <X className="w-5 h-5 text-red-400 mx-auto" />
-                          )}
+                          {item.inCatalog ? <Check className="w-5 h-5 text-green-500 mx-auto" /> : <X className="w-5 h-5 text-red-400 mx-auto" />}
                         </TableCell>
                         <TableCell className="text-center">
-                          {item.inSongbook ? (
-                            <Check className="w-5 h-5 text-green-500 mx-auto" />
-                          ) : (
-                            <X className="w-5 h-5 text-red-400 mx-auto" />
-                          )}
+                          {item.inSongbook ? <Check className="w-5 h-5 text-green-500 mx-auto" /> : <X className="w-5 h-5 text-red-400 mx-auto" />}
                         </TableCell>
                         <TableCell className="text-right">
                           {!item.inCatalog && item.inSongbook && (
@@ -410,7 +475,7 @@ export const CatalogSongbookCompare: React.FC = () => {
                               ) : (
                                 <Plus className="w-3 h-3 mr-1" />
                               )}
-                              <span className="hidden sm:inline">Aggiungi a </span>Catalogo
+                              Aggiungi a Catalogo
                             </Button>
                           )}
                           {item.inCatalog && !item.inSongbook && (
