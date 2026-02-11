@@ -296,46 +296,60 @@
  
    // Valida PIN e crea sessione
     const validatePIN = useCallback(async (pin: string): Promise<boolean> => {
-      if (!token || !accessInfo) return false;
-
-      const { data, error } = await supabase.rpc('validate_remote_access', {
-        p_token: token,
-        p_pin: pin,
-      });
-
-      if (error) {
-        console.error('[RemoteUser] validate_remote_access error:', error);
-        toast.error('Errore connessione: verifica PIN non riuscita');
-        throw error;
+      if (!token || !accessInfo) {
+        console.warn('[RemoteUser] validatePIN called but token/accessInfo missing', { token: !!token, accessInfo: !!accessInfo });
+        return false;
       }
 
-      const row = Array.isArray(data) ? data[0] : (data as any);
+      // Timeout wrapper to prevent hanging forever on slow/broken connections
+      const withTimeout = <T>(promise: PromiseLike<T>, ms: number): Promise<T> =>
+        Promise.race([
+          Promise.resolve(promise),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Timeout: il server non ha risposto in tempo')), ms)),
+        ]);
+
+      // Step 1: Validate PIN via RPC
+      const rpcResult = await withTimeout(
+        supabase.rpc('validate_remote_access', { p_token: token, p_pin: pin }),
+        10000
+      );
+
+      if (rpcResult.error) {
+        console.error('[RemoteUser] validate_remote_access error:', rpcResult.error);
+        toast.error('Errore connessione: verifica PIN non riuscita');
+        throw rpcResult.error;
+      }
+
+      const row = Array.isArray(rpcResult.data) ? rpcResult.data[0] : (rpcResult.data as any);
       if (!row?.is_valid) {
         toast.error('PIN non valido');
         return false;
       }
 
-      // Crea sessione
+      // Step 2: Create session
       const deviceName = getDeviceName();
-      const fingerprint = await getDeviceFingerprint();
+      const fingerprint = await getDeviceFingerprint().catch(() => 'unknown');
 
-      const { data: session, error: sessionError } = await supabase
-        .from('broadcast_remote_sessions')
-        .insert({
-          access_id: row.access_id,
-          device_fingerprint: fingerprint,
-          device_name: deviceName,
-        })
-        .select('id')
-        .single();
+      const insertResult = await withTimeout(
+        supabase
+          .from('broadcast_remote_sessions')
+          .insert({
+            access_id: row.access_id,
+            device_fingerprint: fingerprint,
+            device_name: deviceName,
+          })
+          .select('id')
+          .single(),
+        10000
+      );
 
-      if (sessionError) {
-        console.error('[RemoteUser] Error creating session:', sessionError);
+      if (insertResult.error) {
+        console.error('[RemoteUser] Error creating session:', insertResult.error);
         toast.error('Errore creazione sessione');
-        throw sessionError;
+        throw insertResult.error;
       }
 
-      setSessionId(session.id);
+      setSessionId(insertResult.data.id);
       setIsValidated(true);
       toast.success('Accesso consentito!');
       return true;
