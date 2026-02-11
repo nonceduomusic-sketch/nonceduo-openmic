@@ -1,17 +1,18 @@
-import React, { useState, useEffect, useMemo, useRef, useLayoutEffect } from "react";
+import React, { useState, useEffect, useMemo, useRef, useLayoutEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useBroadcastRemoteUser, useRemoteControl } from "@/hooks/useBroadcastRemote";
-import { useBroadcast } from "@/hooks/useBroadcast";
+import { useHybridBroadcast } from "@/hooks/useHybridBroadcast";
 import { useScrollPositionPublisher } from "@/hooks/useScrollPositionPublisher";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronUp, ChevronDown, Eye, Smartphone, WifiOff, AlertTriangle, Lock, Tv, Mic } from "lucide-react";
+import { ChevronUp, ChevronDown, Eye, Smartphone, WifiOff, AlertTriangle, Lock, Tv, Mic, Server, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import brandLogoText from "@/assets/brand-logo-text.png";
 import { parseChordPro, transposeSong } from "@/lib/chordpro";
+import { ConnectionSettings } from "@/components/songbook/ConnectionSettings";
 
 type ViewMode = "preview" | "remote";
 
@@ -135,8 +136,17 @@ interface RemoteControlInterfaceProps {
 }
 
 function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChange }: RemoteControlInterfaceProps) {
-  const { session } = useBroadcast(salaCode);
-  const { updateHighlightLine, updateScrollPosition } = useRemoteControl(sessionId, salaCode);
+  const { session, syncUpdate, mode, setMode, localIP, setLocalIP, localConnected, localLatency, isLocalMode } = useHybridBroadcast(salaCode);
+  const { updateHighlightLine: cloudUpdateHighlightLine, updateScrollPosition } = useRemoteControl(sessionId, salaCode);
+
+  // Hybrid highlight update: local WS or cloud RPC
+  const updateHighlightLine = useCallback(async (line: number) => {
+    if (isLocalMode) {
+      syncUpdate({ highlight_line: line });
+      return true;
+    }
+    return cloudUpdateHighlightLine(line);
+  }, [isLocalMode, syncUpdate, cloudUpdateHighlightLine]);
 
   const [currentSong, setCurrentSong] = useState<{
     titolo: string;
@@ -251,7 +261,15 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1">
+            <ConnectionSettings
+              mode={mode}
+              setMode={setMode}
+              localIP={localIP}
+              setLocalIP={setLocalIP}
+              isLocalConnected={localConnected}
+              localLatency={localLatency}
+            />
             {!remoteScrollEnabled && (
               <Badge variant="outline" className="text-yellow-600 border-yellow-500/50 text-xs">
                 Solo lettura

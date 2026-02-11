@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { useBroadcast } from '@/hooks/useBroadcast';
+import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
 import { useScreenShareViewer } from '@/hooks/useScreenShare';
 import { supabase } from '@/integrations/supabase/client';
+import { ConnectionSettings } from '@/components/songbook/ConnectionSettings';
 import { Maximize, Mic, Guitar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -94,7 +95,7 @@ function renderChordsLine(line: ChordProLine, textAlign: 'left' | 'center' | 'ri
 
 export default function Trasmetti() {
   const { salaCode = 'main' } = useParams();
-  const { session, loading } = useBroadcast(salaCode);
+  const { session, loading, mode, setMode, localIP, setLocalIP, localConnected, localLatency } = useHybridBroadcast(salaCode);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [currentSongbookFile, setCurrentSongbookFile] = useState<SongbookFile | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
@@ -1075,8 +1076,16 @@ export default function Trasmetti() {
           </div>
         )}
 
-        {/* Fullscreen button */}
-        <div className="fixed bottom-6 right-6 z-50">
+        {/* Fullscreen + Connection Settings */}
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
+          <ConnectionSettings
+            mode={mode}
+            setMode={setMode}
+            localIP={localIP}
+            setLocalIP={setLocalIP}
+            isLocalConnected={localConnected}
+            localLatency={localLatency}
+          />
           <Button
             variant="outline"
             size="lg"
