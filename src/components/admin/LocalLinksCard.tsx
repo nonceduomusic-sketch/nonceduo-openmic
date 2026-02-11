@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { safeGetItem } from '@/lib/safeStorage';
-import { getProductionBaseUrl } from '@/lib/productionUrl';
+import { getProductionBaseUrl, isLocalServer } from '@/lib/productionUrl';
 import { toast } from 'sonner';
 
 interface LinkItem {
@@ -39,6 +39,10 @@ interface LocalLinksCardProps {
 const PORT = 8080;
 
 function getLocalIP(): string {
+  // If the admin panel is opened from the mini-server itself, we already know the correct host.
+  if (typeof window !== 'undefined' && isLocalServer()) {
+    return window.location.hostname;
+  }
   return safeGetItem('local', 'broadcast_local_ip') || '192.168.1.100';
 }
 
