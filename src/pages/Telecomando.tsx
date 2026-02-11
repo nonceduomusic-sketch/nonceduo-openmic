@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronUp, ChevronDown, Eye, Smartphone, WifiOff, AlertTriangle, Lock, Tv, Mic } from "lucide-react";
 import { cn } from "@/lib/utils";
 import brandLogoText from "@/assets/brand-logo-text.png";
+import { parseChordPro, transposeSong } from "@/lib/chordpro";
 
 type ViewMode = "preview" | "remote";
 
@@ -143,6 +144,13 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
     testo: string | null;
   } | null>(null);
 
+  // Songbook file state
+  const [currentSongbookFile, setCurrentSongbookFile] = useState<{
+    title: string;
+    artist: string | null;
+    content: string;
+  } | null>(null);
+
   const isBroadcasting = (session as any)?.is_broadcasting ?? false;
   const highlightLine = session?.highlight_line ?? 0;
   const highlightEnabled = (session as any)?.highlight_enabled ?? true;
@@ -150,12 +158,38 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
   const fontSize = (session as any)?.font_size ?? 100;
   const textAlign = ((session as any)?.text_align as 'left' | 'center' | 'right') || 'center';
 
-  const lines = useMemo(
-    () => currentSong?.testo?.split("\n").filter((line) => line.trim()) || [],
-    [currentSong?.testo],
-  );
+  // Songbook mode detection
+  const isSongbookMode = (session as any)?.songbook_mode ?? false;
+  const songbookFileId = (session as any)?.songbook_file_id ?? null;
+  const songbookTranspose = (session as any)?.songbook_transpose ?? 0;
 
+  // Compute lines: from songbook (ChordPro parsed) or catalog song
+  const lines = useMemo(() => {
+    if (isSongbookMode && currentSongbookFile) {
+      const parsed = parseChordPro(currentSongbookFile.content);
+      const transposed = transposeSong(parsed, songbookTranspose);
+      // Extract text lines from ChordPro, filtering empty/directive lines
+      return transposed.lines
+        .filter(l => l.type === 'chord-text' || l.type === 'text')
+        .map(l => l.text || '');
+    }
+    return currentSong?.testo?.split("\n").filter((line) => line.trim()) || [];
+  }, [currentSong?.testo, isSongbookMode, currentSongbookFile, songbookTranspose]);
+
+  // Current title/artist for display
+  const displayTitle = isSongbookMode
+    ? (currentSongbookFile?.title || "In attesa...")
+    : (currentSong?.titolo || "In attesa...");
+  const displayArtist = isSongbookMode
+    ? (currentSongbookFile?.artist || "")
+    : (currentSong?.artista || "");
+
+  // Fetch catalog song
   useEffect(() => {
+    if (isSongbookMode) {
+      setCurrentSong(null);
+      return;
+    }
     if (!session?.current_song_id) {
       setCurrentSong(null);
       return;
@@ -169,7 +203,27 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
       if (data) setCurrentSong(data);
     };
     fetchSong();
-  }, [session?.current_song_id]);
+  }, [session?.current_song_id, isSongbookMode]);
+
+  // Fetch songbook file
+  useEffect(() => {
+    if (!isSongbookMode || !songbookFileId) {
+      setCurrentSongbookFile(null);
+      return;
+    }
+    const fetchFile = async () => {
+      const { data } = await supabase
+        .from("songbook_files")
+        .select("title, artist, content")
+        .eq("id", songbookFileId)
+        .single();
+      if (data) setCurrentSongbookFile(data);
+    };
+    fetchFile();
+  }, [isSongbookMode, songbookFileId]);
+
+  // Determine if we have content to show
+  const hasContent = isSongbookMode ? !!currentSongbookFile : !!currentSong;
 
   const scrollUp = async () => {
     if (!remoteScrollEnabled) return;
@@ -192,13 +246,12 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
               className={cn("w-2.5 h-2.5 rounded-full", isBroadcasting ? "bg-green-500 animate-pulse" : "bg-muted")}
             />
             <div className="min-w-0">
-              <h1 className="font-semibold truncate text-sm">{currentSong?.titolo || "In attesa..."}</h1>
-              {currentSong && <p className="text-xs text-muted-foreground truncate">{currentSong.artista}</p>}
+              <h1 className="font-semibold truncate text-sm">{displayTitle}</h1>
+              {displayArtist && <p className="text-xs text-muted-foreground truncate">{displayArtist}</p>}
             </div>
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Remote scroll status indicator */}
             {!remoteScrollEnabled && (
               <Badge variant="outline" className="text-yellow-600 border-yellow-500/50 text-xs">
                 Solo lettura
@@ -233,6 +286,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
             highlightLine={highlightLine}
             highlightEnabled={highlightEnabled}
             isBroadcasting={isBroadcasting}
+            hasContent={hasContent}
             remoteScrollEnabled={remoteScrollEnabled}
             fontSize={fontSize}
             textAlign={textAlign}
@@ -247,6 +301,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
             highlightLine={highlightLine}
             highlightEnabled={highlightEnabled}
             isBroadcasting={isBroadcasting}
+            hasContent={hasContent}
             remoteScrollEnabled={remoteScrollEnabled}
             fontSize={fontSize}
             textAlign={textAlign}
@@ -268,6 +323,7 @@ function PreviewWithControls({
   highlightLine,
   highlightEnabled,
   isBroadcasting,
+  hasContent,
   remoteScrollEnabled,
   fontSize,
   textAlign,
@@ -280,6 +336,7 @@ function PreviewWithControls({
   highlightLine: number;
   highlightEnabled: boolean;
   isBroadcasting: boolean;
+  hasContent: boolean;
   remoteScrollEnabled: boolean;
   fontSize: number;
   textAlign: 'left' | 'center' | 'right';
@@ -322,7 +379,7 @@ function PreviewWithControls({
     }
   }, [highlightLine, isBroadcasting, highlightEnabled]);
 
-  if (!isBroadcasting || lines.length === 0) {
+  if (!isBroadcasting || !hasContent || lines.length === 0) {
     return (
       <div className="h-full flex items-center justify-center text-center p-6">
         <div>
@@ -423,6 +480,7 @@ function RemoteOnlyControls({
   highlightLine,
   highlightEnabled,
   isBroadcasting,
+  hasContent,
   remoteScrollEnabled,
   fontSize,
   textAlign,
@@ -434,6 +492,7 @@ function RemoteOnlyControls({
   highlightLine: number;
   highlightEnabled: boolean;
   isBroadcasting: boolean;
+  hasContent: boolean;
   remoteScrollEnabled: boolean;
   fontSize: number;
   textAlign: 'left' | 'center' | 'right';
@@ -475,7 +534,7 @@ function RemoteOnlyControls({
     }
   }, [highlightLine, isBroadcasting, lines.length, highlightEnabled]);
 
-  if (!isBroadcasting || lines.length === 0) {
+  if (!isBroadcasting || !hasContent || lines.length === 0) {
     return (
       <div className="h-full flex items-center justify-center text-center p-6">
         <div>
