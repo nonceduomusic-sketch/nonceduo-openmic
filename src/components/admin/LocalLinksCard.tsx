@@ -19,8 +19,8 @@ interface LinkItem {
 }
 
 interface BroadcastLinksCardsProps {
-  /** Remote token for telecomando link */
-  telecomandoToken?: string;
+  /** Remote tokens for telecomando links (one per remote access) */
+  telecomandoTokens?: { name: string; token: string }[];
   /** Which links to show. Defaults to all. */
   filter?: ('tv' | 'partiture' | 'songbook' | 'telecomando')[];
 }
@@ -28,7 +28,9 @@ interface BroadcastLinksCardsProps {
 interface LocalLinksCardProps {
   /** Which links to show. Defaults to all. */
   filter?: ('tv' | 'partiture' | 'songbook' | 'telecomando')[];
-  /** Remote token for telecomando link */
+  /** Remote tokens for telecomando links */
+  telecomandoTokens?: { name: string; token: string }[];
+  /** Single token (legacy) */
   telecomandoToken?: string;
   /** Compact inline variant (no card wrapper) */
   inline?: boolean;
@@ -40,19 +42,41 @@ function getLocalIP(): string {
   return safeGetItem('local', 'broadcast_local_ip') || '192.168.1.100';
 }
 
-function buildLinks(telecomandoToken?: string): LinkItem[] {
-  return [
+function buildLinks(telecomandoTokens?: { name: string; token: string }[], singleToken?: string): LinkItem[] {
+  const base: LinkItem[] = [
     { key: 'tv', label: 'TV', path: '/trasmetti', icon: <Tv className="w-4 h-4" /> },
     { key: 'partiture', label: 'Partiture', path: '/partiture', icon: <Guitar className="w-4 h-4" /> },
     { key: 'songbook', label: 'SongBook', path: '/songbook-live', icon: <Music className="w-4 h-4" /> },
-    ...(telecomandoToken
-      ? [{ key: 'telecomando', label: 'Telecomando', path: `/telecomando/${telecomandoToken}`, icon: <Smartphone className="w-4 h-4" /> }]
-      : []),
   ];
+
+  // Add telecomando links
+  if (telecomandoTokens && telecomandoTokens.length > 0) {
+    telecomandoTokens.forEach((t, i) => {
+      base.push({
+        key: `telecomando-${i}`,
+        label: telecomandoTokens.length > 1 ? `Tel. ${t.name}` : 'Telecomando',
+        path: `/telecomando/${t.token}`,
+        icon: <Smartphone className="w-4 h-4" />,
+      });
+    });
+  } else if (singleToken) {
+    base.push({
+      key: 'telecomando',
+      label: 'Telecomando',
+      path: `/telecomando/${singleToken}`,
+      icon: <Smartphone className="w-4 h-4" />,
+    });
+  }
+
+  return base;
 }
 
 function filterLinks(links: LinkItem[], filter?: string[]) {
-  return filter ? links.filter(l => filter.includes(l.key)) : links;
+  if (!filter) return links;
+  return links.filter(l => {
+    // Match exact key or key prefix (telecomando-0, telecomando-1 all match 'telecomando')
+    return filter.some(f => l.key === f || l.key.startsWith(`${f}-`));
+  });
 }
 
 const copyUrl = async (url: string) => {
@@ -95,10 +119,10 @@ function LinkButtons({ links, baseUrl, variant }: { links: LinkItem[]; baseUrl: 
 }
 
 /* ─── LOCAL LINKS CARD ─── */
-export function LocalLinksCard({ filter, telecomandoToken, inline }: LocalLinksCardProps) {
+export function LocalLinksCard({ filter, telecomandoTokens, telecomandoToken, inline }: LocalLinksCardProps) {
   const localIP = getLocalIP();
   const baseUrl = `http://${localIP}:${PORT}`;
-  const links = filterLinks(buildLinks(telecomandoToken), filter);
+  const links = filterLinks(buildLinks(telecomandoTokens, telecomandoToken), filter);
 
   const content = (
     <div className="space-y-2">
@@ -128,9 +152,9 @@ export function LocalLinksCard({ filter, telecomandoToken, inline }: LocalLinksC
 }
 
 /* ─── ONLINE LINKS CARD ─── */
-export function OnlineLinksCard({ filter, telecomandoToken }: { filter?: string[]; telecomandoToken?: string }) {
+export function OnlineLinksCard({ filter, telecomandoTokens, telecomandoToken }: { filter?: string[]; telecomandoTokens?: { name: string; token: string }[]; telecomandoToken?: string }) {
   const baseUrl = getProductionBaseUrl();
-  const links = filterLinks(buildLinks(telecomandoToken), filter);
+  const links = filterLinks(buildLinks(telecomandoTokens, telecomandoToken), filter);
 
   return (
     <Card className="border-blue-500/30 bg-blue-500/5">
@@ -151,11 +175,11 @@ export function OnlineLinksCard({ filter, telecomandoToken }: { filter?: string[
 }
 
 /* ─── COMBINED: Both cards together ─── */
-export function BroadcastLinksCards({ telecomandoToken, filter }: BroadcastLinksCardsProps) {
+export function BroadcastLinksCards({ telecomandoTokens, filter }: BroadcastLinksCardsProps) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      <OnlineLinksCard filter={filter} telecomandoToken={telecomandoToken} />
-      <LocalLinksCard filter={filter} telecomandoToken={telecomandoToken} />
+      <OnlineLinksCard filter={filter} telecomandoTokens={telecomandoTokens} />
+      <LocalLinksCard filter={filter} telecomandoTokens={telecomandoTokens} />
     </div>
   );
 }

@@ -72,6 +72,7 @@ import { LiveBroadcastPreview } from './LiveBroadcastPreview';
 import { SongbookTab } from './SongbookTab';
 import { BroadcastRemoteSection } from './BroadcastRemoteSection';
 import { BroadcastLinksCards } from './LocalLinksCard';
+import { useBroadcastRemoteAdmin } from '@/hooks/useBroadcastRemote';
 
 interface AdminTrasmettiTabProps {
   canManage?: boolean;
@@ -83,6 +84,7 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
   const { activeReservations } = useReservations();
   const { songs } = useSongs();
   const { setlists, createSetlist, updateSetlist, deleteSetlist } = useBroadcastSetlists();
+  const { accesses: remoteAccesses } = useBroadcastRemoteAdmin();
   
   const [selectedSetlistId, setSelectedSetlistId] = useState<string | null>(null);
   const { songs: setlistSongs, addSong: addToSetlist, removeSong: removeFromSetlist, reorderSongs } = useBroadcastSetlistSongs(selectedSetlistId);
@@ -281,8 +283,10 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
         </CardContent>
       </Card>
 
-      {/* Broadcast Links: Online + Local */}
-      <BroadcastLinksCards filter={['tv', 'partiture', 'songbook']} />
+      {/* Broadcast Links: Online + Local - ALL links centralized here */}
+      <BroadcastLinksCards 
+        telecomandoTokens={remoteAccesses.filter(a => a.is_active).map(a => ({ name: a.name, token: a.access_token }))}
+      />
 
       {/* Main content tabs */}
       <Tabs defaultValue="queue" className="space-y-4">
