@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
+import { useBroadcastChannel } from '@/hooks/useBroadcastChannel';
 
 export interface BroadcastSession {
   id: string;
@@ -74,6 +75,19 @@ export function useBroadcast(salaCode: string = 'main') {
   const [session, setSession] = useState<BroadcastSession | null>(null);
   const [loading, setLoading] = useState(true);
   const queryClient = useQueryClient();
+  const sessionRef = useRef<BroadcastSession | null>(null);
+
+  // Keep ref in sync for use in callbacks
+  useEffect(() => { sessionRef.current = session; }, [session]);
+
+  // Instant peer-to-peer broadcast channel
+  const { send: broadcastSend } = useBroadcastChannel({
+    salaCode,
+    onUpdate: useCallback((payload: Record<string, unknown>) => {
+      // Apply partial update instantly from peer broadcast
+      setSession(prev => prev ? { ...prev, ...payload } as BroadcastSession : prev);
+    }, []),
+  });
 
   // Fetch session
   const fetchSession = useCallback(async () => {
@@ -91,7 +105,7 @@ export function useBroadcast(salaCode: string = 'main') {
     setLoading(false);
   }, [salaCode]);
 
-  // Subscribe to realtime updates
+  // Subscribe to realtime updates (DB persistence layer - backup for broadcast)
   useEffect(() => {
     fetchSession();
 
@@ -118,20 +132,27 @@ export function useBroadcast(salaCode: string = 'main') {
     };
   }, [fetchSession, salaCode]);
 
-  // Update session (admin only)
+  // Update session: broadcast instantly to peers, then persist to DB in background
   const updateSession = useCallback(async (updates: Partial<BroadcastSession>) => {
-    const { error } = await supabase
+    // 1. Apply locally immediately
+    setSession(prev => prev ? { ...prev, ...updates } as BroadcastSession : prev);
+    
+    // 2. Broadcast to all peers instantly (~20ms)
+    broadcastSend(updates as Record<string, unknown>);
+    
+    // 3. Persist to DB in background (no await needed for UI)
+    supabase
       .from('broadcast_sessions')
       .update(updates as any)
-      .eq('sala_code', salaCode);
+      .eq('sala_code', salaCode)
+      .then(({ error }) => {
+        if (error) {
+          console.error('Error persisting broadcast update:', error);
+        }
+      });
 
-    if (error) {
-      console.error('Error updating broadcast session:', error);
-      toast.error('Errore aggiornamento trasmissione');
-      return false;
-    }
     return true;
-  }, [salaCode]);
+  }, [salaCode, broadcastSend]);
 
   // Broadcast a song (set current_song_id and switch to lyrics mode)
   // IMPORTANT: Always reset songbook_mode to avoid conflicts when switching from SongBook to catalog
