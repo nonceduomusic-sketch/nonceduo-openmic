@@ -57,7 +57,11 @@ export const useReservations = () => {
       if (import.meta.env.DEV) {
         console.error('Error fetching reservations:', error);
       }
-      toast.error('Errore nel caricamento delle prenotazioni');
+      // Suppress toast on local server (no internet)
+      const { isLocalServer } = await import('@/lib/productionUrl');
+      if (!isLocalServer()) {
+        toast.error('Errore nel caricamento delle prenotazioni');
+      }
       // IMPORTANT: fail fast to avoid leaving the UI in an endless loading state
       setReservations([]);
       setLoading(false);

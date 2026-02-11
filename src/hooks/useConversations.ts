@@ -235,7 +235,11 @@ export const useConversations = (sessionId?: string, section?: ConversationSecti
       setPublicGroups(availableGroups);
     } catch (error) {
       if (import.meta.env.DEV) console.error('Error fetching conversations:', error);
-      toast.error('Errore nel caricamento delle conversazioni');
+      // Suppress toast when running on local server (no internet expected)
+      const { isLocalServer } = await import('@/lib/productionUrl');
+      if (!isLocalServer()) {
+        toast.error('Errore nel caricamento delle conversazioni');
+      }
     } finally {
       setLoading(false);
     }
