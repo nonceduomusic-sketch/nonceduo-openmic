@@ -10,7 +10,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
 
-export type PedalPage = 'trasmetti' | 'partiture' | 'songbook';
+export type PedalPage = 'trasmetti' | 'partiture' | 'songbook' | 'telecomando';
 export type PedalMode = 'scroll' | 'highlight';
 
 export interface PedalSettings {
@@ -25,7 +25,7 @@ const STORAGE_KEY = 'pedal_settings';
 const DEFAULT_SETTINGS: PedalSettings = {
   enabled: false,
   linesPerPress: 3,
-  enabledPages: ['trasmetti', 'partiture', 'songbook'],
+  enabledPages: ['trasmetti', 'partiture', 'songbook', 'telecomando'],
   mode: 'highlight',
 };
 

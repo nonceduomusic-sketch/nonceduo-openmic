@@ -350,6 +350,9 @@ const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false
                         <li><strong>Centro:</strong> Dashboard in tempo reale con notifiche</li>
                         <li><strong>Evento:</strong> Gestione eventi programmati</li>
                         <li><strong>Formati:</strong> Toggle rapidi e notifiche</li>
+                        <li><strong>Trasmetti:</strong> Broadcast TV e SongBook</li>
+                        <li><strong>Notifiche Live:</strong> Email e Telegram</li>
+                        <li><strong>Grafiche:</strong> Locandine e storie social</li>
                       </ul>
                     </div>
                     
@@ -360,18 +363,29 @@ const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false
                         <li><strong>Canzoni:</strong> Catalogo brani disponibili</li>
                         <li><strong>Dediche:</strong> Messaggi e chat con utenti</li>
                         <li><strong>Community:</strong> Gruppi e bacheca sociale</li>
+                        <li><strong>Assistente:</strong> Chat automatica e lead</li>
                       </ul>
                     </div>
                     
                     <div className="p-3 rounded-lg bg-muted border">
                       <p className="font-bold mb-2">⚙️ GESTIONE</p>
                       <ul className="space-y-1 text-muted-foreground">
-                        <li><strong>Impostazioni:</strong> Configurazione generale</li>
+                        <li><strong>Impostazioni:</strong> Configurazione, connessione e pedale</li>
+                        <li><strong>Operatori:</strong> Account con accesso limitato (solo Owner)</li>
                         <li><strong>Staff:</strong> Gestione team (solo Owner)</li>
                         <li><strong>Permessi:</strong> Controllo accessi (solo Owner)</li>
                         <li><strong>Audit:</strong> Log attività (solo Owner)</li>
+                        <li><strong>Manuale:</strong> Questa guida</li>
                       </ul>
                     </div>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
+                    <p className="font-medium text-accent mb-1">📱 Navigazione mobile</p>
+                    <p className="text-muted-foreground text-xs">
+                      Da telefono, le 5 sezioni principali (Centro, Open Mic, Dediche, Trasmetti, Eventi) 
+                      sono nella barra in basso. Tutto il resto è nel <strong>menu hamburger</strong> in alto a sinistra.
+                    </p>
                   </div>
                 </div>
               </ManualCollapsible>
@@ -612,6 +626,55 @@ const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false
                 </div>
               </ManualCollapsible>
 
+              {/* Sezione: Trasmetti (Broadcast TV) */}
+              <ManualCollapsible
+                id="admin-trasmetti"
+                title="Trasmetti (Broadcast TV)"
+                icon={<Monitor className="w-5 h-5 text-primary" />}
+                isOpen={openSections.has('admin-trasmetti')}
+                onToggle={() => toggleSection('admin-trasmetti')}
+              >
+                <div className="space-y-4 text-sm">
+                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                    <p className="font-medium text-primary mb-1">📺 A cosa serve?</p>
+                    <p className="text-muted-foreground">
+                      Proietta i testi delle canzoni sulla TV del locale in tempo reale. 
+                      Supporta il catalogo standard e i file SongBook (.cho) con accordi.
+                    </p>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Modalità di visualizzazione:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Compatta:</strong> Testo puro, massima leggibilità</li>
+                      <li>• <strong>Karaoke:</strong> Con evidenziazione riga attiva</li>
+                      <li>• <strong>Spotify:</strong> Stile moderno con sfondo colorato</li>
+                      <li>• <strong>ChordPro:</strong> Testo con accordi sopra le parole</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
+                    <p className="font-medium text-accent mb-2">🔗 Link rapidi</p>
+                    <p className="text-muted-foreground text-xs">
+                      Nella sezione <strong>Admin → Trasmetti</strong> trovi due card con tutti i link:
+                    </p>
+                    <ul className="space-y-1 text-muted-foreground text-xs mt-1">
+                      <li>• <strong>🌐 Link Online (Cloud):</strong> Per dispositivi con internet</li>
+                      <li>• <strong>📡 Link Locali (LAN):</strong> Per rete WiFi locale senza internet</li>
+                    </ul>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">📱 Telecomando</p>
+                    <p className="text-muted-foreground text-xs">
+                      I telecomandi si creano nella sezione Trasmetti. Ogni telecomando ha un PIN 
+                      e può controllare la TV (avanti/indietro righe). In Admin → Trasmetti trovi 
+                      anche i link locali per ogni telecomando creato.
+                    </p>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
               {/* Sezione: WiFi Locale (senza internet) */}
               <ManualCollapsible
                 id="admin-local-wifi"
@@ -748,7 +811,7 @@ const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false
                       </li>
                       <li>
                         <strong>Scegli dove attivarlo</strong>
-                        <p className="ml-5 text-xs">Puoi abilitare il pedale su SongBook Live, Trasmetti (TV) e/o Partiture.</p>
+                        <p className="ml-5 text-xs">Puoi abilitare il pedale su SongBook Live, Trasmetti (TV), Partiture e Telecomando.</p>
                       </li>
                     </ol>
                   </div>

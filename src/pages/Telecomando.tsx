@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import brandLogoText from "@/assets/brand-logo-text.png";
 import { parseChordPro, transposeSong } from "@/lib/chordpro";
 import { ConnectionSettings } from "@/components/songbook/ConnectionSettings";
+import { usePedalControl } from "@/hooks/usePedalControl";
 
 type ViewMode = "preview" | "remote";
 
@@ -234,6 +235,19 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
 
   // Determine if we have content to show
   const hasContent = isSongbookMode ? !!currentSongbookFile : !!currentSong;
+
+  // Pedal control: highlight mode (advances highlight_line like Avanti/Indietro)
+  const { isActive: pedalActive } = usePedalControl({
+    page: 'telecomando',
+    highlightLine,
+    totalLines: lines.length || 1,
+    onLineChange: (newLine) => {
+      if (remoteScrollEnabled) {
+        updateHighlightLine(newLine);
+      }
+    },
+    disabled: !remoteScrollEnabled,
+  });
 
   const scrollUp = async () => {
     if (!remoteScrollEnabled) return;
