@@ -63,7 +63,7 @@ export const usePushNotifications = (userType: 'admin' | 'user' = 'admin', userI
   const getExistingSubscription = useCallback(async (): Promise<PushSubscription | null> => {
     try {
       const registration = await getPushServiceWorkerRegistration();
-      return await registration.pushManager.getSubscription();
+      return await (registration as any).pushManager.getSubscription();
     } catch (error) {
       console.error('[usePushNotifications] Error getting subscription:', error);
       return null;
@@ -159,8 +159,8 @@ export const usePushNotifications = (userType: 'admin' | 'user' = 'admin', userI
 
       // Subscribe to push (reuse existing subscription if present)
       console.log('[usePushNotifications] Subscribing to push manager...');
-      const existingSubscription = await registration.pushManager.getSubscription();
-      const subscription = existingSubscription ?? await registration.pushManager.subscribe({
+      const existingSubscription = await (registration as any).pushManager.getSubscription();
+      const subscription = existingSubscription ?? await (registration as any).pushManager.subscribe({
           userVisibleOnly: true,
           applicationServerKey: vapidKey,
         });
@@ -229,7 +229,7 @@ export const usePushNotifications = (userType: 'admin' | 'user' = 'admin', userI
 
     try {
       const registration = await getPushServiceWorkerRegistration();
-      const subscription = await registration.pushManager.getSubscription();
+      const subscription = await (registration as any).pushManager.getSubscription();
       
       if (subscription) {
         // Unsubscribe from push manager

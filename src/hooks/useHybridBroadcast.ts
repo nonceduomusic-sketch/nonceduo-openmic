@@ -37,13 +37,14 @@ export function useHybridBroadcast(salaCode: string = 'main') {
       ? localOverrides as unknown as BroadcastSession
       : null;
 
-  // Unified update: sends to local WS or cloud DB based on mode
+  // Unified update: sends to local WS or cloud (with instant broadcast) based on mode
   const syncUpdate = useCallback((updates: Record<string, unknown>) => {
     if (isLocalMode) {
       localSendUpdate(updates);
       // Also apply locally immediately for responsive UI
       setLocalOverrides(prev => ({ ...prev, ...updates }));
     } else {
+      // cloud.updateSession now handles: local apply + broadcast + DB persist
       cloud.updateSession(updates as any);
     }
   }, [isLocalMode, localSendUpdate, cloud.updateSession]);
