@@ -98,7 +98,11 @@ export const useMessages = () => {
       setMessages(data || []);
     } catch (error) {
       console.error('Error fetching messages:', error);
-      toast.error('Errore nel caricamento dei messaggi');
+      // Suppress toast on local server (no internet)
+      const { isLocalServer } = await import('@/lib/productionUrl');
+      if (!isLocalServer()) {
+        toast.error('Errore nel caricamento dei messaggi');
+      }
     } finally {
       setLoading(false);
     }
