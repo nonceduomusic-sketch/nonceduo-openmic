@@ -66,6 +66,7 @@ const MENU_ITEMS: MenuItem[] = [
   { key: "staff", label: "Staff", icon: Users, group: "Gestione", ownerOnly: true },
   { key: "permissions", label: "Permessi", icon: Shield, group: "Gestione", ownerOnly: true },
   { key: "audit", label: "Audit", icon: Database, group: "Gestione", ownerOnly: true },
+  { key: "manuale", label: "Manuale", icon: Book, group: "Gestione" },
 ];
 
 interface AdminMobileDrawerProps {
@@ -218,16 +219,6 @@ export function AdminMobileDrawer({
 
         {/* Footer Actions */}
         <div className="border-t p-3 space-y-1">
-          <a
-            href="/admin/manual"
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all"
-            onClick={() => setOpen(false)}
-          >
-            <Book className="w-5 h-5" />
-            <span>Manuale</span>
-          </a>
-
-          <Separator className="my-2" />
 
           {/* Reset Options */}
           {onResetOpenMic && (

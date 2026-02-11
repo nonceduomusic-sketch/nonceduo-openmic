@@ -13,6 +13,7 @@ import brandLogoText from '@/assets/brand-logo-text.png';
 import { ScreenShareViewer } from '@/components/broadcast/ScreenShareViewer';
 import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/chordpro';
 import { renderResponsiveChordLine } from '@/lib/chordproRenderer';
+import { usePedalScroll } from '@/hooks/usePedalControl';
 
 interface Song {
   id: string;
@@ -134,6 +135,12 @@ export default function Trasmetti() {
   const isBroadcasting = (session as any)?.is_broadcasting ?? false;
   
   const lyricsRef = useRef<HTMLDivElement>(null);
+
+  // Pedal control: scroll mode for TV display
+  usePedalScroll({
+    page: 'trasmetti',
+    scrollRef: lyricsRef as React.RefObject<HTMLElement>,
+  });
 
   // Extract TV settings from session with defaults
   const tvSettings = useMemo(() => ({

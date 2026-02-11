@@ -294,6 +294,7 @@ const PEDAL_PAGE_OPTIONS: { value: PedalPage; label: string }[] = [
   { value: 'songbook', label: 'SongBook Live' },
   { value: 'trasmetti', label: 'Trasmetti (TV)' },
   { value: 'partiture', label: 'Partiture' },
+  { value: 'telecomando', label: 'Telecomando' },
 ];
 
 function PedalControlSection() {
