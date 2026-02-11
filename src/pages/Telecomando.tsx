@@ -137,17 +137,14 @@ interface RemoteControlInterfaceProps {
 }
 
 function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChange }: RemoteControlInterfaceProps) {
-  const { session, syncUpdate, mode, setMode, localIP, setLocalIP, localConnected, localLatency, isLocalMode } = useHybridBroadcast(salaCode);
-  const { updateHighlightLine: cloudUpdateHighlightLine, updateScrollPosition } = useRemoteControl(sessionId, salaCode);
+  const { session, syncUpdate, updateSession, mode, setMode, localIP, setLocalIP, localConnected, localLatency, isLocalMode } = useHybridBroadcast(salaCode);
+  const { updateScrollPosition } = useRemoteControl(sessionId, salaCode);
 
-  // Hybrid highlight update: local WS or cloud RPC
+  // Hybrid highlight update: use syncUpdate for fastest path (direct DB update or local WS)
   const updateHighlightLine = useCallback(async (line: number) => {
-    if (isLocalMode) {
-      syncUpdate({ highlight_line: line });
-      return true;
-    }
-    return cloudUpdateHighlightLine(line);
-  }, [isLocalMode, syncUpdate, cloudUpdateHighlightLine]);
+    syncUpdate({ highlight_line: line });
+    return true;
+  }, [syncUpdate]);
 
   const [currentSong, setCurrentSong] = useState<{
     titolo: string;
@@ -165,6 +162,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
   const isBroadcasting = (session as any)?.is_broadcasting ?? false;
   const highlightLine = session?.highlight_line ?? 0;
   const highlightEnabled = (session as any)?.highlight_enabled ?? true;
+  const highlightLinesCount = (session as any)?.highlight_lines_count ?? 1;
   const remoteScrollEnabled = (session as any)?.remote_scroll_enabled ?? true;
   const fontSize = (session as any)?.font_size ?? 100;
   const textAlign = ((session as any)?.text_align as 'left' | 'center' | 'right') || 'center';
@@ -174,16 +172,26 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
   const songbookFileId = (session as any)?.songbook_file_id ?? null;
   const songbookTranspose = (session as any)?.songbook_transpose ?? 0;
 
-  // Compute lines: from songbook (ChordPro parsed) or catalog song
+  // Compute lines: use SAME indexing as Trasmetti.tsx to keep highlight_line in sync
+  // For songbook mode: include ALL lines (directives, empties) to match TV indices
+  // For catalog: include ALL lines including empty ones to match TV indices
   const lines = useMemo(() => {
     if (isSongbookMode && currentSongbookFile) {
       const parsed = parseChordPro(currentSongbookFile.content);
       const transposed = transposeSong(parsed, songbookTranspose);
-      // Extract text lines from ChordPro, filtering empty/directive lines
-      return transposed.lines
-        .filter(l => l.type === 'chord-text' || l.type === 'text')
-        .map(l => l.text || '');
+      // Return ALL lines to match TV indexing - use text for display
+      return transposed.lines.map(l => {
+        if (l.type === 'directive' || l.type === 'comment') {
+          if (l.directiveKey && ['chorus', 'verse', 'bridge', 'intro', 'outro', 'tab'].includes(l.directiveKey)) {
+            return `[${l.directiveValue || l.directiveKey}]`;
+          }
+          return '';
+        }
+        if (l.type === 'empty') return '';
+        return l.text || '';
+      });
     }
+    // For catalog songs: split ALL lines (including empty) to match TV indexing
     return currentSong?.testo?.split("\n").filter((line) => line.trim()) || [];
   }, [currentSong?.testo, isSongbookMode, currentSongbookFile, songbookTranspose]);
 
@@ -317,6 +325,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
             lines={lines}
             highlightLine={highlightLine}
             highlightEnabled={highlightEnabled}
+            highlightLinesCount={highlightLinesCount}
             isBroadcasting={isBroadcasting}
             hasContent={hasContent}
             remoteScrollEnabled={remoteScrollEnabled}
@@ -332,6 +341,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
             lines={lines}
             highlightLine={highlightLine}
             highlightEnabled={highlightEnabled}
+            highlightLinesCount={highlightLinesCount}
             isBroadcasting={isBroadcasting}
             hasContent={hasContent}
             remoteScrollEnabled={remoteScrollEnabled}
@@ -354,6 +364,7 @@ function PreviewWithControls({
   lines,
   highlightLine,
   highlightEnabled,
+  highlightLinesCount,
   isBroadcasting,
   hasContent,
   remoteScrollEnabled,
@@ -367,6 +378,7 @@ function PreviewWithControls({
   lines: string[];
   highlightLine: number;
   highlightEnabled: boolean;
+  highlightLinesCount: number;
   isBroadcasting: boolean;
   hasContent: boolean;
   remoteScrollEnabled: boolean;
@@ -442,11 +454,19 @@ function PreviewWithControls({
           textAlign === 'right' && 'text-right'
         )}>
           {lines.map((line, index) => {
-            const isHighlighted = highlightLine === index;
+            const isMainHighlight = highlightLine === index;
+            const distanceFromMain = index - highlightLine;
+            const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
             const isPast = index < highlightLine;
             // When highlight is OFF, all lines fully visible
-            const opacity = highlightEnabled ? (isHighlighted ? 1 : isPast ? 0.5 : 0.8) : 1;
+            const opacity = highlightEnabled 
+              ? (isMainHighlight ? 1 : isInHighlightRange ? 0.9 : isPast ? 0.5 : 0.8) 
+              : 1;
             const baseFontSize = Math.max(14, 16 * fontSize / 100);
+            // Skip empty lines in display but keep index for sync
+            if (!line && !isInHighlightRange && !isMainHighlight) {
+              return <div key={index} data-line={index} className="h-2" />;
+            }
             return (
               <button
                 key={index}
@@ -456,8 +476,9 @@ function PreviewWithControls({
                 className={cn(
                   "w-full px-3 py-2 rounded-lg transition-all",
                   "leading-relaxed",
-                  highlightEnabled && isHighlighted && "bg-primary/20 text-primary font-semibold ring-2 ring-primary/50",
-                  !isHighlighted && remoteScrollEnabled && "hover:bg-muted",
+                  highlightEnabled && isMainHighlight && "bg-primary/20 text-primary font-semibold ring-2 ring-primary/50",
+                  highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-primary/10 text-primary/80 ring-1 ring-primary/30",
+                  !isInHighlightRange && !isMainHighlight && remoteScrollEnabled && "hover:bg-muted",
                   !remoteScrollEnabled && "cursor-default",
                 )}
                 style={{ opacity, fontSize: `${baseFontSize}px` }}
@@ -511,6 +532,7 @@ function RemoteOnlyControls({
   lines,
   highlightLine,
   highlightEnabled,
+  highlightLinesCount,
   isBroadcasting,
   hasContent,
   remoteScrollEnabled,
@@ -523,6 +545,7 @@ function RemoteOnlyControls({
   lines: string[];
   highlightLine: number;
   highlightEnabled: boolean;
+  highlightLinesCount: number;
   isBroadcasting: boolean;
   hasContent: boolean;
   remoteScrollEnabled: boolean;
@@ -596,21 +619,28 @@ function RemoteOnlyControls({
           textAlign === 'right' && 'text-right'
         )}>
           {lines.map((line, index) => {
-            const isHighlighted = highlightLine === index;
-            const distance = Math.abs(highlightLine - index);
+            const isMainHighlight = highlightLine === index;
+            const distanceFromMain = index - highlightLine;
+            const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
+            const isPast = index < highlightLine;
             // When highlight is OFF, all lines fully visible
             const opacity = highlightEnabled 
-              ? (isHighlighted ? 1 : distance === 1 ? 0.7 : distance === 2 ? 0.5 : 0.3)
+              ? (isMainHighlight ? 1 : isInHighlightRange ? 0.9 : isPast ? 0.5 : 0.3)
               : 1;
             const baseFontSize = Math.max(14, 18 * fontSize / 100);
+            // Skip empty lines in display but keep index for sync
+            if (!line && !isInHighlightRange && !isMainHighlight) {
+              return <div key={index} data-line={index} className="h-2" />;
+            }
             return (
               <div
                 key={index}
                 data-line={index}
                 className={cn(
                   "px-4 py-3 rounded-xl leading-relaxed transition-colors duration-200",
-                  highlightEnabled && isHighlighted && "bg-primary text-primary-foreground font-semibold",
-                  !isHighlighted && "text-foreground",
+                  highlightEnabled && isMainHighlight && "bg-primary text-primary-foreground font-semibold",
+                  highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-primary/20 text-primary font-medium",
+                  !isInHighlightRange && !isMainHighlight && "text-foreground",
                 )}
                 style={{ opacity, fontSize: `${baseFontSize}px` }}
               >
