@@ -134,6 +134,7 @@ export function useBroadcast(salaCode: string = 'main') {
   }, [salaCode]);
 
   // Broadcast a song (set current_song_id and switch to lyrics mode)
+  // IMPORTANT: Always reset songbook_mode to avoid conflicts when switching from SongBook to catalog
   const broadcastSong = useCallback(async (songId: string, reservationId?: string) => {
     return updateSession({
       current_song_id: songId,
@@ -142,10 +143,13 @@ export function useBroadcast(salaCode: string = 'main') {
       scroll_position: 0,
       highlight_line: 0,
       is_active: true,
-    });
+      songbook_mode: false,
+      songbook_file_id: null,
+    } as any);
   }, [updateSession]);
 
   // Stop broadcast (return to waiting screen)
+  // IMPORTANT: Always reset songbook state to avoid stale mode
   const stopBroadcast = useCallback(async () => {
     return updateSession({
       current_song_id: null,
@@ -153,7 +157,9 @@ export function useBroadcast(salaCode: string = 'main') {
       display_mode: 'waiting',
       scroll_position: 0,
       highlight_line: 0,
-    });
+      songbook_mode: false,
+      songbook_file_id: null,
+    } as any);
   }, [updateSession]);
 
   // Toggle active state
