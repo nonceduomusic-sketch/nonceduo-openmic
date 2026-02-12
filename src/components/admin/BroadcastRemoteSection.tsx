@@ -9,7 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { 
   Smartphone, Plus, Copy, RefreshCw, Users, Trash2, 
-  QrCode, Link2, Key, AlertTriangle, Check, Loader2, Hand
+  QrCode, Link2, Key, AlertTriangle, Check, Loader2, Hand, LockKeyhole, LockKeyholeOpen
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -45,6 +45,7 @@ export function BroadcastRemoteSection() {
     regenerateToken,
     regeneratePIN,
     toggleAccess,
+    togglePinRequired,
     kickAllSessions,
     deleteAccess,
     getActiveSessionCount,
@@ -199,43 +200,58 @@ export function BroadcastRemoteSection() {
                          )}
                        </div>
                        
-                       {/* PIN visibile */}
-            <div className="flex flex-wrap items-center gap-2 text-sm">
+                       {/* PIN toggle + details */}
+            <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <Key className="w-3.5 h-3.5 text-muted-foreground" />
-                <code className="bg-muted px-2 py-0.5 rounded font-mono text-xs">
-                  {access.pin_code}
-                </code>
+                <Switch
+                  checked={(access as any).pin_required !== false}
+                  onCheckedChange={(checked) => togglePinRequired(access.id, checked)}
+                  className="data-[state=checked]:bg-primary"
+                />
+                <Label className="text-sm font-medium flex items-center gap-1.5">
+                  <LockKeyhole className="w-3.5 h-3.5" />
+                  PIN {(access as any).pin_required !== false ? 'attivo' : 'disattivato'}
+                </Label>
               </div>
-              <div className="flex items-center gap-1">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() => regeneratePIN(access.id)}
-                  title="Rigenera PIN casuale"
-                >
-                  <RefreshCw className="w-3 h-3 mr-1" />
-                  Rigenera
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2 text-xs"
-                  onClick={() => {
-                    const newPin = prompt('Inserisci nuovo PIN (4-8 caratteri alfanumerici):');
-                    if (newPin && /^[A-Za-z0-9]{4,8}$/.test(newPin)) {
-                      regeneratePIN(access.id, newPin.toUpperCase());
-                    } else if (newPin) {
-                      toast.error('PIN non valido. Usa 4-8 caratteri alfanumerici.');
-                    }
-                  }}
-                  title="Imposta PIN personalizzato"
-                >
-                  <Key className="w-3 h-3 mr-1" />
-                  Personalizza
-                </Button>
-              </div>
+              {(access as any).pin_required !== false && (
+                <div className="flex flex-wrap items-center gap-2 text-sm pl-1">
+                  <div className="flex items-center gap-2">
+                    <Key className="w-3.5 h-3.5 text-muted-foreground" />
+                    <code className="bg-muted px-2 py-0.5 rounded font-mono text-xs">
+                      {access.pin_code}
+                    </code>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => regeneratePIN(access.id)}
+                      title="Rigenera PIN casuale"
+                    >
+                      <RefreshCw className="w-3 h-3 mr-1" />
+                      Rigenera
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 text-xs"
+                      onClick={() => {
+                        const newPin = prompt('Inserisci nuovo PIN (4-8 caratteri alfanumerici):');
+                        if (newPin && /^[A-Za-z0-9]{4,8}$/.test(newPin)) {
+                          regeneratePIN(access.id, newPin.toUpperCase());
+                        } else if (newPin) {
+                          toast.error('PIN non valido. Usa 4-8 caratteri alfanumerici.');
+                        }
+                      }}
+                      title="Imposta PIN personalizzato"
+                    >
+                      <Key className="w-3 h-3 mr-1" />
+                      Personalizza
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
                      </div>
  
@@ -345,14 +361,27 @@ export function BroadcastRemoteSection() {
              {qrDataUrl && (
                <img src={qrDataUrl} alt="QR Code" className="w-64 h-64 rounded-lg" />
              )}
-             {showQRDialog && (
-               <div className="mt-4 text-center">
-                 <p className="text-sm text-muted-foreground mb-1">PIN di accesso:</p>
-                 <code className="text-2xl font-mono font-bold tracking-widest">
-                   {accesses.find(a => a.id === showQRDialog)?.pin_code}
-                 </code>
-               </div>
-             )}
+             {showQRDialog && (() => {
+                const qrAccess = accesses.find(a => a.id === showQRDialog);
+                const pinReq = (qrAccess as any)?.pin_required !== false;
+                return (
+                  <div className="mt-4 text-center">
+                    {pinReq ? (
+                      <>
+                        <p className="text-sm text-muted-foreground mb-1">PIN di accesso:</p>
+                        <code className="text-2xl font-mono font-bold tracking-widest">
+                          {qrAccess?.pin_code}
+                        </code>
+                      </>
+                    ) : (
+                      <Badge variant="outline" className="text-green-600 border-green-500/50">
+                        <LockKeyholeOpen className="w-3.5 h-3.5 mr-1" />
+                        Accesso senza PIN
+                      </Badge>
+                    )}
+                  </div>
+                );
+              })()}
            </div>
          </DialogContent>
        </Dialog>

@@ -2,10 +2,11 @@
  import { supabase } from '@/integrations/supabase/client';
  import { toast } from 'sonner';
  
- export interface BroadcastRemoteAccess {
+export interface BroadcastRemoteAccess {
    id: string;
    access_token: string;
    pin_code: string;
+   pin_required: boolean;
    sala_code: string;
    name: string;
    is_active: boolean;
@@ -230,6 +231,29 @@
      return sessions.filter(s => s.access_id === accessId && s.is_active).length;
    }, [sessions]);
  
+   // Toggle pin_required
+   const togglePinRequired = useCallback(async (accessId: string, pinRequired: boolean) => {
+     const { error } = await supabase
+       .from('broadcast_remote_access')
+       .update({ pin_required: pinRequired } as any)
+       .eq('id', accessId);
+
+     if (error) {
+       console.error('Error toggling pin_required:', error);
+       toast.error('Errore aggiornamento PIN');
+       return false;
+     }
+
+     if (!pinRequired) {
+       // Kick existing sessions since access mode changed
+       await supabase.rpc('kick_all_remote_sessions', { p_access_id: accessId });
+     }
+
+     toast.success(pinRequired ? 'PIN attivato' : 'PIN disattivato');
+     await fetchAccesses();
+     return true;
+   }, [fetchAccesses]);
+
    return {
      accesses,
      sessions,
@@ -238,6 +262,7 @@
      regenerateToken,
      regeneratePIN,
      toggleAccess,
+     togglePinRequired,
      kickAllSessions,
      deleteAccess,
      getActiveSessionCount,
@@ -252,11 +277,38 @@
      accessId: string;
      salaCode: string;
      name: string;
+     pinRequired: boolean;
    } | null>(null);
    const [sessionId, setSessionId] = useState<string | null>(null);
    const [isKicked, setIsKicked] = useState(false);
    const [loading, setLoading] = useState(true);
- 
+
+   // Helper: create session without PIN validation
+   const createSessionDirect = useCallback(async (accessId: string) => {
+     const deviceName = getDeviceName();
+     const fingerprint = await getDeviceFingerprint().catch(() => 'unknown');
+
+     const { data, error } = await supabase
+       .from('broadcast_remote_sessions')
+       .insert({
+         access_id: accessId,
+         device_fingerprint: fingerprint,
+         device_name: deviceName,
+       })
+       .select('id')
+       .single();
+
+     if (error) {
+       console.error('[RemoteUser] Error creating session (no-pin):', error);
+       toast.error('Errore creazione sessione');
+       return false;
+     }
+
+     setSessionId(data.id);
+     setIsValidated(true);
+     return true;
+   }, []);
+
    // Verifica se token esiste (prima del PIN)
    useEffect(() => {
      const checkToken = async () => {
@@ -264,36 +316,45 @@
          setLoading(false);
          return;
        }
- 
+
        const { data, error } = await supabase
          .from('broadcast_remote_access')
-         .select('id, sala_code, name, is_active, expires_at')
+         .select('id, sala_code, name, is_active, expires_at, pin_required')
          .eq('access_token', token)
          .eq('is_active', true)
          .single();
- 
+
        if (error || !data) {
          setLoading(false);
          return;
        }
- 
+
        // Check expiry
        if (data.expires_at && new Date(data.expires_at) < new Date()) {
          setLoading(false);
          return;
        }
- 
+
+       const pinRequired = (data as any).pin_required ?? true;
+
        setAccessInfo({
          accessId: data.id,
          salaCode: data.sala_code,
          name: data.name,
+         pinRequired,
        });
+
+       // If PIN not required, auto-connect
+       if (!pinRequired) {
+         await createSessionDirect(data.id);
+       }
+
        setLoading(false);
      };
- 
+
      checkToken();
-   }, [token]);
- 
+   }, [token, createSessionDirect]);
+
    // Valida PIN e crea sessione
     const validatePIN = useCallback(async (pin: string): Promise<boolean> => {
       if (!token || !accessInfo) {

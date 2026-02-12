@@ -97,6 +97,15 @@ export default function Telecomando() {
   }
 
   if (!isValidated) {
+    // If PIN not required, show a connecting state (auto-connect happens in the hook)
+    if (accessInfo && !accessInfo.pinRequired) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <div className="animate-pulse text-muted-foreground">Connessione in corso...</div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <Card className="max-w-md w-full">
