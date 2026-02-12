@@ -291,6 +291,7 @@ export type Database = {
           last_used_at: string | null
           name: string
           pin_code: string
+          pin_required: boolean
           sala_code: string
           updated_at: string
         }
@@ -304,6 +305,7 @@ export type Database = {
           last_used_at?: string | null
           name?: string
           pin_code?: string
+          pin_required?: boolean
           sala_code?: string
           updated_at?: string
         }
@@ -317,6 +319,7 @@ export type Database = {
           last_used_at?: string | null
           name?: string
           pin_code?: string
+          pin_required?: boolean
           sala_code?: string
           updated_at?: string
         }
