@@ -235,15 +235,15 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
     }
   }, [(session as any)?.remote_scroll_enabled]);
  
-   // Fetch current song
-   useEffect(() => {
-     const fetchSong = async () => {
-       if (!session?.current_song_id) { setCurrentSong(null); setLocalHighlightLine(0); return; }
-       const { data } = await supabase.from('songs').select('id, titolo, artista, testo').eq('id', session.current_song_id).single();
-       if (data) { setCurrentSong(data); setLocalHighlightLine(session.highlight_line || 0); }
-     };
-     fetchSong();
-   }, [session?.current_song_id, session?.highlight_line]);
+    // Fetch current song — only when song ID changes (NOT on highlight_line changes)
+    useEffect(() => {
+      const fetchSong = async () => {
+        if (!session?.current_song_id) { setCurrentSong(null); setLocalHighlightLine(0); return; }
+        const { data } = await supabase.from('songs').select('id, titolo, artista, testo').eq('id', session.current_song_id).single();
+        if (data) { setCurrentSong(data); setLocalHighlightLine(0); }
+      };
+      fetchSong();
+    }, [session?.current_song_id]);
  
    // Sync highlight line
    useEffect(() => {
