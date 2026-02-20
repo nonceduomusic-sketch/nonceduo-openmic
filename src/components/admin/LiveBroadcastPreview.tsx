@@ -90,13 +90,24 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
      return transposeSong(parsed, songbookTranspose);
    }, [currentSongbookFile, songbookTranspose]);
 
-   // Fetch songbook file when in songbook mode
+   // Fetch songbook file when in songbook mode (with cache fallback)
    useEffect(() => {
-     if (isSongbookMode && songbookFileId && songbookFiles.length > 0) {
+     if (isSongbookMode && songbookFileId) {
+       // Try from loaded files first
        const file = songbookFiles.find(f => f.id === songbookFileId);
        if (file) {
          setCurrentSongbookFile(file);
          setActiveTab('content');
+       } else {
+         // Fallback to cache (offline)
+         import('@/lib/songbookCache').then(({ getCachedFile }) => {
+           getCachedFile(songbookFileId).then(cached => {
+             if (cached) {
+               setCurrentSongbookFile({ id: cached.id, title: cached.title, artist: cached.artist, content: cached.content });
+               setActiveTab('content');
+             }
+           });
+         });
        }
      } else if (!isSongbookMode) {
        setCurrentSongbookFile(null);

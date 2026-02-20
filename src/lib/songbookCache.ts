@@ -174,3 +174,49 @@ export async function setLastFullSync(): Promise<void> {
     // ignore
   }
 }
+
+/** Download ALL songbook files from Supabase and cache them for offline use */
+export async function downloadAllSongbookFilesForOffline(
+  supabaseClient: { from: (table: string) => any }
+): Promise<{ success: boolean; count: number }> {
+  try {
+    const allFiles: CachedSongbookFile[] = [];
+    const pageSize = 1000;
+    let from = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabaseClient
+        .from('songbook_files')
+        .select('id, title, artist, content, filename, slug, is_variant')
+        .range(from, from + pageSize - 1);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        allFiles.push(...data);
+        from += pageSize;
+        hasMore = data.length === pageSize;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    if (allFiles.length > 0) {
+      const db = await getDB();
+      const tx = db.transaction(STORE_FILES, 'readwrite');
+      const now = Date.now();
+      await tx.store.clear();
+      for (const file of allFiles) {
+        tx.store.put({ ...file, cached_at: now });
+      }
+      await tx.done;
+      await setLastFullSync();
+    }
+
+    return { success: true, count: allFiles.length };
+  } catch (e) {
+    console.error('[SongbookCache] Failed to download all files:', e);
+    return { success: false, count: 0 };
+  }
+}

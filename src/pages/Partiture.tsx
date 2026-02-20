@@ -42,12 +42,32 @@ export default function Partiture() {
     scrollRef: scrollRef as React.RefObject<HTMLElement>,
   });
 
-  // Fetch file when fileId changes
+  // Fetch file when fileId changes (with cache fallback)
   useEffect(() => {
     if (!fileId) { setFile(null); return; }
     supabase.from('songbook_files').select('*').eq('id', fileId).single()
-      .then(({ data }) => {
-        if (data) setFile(data as SongbookFile);
+      .then(async ({ data, error }) => {
+        if (data) {
+          setFile(data as SongbookFile);
+        } else if (error) {
+          // Fallback to cache (offline)
+          const { getCachedFile } = await import('@/lib/songbookCache');
+          const cached = await getCachedFile(fileId);
+          if (cached) {
+            setFile({
+              id: cached.id,
+              title: cached.title,
+              artist: cached.artist,
+              content: cached.content,
+              filename: cached.filename,
+              slug: cached.slug,
+              is_variant: cached.is_variant,
+              created_at: '',
+              updated_at: '',
+              created_by: null,
+            } as SongbookFile);
+          }
+        }
       });
   }, [fileId]);
 

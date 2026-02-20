@@ -214,7 +214,7 @@ export default function Trasmetti() {
     fetchSong();
   }, [session?.current_song_id]);
 
-  // Fetch songbook file when in songbook mode
+  // Fetch songbook file when in songbook mode (with cache fallback)
   useEffect(() => {
     const fetchSongbookFile = async () => {
       if (!isSongbookMode || !songbookFileId) {
@@ -222,7 +222,7 @@ export default function Trasmetti() {
         return;
       }
 
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('songbook_files')
         .select('id, title, artist, content')
         .eq('id', songbookFileId)
@@ -230,6 +230,13 @@ export default function Trasmetti() {
 
       if (data) {
         setCurrentSongbookFile(data);
+      } else if (error) {
+        // Fallback to cache (offline)
+        const { getCachedFile } = await import('@/lib/songbookCache');
+        const cached = await getCachedFile(songbookFileId);
+        if (cached) {
+          setCurrentSongbookFile({ id: cached.id, title: cached.title, artist: cached.artist, content: cached.content });
+        }
       }
     };
 
