@@ -394,45 +394,45 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
     if (isSongbookMode) {
       updates.songbook_view_mode = mode;
     }
-    await updateSession(updates);
-  }, [updateSession, isSongbookMode]);
+    syncUpdate(updates);
+  }, [syncUpdate, isSongbookMode]);
 
   const handleToggleHighlight = useCallback(async () => {
     const newValue = !highlightEnabled;
     setHighlightEnabled(newValue);
-    await updateSession({ highlight_enabled: newValue } as any);
+    syncUpdate({ highlight_enabled: newValue });
     toast.success(newValue ? 'Evidenziazione attivata' : 'Evidenziazione disattivata');
-  }, [highlightEnabled, updateSession]);
+  }, [highlightEnabled, syncUpdate]);
 
   // Handle highlight lines count change
   const handleHighlightLinesCountChange = useCallback(async (value: string) => {
     const count = parseInt(value, 10);
     if (count >= 1 && count <= 3) {
       setHighlightLinesCount(count);
-      await updateSession({ highlight_lines_count: count } as any);
+      syncUpdate({ highlight_lines_count: count });
       toast.success(`Righe evidenziate: ${count}`);
     }
-  }, [updateSession]);
+  }, [syncUpdate]);
 
   // Font size change synced to DB
   const handleFontSizeChange = useCallback(async (delta: number) => {
     const newSize = Math.max(50, Math.min(150, fontSize + delta));
     setFontSize(newSize);
-    await updateSession({ font_size: newSize } as any);
-  }, [fontSize, updateSession]);
+    syncUpdate({ font_size: newSize });
+  }, [fontSize, syncUpdate]);
 
   // Text align change synced to DB
   const handleTextAlignChange = useCallback(async (align: 'left' | 'center' | 'right') => {
     setTextAlign(align);
-    await updateSession({ text_align: align } as any);
-  }, [updateSession]);
+    syncUpdate({ text_align: align });
+  }, [syncUpdate]);
 
   // Remote scroll toggle synced to DB
   const handleToggleRemoteScroll = useCallback(async (enabled: boolean) => {
     setRemoteScrollEnabled(enabled);
-    await updateSession({ remote_scroll_enabled: enabled } as any);
+    syncUpdate({ remote_scroll_enabled: enabled });
     toast.success(enabled ? 'Scroll da telecomando abilitato' : 'Scroll da telecomando disabilitato');
-  }, [updateSession]);
+  }, [syncUpdate]);
  
    const openTVPage = () => window.open('/trasmetti', '_blank');
  
