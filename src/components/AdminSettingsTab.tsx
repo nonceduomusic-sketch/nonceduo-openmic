@@ -10,6 +10,9 @@ import {
   AlertCircle,
   Footprints,
   ArrowRightLeft,
+  Download,
+  HardDrive,
+  Loader2,
 } from 'lucide-react';
 import { CatalogSongbookCompare } from '@/components/admin/CatalogSongbookCompare';
 import { Button } from '@/components/ui/button';
@@ -497,10 +500,82 @@ function ConnectionModeSection() {
         )}
       </div>
 
+      {/* Offline SongBook Download */}
+      <OfflineSongbookSection />
+
       {/* Confronto Catalogo ↔ SongBook */}
       <div className="pt-6 border-t border-border">
         <CatalogSongbookCompare />
       </div>
+    </div>
+  );
+}
+
+function OfflineSongbookSection() {
+  const [downloading, setDownloading] = useState(false);
+  const [cacheStats, setCacheStats] = useState<{ count: number; lastSync: number | null }>({ count: 0, lastSync: null });
+
+  useEffect(() => {
+    import('@/lib/songbookCache').then(({ getCacheStats }) => {
+      getCacheStats().then(setCacheStats);
+    });
+  }, []);
+
+  const handleDownloadAll = async () => {
+    setDownloading(true);
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { downloadAllSongbookFilesForOffline } = await import('@/lib/songbookCache');
+      const result = await downloadAllSongbookFilesForOffline(supabase);
+      if (result.success) {
+        const { toast } = await import('sonner');
+        toast.success(`${result.count} brani SongBook scaricati per offline!`);
+        const { getCacheStats } = await import('@/lib/songbookCache');
+        setCacheStats(await getCacheStats());
+      }
+    } catch (e) {
+      const { toast } = await import('sonner');
+      toast.error('Errore durante il download');
+    }
+    setDownloading(false);
+  };
+
+  return (
+    <div className="pt-4 border-t border-border space-y-3">
+      <div className="flex items-center gap-3">
+        <HardDrive className="w-5 h-5 text-primary" />
+        <div>
+          <h3 className="font-medium text-foreground">SongBook Offline</h3>
+          <p className="text-xs text-muted-foreground">Scarica i brani per usarli senza internet</p>
+        </div>
+      </div>
+
+      {cacheStats.count > 0 && (
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs">
+            <HardDrive className="w-3 h-3 mr-1" />
+            {cacheStats.count} brani in cache
+          </Badge>
+          {cacheStats.lastSync && (
+            <span className="text-xs text-muted-foreground">
+              Ultimo: {new Date(cacheStats.lastSync).toLocaleDateString('it-IT')}
+            </span>
+          )}
+        </div>
+      )}
+
+      <Button
+        onClick={handleDownloadAll}
+        disabled={downloading}
+        className="w-full"
+        variant={cacheStats.count > 0 ? "outline" : "default"}
+      >
+        {downloading ? (
+          <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Scaricando...</>
+        ) : (
+          <><Download className="w-4 h-4 mr-2" />{cacheStats.count > 0 ? 'Aggiorna cache offline' : 'Scarica tutto per offline'}</>
+        )}
+      </Button>
     </div>
   );
 }
