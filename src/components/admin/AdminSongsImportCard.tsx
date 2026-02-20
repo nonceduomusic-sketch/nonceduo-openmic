@@ -98,6 +98,8 @@ export const AdminSongsImportCard: React.FC = () => {
 
       if (data.imported > 0) {
         toast.success(`🎉 Importate ${data.imported} canzoni con successo!`);
+        // Auto-sync to LAN server in background
+        import('@/lib/autoSyncLAN').then(m => m.autoSyncToLAN('catalog')).catch(() => {});
       }
       if (data.errors && data.errors > 0) {
         toast.warning(`${data.errors} errori durante l'import`);
