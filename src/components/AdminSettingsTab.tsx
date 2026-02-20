@@ -622,50 +622,156 @@ function OfflineDataSection({ localIP: configIP }: { localIP: string }) {
   const handleSyncSongbook = async () => {
     if (mixedContentWarning()) return;
     setSyncingSongbook(true);
+    const { toast } = await import('sonner');
     try {
-      // First check if server is actually reachable
+      // 1) Ping server
       try {
         const ping = await fetch(`http://${localIP}:8080/api/songbook/list`, { signal: AbortSignal.timeout(3000) });
         if (!ping.ok) throw new Error('not ok');
       } catch {
-        (await import('sonner')).toast.error(`Server locale non raggiungibile su ${localIP}:8080 — verifica IP e che il server sia acceso`);
+        toast.error(`Server locale non raggiungibile su ${localIP}:8080 — verifica IP e che il server sia acceso`);
         setSyncingSongbook(false);
         return;
       }
+
+      // 2) Try fetching from Cloud directly and sending to server
       const { supabase } = await import('@/integrations/supabase/client');
-      const { syncSongbookToLocalServer } = await import('@/lib/songbookCache');
-      const result = await syncSongbookToLocalServer(localIP, supabase);
-      if (result.success) {
-        (await import('sonner')).toast.success(`${result.count} file .cho sincronizzati col server!`);
-      } else {
-        (await import('sonner')).toast.error('Nessun dato da sincronizzare — scarica prima i brani per offline (pulsante sopra)');
+      let allFiles: any[] = [];
+      let cloudError: string | null = null;
+
+      try {
+        const pageSize = 1000;
+        let from = 0;
+        let hasMore = true;
+        while (hasMore) {
+          const { data, error } = await supabase
+            .from('songbook_files')
+            .select('filename, content')
+            .range(from, from + pageSize - 1);
+          if (error) { cloudError = error.message; break; }
+          if (data && data.length > 0) {
+            allFiles.push(...data);
+            from += pageSize;
+            hasMore = data.length === pageSize;
+          } else { hasMore = false; }
+        }
+      } catch (e: any) {
+        cloudError = e?.message || 'Errore di rete';
       }
-    } catch { (await import('sonner')).toast.error('Errore sync SongBook → server'); }
+
+      // 3) Fallback to IndexedDB cache
+      if (allFiles.length === 0 && cloudError) {
+        console.warn('[Sync] Cloud failed:', cloudError, '— trying IndexedDB...');
+        try {
+          const { getAllCachedFiles } = await import('@/lib/songbookCache');
+          const cached = await getAllCachedFiles();
+          allFiles = cached.map(f => ({ filename: f.filename, content: f.content }));
+        } catch { /* ignore */ }
+      }
+
+      if (allFiles.length === 0) {
+        toast.error(cloudError
+          ? `Cloud non raggiungibile (${cloudError}) e nessun dato in cache locale. Scarica prima i brani per offline.`
+          : 'Nessun brano SongBook trovato né nel Cloud né in cache. Verifica che ci siano brani nel database.');
+        setSyncingSongbook(false);
+        return;
+      }
+
+      // 4) Send to server
+      const resp = await fetch(`http://${localIP}:8080/api/songbook/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(allFiles),
+        signal: AbortSignal.timeout(15000),
+      });
+      const result = await resp.json();
+      if (result.ok) {
+        toast.success(`${result.count || allFiles.length} file .cho sincronizzati col server!`);
+      } else {
+        toast.error('Il server ha rifiutato i dati — controlla i log del server');
+      }
+    } catch (e: any) {
+      console.error('[Sync SongBook]', e);
+      (await import('sonner')).toast.error('Errore sync SongBook → server: ' + (e?.message || ''));
+    }
     setSyncingSongbook(false);
   };
 
   const handleSyncCatalog = async () => {
     if (mixedContentWarning()) return;
     setSyncingCatalog(true);
+    const { toast } = await import('sonner');
     try {
-      // First check if server is actually reachable
+      // 1) Ping server
       try {
         const ping = await fetch(`http://${localIP}:8080/api/catalog/list`, { signal: AbortSignal.timeout(3000) });
         if (!ping.ok) throw new Error('not ok');
       } catch {
-        (await import('sonner')).toast.error(`Server locale non raggiungibile su ${localIP}:8080 — verifica IP e che il server sia acceso`);
+        toast.error(`Server locale non raggiungibile su ${localIP}:8080 — verifica IP e che il server sia acceso`);
         setSyncingCatalog(false);
         return;
       }
+
+      // 2) Try Cloud directly
       const { supabase } = await import('@/integrations/supabase/client');
-      const { syncCatalogToLocalServer } = await import('@/lib/songsCatalogCache');
-      const result = await syncCatalogToLocalServer(localIP, supabase);
-      if (result.success) {
-        (await import('sonner')).toast.success(`${result.count} brani catalogo sincronizzati col server!`);
-      } else {
-        (await import('sonner')).toast.error('Nessun dato da sincronizzare — scarica prima il catalogo per offline (pulsante sopra)');
+      let allSongs: any[] = [];
+      let cloudError: string | null = null;
+
+      try {
+        const pageSize = 1000;
+        let from = 0;
+        let hasMore = true;
+        while (hasMore) {
+          const { data, error } = await supabase
+            .from('songs')
+            .select('id, titolo, artista, testo, slug')
+            .range(from, from + pageSize - 1);
+          if (error) { cloudError = error.message; break; }
+          if (data && data.length > 0) {
+            allSongs.push(...data);
+            from += pageSize;
+            hasMore = data.length === pageSize;
+          } else { hasMore = false; }
+        }
+      } catch (e: any) {
+        cloudError = e?.message || 'Errore di rete';
       }
-    } catch { (await import('sonner')).toast.error('Errore sync catalogo → server'); }
+
+      // 3) Fallback to IndexedDB
+      if (allSongs.length === 0 && cloudError) {
+        console.warn('[Sync] Cloud failed:', cloudError, '— trying IndexedDB...');
+        try {
+          const { getAllCachedSongs } = await import('@/lib/songsCatalogCache');
+          const cached = await getAllCachedSongs();
+          allSongs = cached.map(s => ({ id: s.id, titolo: s.titolo, artista: s.artista, testo: s.testo, slug: s.slug }));
+        } catch { /* ignore */ }
+      }
+
+      if (allSongs.length === 0) {
+        toast.error(cloudError
+          ? `Cloud non raggiungibile (${cloudError}) e nessun dato in cache locale. Scarica prima il catalogo per offline.`
+          : 'Nessuna canzone trovata né nel Cloud né in cache. Verifica che ci siano canzoni nel database.');
+        setSyncingCatalog(false);
+        return;
+      }
+
+      // 4) Send to server
+      const resp = await fetch(`http://${localIP}:8080/api/catalog/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(allSongs),
+        signal: AbortSignal.timeout(15000),
+      });
+      const result = await resp.json();
+      if (result.ok) {
+        toast.success(`${result.count || allSongs.length} brani catalogo sincronizzati col server!`);
+      } else {
+        toast.error('Il server ha rifiutato i dati — controlla i log del server');
+      }
+    } catch (e: any) {
+      console.error('[Sync Catalog]', e);
+      (await import('sonner')).toast.error('Errore sync catalogo → server: ' + (e?.message || ''));
+    }
     setSyncingCatalog(false);
   };
 
