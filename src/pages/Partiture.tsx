@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useMemo, useState } from 'react';
+import React, { useEffect, useRef, useMemo, useState, useCallback } from 'react';
 import { Guitar, Music, Wifi, WifiOff, Footprints, Minus, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
-import { useBroadcast } from '@/hooks/useBroadcast';
+import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
+import { useConnectionMode, useLocalBroadcast } from '@/hooks/useLocalBroadcast';
 import { supabase } from '@/integrations/supabase/client';
 import { parseChordPro, transposeSong, ChordProSong } from '@/lib/chordpro';
 import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
@@ -19,7 +19,8 @@ interface SongbookFile {
 import { renderResponsiveSong } from '@/lib/chordproRenderer';
 
 export default function Partiture() {
-  const { session } = useBroadcast('main');
+  const { session, isLocalMode, localConnected } = useHybridBroadcast('main');
+  const { serverUrl } = useConnectionMode();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [file, setFile] = useState<SongbookFile | null>(null);
   const [localTextScale, setLocalTextScale] = useState<number>(() => {
@@ -42,7 +43,57 @@ export default function Partiture() {
     scrollRef: scrollRef as React.RefObject<HTMLElement>,
   });
 
-  // Fetch file when fileId changes — Fallback chain: Cloud → LAN → IndexedDB cache
+  // WS-based song fetch: connect to WS and request song from cached_songs
+  const wsRef = useRef<WebSocket | null>(null);
+  const pendingSongRequestRef = useRef<string | null>(null);
+
+  // Connect to WS for song fetching when in local mode
+  useEffect(() => {
+    if (!isLocalMode) return;
+
+    const ws = new WebSocket(serverUrl);
+    wsRef.current = ws;
+
+    ws.onopen = () => {
+      // If we have a pending song request, send it now
+      if (pendingSongRequestRef.current) {
+        ws.send(JSON.stringify({ type: 'get_song', id: pendingSongRequestRef.current }));
+      }
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'song_data' && msg.data && msg.id === pendingSongRequestRef.current) {
+          setFile({
+            id: msg.data.id,
+            title: msg.data.title || '',
+            artist: msg.data.artist || null,
+            content: msg.data.content,
+          });
+          pendingSongRequestRef.current = null;
+        }
+      } catch { /* ignore */ }
+    };
+
+    ws.onerror = () => ws.close();
+    ws.onclose = () => { wsRef.current = null; };
+
+    return () => {
+      ws.close();
+      wsRef.current = null;
+    };
+  }, [isLocalMode, serverUrl]);
+
+  // Request song from WS cache
+  const requestSongFromWS = useCallback((id: string) => {
+    pendingSongRequestRef.current = id;
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'get_song', id }));
+    }
+  }, []);
+
+  // Fetch file when fileId changes — Fallback chain: Cloud → WS Cache → LAN HTTP → IndexedDB
   useEffect(() => {
     if (!fileId) { setFile(null); return; }
     
@@ -58,27 +109,41 @@ export default function Partiture() {
           return;
         }
       } catch {
-        console.log('[Partiture] Cloud fetch failed/timeout, trying LAN...');
+        console.log('[Partiture] Cloud fetch failed/timeout, trying alternatives...');
       }
 
-      // 2) Try LAN mini-server
+      // 2) Try WS cached songs (SongbookLive caches songs here via localCacheSong)
+      if (isLocalMode) {
+        requestSongFromWS(fileId);
+        // Give WS a moment to respond — if it does, the onmessage handler sets the file
+        // Meanwhile continue to other fallbacks
+        await new Promise(r => setTimeout(r, 500));
+        // If WS already set the file, we're done
+        if (pendingSongRequestRef.current === null) return;
+      }
+
+      // 3) Try LAN mini-server (search all files since IDs don't match)
       const localIP = safeGetItem('local', 'broadcast_local_ip') || '';
       if (localIP) {
         try {
-          const resp = await fetch(`http://${localIP}:8080/api/songbook/${fileId}`, {
+          const resp = await fetch(`http://${localIP}:8080/api/songbook/all`, {
             signal: AbortSignal.timeout(3000),
           });
           if (resp.ok) {
-            const f = await resp.json();
-            if (f && f.content) {
-              setFile({ id: f.id || fileId, title: f.title || '', artist: f.artist || null, content: f.content });
+            const allFiles = await resp.json();
+            // Try matching by ID first, then by slug
+            const match = Array.isArray(allFiles) && allFiles.find((f: any) => 
+              f.id === fileId || f.slug === fileId
+            );
+            if (match && match.content) {
+              setFile({ id: match.id || fileId, title: match.title || '', artist: match.artist || null, content: match.content });
               return;
             }
           }
         } catch { /* LAN not available */ }
       }
 
-      // 3) Fallback to IndexedDB cache
+      // 4) Fallback to IndexedDB cache
       const { getCachedFile } = await import('@/lib/songbookCache');
       const cached = await getCachedFile(fileId);
       if (cached) {
@@ -92,7 +157,7 @@ export default function Partiture() {
     };
 
     fetchFile();
-  }, [fileId]);
+  }, [fileId, isLocalMode, requestSongFromWS]);
 
   // Parse and transpose
   const parsedSong = useMemo(() => {
@@ -129,8 +194,17 @@ export default function Partiture() {
           </p>
         </div>
         <Badge variant="outline" className="gap-2 px-5 py-2.5 text-sm">
-          <WifiOff className="w-4 h-4" />
-          In attesa della trasmissione
+          {isLocalMode && localConnected ? (
+            <>
+              <Wifi className="w-4 h-4 text-green-500" />
+              Connesso via LAN
+            </>
+          ) : (
+            <>
+              <WifiOff className="w-4 h-4" />
+              In attesa della trasmissione
+            </>
+          )}
         </Badge>
         <div className="flex items-center gap-6 text-xs text-muted-foreground/50 mt-4">
           <div className="flex items-center gap-1.5">
