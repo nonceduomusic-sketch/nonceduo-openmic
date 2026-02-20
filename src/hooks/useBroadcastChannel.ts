@@ -33,7 +33,7 @@ export function useBroadcastChannel({ salaCode, onUpdate }: UseBroadcastChannelO
   useEffect(() => {
     const channel = supabase
       .channel(`broadcast-sync-${salaCode}`, {
-        config: { broadcast: { self: false } },
+        config: { broadcast: { self: true } },
       })
       .on('broadcast', { event: 'sync' }, (payload) => {
         if (payload.payload) {
