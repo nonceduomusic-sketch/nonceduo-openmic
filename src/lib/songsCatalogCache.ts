@@ -205,6 +205,11 @@ export async function syncCatalogToLocalServer(
       body: JSON.stringify(allSongs),
       signal: AbortSignal.timeout(10000),
     });
+    const contentType = resp.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      console.error('[SongsCatalogCache] Server returned non-JSON response (got HTML). Check that the LAN server is running on the correct IP/port.');
+      return { success: false, count: 0 };
+    }
     const result = await resp.json();
     return { success: result.ok, count: result.count || 0 };
   } catch (e) {

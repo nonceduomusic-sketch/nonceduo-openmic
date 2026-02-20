@@ -684,6 +684,12 @@ function OfflineDataSection({ localIP: configIP }: { localIP: string }) {
         body: JSON.stringify(allFiles),
         signal: AbortSignal.timeout(15000),
       });
+      const ct = resp.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) {
+        toast.error(`Il server LAN (${localIP}:8080) ha risposto con HTML anziché JSON. Verifica che il mini-server Node.js sia in esecuzione e che l'IP sia corretto.`);
+        setSyncingSongbook(false);
+        return;
+      }
       const result = await resp.json();
       if (result.ok) {
         toast.success(`${result.count || allFiles.length} file .cho sincronizzati col server!`);
@@ -692,7 +698,7 @@ function OfflineDataSection({ localIP: configIP }: { localIP: string }) {
       }
     } catch (e: any) {
       console.error('[Sync SongBook]', e);
-      (await import('sonner')).toast.error('Errore sync SongBook → server: ' + (e?.message || ''));
+      toast.error('Errore sync SongBook → server: ' + (e?.message || ''));
     }
     setSyncingSongbook(false);
   };
@@ -762,6 +768,12 @@ function OfflineDataSection({ localIP: configIP }: { localIP: string }) {
         body: JSON.stringify(allSongs),
         signal: AbortSignal.timeout(15000),
       });
+      const ct = resp.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) {
+        toast.error(`Il server LAN (${localIP}:8080) ha risposto con HTML anziché JSON. Verifica che il mini-server Node.js sia in esecuzione e che l'IP sia corretto.`);
+        setSyncingCatalog(false);
+        return;
+      }
       const result = await resp.json();
       if (result.ok) {
         toast.success(`${result.count || allSongs.length} brani catalogo sincronizzati col server!`);
@@ -770,7 +782,7 @@ function OfflineDataSection({ localIP: configIP }: { localIP: string }) {
       }
     } catch (e: any) {
       console.error('[Sync Catalog]', e);
-      (await import('sonner')).toast.error('Errore sync catalogo → server: ' + (e?.message || ''));
+      toast.error('Errore sync catalogo → server: ' + (e?.message || ''));
     }
     setSyncingCatalog(false);
   };
