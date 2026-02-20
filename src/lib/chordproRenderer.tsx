@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import type { ChordProSong, ChordProLine } from './chordpro';
 
 /**
@@ -64,13 +64,15 @@ interface RenderOptions {
  * Render a single chord-text line responsively.
  * Returns inline-block segments that wrap correctly on any screen width.
  */
-export function renderResponsiveChordLine(
-  line: ChordProLine,
-  options: RenderOptions = {}
-): React.ReactNode {
+export const MemoizedChordLine = memo(function MemoizedChordLine({
+  line,
+  options = {},
+}: {
+  line: ChordProLine;
+  options?: RenderOptions;
+}) {
   const { coloredChords = true, chordClassName } = options;
   const segments = splitIntoSegments(line);
-
   const chordClass = chordClassName || (coloredChords ? 'text-primary' : 'text-muted-foreground');
 
   return (
@@ -81,13 +83,11 @@ export function renderResponsiveChordLine(
           className="inline-block align-bottom"
           style={{ whiteSpace: 'pre-wrap' }}
         >
-          {/* Chord row - only render if there's a chord */}
           <span
             className={`block font-bold text-[0.85em] leading-tight min-h-[1.1em] ${chordClass}`}
           >
             {seg.chord || '\u00A0'}
           </span>
-          {/* Text row */}
           <span className="block leading-normal">
             {seg.text || '\u00A0'}
           </span>
@@ -95,6 +95,16 @@ export function renderResponsiveChordLine(
       ))}
     </span>
   );
+});
+
+/**
+ * Render a single chord-text line responsively (legacy non-memo version).
+ */
+export function renderResponsiveChordLine(
+  line: ChordProLine,
+  options: RenderOptions = {}
+): React.ReactNode {
+  return <MemoizedChordLine line={line} options={options} />;
 }
 
 /**
