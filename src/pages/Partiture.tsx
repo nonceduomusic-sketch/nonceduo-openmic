@@ -133,7 +133,7 @@ export default function Partiture() {
             const allFiles = await resp.json();
             // Try matching by ID first, then by slug
             const match = Array.isArray(allFiles) && allFiles.find((f: any) => 
-              f.id === fileId || f.slug === fileId
+              f.supabase_id === fileId || f.id === fileId || f.slug === fileId
             );
             if (match && match.content) {
               setFile({ id: match.id || fileId, title: match.title || '', artist: match.artist || null, content: match.content });

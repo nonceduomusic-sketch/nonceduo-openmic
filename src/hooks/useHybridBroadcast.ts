@@ -8,9 +8,48 @@
  * The hook provides a unified `session` and `syncUpdate` that automatically
  * routes to the correct transport based on the current connection mode.
  */
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useBroadcast, type BroadcastSession } from '@/hooks/useBroadcast';
 import { useConnectionMode, useLocalBroadcast } from '@/hooks/useLocalBroadcast';
+
+// Default session for instant local mode bootstrapping (no cloud wait)
+const LOCAL_DEFAULT_SESSION: BroadcastSession = {
+  id: 'offline',
+  sala_code: 'main',
+  sala_name: 'Sala Principale',
+  is_active: false,
+  current_song_id: null,
+  current_reservation_id: null,
+  display_mode: 'waiting',
+  scroll_position: 0,
+  highlight_line: 0,
+  auto_scroll: true,
+  scroll_speed: 3,
+  tv_view_mode: 'karaoke',
+  is_broadcasting: false,
+  highlight_enabled: true,
+  highlight_lines_count: 1,
+  font_size: 100,
+  text_align: 'center',
+  remote_scroll_enabled: true,
+  screen_share_active: false,
+  screen_share_offer: null,
+  screen_share_answer: null,
+  screen_share_ice_candidates: [],
+  screen_share_started_at: null,
+  screen_share_stopped_reason: null,
+  screen_stream_active: false,
+  screen_stream_url: null,
+  songbook_file_id: null,
+  songbook_mode: false,
+  songbook_show_chords_on_tv: false,
+  songbook_transpose: 0,
+  songbook_view_mode: 'chordpro',
+  broadcast_to_tv: true,
+  broadcast_to_partiture: true,
+  created_at: '',
+  updated_at: '',
+} as BroadcastSession;
 
 export function useHybridBroadcast(salaCode: string = 'main') {
   const cloud = useBroadcast(salaCode);
@@ -49,11 +88,15 @@ export function useHybridBroadcast(salaCode: string = 'main') {
   }, [isLocalMode]);
 
   // Merged session: cloud base + local overrides when in local mode
-  const session: BroadcastSession | null = cloud.session
-    ? isLocalMode
-      ? { ...cloud.session, ...localOverrides } as BroadcastSession
-      : cloud.session
-    : null;
+  // CRITICAL FIX: When cloud.session is null (still loading/timed out) but we're in local mode,
+  // use a default session as base so WS overrides are not lost during the cloud timeout gap
+  const session: BroadcastSession | null = useMemo(() => {
+    if (isLocalMode) {
+      const base = cloud.session || LOCAL_DEFAULT_SESSION;
+      return { ...base, ...localOverrides } as BroadcastSession;
+    }
+    return cloud.session;
+  }, [isLocalMode, cloud.session, localOverrides]);
 
   // Stable ref for cloud.updateSession to avoid re-creating syncUpdate on every render
   const cloudUpdateRef = useRef(cloud.updateSession);
