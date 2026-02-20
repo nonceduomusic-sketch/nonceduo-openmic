@@ -42,33 +42,49 @@ export default function Partiture() {
     scrollRef: scrollRef as React.RefObject<HTMLElement>,
   });
 
-  // Fetch file when fileId changes (with cache fallback)
+  // Fetch file when fileId changes — Fallback chain: Cloud → LAN → IndexedDB cache
   useEffect(() => {
     if (!fileId) { setFile(null); return; }
-    supabase.from('songbook_files').select('*').eq('id', fileId).single()
-      .then(async ({ data, error }) => {
-        if (data) {
-          setFile(data as SongbookFile);
-        } else if (error) {
-          // Fallback to cache (offline)
-          const { getCachedFile } = await import('@/lib/songbookCache');
-          const cached = await getCachedFile(fileId);
-          if (cached) {
-            setFile({
-              id: cached.id,
-              title: cached.title,
-              artist: cached.artist,
-              content: cached.content,
-              filename: cached.filename,
-              slug: cached.slug,
-              is_variant: cached.is_variant,
-              created_at: '',
-              updated_at: '',
-              created_by: null,
-            } as SongbookFile);
+    
+    const fetchFile = async () => {
+      // 1) Try Cloud
+      const { data, error } = await supabase.from('songbook_files').select('*').eq('id', fileId).single();
+      if (data) {
+        setFile(data as SongbookFile);
+        return;
+      }
+
+      // 2) Try LAN mini-server
+      const localIP = safeGetItem('local', 'broadcast_local_ip') || '';
+      if (localIP) {
+        try {
+          const resp = await fetch(`http://${localIP}:8080/api/songbook/${fileId}`, {
+            signal: AbortSignal.timeout(3000),
+          });
+          if (resp.ok) {
+            const f = await resp.json();
+            if (f && f.content) {
+              setFile({ id: f.id || fileId, title: f.title || '', artist: f.artist || null, content: f.content });
+              return;
+            }
           }
-        }
-      });
+        } catch { /* LAN not available */ }
+      }
+
+      // 3) Fallback to IndexedDB cache
+      const { getCachedFile } = await import('@/lib/songbookCache');
+      const cached = await getCachedFile(fileId);
+      if (cached) {
+        setFile({
+          id: cached.id,
+          title: cached.title,
+          artist: cached.artist,
+          content: cached.content,
+        } as SongbookFile);
+      }
+    };
+
+    fetchFile();
   }, [fileId]);
 
   // Parse and transpose
