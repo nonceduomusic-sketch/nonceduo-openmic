@@ -145,6 +145,11 @@ const httpServer = http.createServer(async (req, res) => {
 
   // ── API Routes ──
   
+  // Ping endpoint (per auto-sync check)
+  if (urlPath === '/api/ping' && req.method === 'GET') {
+    return sendJSON(res, { ok: true, ts: Date.now() });
+  }
+
   // SongBook: lista brani
   if (urlPath === '/api/songbook/list' && req.method === 'GET') {
     return sendJSON(res, getSongbookList());
