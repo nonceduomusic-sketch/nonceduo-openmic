@@ -165,7 +165,7 @@ interface RemoteControlInterfaceProps {
 }
 
 function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChange }: RemoteControlInterfaceProps) {
-  const { session, syncUpdate, updateSession, mode, setMode, localIP, setLocalIP, localConnected, localLatency, isLocalMode } = useHybridBroadcast(salaCode);
+  const { session, syncUpdate, updateSession, mode, setMode, localIP, setLocalIP, localConnected, localLatency, isLocalMode, localRequestSong } = useHybridBroadcast(salaCode);
   const { updateScrollPosition } = useRemoteControl(sessionId, salaCode);
 
   // Hybrid highlight update: use syncUpdate for fastest path (direct DB update or local WS)
@@ -301,41 +301,6 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
   }, [session?.current_song_id, isSongbookMode]);
 
   // Fetch songbook file (with cache fallback)
-  // WS song cache ref for local mode
-  const wsSongRef = useRef<WebSocket | null>(null);
-  const pendingWsSongRef = useRef<string | null>(null);
-
-  // Connect WS for song fetching in local mode
-  useEffect(() => {
-    if (!isLocalMode) return;
-    const wsUrl = `ws://${localIP}:3456`;
-    try {
-      const ws = new WebSocket(wsUrl);
-      wsSongRef.current = ws;
-      ws.onopen = () => {
-        if (pendingWsSongRef.current) {
-          ws.send(JSON.stringify({ type: 'get_song', id: pendingWsSongRef.current }));
-        }
-      };
-      ws.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data);
-          if (msg.type === 'song_data' && msg.data && msg.id === pendingWsSongRef.current) {
-            setCurrentSongbookFile({
-              title: msg.data.title || '',
-              artist: msg.data.artist || null,
-              content: msg.data.content,
-            });
-            pendingWsSongRef.current = null;
-          }
-        } catch { /* ignore */ }
-      };
-      ws.onerror = () => ws.close();
-      ws.onclose = () => { wsSongRef.current = null; };
-      return () => { ws.close(); wsSongRef.current = null; };
-    } catch { return; }
-  }, [isLocalMode, localIP]);
-
   useEffect(() => {
     if (!isSongbookMode || !songbookFileId) {
       setCurrentSongbookFile(null);
@@ -386,31 +351,19 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
         }
       })();
 
-      // WS cache: request from server's cached_songs (SongbookLive caches here)
-      const wsPromise = (async () => {
-        if (!isLocalMode) return null;
-        pendingWsSongRef.current = songbookFileId;
-        if (wsSongRef.current?.readyState === WebSocket.OPEN) {
-          wsSongRef.current.send(JSON.stringify({ type: 'get_song', id: songbookFileId }));
-        }
-        // Wait briefly for WS response
-        await new Promise(r => setTimeout(r, 500));
-        return pendingWsSongRef.current === null ? 'handled' : null;
-      })();
+      // WS cache: request from server's cached_songs (SongbookLive caches songs here)
+      const wsPromise = isLocalMode ? localRequestSong(songbookFileId, 2000) : Promise.resolve(null);
 
       const results = await Promise.allSettled([cloudPromise, lanPromise, wsPromise]);
       
-      // Check if WS already handled it
-      if (pendingWsSongRef.current === null) return;
-      
       for (const r of results) {
-        if (r.status === 'fulfilled' && r.value && r.value !== 'handled') {
+        if (r.status === 'fulfilled' && r.value) {
           setCurrentSongbookFile(r.value as any);
           return;
         }
       }
 
-      // 4) Fallback to IndexedDB cache
+      // Fallback to IndexedDB cache
       const { getCachedFile } = await import('@/lib/songbookCache');
       const cached = await getCachedFile(songbookFileId);
       if (cached) {
@@ -418,7 +371,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
       }
     };
     fetchFile();
-  }, [isSongbookMode, songbookFileId, isLocalMode]);
+  }, [isSongbookMode, songbookFileId, isLocalMode, localRequestSong]);
 
   // Determine if we have content to show
   const hasContent = isSongbookMode ? !!currentSongbookFile : !!currentSong;

@@ -20,7 +20,7 @@ export function useHybridBroadcast(salaCode: string = 'main') {
   // Local overrides: partial state received from WebSocket
   const [localOverrides, setLocalOverrides] = useState<Record<string, unknown>>({});
 
-  const { connected: localConnected, latency: localLatency, sendUpdate: localSendUpdate, cacheSong: localCacheSong } = useLocalBroadcast({
+  const { connected: localConnected, latency: localLatency, sendUpdate: localSendUpdate, cacheSong: localCacheSong, requestSong: localRequestSong } = useLocalBroadcast({
     enabled: isLocalMode,
     serverUrl,
     // Only apply INCREMENTAL updates as overrides (peer sends via WS)
@@ -129,5 +129,6 @@ export function useHybridBroadcast(salaCode: string = 'main') {
     localConnected,
     localLatency,
     localCacheSong,
+    localRequestSong,
   };
 }

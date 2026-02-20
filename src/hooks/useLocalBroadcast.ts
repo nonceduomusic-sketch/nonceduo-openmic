@@ -88,6 +88,9 @@ export function useLocalBroadcast({ enabled, serverUrl, onStateUpdate, onInitial
   onStateUpdateRef.current = onStateUpdate;
   onInitialStateRef.current = onInitialState;
 
+  // Song request promise resolvers keyed by song id
+  const songResolversRef = useRef<Map<string, (song: any) => void>>(new Map());
+
   const connect = useCallback(() => {
     if (!enabled) return;
 
@@ -125,8 +128,14 @@ export function useLocalBroadcast({ enabled, serverUrl, onStateUpdate, onInitial
                 setLatency(Date.now() - msg.timestamp);
               }
               break;
-            case 'song_data':
+            case 'song_data': {
+              const resolver = songResolversRef.current.get(msg.id);
+              if (resolver) {
+                resolver(msg.data || null);
+                songResolversRef.current.delete(msg.id);
+              }
               break;
+            }
           }
         } catch (e) {
           console.error('[LocalBroadcast] Parse error:', e);
@@ -180,10 +189,30 @@ export function useLocalBroadcast({ enabled, serverUrl, onStateUpdate, onInitial
     }
   }, []);
 
+  /** Request a cached song from the local WS server. Returns null if not found or timeout. */
+  const requestSong = useCallback((songId: string, timeoutMs = 2000): Promise<{ title: string; artist: string | null; content: string } | null> => {
+    return new Promise((resolve) => {
+      if (wsRef.current?.readyState !== WebSocket.OPEN) {
+        resolve(null);
+        return;
+      }
+      const timer = setTimeout(() => {
+        songResolversRef.current.delete(songId);
+        resolve(null);
+      }, timeoutMs);
+      songResolversRef.current.set(songId, (data) => {
+        clearTimeout(timer);
+        resolve(data ? { title: data.title || '', artist: data.artist || null, content: data.content } : null);
+      });
+      wsRef.current.send(JSON.stringify({ type: 'get_song', id: songId }));
+    });
+  }, []);
+
   return {
     connected,
     latency,
     sendUpdate,
     cacheSong,
+    requestSong,
   };
 }
