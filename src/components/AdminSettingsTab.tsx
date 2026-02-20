@@ -572,11 +572,18 @@ function OfflineDataSection({ localIP: configIP }: { localIP: string }) {
       const { supabase } = await import('@/integrations/supabase/client');
       const { downloadAllSongbookFilesForOffline, getCacheStats } = await import('@/lib/songbookCache');
       const result = await downloadAllSongbookFilesForOffline(supabase);
-      if (result.success) {
+      if (result.success && result.count > 0) {
         (await import('sonner')).toast.success(`${result.count} brani SongBook scaricati!`);
         setSongbookStats(await getCacheStats());
+      } else if (result.success && result.count === 0) {
+        (await import('sonner')).toast.warning('Nessun brano SongBook trovato nel database Cloud');
+      } else {
+        (await import('sonner')).toast.error('Download SongBook fallito — serve connessione internet al Cloud');
       }
-    } catch { (await import('sonner')).toast.error('Errore download SongBook'); }
+    } catch (e) {
+      console.error('[OfflineData] Download songbook error:', e);
+      (await import('sonner')).toast.error('Errore download SongBook — controlla la connessione internet');
+    }
     setDownloadingSongbook(false);
   };
 
@@ -586,11 +593,18 @@ function OfflineDataSection({ localIP: configIP }: { localIP: string }) {
       const { supabase } = await import('@/integrations/supabase/client');
       const { downloadAllCatalogForOffline, getSongsCatalogCacheStats } = await import('@/lib/songsCatalogCache');
       const result = await downloadAllCatalogForOffline(supabase);
-      if (result.success) {
+      if (result.success && result.count > 0) {
         (await import('sonner')).toast.success(`${result.count} canzoni catalogo scaricate!`);
         setCatalogStats(await getSongsCatalogCacheStats());
+      } else if (result.success && result.count === 0) {
+        (await import('sonner')).toast.warning('Nessuna canzone trovata nel catalogo Cloud');
+      } else {
+        (await import('sonner')).toast.error('Download catalogo fallito — serve connessione internet al Cloud');
       }
-    } catch { (await import('sonner')).toast.error('Errore download catalogo'); }
+    } catch (e) {
+      console.error('[OfflineData] Download catalog error:', e);
+      (await import('sonner')).toast.error('Errore download catalogo — controlla la connessione internet');
+    }
     setDownloadingCatalog(false);
   };
 
