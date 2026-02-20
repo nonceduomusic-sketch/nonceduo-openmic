@@ -22,6 +22,7 @@ const PUBLIC_DIR = path.join(__dirname, 'public');
 const DATA_DIR = path.join(__dirname, 'data');
 const SONGBOOK_DIR = path.join(DATA_DIR, 'songbook');
 const CATALOG_FILE = path.join(DATA_DIR, 'catalog.json');
+const SONGBOOK_IDS_FILE = path.join(DATA_DIR, 'songbook-ids.json');
 
 // Assicura che le cartelle dati esistano
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -82,16 +83,28 @@ function readBody(req) {
 // ═══════════════════════════════════════
 // SongBook API — file .cho nella cartella data/songbook/
 // ═══════════════════════════════════════
+// Mapping filename → Supabase UUID (populated during sync)
+function getSongbookIdMap() {
+  try {
+    if (fs.existsSync(SONGBOOK_IDS_FILE)) {
+      return JSON.parse(fs.readFileSync(SONGBOOK_IDS_FILE, 'utf-8'));
+    }
+  } catch {}
+  return {};
+}
+
 function getSongbookList() {
   try {
     const files = fs.readdirSync(SONGBOOK_DIR).filter(f => f.endsWith('.cho'));
+    const idMap = getSongbookIdMap();
     return files.map(filename => {
       const content = fs.readFileSync(path.join(SONGBOOK_DIR, filename), 'utf-8');
       const title = (content.match(/\{title:\s*(.+?)\}/i) || [])[1] || filename.replace('.cho', '');
       const artist = (content.match(/\{artist:\s*(.+?)\}/i) || [])[1] || null;
       const slug = filename.replace('.cho', '').toLowerCase().replace(/[^a-z0-9-]/g, '-');
       const isVariant = filename.includes('_');
-      return { id: slug, title: title.trim(), artist: artist?.trim() || null, filename, slug, is_variant: isVariant };
+      const supabase_id = idMap[filename] || null;
+      return { id: slug, supabase_id, title: title.trim(), artist: artist?.trim() || null, filename, slug, is_variant: isVariant };
     });
   } catch (e) {
     console.error('❌ Errore lettura songbook:', e.message);
@@ -200,16 +213,23 @@ const httpServer = http.createServer(async (req, res) => {
     try {
       const body = await readBody(req);
       if (Array.isArray(body)) {
-        // Ogni elemento: { filename, content }
+        // Ogni elemento: { filename, content, id? (Supabase UUID) }
         let count = 0;
+        const idMap = getSongbookIdMap();
         for (const file of body) {
           if (file.filename && file.content) {
             const safeName = file.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
             fs.writeFileSync(path.join(SONGBOOK_DIR, safeName), file.content, 'utf-8');
+            // Save Supabase UUID mapping if provided
+            if (file.id) {
+              idMap[safeName] = file.id;
+            }
             count++;
           }
         }
-        console.log(`📦 SongBook sincronizzato: ${count} file .cho`);
+        // Persist UUID mapping
+        fs.writeFileSync(SONGBOOK_IDS_FILE, JSON.stringify(idMap, null, 2), 'utf-8');
+        console.log(`📦 SongBook sincronizzato: ${count} file .cho (${Object.keys(idMap).length} UUID mappati)`);
         return sendJSON(res, { ok: true, count });
       }
       return sendJSON(res, { error: 'Body deve essere un array' }, 400);

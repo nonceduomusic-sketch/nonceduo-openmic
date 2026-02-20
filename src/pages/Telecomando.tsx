@@ -339,7 +339,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
           if (!ct.includes('application/json')) return null;
           const allFiles = await resp.json();
           if (!Array.isArray(allFiles)) return null;
-          const match = allFiles.find((f: any) => f.id === songbookFileId || f.slug === songbookFileId);
+          const match = allFiles.find((f: any) => f.supabase_id === songbookFileId || f.id === songbookFileId || f.slug === songbookFileId);
           if (!match?.content) return null;
           return {
             title: match.title || '',

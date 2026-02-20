@@ -239,7 +239,7 @@ export async function syncSongbookToLocalServer(
       const timeout = setTimeout(() => controller.abort(), 4000);
       const { data, error } = await supabaseClient
         .from('songbook_files')
-        .select('filename, content')
+        .select('id, filename, content')
         .range(from, from + pageSize - 1)
         .abortSignal(controller.signal);
       clearTimeout(timeout);
@@ -260,7 +260,7 @@ export async function syncSongbookToLocalServer(
   if (allFiles.length === 0) {
     try {
       const cached = await getAllCachedFiles();
-      allFiles = cached.map(f => ({ filename: f.filename, content: f.content }));
+      allFiles = cached.map(f => ({ id: f.id, filename: f.filename, content: f.content }));
     } catch {
       console.warn('[SongbookCache] IndexedDB fallback also failed');
     }
