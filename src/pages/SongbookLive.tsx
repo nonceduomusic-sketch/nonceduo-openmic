@@ -190,36 +190,55 @@ export default function SongbookLive() {
     return result;
   }, [files, searchQuery, sortMode]);
 
-  // Parse selected song
-  const parsedSong: ChordProSong | null = selectedFile 
-    ? transposeSong(parseChordPro(selectedFile.content), transpose)
-    : null;
+  // Parse selected song (memoized to avoid re-parsing on every render)
+  const parsedSong: ChordProSong | null = useMemo(() => {
+    if (!selectedFile) return null;
+    return transposeSong(parseChordPro(selectedFile.content), transpose);
+  }, [selectedFile?.id, selectedFile?.content, transpose]);
 
-  // Sync scroll to TV - throttled, includes highlight_line for cross-view text alignment
+  // Pre-parse next song in setlist for instant switch
+  const nextParsedSong = useMemo(() => {
+    if (!activeSetlistSongs || currentSetlistIndex < 0) return null;
+    const nextIndex = currentSetlistIndex + 1;
+    if (nextIndex >= activeSetlistSongs.length) return null;
+    const nextFileId = activeSetlistSongs[nextIndex].songbook_file_id;
+    const nextFile = files.find(f => f.id === nextFileId);
+    if (!nextFile) return null;
+    return { file: nextFile, parsed: transposeSong(parseChordPro(nextFile.content), 0) };
+  }, [activeSetlistSongs, currentSetlistIndex, files]);
+
+  // Sync scroll to TV - throttled at ~33ms (~30fps), includes highlight_line for cross-view text alignment
   const syncScrollToTV = useCallback(() => {
     if (!scrollRef.current) return;
     const now = Date.now();
-    if (now - lastSyncRef.current < 50) return;
+    if (now - lastSyncRef.current < 33) return; // ~30fps max
     lastSyncRef.current = now;
     
     const container = scrollRef.current;
     const ratio = getScrollRatioFromElement(container);
     
-    // Find centered text line for cross-view sync
+    // Find centered text line for cross-view sync using binary-search-like approach
     const centerY = container.scrollTop + container.clientHeight / 2;
     const lineElements = container.querySelectorAll('[data-line]');
     let closestLine = 0;
     let closestDist = Infinity;
     
-    lineElements.forEach((el) => {
-      const htmlEl = el as HTMLElement;
-      const lineCenter = htmlEl.offsetTop + htmlEl.offsetHeight / 2;
+    // Iterate only visible range for performance
+    for (let i = 0; i < lineElements.length; i++) {
+      const htmlEl = lineElements[i] as HTMLElement;
+      const top = htmlEl.offsetTop;
+      // Skip elements far above viewport
+      if (top + htmlEl.offsetHeight < container.scrollTop - 200) continue;
+      // Stop if well below viewport
+      if (top > container.scrollTop + container.clientHeight + 200) break;
+      
+      const lineCenter = top + htmlEl.offsetHeight / 2;
       const dist = Math.abs(lineCenter - centerY);
       if (dist < closestDist) {
         closestDist = dist;
         closestLine = parseInt(htmlEl.dataset.line || '0', 10);
       }
-    });
+    }
     
     syncUpdate({ scroll_position: ratio, highlight_line: closestLine });
   }, [syncUpdate]);

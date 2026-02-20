@@ -146,6 +146,40 @@ export function useBroadcast(salaCode: string = 'main') {
     };
   }, [fetchSession, salaCode]);
 
+  // Debounced DB persistence for high-frequency updates (scroll, highlight)
+  const dbPersistTimerRef = useRef<number | null>(null);
+  const pendingDbUpdatesRef = useRef<Partial<BroadcastSession>>({});
+  
+  const flushDbUpdates = useCallback(() => {
+    dbPersistTimerRef.current = null;
+    const updates = pendingDbUpdatesRef.current;
+    pendingDbUpdatesRef.current = {};
+    if (Object.keys(updates).length === 0) return;
+    
+    supabase
+      .from('broadcast_sessions')
+      .update(updates as any)
+      .eq('sala_code', salaCode)
+      .then(({ error }) => {
+        if (error) console.error('Error persisting broadcast update:', error);
+      });
+  }, [salaCode]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (dbPersistTimerRef.current) window.clearTimeout(dbPersistTimerRef.current);
+      // Flush any pending updates
+      const pending = pendingDbUpdatesRef.current;
+      if (Object.keys(pending).length > 0) {
+        supabase.from('broadcast_sessions').update(pending as any).eq('sala_code', salaCode);
+      }
+    };
+  }, [salaCode]);
+
+  // High-frequency fields that should be debounced to DB
+  const HIGH_FREQ_KEYS = new Set(['scroll_position', 'highlight_line']);
+
   // Update session: broadcast instantly to peers, then persist to DB in background
   const updateSession = useCallback(async (updates: Partial<BroadcastSession>) => {
     // 1. Apply locally immediately
@@ -154,19 +188,34 @@ export function useBroadcast(salaCode: string = 'main') {
     // 2. Broadcast to all peers instantly (~20ms)
     broadcastSend(updates as Record<string, unknown>);
     
-    // 3. Persist to DB in background (no await needed for UI)
-    supabase
-      .from('broadcast_sessions')
-      .update(updates as any)
-      .eq('sala_code', salaCode)
-      .then(({ error }) => {
-        if (error) {
-          console.error('Error persisting broadcast update:', error);
-        }
-      });
+    // 3. Persist to DB - debounce high-frequency updates, immediate for important ones
+    const isHighFreq = Object.keys(updates).every(k => HIGH_FREQ_KEYS.has(k));
+    
+    if (isHighFreq) {
+      // Merge into pending and debounce (200ms)
+      pendingDbUpdatesRef.current = { ...pendingDbUpdatesRef.current, ...updates };
+      if (!dbPersistTimerRef.current) {
+        dbPersistTimerRef.current = window.setTimeout(flushDbUpdates, 200);
+      }
+    } else {
+      // Flush any pending + send this immediately
+      if (dbPersistTimerRef.current) {
+        window.clearTimeout(dbPersistTimerRef.current);
+        dbPersistTimerRef.current = null;
+      }
+      const merged = { ...pendingDbUpdatesRef.current, ...updates };
+      pendingDbUpdatesRef.current = {};
+      supabase
+        .from('broadcast_sessions')
+        .update(merged as any)
+        .eq('sala_code', salaCode)
+        .then(({ error }) => {
+          if (error) console.error('Error persisting broadcast update:', error);
+        });
+    }
 
     return true;
-  }, [salaCode, broadcastSend]);
+  }, [salaCode, broadcastSend, flushDbUpdates]);
 
   // Broadcast a song (set current_song_id and switch to lyrics mode)
   // IMPORTANT: Always reset songbook_mode to avoid conflicts when switching from SongBook to catalog
