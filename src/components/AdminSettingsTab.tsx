@@ -588,7 +588,19 @@ function OfflineDataSection({ localIP }: { localIP: string }) {
     setDownloadingCatalog(false);
   };
 
+  const mixedContentWarning = () => {
+    if (window.location.protocol === 'https:') {
+      (import('sonner')).then(s => s.toast.error(
+        'Impossibile raggiungere il server locale da HTTPS. Apri l\'app da http://' + localIP + ':8080/admin',
+        { duration: 8000 }
+      ));
+      return true;
+    }
+    return false;
+  };
+
   const handleSyncSongbook = async () => {
+    if (mixedContentWarning()) return;
     setSyncingSongbook(true);
     try {
       const { supabase } = await import('@/integrations/supabase/client');
@@ -597,13 +609,14 @@ function OfflineDataSection({ localIP }: { localIP: string }) {
       if (result.success) {
         (await import('sonner')).toast.success(`${result.count} file .cho sincronizzati col server!`);
       } else {
-        (await import('sonner')).toast.error('Server locale non raggiungibile');
+        (await import('sonner')).toast.error('Server locale non raggiungibile — verifica IP e che il server sia acceso');
       }
     } catch { (await import('sonner')).toast.error('Errore sync SongBook → server'); }
     setSyncingSongbook(false);
   };
 
   const handleSyncCatalog = async () => {
+    if (mixedContentWarning()) return;
     setSyncingCatalog(true);
     try {
       const { supabase } = await import('@/integrations/supabase/client');
@@ -612,7 +625,7 @@ function OfflineDataSection({ localIP }: { localIP: string }) {
       if (result.success) {
         (await import('sonner')).toast.success(`${result.count} brani catalogo sincronizzati col server!`);
       } else {
-        (await import('sonner')).toast.error('Server locale non raggiungibile');
+        (await import('sonner')).toast.error('Server locale non raggiungibile — verifica IP e che il server sia acceso');
       }
     } catch { (await import('sonner')).toast.error('Errore sync catalogo → server'); }
     setSyncingCatalog(false);
