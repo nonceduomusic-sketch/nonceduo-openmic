@@ -242,51 +242,54 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
       return;
     }
     const fetchSong = async () => {
-      // 1) Try Cloud (Supabase) — with timeout to avoid hanging offline
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3000);
-        const { data } = await supabase
-          .from("songs")
-          .select("titolo, artista, testo")
-          .eq("id", session.current_song_id)
-          .abortSignal(controller.signal)
-          .single();
-        clearTimeout(timeout);
-        if (data) {
-          setCurrentSong(data);
-          return;
-        }
-      } catch {
-        console.log('[Telecomando] Cloud song fetch failed/timeout, trying LAN...');
-      }
-
-      // 2) Try LAN mini-server
+      // Try Cloud and LAN in parallel
       const lip = safeGetItem('local', 'broadcast_local_ip') || '';
-      if (lip) {
+
+      const cloudPromise = (async () => {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 3000);
+          const { data } = await supabase
+            .from("songs")
+            .select("titolo, artista, testo")
+            .eq("id", session.current_song_id)
+            .abortSignal(controller.signal)
+            .single();
+          clearTimeout(timeout);
+          return data || null;
+        } catch {
+          return null;
+        }
+      })();
+
+      const lanPromise = (async () => {
+        if (!lip) return null;
         try {
           const resp = await fetch(`http://${lip}:8080/api/catalog/list`, {
             signal: AbortSignal.timeout(3000),
           });
-          if (resp.ok) {
-            const ct = resp.headers.get('content-type') || '';
-            if (ct.includes('application/json')) {
-              const catalog = await resp.json();
-              if (Array.isArray(catalog)) {
-                const found = catalog.find((s: any) => s.id === session.current_song_id);
-                if (found) {
-                  setCurrentSong({
-                    titolo: found.titolo || found.title || '',
-                    artista: found.artista || found.artist || '',
-                    testo: found.testo || found.text || null,
-                  });
-                  return;
-                }
-              }
-            }
-          }
+          if (!resp.ok) return null;
+          const ct = resp.headers.get('content-type') || '';
+          if (!ct.includes('application/json')) return null;
+          const catalog = await resp.json();
+          if (!Array.isArray(catalog)) return null;
+          const found = catalog.find((s: any) => s.id === session.current_song_id);
+          if (!found) return null;
+          return {
+            titolo: found.titolo || found.title || '',
+            artista: found.artista || found.artist || '',
+            testo: found.testo || found.text || null,
+          };
         } catch {
-          // LAN not available
+          return null;
+        }
+      })();
+
+      const results = await Promise.allSettled([cloudPromise, lanPromise]);
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value) {
+          setCurrentSong(r.value);
+          return;
         }
       }
 
@@ -304,48 +307,52 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
       return;
     }
     const fetchFile = async () => {
-      // 1) Try Cloud — with timeout
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3000);
-        const { data } = await supabase
-          .from("songbook_files")
-          .select("title, artist, content")
-          .eq("id", songbookFileId)
-          .abortSignal(controller.signal)
-          .single();
-        clearTimeout(timeout);
-        if (data) {
-          setCurrentSongbookFile(data);
-          return;
-        }
-      } catch {
-        console.log('[Telecomando] Cloud songbook fetch failed/timeout, trying LAN...');
-      }
-
-      // 2) Try LAN mini-server
+      // Try Cloud and LAN in parallel
       const lip = safeGetItem('local', 'broadcast_local_ip') || '';
-      if (lip) {
+
+      const cloudPromise = (async () => {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 3000);
+          const { data } = await supabase
+            .from("songbook_files")
+            .select("title, artist, content")
+            .eq("id", songbookFileId)
+            .abortSignal(controller.signal)
+            .single();
+          clearTimeout(timeout);
+          return data || null;
+        } catch {
+          return null;
+        }
+      })();
+
+      const lanPromise = (async () => {
+        if (!lip) return null;
         try {
           const resp = await fetch(`http://${lip}:8080/api/songbook/${songbookFileId}`, {
             signal: AbortSignal.timeout(3000),
           });
-          if (resp.ok) {
-            const ct = resp.headers.get('content-type') || '';
-            if (ct.includes('application/json')) {
-              const file = await resp.json();
-              if (file && file.content) {
-                setCurrentSongbookFile({
-                  title: file.title || '',
-                  artist: file.artist || null,
-                  content: file.content,
-                });
-                return;
-              }
-            }
-          }
+          if (!resp.ok) return null;
+          const ct = resp.headers.get('content-type') || '';
+          if (!ct.includes('application/json')) return null;
+          const file = await resp.json();
+          if (!file?.content) return null;
+          return {
+            title: file.title || '',
+            artist: file.artist || null,
+            content: file.content,
+          };
         } catch {
-          // LAN not available
+          return null;
+        }
+      })();
+
+      const results = await Promise.allSettled([cloudPromise, lanPromise]);
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value) {
+          setCurrentSongbookFile(r.value);
+          return;
         }
       }
 

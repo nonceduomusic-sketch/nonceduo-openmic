@@ -1,5 +1,6 @@
  import { useState, useEffect, useCallback } from 'react';
  import { supabase } from '@/integrations/supabase/client';
+ import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
  import { toast } from 'sonner';
  
 export interface BroadcastRemoteAccess {
@@ -310,50 +311,79 @@ export interface BroadcastRemoteAccess {
    }, []);
 
    // Verifica se token esiste (prima del PIN)
-   useEffect(() => {
-     const checkToken = async () => {
-       if (!token) {
-         setLoading(false);
-         return;
-       }
+    useEffect(() => {
+      const checkToken = async () => {
+        if (!token) {
+          setLoading(false);
+          return;
+        }
 
-       const { data, error } = await supabase
-         .from('broadcast_remote_access')
-         .select('id, sala_code, name, is_active, expires_at, pin_required')
-         .eq('access_token', token)
-         .eq('is_active', true)
-         .single();
+        // Try Cloud first
+        let cloudSuccess = false;
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 5000);
+          const { data, error } = await supabase
+            .from('broadcast_remote_access')
+            .select('id, sala_code, name, is_active, expires_at, pin_required')
+            .eq('access_token', token)
+            .eq('is_active', true)
+            .abortSignal(controller.signal)
+            .single();
+          clearTimeout(timeout);
 
-       if (error || !data) {
-         setLoading(false);
-         return;
-       }
+          if (!error && data) {
+            // Check expiry
+            if (data.expires_at && new Date(data.expires_at) < new Date()) {
+              setLoading(false);
+              return;
+            }
 
-       // Check expiry
-       if (data.expires_at && new Date(data.expires_at) < new Date()) {
-         setLoading(false);
-         return;
-       }
+            const pinRequired = (data as any).pin_required ?? true;
+            const info = {
+              accessId: data.id,
+              salaCode: data.sala_code,
+              name: data.name,
+              pinRequired,
+            };
 
-       const pinRequired = (data as any).pin_required ?? true;
+            setAccessInfo(info);
+            cloudSuccess = true;
 
-       setAccessInfo({
-         accessId: data.id,
-         salaCode: data.sala_code,
-         name: data.name,
-         pinRequired,
-       });
+            // Cache for offline use
+            safeSetItem('local', `remote_access_${token}`, JSON.stringify(info));
 
-       // If PIN not required, auto-connect
-       if (!pinRequired) {
-         await createSessionDirect(data.id);
-       }
+            // If PIN not required, auto-connect
+            if (!pinRequired) {
+              await createSessionDirect(data.id);
+            }
+          }
+        } catch {
+          console.log('[RemoteUser] Cloud token check failed/timeout, trying cache...');
+        }
 
-       setLoading(false);
-     };
+        // Fallback: use cached access info when offline
+        if (!cloudSuccess) {
+          const cached = safeGetItem('local', `remote_access_${token}`);
+          if (cached) {
+            try {
+              const info = JSON.parse(cached);
+              setAccessInfo(info);
+              // Auto-validate offline (skip PIN check, skip session creation)
+              setIsValidated(true);
+              setSessionId(`offline-${Date.now()}`);
+              console.log('[RemoteUser] Using cached access info (offline mode)');
+            } catch {
+              // Invalid cache
+            }
+          }
+        }
 
-     checkToken();
-   }, [token, createSessionDirect]);
+        setLoading(false);
+      };
+
+      checkToken();
+    }, [token, createSessionDirect]);
 
    // Valida PIN e crea sessione
     const validatePIN = useCallback(async (pin: string): Promise<boolean> => {
@@ -412,13 +442,17 @@ export interface BroadcastRemoteAccess {
 
       setSessionId(insertResult.data.id);
       setIsValidated(true);
+      // Cache access info for offline use after successful PIN validation
+      if (token && accessInfo) {
+        safeSetItem('local', `remote_access_${token}`, JSON.stringify(accessInfo));
+      }
       toast.success('Accesso consentito!');
       return true;
     }, [token, accessInfo]);
  
    // Ascolta espulsioni
    useEffect(() => {
-     if (!sessionId) return;
+     if (!sessionId || sessionId.startsWith('offline-')) return;
  
      const channel = supabase
        .channel(`remote-session-${sessionId}`)
@@ -446,18 +480,18 @@ export interface BroadcastRemoteAccess {
    }, [sessionId]);
  
    // Aggiorna last_activity periodicamente
-   useEffect(() => {
-     if (!sessionId || !isValidated) return;
- 
-     const interval = setInterval(async () => {
-       await supabase
-         .from('broadcast_remote_sessions')
-         .update({ last_activity_at: new Date().toISOString() })
-         .eq('id', sessionId);
-     }, 30000); // ogni 30 secondi
- 
-     return () => clearInterval(interval);
-   }, [sessionId, isValidated]);
+    useEffect(() => {
+      if (!sessionId || !isValidated || sessionId.startsWith('offline-')) return;
+
+      const interval = setInterval(async () => {
+        await supabase
+          .from('broadcast_remote_sessions')
+          .update({ last_activity_at: new Date().toISOString() })
+          .eq('id', sessionId);
+      }, 30000);
+
+      return () => clearInterval(interval);
+    }, [sessionId, isValidated]);
  
    return {
      isValidated,
