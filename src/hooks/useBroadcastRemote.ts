@@ -310,7 +310,20 @@ export interface BroadcastRemoteAccess {
      return true;
    }, []);
 
-   // Verifica se token esiste (prima del PIN)
+  // Detect if running on local server (HTTP + LAN IP)
+    const isLocalServer = (() => {
+      try {
+        const proto = window.location.protocol;
+        const host = window.location.hostname;
+        if (proto === 'http:') {
+          if (host === 'localhost' || host === '127.0.0.1') return true;
+          if (/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host)) return true;
+        }
+      } catch {}
+      return false;
+    })();
+
+  // Verifica se token esiste (prima del PIN)
     useEffect(() => {
       const checkToken = async () => {
         if (!token) {
@@ -318,11 +331,29 @@ export interface BroadcastRemoteAccess {
           return;
         }
 
-        // Try Cloud first
+        // If on local server or offline, try cache FIRST for instant startup
+        const isOffline = !navigator.onLine || isLocalServer;
+        
+        if (isOffline) {
+          const cached = safeGetItem('local', `remote_access_${token}`);
+          if (cached) {
+            try {
+              const info = JSON.parse(cached);
+              setAccessInfo(info);
+              setIsValidated(true);
+              setSessionId(`offline-${Date.now()}`);
+              console.log('[RemoteUser] Instant offline start from cache');
+              setLoading(false);
+              return;
+            } catch {}
+          }
+        }
+
+        // Try Cloud
         let cloudSuccess = false;
         try {
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 5000);
+          const timeout = setTimeout(() => controller.abort(), isOffline ? 2000 : 5000);
           const { data, error } = await supabase
             .from('broadcast_remote_access')
             .select('id, sala_code, name, is_active, expires_at, pin_required')
@@ -333,7 +364,6 @@ export interface BroadcastRemoteAccess {
           clearTimeout(timeout);
 
           if (!error && data) {
-            // Check expiry
             if (data.expires_at && new Date(data.expires_at) < new Date()) {
               setLoading(false);
               return;
@@ -349,11 +379,8 @@ export interface BroadcastRemoteAccess {
 
             setAccessInfo(info);
             cloudSuccess = true;
-
-            // Cache for offline use
             safeSetItem('local', `remote_access_${token}`, JSON.stringify(info));
 
-            // If PIN not required, auto-connect
             if (!pinRequired) {
               await createSessionDirect(data.id);
             }
@@ -362,20 +389,17 @@ export interface BroadcastRemoteAccess {
           console.log('[RemoteUser] Cloud token check failed/timeout, trying cache...');
         }
 
-        // Fallback: use cached access info when offline
+        // Fallback: use cached access info when cloud failed
         if (!cloudSuccess) {
           const cached = safeGetItem('local', `remote_access_${token}`);
           if (cached) {
             try {
               const info = JSON.parse(cached);
               setAccessInfo(info);
-              // Auto-validate offline (skip PIN check, skip session creation)
               setIsValidated(true);
               setSessionId(`offline-${Date.now()}`);
               console.log('[RemoteUser] Using cached access info (offline mode)');
-            } catch {
-              // Invalid cache
-            }
+            } catch {}
           }
         }
 
