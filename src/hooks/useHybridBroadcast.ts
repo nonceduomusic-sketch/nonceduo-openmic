@@ -27,13 +27,18 @@ export function useHybridBroadcast(salaCode: string = 'main') {
     onStateUpdate: useCallback((state: Record<string, unknown>) => {
       setLocalOverrides(prev => ({ ...prev, ...state }));
     }, []),
-    // Initial state from WS: do NOT merge — cloud session is the source of truth.
-    // We only track it so we know the WS is alive; cloud.session is always the base.
-    onInitialState: useCallback((_state: Record<string, unknown>) => {
-      // Intentionally ignored: cloud session already has the correct values.
-      // localOverrides should only contain fields explicitly pushed by a peer.
-      console.log('[HybridBroadcast] WS initial state received (not applied as override)');
-    }, []),
+    // Initial state from WS: apply ONLY when cloud session is the offline default.
+    // When cloud is available, cloud session is the source of truth and WS initial state is ignored.
+    // When offline, the WS server holds the real state (set by Admin) and we MUST use it.
+    onInitialState: useCallback((state: Record<string, unknown>) => {
+      const isOfflineSession = cloud.session?.id === 'offline' || !cloud.session;
+      if (isOfflineSession) {
+        console.log('[HybridBroadcast] WS initial state applied (offline mode)');
+        setLocalOverrides(prev => ({ ...prev, ...state }));
+      } else {
+        console.log('[HybridBroadcast] WS initial state received (not applied, cloud active)');
+      }
+    }, [cloud.session?.id]),
   });
 
   // Clear local overrides when switching to cloud mode
