@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { extractChordProTitle } from '@/lib/chordpro';
@@ -40,40 +40,81 @@ export function useSongbookFiles() {
   const [files, setFiles] = useState<SongbookFile[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const hasHydratedFromCache = useRef(false);
+
   const fetchFiles = useCallback(async () => {
     setLoading(true);
-    
-    // Fetch all files (bypass 1000 row limit with pagination)
-    const allData: SongbookFile[] = [];
-    const pageSize = 1000;
-    let from = 0;
-    let hasMore = true;
 
-    while (hasMore) {
-      const { data, error } = await supabase
-        .from('songbook_files')
-        .select('*')
-        .order('is_variant', { ascending: true })
-        .order('title', { ascending: true })
-        .range(from, from + pageSize - 1);
-
-      if (error) {
-        console.error('Error fetching songbook files:', error);
-        toast.error('Errore caricamento file SongBook');
-        break;
-      }
-
-      if (data && data.length > 0) {
-        allData.push(...(data as SongbookFile[]));
-        from += pageSize;
-        hasMore = data.length === pageSize;
-      } else {
-        hasMore = false;
+    // 1) Hydrate from IndexedDB immediately (only once)
+    if (!hasHydratedFromCache.current) {
+      hasHydratedFromCache.current = true;
+      try {
+        const { getAllCachedFiles } = await import('@/lib/songbookCache');
+        const cached = await getAllCachedFiles();
+        if (cached.length > 0) {
+          const mapped: SongbookFile[] = cached.map(c => ({
+            id: c.id,
+            title: c.title,
+            artist: c.artist,
+            content: c.content,
+            filename: c.filename,
+            slug: c.slug,
+            is_variant: c.is_variant,
+            created_at: '',
+            updated_at: '',
+            created_by: null,
+          })).sort((a, b) => a.title.localeCompare(b.title, 'it'));
+          setFiles(mapped);
+          setLoading(false);
+        }
+      } catch {
+        // cache miss
       }
     }
 
-    setFiles(allData);
-    setLoading(false);
+    // 2) Fetch from network with timeout
+    try {
+      const allData: SongbookFile[] = [];
+      const pageSize = 1000;
+      let from = 0;
+      let hasMore = true;
+
+      while (hasMore) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 4000);
+        const { data, error } = await supabase
+          .from('songbook_files')
+          .select('*')
+          .order('is_variant', { ascending: true })
+          .order('title', { ascending: true })
+          .range(from, from + pageSize - 1)
+          .abortSignal(controller.signal);
+        clearTimeout(timeout);
+
+        if (error) {
+          console.error('Error fetching songbook files:', error);
+          break;
+        }
+
+        if (data && data.length > 0) {
+          allData.push(...(data as SongbookFile[]));
+          from += pageSize;
+          hasMore = data.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
+
+      if (allData.length > 0) {
+        setFiles(allData);
+        // Update IndexedDB cache in background
+        import('@/lib/songbookCache').then(({ cacheSongbookFiles }) => {
+          cacheSongbookFiles(allData).catch(() => {});
+        });
+      }
+    } catch {
+      console.warn('[useSongbookFiles] Network fetch timeout/failed, using cache data');
+    }
     setLoading(false);
   }, []);
 
@@ -260,15 +301,23 @@ export function useSongbookSetlists() {
   const [loading, setLoading] = useState(true);
 
   const fetchSetlists = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('songbook_setlists')
-      .select('*')
-      .order('updated_at', { ascending: false });
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+      const { data, error } = await supabase
+        .from('songbook_setlists')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .abortSignal(controller.signal);
+      clearTimeout(timeout);
 
-    if (error) {
-      console.error('Error fetching songbook setlists:', error);
+      if (error) {
+        console.error('Error fetching songbook setlists:', error);
+      }
+      setSetlists((data || []) as SongbookSetlist[]);
+    } catch {
+      console.warn('[useSongbookSetlists] Network timeout, keeping current data');
     }
-    setSetlists((data || []) as SongbookSetlist[]);
     setLoading(false);
   }, []);
 
@@ -354,19 +403,27 @@ export function useSongbookSetlistSongs(setlistId: string | null) {
     }
 
     setLoading(true);
-    const { data, error } = await supabase
-      .from('songbook_setlist_songs')
-      .select(`
-        *,
-        file:songbook_files(*)
-      `)
-      .eq('setlist_id', setlistId)
-      .order('position', { ascending: true });
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+      const { data, error } = await supabase
+        .from('songbook_setlist_songs')
+        .select(`
+          *,
+          file:songbook_files(*)
+        `)
+        .eq('setlist_id', setlistId)
+        .order('position', { ascending: true })
+        .abortSignal(controller.signal);
+      clearTimeout(timeout);
 
-    if (error) {
-      console.error('Error fetching songbook setlist songs:', error);
+      if (error) {
+        console.error('Error fetching songbook setlist songs:', error);
+      }
+      setSongs((data || []) as SongbookSetlistSong[]);
+    } catch {
+      console.warn('[useSongbookSetlistSongs] Network timeout, keeping current data');
     }
-    setSongs((data || []) as SongbookSetlistSong[]);
     setLoading(false);
   }, [setlistId]);
 

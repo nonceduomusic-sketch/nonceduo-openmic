@@ -336,15 +336,23 @@ export function useBroadcastSetlists() {
   const [loading, setLoading] = useState(true);
 
   const fetchSetlists = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('broadcast_setlists')
-      .select('*')
-      .order('updated_at', { ascending: false });
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+      const { data, error } = await supabase
+        .from('broadcast_setlists')
+        .select('*')
+        .order('updated_at', { ascending: false })
+        .abortSignal(controller.signal);
+      clearTimeout(timeout);
 
-    if (error) {
-      console.error('Error fetching setlists:', error);
+      if (error) {
+        console.error('Error fetching setlists:', error);
+      }
+      setSetlists((data || []) as BroadcastSetlist[]);
+    } catch {
+      console.warn('[useBroadcastSetlists] Network timeout, keeping current data');
     }
-    setSetlists((data || []) as BroadcastSetlist[]);
     setLoading(false);
   }, []);
 
@@ -431,19 +439,27 @@ export function useBroadcastSetlistSongs(setlistId: string | null) {
     }
 
     setLoading(true);
-    const { data, error } = await supabase
-      .from('broadcast_setlist_songs')
-      .select(`
-        *,
-        song:songs(id, titolo, artista, testo)
-      `)
-      .eq('setlist_id', setlistId)
-      .order('position', { ascending: true });
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+      const { data, error } = await supabase
+        .from('broadcast_setlist_songs')
+        .select(`
+          *,
+          song:songs(id, titolo, artista, testo)
+        `)
+        .eq('setlist_id', setlistId)
+        .order('position', { ascending: true })
+        .abortSignal(controller.signal);
+      clearTimeout(timeout);
 
-    if (error) {
-      console.error('Error fetching setlist songs:', error);
+      if (error) {
+        console.error('Error fetching setlist songs:', error);
+      }
+      setSongs((data || []) as BroadcastSetlistSong[]);
+    } catch {
+      console.warn('[useBroadcastSetlistSongs] Network timeout, keeping current data');
     }
-    setSongs((data || []) as BroadcastSetlistSong[]);
     setLoading(false);
   }, [setlistId]);
 
