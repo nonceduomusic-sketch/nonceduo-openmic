@@ -59,7 +59,11 @@ export function useConnectionMode() {
   });
   const [localIP, setLocalIPState] = useState(() => {
     // Auto-detect: use the server's hostname as the local IP
-    if (localServer.isLocal && localServer.detectedIP) return localServer.detectedIP;
+    if (localServer.isLocal && localServer.detectedIP) {
+      // CRITICAL: persist to localStorage so fetch effects (outside React state) can read it
+      safeSetItem('local', STORAGE_KEY_IP, localServer.detectedIP);
+      return localServer.detectedIP;
+    }
     return safeGetItem('local', STORAGE_KEY_IP) || '192.168.1.100';
   });
 
