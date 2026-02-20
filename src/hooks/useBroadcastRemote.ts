@@ -284,31 +284,44 @@ export interface BroadcastRemoteAccess {
    const [isKicked, setIsKicked] = useState(false);
    const [loading, setLoading] = useState(true);
 
-   // Helper: create session without PIN validation
-   const createSessionDirect = useCallback(async (accessId: string) => {
-     const deviceName = getDeviceName();
-     const fingerprint = await getDeviceFingerprint().catch(() => 'unknown');
+    // Helper: create session without PIN validation
+    const createSessionDirect = useCallback(async (accessId: string) => {
+      const deviceName = getDeviceName();
+      const fingerprint = await getDeviceFingerprint().catch(() => 'unknown');
 
-     const { data, error } = await supabase
-       .from('broadcast_remote_sessions')
-       .insert({
-         access_id: accessId,
-         device_fingerprint: fingerprint,
-         device_name: deviceName,
-       })
-       .select('id')
-       .single();
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        const { data, error } = await supabase
+          .from('broadcast_remote_sessions')
+          .insert({
+            access_id: accessId,
+            device_fingerprint: fingerprint,
+            device_name: deviceName,
+          })
+          .select('id')
+          .abortSignal(controller.signal)
+          .single();
+        clearTimeout(timeout);
 
-     if (error) {
-       console.error('[RemoteUser] Error creating session (no-pin):', error);
-       toast.error('Errore creazione sessione');
-       return false;
-     }
+        if (error) {
+          console.error('[RemoteUser] Error creating session (no-pin):', error);
+          // Still validate - session tracking is optional, remote control works without it
+          setSessionId(`offline-${Date.now()}`);
+          setIsValidated(true);
+          return true;
+        }
 
-     setSessionId(data.id);
-     setIsValidated(true);
-     return true;
-   }, []);
+        setSessionId(data.id);
+        setIsValidated(true);
+        return true;
+      } catch (err) {
+        console.warn('[RemoteUser] createSessionDirect timeout/error, continuing offline:', err);
+        setSessionId(`offline-${Date.now()}`);
+        setIsValidated(true);
+        return true;
+      }
+    }, []);
 
   // Detect if running on local server (HTTP + LAN IP)
     const isLocalServer = (() => {
@@ -323,7 +336,7 @@ export interface BroadcastRemoteAccess {
       return false;
     })();
 
-  // Verifica se token esiste (prima del PIN)
+   // Verifica se token esiste (prima del PIN)
     useEffect(() => {
       const checkToken = async () => {
         if (!token) {
@@ -331,44 +344,52 @@ export interface BroadcastRemoteAccess {
           return;
         }
 
-        // If on local server or offline, try cache FIRST for instant startup
-        const isOffline = !navigator.onLine || isLocalServer;
-        
-        if (isOffline) {
+        // Helper: activate with local/cached info
+        const activateOffline = (info: { accessId: string; salaCode: string; name: string; pinRequired: boolean }, label: string) => {
+          setAccessInfo(info);
+          setIsValidated(true);
+          setSessionId(`offline-${Date.now()}`);
+          console.log(`[RemoteUser] ${label}`);
+          setLoading(false);
+        };
+
+        // On LAN server: ALWAYS use local mode, never wait for cloud
+        if (isLocalServer) {
           const cached = safeGetItem('local', `remote_access_${token}`);
           if (cached) {
             try {
-              const info = JSON.parse(cached);
-              setAccessInfo(info);
-              setIsValidated(true);
-              setSessionId(`offline-${Date.now()}`);
-              console.log('[RemoteUser] Instant offline start from cache');
-              setLoading(false);
+              activateOffline(JSON.parse(cached), 'LAN start from cache');
               return;
             } catch {}
           }
-          // No cache but on LAN: create default access info so remote works immediately
-          if (isLocalServer) {
-            const defaultInfo = {
-              accessId: `local-${token}`,
-              salaCode: 'main',
-              name: 'Telecomando LAN',
-              pinRequired: false,
-            };
-            setAccessInfo(defaultInfo);
-            setIsValidated(true);
-            setSessionId(`offline-${Date.now()}`);
-            console.log('[RemoteUser] LAN fallback: no cache, using default access');
-            setLoading(false);
-            return;
-          }
+          // No cache: create default access
+          activateOffline({
+            accessId: `local-${token}`,
+            salaCode: 'main',
+            name: 'Telecomando LAN',
+            pinRequired: false,
+          }, 'LAN start with default access');
+          return;
         }
 
-        // Try Cloud
-        let cloudSuccess = false;
+        // Offline but not on LAN server (e.g. PWA cached page)
+        if (!navigator.onLine) {
+          const cached = safeGetItem('local', `remote_access_${token}`);
+          if (cached) {
+            try {
+              activateOffline(JSON.parse(cached), 'Offline start from cache');
+              return;
+            } catch {}
+          }
+          // No cache and no LAN: can't do anything
+          setLoading(false);
+          return;
+        }
+
+        // Online: try Cloud with timeout
         try {
           const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), isOffline ? 2000 : 5000);
+          const timeout = setTimeout(() => controller.abort(), 5000);
           const { data, error } = await supabase
             .from('broadcast_remote_access')
             .select('id, sala_code, name, is_active, expires_at, pin_required')
@@ -393,29 +414,25 @@ export interface BroadcastRemoteAccess {
             };
 
             setAccessInfo(info);
-            cloudSuccess = true;
             safeSetItem('local', `remote_access_${token}`, JSON.stringify(info));
 
             if (!pinRequired) {
               await createSessionDirect(data.id);
             }
+            setLoading(false);
+            return;
           }
         } catch {
           console.log('[RemoteUser] Cloud token check failed/timeout, trying cache...');
         }
 
-        // Fallback: use cached access info when cloud failed
-        if (!cloudSuccess) {
-          const cached = safeGetItem('local', `remote_access_${token}`);
-          if (cached) {
-            try {
-              const info = JSON.parse(cached);
-              setAccessInfo(info);
-              setIsValidated(true);
-              setSessionId(`offline-${Date.now()}`);
-              console.log('[RemoteUser] Using cached access info (offline mode)');
-            } catch {}
-          }
+        // Cloud failed: use cache
+        const cached = safeGetItem('local', `remote_access_${token}`);
+        if (cached) {
+          try {
+            activateOffline(JSON.parse(cached), 'Cloud failed, using cache');
+            return;
+          } catch {}
         }
 
         setLoading(false);
