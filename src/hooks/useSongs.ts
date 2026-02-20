@@ -207,30 +207,39 @@ export const useSongs = () => {
   };
 
   const getSongById = async (id: string): Promise<Song | null> => {
-    // Try network first
-    const { data, error } = await supabase
-      .from('songs')
-      .select('*')
-      .eq('id', id)
-      .single();
+    // Try network first with timeout
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
+      const { data, error } = await supabase
+        .from('songs')
+        .select('*')
+        .eq('id', id)
+        .abortSignal(controller.signal)
+        .single();
+      clearTimeout(timeout);
 
-    if (data) return data as Song;
+      if (data) return data as Song;
 
-    // Fallback to cache if network fails
-    if (error) {
-      console.warn('getSongById network failed, trying cache:', error);
-      const cached = await getCachedSongById(id);
-      if (cached) {
-        return {
-          id: cached.id,
-          titolo: cached.titolo,
-          artista: cached.artista,
-          testo: cached.testo,
-          slug: cached.slug,
-          created_at: '',
-          updated_at: null,
-        };
+      if (error) {
+        console.warn('getSongById network failed, trying cache:', error);
       }
+    } catch {
+      console.warn('[getSongById] Network timeout, trying cache');
+    }
+
+    // Fallback to cache
+    const cached = await getCachedSongById(id);
+    if (cached) {
+      return {
+        id: cached.id,
+        titolo: cached.titolo,
+        artista: cached.artista,
+        testo: cached.testo,
+        slug: cached.slug,
+        created_at: '',
+        updated_at: null,
+      };
     }
 
     return null;
