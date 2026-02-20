@@ -50,6 +50,10 @@ export function useHybridBroadcast(salaCode: string = 'main') {
       : cloud.session
     : null;
 
+  // Stable ref for cloud.updateSession to avoid re-creating syncUpdate on every render
+  const cloudUpdateRef = useRef(cloud.updateSession);
+  useEffect(() => { cloudUpdateRef.current = cloud.updateSession; }, [cloud.updateSession]);
+
   // Unified update: sends to local WS or cloud (with instant broadcast) based on mode
   const syncUpdate = useCallback((updates: Record<string, unknown>) => {
     if (isLocalMode) {
@@ -58,9 +62,9 @@ export function useHybridBroadcast(salaCode: string = 'main') {
       setLocalOverrides(prev => ({ ...prev, ...updates }));
     } else {
       // cloud.updateSession now handles: local apply + broadcast + DB persist
-      cloud.updateSession(updates as any);
+      cloudUpdateRef.current(updates as any);
     }
-  }, [isLocalMode, localSendUpdate, cloud.updateSession]);
+  }, [isLocalMode, localSendUpdate]);
 
   return {
     session,
