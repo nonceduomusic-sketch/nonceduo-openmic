@@ -609,13 +609,22 @@ function OfflineDataSection({ localIP: configIP }: { localIP: string }) {
     if (mixedContentWarning()) return;
     setSyncingSongbook(true);
     try {
+      // First check if server is actually reachable
+      try {
+        const ping = await fetch(`http://${localIP}:8080/api/songbook/list`, { signal: AbortSignal.timeout(3000) });
+        if (!ping.ok) throw new Error('not ok');
+      } catch {
+        (await import('sonner')).toast.error(`Server locale non raggiungibile su ${localIP}:8080 — verifica IP e che il server sia acceso`);
+        setSyncingSongbook(false);
+        return;
+      }
       const { supabase } = await import('@/integrations/supabase/client');
       const { syncSongbookToLocalServer } = await import('@/lib/songbookCache');
       const result = await syncSongbookToLocalServer(localIP, supabase);
       if (result.success) {
         (await import('sonner')).toast.success(`${result.count} file .cho sincronizzati col server!`);
       } else {
-        (await import('sonner')).toast.error('Server locale non raggiungibile — verifica IP e che il server sia acceso');
+        (await import('sonner')).toast.error('Nessun dato da sincronizzare — scarica prima i brani per offline (pulsante sopra)');
       }
     } catch { (await import('sonner')).toast.error('Errore sync SongBook → server'); }
     setSyncingSongbook(false);
@@ -625,13 +634,22 @@ function OfflineDataSection({ localIP: configIP }: { localIP: string }) {
     if (mixedContentWarning()) return;
     setSyncingCatalog(true);
     try {
+      // First check if server is actually reachable
+      try {
+        const ping = await fetch(`http://${localIP}:8080/api/catalog/list`, { signal: AbortSignal.timeout(3000) });
+        if (!ping.ok) throw new Error('not ok');
+      } catch {
+        (await import('sonner')).toast.error(`Server locale non raggiungibile su ${localIP}:8080 — verifica IP e che il server sia acceso`);
+        setSyncingCatalog(false);
+        return;
+      }
       const { supabase } = await import('@/integrations/supabase/client');
       const { syncCatalogToLocalServer } = await import('@/lib/songsCatalogCache');
       const result = await syncCatalogToLocalServer(localIP, supabase);
       if (result.success) {
         (await import('sonner')).toast.success(`${result.count} brani catalogo sincronizzati col server!`);
       } else {
-        (await import('sonner')).toast.error('Server locale non raggiungibile — verifica IP e che il server sia acceso');
+        (await import('sonner')).toast.error('Nessun dato da sincronizzare — scarica prima il catalogo per offline (pulsante sopra)');
       }
     } catch { (await import('sonner')).toast.error('Errore sync catalogo → server'); }
     setSyncingCatalog(false);
