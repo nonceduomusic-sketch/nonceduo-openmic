@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { getAllCachedSongs, cacheSongsCatalog } from '@/lib/songsCatalogCache';
+import { safeGetItem } from '@/lib/safeStorage';
 
 export interface CatalogSong {
   id: string;
@@ -7,35 +9,102 @@ export interface CatalogSong {
   artist: string;
 }
 
+/** Try fetching catalog from the LAN mini-server */
+async function fetchFromLocalServer(): Promise<CatalogSong[]> {
+  const localIP = safeGetItem('local', 'broadcast_local_ip') || '';
+  if (!localIP) return [];
+  try {
+    const resp = await fetch(`http://${localIP}:8080/api/catalog/list`, {
+      signal: AbortSignal.timeout(3000),
+    });
+    if (!resp.ok) return [];
+    const data = await resp.json();
+    if (!Array.isArray(data)) return [];
+    return data.map((s: any) => ({
+      id: s.id || s.slug || s.titolo,
+      title: s.titolo || s.title || '',
+      artist: s.artista || s.artist || '',
+    }));
+  } catch {
+    return [];
+  }
+}
+
+/** Try fetching catalog from IndexedDB cache */
+async function fetchFromCache(): Promise<CatalogSong[]> {
+  try {
+    const cached = await getAllCachedSongs();
+    return cached.map(s => ({
+      id: s.id,
+      title: s.titolo,
+      artist: s.artista,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Hook per caricare le canzoni dal database.
- * Usare questo hook invece dell'import statico da @/data/songs
- * per avere sempre i dati sincronizzati e senza duplicati.
+ * Fallback chain: Cloud → LAN server → IndexedDB cache.
  */
 export const useSongsCatalog = () => {
   const [songs, setSongs] = useState<CatalogSong[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [source, setSource] = useState<'cloud' | 'lan' | 'cache' | null>(null);
 
   useEffect(() => {
     const fetchSongs = async () => {
       try {
         setLoading(true);
+
+        // 1) Try Cloud (Supabase)
         const { data, error: fetchError } = await supabase
           .from('songs')
           .select('id, titolo, artista')
           .order('titolo', { ascending: true });
 
+        if (!fetchError && data && data.length > 0) {
+          const mapped: CatalogSong[] = data.map(song => ({
+            id: song.id,
+            title: song.titolo,
+            artist: song.artista,
+          }));
+          setSongs(mapped);
+          setSource('cloud');
+          setError(null);
+          // Also update IndexedDB cache in background
+          cacheSongsCatalog(data.map(s => ({ ...s, testo: null, slug: null }))).catch(() => {});
+          setLoading(false);
+          return;
+        }
+
+        // 2) Try LAN mini-server
+        console.log('[Catalog] Cloud unavailable, trying LAN server...');
+        const lanSongs = await fetchFromLocalServer();
+        if (lanSongs.length > 0) {
+          setSongs(lanSongs);
+          setSource('lan');
+          setError(null);
+          setLoading(false);
+          return;
+        }
+
+        // 3) Try IndexedDB cache
+        console.log('[Catalog] LAN unavailable, trying IndexedDB cache...');
+        const cachedSongs = await fetchFromCache();
+        if (cachedSongs.length > 0) {
+          setSongs(cachedSongs);
+          setSource('cache');
+          setError(null);
+          setLoading(false);
+          return;
+        }
+
+        // All sources failed
         if (fetchError) throw fetchError;
-
-        // Mappa i dati dal database al formato usato nell'app
-        const mappedSongs: CatalogSong[] = (data || []).map(song => ({
-          id: song.id,
-          title: song.titolo,
-          artist: song.artista,
-        }));
-
-        setSongs(mappedSongs);
+        setSongs([]);
         setError(null);
       } catch (err) {
         console.error('Error fetching songs:', err);
@@ -48,7 +117,7 @@ export const useSongsCatalog = () => {
     fetchSongs();
   }, []);
 
-  return { songs, loading, error };
+  return { songs, loading, error, source };
 };
 
 /**
