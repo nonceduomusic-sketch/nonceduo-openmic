@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useBroadcast } from '@/hooks/useBroadcast';
+import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
 import { useScrollPositionPublisher } from '@/hooks/useScrollPositionPublisher';
 import { useSongbookFiles } from '@/hooks/useSongbook';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,7 +57,7 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
  };
  
  export function LiveBroadcastPreview({ canManage = true }: LiveBroadcastPreviewProps) {
-   const { session, updateSession } = useBroadcast('main');
+   const { session, updateSession, syncUpdate } = useHybridBroadcast('main');
    const { files: songbookFiles } = useSongbookFiles();
    const [currentSong, setCurrentSong] = useState<Song | null>(null);
    const [currentSongbookFile, setCurrentSongbookFile] = useState<SongbookFile | null>(null);

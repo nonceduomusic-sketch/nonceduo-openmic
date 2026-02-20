@@ -13,7 +13,8 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { useBroadcast, useBroadcastSetlists, useBroadcastSetlistSongs } from '@/hooks/useBroadcast';
+import { useBroadcastSetlists, useBroadcastSetlistSongs } from '@/hooks/useBroadcast';
+import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
 import { useReservations } from '@/hooks/useReservations';
 import { useSongs } from '@/hooks/useSongs';
 import { 
@@ -80,7 +81,7 @@ interface AdminTrasmettiTabProps {
 }
 
 export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTrasmettiTabProps) {
-  const { session, broadcastSong, stopBroadcast, toggleActive, updateSession } = useBroadcast('main');
+  const { session, broadcastSong, stopBroadcast, toggleActive, updateSession, syncUpdate } = useHybridBroadcast('main');
   const { activeReservations } = useReservations();
   const { songs } = useSongs();
   const { setlists, createSetlist, updateSetlist, deleteSetlist } = useBroadcastSetlists();
