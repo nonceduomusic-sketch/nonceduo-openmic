@@ -5,6 +5,7 @@ import { useHybridBroadcast } from "@/hooks/useHybridBroadcast";
 import { useScrollPositionPublisher } from "@/hooks/useScrollPositionPublisher";
 import { supabase } from "@/integrations/supabase/client";
 import { getCachedSongById } from "@/lib/songsCatalogCache";
+import { safeGetItem } from "@/lib/safeStorage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -241,20 +242,57 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
       return;
     }
     const fetchSong = async () => {
-      const { data, error } = await supabase
-        .from("songs")
-        .select("titolo, artista, testo")
-        .eq("id", session.current_song_id)
-        .single();
-      if (data) {
-        setCurrentSong(data);
-        return;
+      // 1) Try Cloud (Supabase) — with timeout to avoid hanging offline
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        const { data } = await supabase
+          .from("songs")
+          .select("titolo, artista, testo")
+          .eq("id", session.current_song_id)
+          .abortSignal(controller.signal)
+          .single();
+        clearTimeout(timeout);
+        if (data) {
+          setCurrentSong(data);
+          return;
+        }
+      } catch {
+        console.log('[Telecomando] Cloud song fetch failed/timeout, trying LAN...');
       }
-      // Fallback to cache (offline)
-      if (error) {
-        const cached = await getCachedSongById(session.current_song_id!);
-        if (cached) setCurrentSong({ titolo: cached.titolo, artista: cached.artista, testo: cached.testo });
+
+      // 2) Try LAN mini-server
+      const lip = safeGetItem('local', 'broadcast_local_ip') || '';
+      if (lip) {
+        try {
+          const resp = await fetch(`http://${lip}:8080/api/catalog/list`, {
+            signal: AbortSignal.timeout(3000),
+          });
+          if (resp.ok) {
+            const ct = resp.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+              const catalog = await resp.json();
+              if (Array.isArray(catalog)) {
+                const found = catalog.find((s: any) => s.id === session.current_song_id);
+                if (found) {
+                  setCurrentSong({
+                    titolo: found.titolo || found.title || '',
+                    artista: found.artista || found.artist || '',
+                    testo: found.testo || found.text || null,
+                  });
+                  return;
+                }
+              }
+            }
+          }
+        } catch {
+          // LAN not available
+        }
       }
+
+      // 3) Fallback to IndexedDB cache
+      const cached = await getCachedSongById(session.current_song_id!);
+      if (cached) setCurrentSong({ titolo: cached.titolo, artista: cached.artista, testo: cached.testo });
     };
     fetchSong();
   }, [session?.current_song_id, isSongbookMode]);
@@ -266,20 +304,56 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
       return;
     }
     const fetchFile = async () => {
-      const { data, error } = await supabase
-        .from("songbook_files")
-        .select("title, artist, content")
-        .eq("id", songbookFileId)
-        .single();
-      if (data) {
-        setCurrentSongbookFile(data);
-      } else if (error) {
-        // Fallback to cache (offline)
-        const { getCachedFile } = await import('@/lib/songbookCache');
-        const cached = await getCachedFile(songbookFileId);
-        if (cached) {
-          setCurrentSongbookFile({ title: cached.title, artist: cached.artist, content: cached.content });
+      // 1) Try Cloud — with timeout
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        const { data } = await supabase
+          .from("songbook_files")
+          .select("title, artist, content")
+          .eq("id", songbookFileId)
+          .abortSignal(controller.signal)
+          .single();
+        clearTimeout(timeout);
+        if (data) {
+          setCurrentSongbookFile(data);
+          return;
         }
+      } catch {
+        console.log('[Telecomando] Cloud songbook fetch failed/timeout, trying LAN...');
+      }
+
+      // 2) Try LAN mini-server
+      const lip = safeGetItem('local', 'broadcast_local_ip') || '';
+      if (lip) {
+        try {
+          const resp = await fetch(`http://${lip}:8080/api/songbook/${songbookFileId}`, {
+            signal: AbortSignal.timeout(3000),
+          });
+          if (resp.ok) {
+            const ct = resp.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+              const file = await resp.json();
+              if (file && file.content) {
+                setCurrentSongbookFile({
+                  title: file.title || '',
+                  artist: file.artist || null,
+                  content: file.content,
+                });
+                return;
+              }
+            }
+          }
+        } catch {
+          // LAN not available
+        }
+      }
+
+      // 3) Fallback to IndexedDB cache
+      const { getCachedFile } = await import('@/lib/songbookCache');
+      const cached = await getCachedFile(songbookFileId);
+      if (cached) {
+        setCurrentSongbookFile({ title: cached.title, artist: cached.artist, content: cached.content });
       }
     };
     fetchFile();
