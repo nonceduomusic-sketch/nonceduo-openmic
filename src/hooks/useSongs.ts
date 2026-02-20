@@ -54,24 +54,32 @@ export const useSongs = () => {
       }
     }
 
-    // 2) Fetch from network
-    const { data, error } = await supabase
-      .from('songs')
-      .select('*')
-      .order('titolo', { ascending: true });
+    // 2) Fetch from network (with timeout to avoid hanging offline)
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+      const { data, error } = await supabase
+        .from('songs')
+        .select('*')
+        .order('titolo', { ascending: true })
+        .abortSignal(controller.signal);
+      clearTimeout(timeout);
 
-    if (error) {
-      console.error('Error fetching songs:', error);
-      // Don't overwrite cache data if network fails
-      if (songs.length === 0) {
-        toast.error('Errore nel caricamento delle canzoni');
+      if (error) {
+        console.error('Error fetching songs:', error);
+        // Don't overwrite cache data if network fails
+        if (songs.length === 0) {
+          toast.error('Errore nel caricamento delle canzoni');
+        }
+      } else {
+        const fetchedSongs = (data || []) as Song[];
+        setSongs(fetchedSongs);
+        setIsFromCache(false);
+        // 3) Update IndexedDB cache in background
+        cacheSongsCatalog(fetchedSongs).catch(() => {});
       }
-    } else {
-      const fetchedSongs = (data || []) as Song[];
-      setSongs(fetchedSongs);
-      setIsFromCache(false);
-      // 3) Update IndexedDB cache in background
-      cacheSongsCatalog(fetchedSongs).catch(() => {});
+    } catch {
+      console.warn('[useSongs] Network fetch timeout/failed, using cache data');
     }
     setLoading(false);
   }, []);

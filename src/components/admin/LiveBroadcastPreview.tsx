@@ -236,11 +236,38 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
   }, [(session as any)?.remote_scroll_enabled]);
  
     // Fetch current song — only when song ID changes (NOT on highlight_line changes)
+    // Fallback chain: Cloud (with timeout) → IndexedDB cache
     useEffect(() => {
       const fetchSong = async () => {
         if (!session?.current_song_id) { setCurrentSong(null); setLocalHighlightLine(0); return; }
-        const { data } = await supabase.from('songs').select('id, titolo, artista, testo').eq('id', session.current_song_id).single();
-        if (data) { setCurrentSong(data); setLocalHighlightLine(0); }
+        
+        // 1) Try Cloud with timeout
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 3000);
+          const { data } = await supabase
+            .from('songs')
+            .select('id, titolo, artista, testo')
+            .eq('id', session.current_song_id)
+            .abortSignal(controller.signal)
+            .single();
+          clearTimeout(timeout);
+          if (data) { setCurrentSong(data); setLocalHighlightLine(0); return; }
+        } catch {
+          console.log('[LivePreview] Cloud song fetch failed, trying cache...');
+        }
+        
+        // 2) Fallback to IndexedDB cache
+        try {
+          const { getCachedSongById } = await import('@/lib/songsCatalogCache');
+          const cached = await getCachedSongById(session.current_song_id);
+          if (cached) {
+            setCurrentSong({ id: cached.id, titolo: cached.titolo, artista: cached.artista, testo: cached.testo });
+            setLocalHighlightLine(0);
+          }
+        } catch {
+          console.warn('[LivePreview] Cache fallback also failed');
+        }
       };
       fetchSong();
     }, [session?.current_song_id]);

@@ -83,13 +83,56 @@ export function useBroadcast(salaCode: string = 'main') {
   // Track last broadcast update timestamp to prevent DB overwriting faster broadcast updates
   const lastBroadcastUpdateRef = useRef<number>(0);
 
+  // Default session skeleton for offline bootstrapping
+  const defaultSessionRef = useRef<BroadcastSession>({
+    id: 'offline',
+    sala_code: salaCode,
+    sala_name: 'Sala Principale',
+    is_active: false,
+    current_song_id: null,
+    current_reservation_id: null,
+    display_mode: 'waiting',
+    scroll_position: 0,
+    highlight_line: 0,
+    auto_scroll: true,
+    scroll_speed: 3,
+    tv_view_mode: 'karaoke',
+    is_broadcasting: false,
+    highlight_enabled: true,
+    highlight_lines_count: 1,
+    font_size: 100,
+    text_align: 'center',
+    remote_scroll_enabled: true,
+    screen_share_active: false,
+    screen_share_offer: null,
+    screen_share_answer: null,
+    screen_share_ice_candidates: [],
+    screen_share_started_at: null,
+    screen_share_stopped_reason: null,
+    screen_stream_active: false,
+    screen_stream_url: null,
+    songbook_file_id: null,
+    songbook_mode: false,
+    songbook_show_chords_on_tv: false,
+    songbook_transpose: 0,
+    songbook_view_mode: 'chordpro',
+    broadcast_to_tv: true,
+    broadcast_to_partiture: true,
+    created_at: '',
+    updated_at: '',
+  } as BroadcastSession);
+
   // Instant peer-to-peer broadcast channel
   const { send: broadcastSend } = useBroadcastChannel({
     salaCode,
     onUpdate: useCallback((payload: Record<string, unknown>) => {
       // Apply partial update instantly from peer broadcast
+      // CRITICAL: if session is null (offline), bootstrap from default so updates are not lost
       lastBroadcastUpdateRef.current = Date.now();
-      setSession(prev => prev ? { ...prev, ...payload } as BroadcastSession : prev);
+      setSession(prev => {
+        const base = prev || defaultSessionRef.current;
+        return { ...base, ...payload } as BroadcastSession;
+      });
     }, []),
   });
 
@@ -112,7 +155,9 @@ export function useBroadcast(salaCode: string = 'main') {
       
       setSession(data as BroadcastSession | null);
     } catch (e) {
-      console.warn('[Broadcast] Session fetch timeout/failed, using cached state');
+      console.warn('[Broadcast] Session fetch timeout/failed, bootstrapping default session for offline');
+      // Bootstrap a default session so BroadcastChannel / WS updates can be applied
+      setSession(prev => prev || defaultSessionRef.current);
     } finally {
       setLoading(false);
     }
@@ -191,13 +236,16 @@ export function useBroadcast(salaCode: string = 'main') {
 
   // Update session: broadcast instantly to peers, then persist to DB in background
   const updateSession = useCallback(async (updates: Partial<BroadcastSession>) => {
-    // 1. Apply locally immediately
-    setSession(prev => prev ? { ...prev, ...updates } as BroadcastSession : prev);
+    // 1. Apply locally immediately (bootstrap from default if null)
+    setSession(prev => {
+      const base = prev || defaultSessionRef.current;
+      return { ...base, ...updates } as BroadcastSession;
+    });
     
     // 2. Broadcast to all peers instantly (~20ms)
     broadcastSend(updates as Record<string, unknown>);
     
-    // 3. Persist to DB - debounce high-frequency updates, immediate for important ones
+    // 3. Persist to DB (fire-and-forget with timeout to avoid hanging offline)
     const isHighFreq = Object.keys(updates).every(k => HIGH_FREQ_KEYS.has(k));
     
     if (isHighFreq) {
@@ -214,13 +262,22 @@ export function useBroadcast(salaCode: string = 'main') {
       }
       const merged = { ...pendingDbUpdatesRef.current, ...updates };
       pendingDbUpdatesRef.current = {};
-      supabase
-        .from('broadcast_sessions')
-        .update(merged as any)
-        .eq('sala_code', salaCode)
-        .then(({ error }) => {
-          if (error) console.error('Error persisting broadcast update:', error);
-        });
+      // Use timeout to prevent hanging when offline
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        supabase
+          .from('broadcast_sessions')
+          .update(merged as any)
+          .eq('sala_code', salaCode)
+          .abortSignal(controller.signal)
+          .then(({ error }) => {
+            clearTimeout(timeout);
+            if (error) console.warn('[Broadcast] DB persist failed (offline?):', error.message);
+          });
+      } catch {
+        // Silently ignore — local state + BroadcastChannel already applied
+      }
     }
 
     return true;
