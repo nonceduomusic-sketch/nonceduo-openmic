@@ -347,6 +347,21 @@ export interface BroadcastRemoteAccess {
               return;
             } catch {}
           }
+          // No cache but on LAN: create default access info so remote works immediately
+          if (isLocalServer) {
+            const defaultInfo = {
+              accessId: `local-${token}`,
+              salaCode: 'main',
+              name: 'Telecomando LAN',
+              pinRequired: false,
+            };
+            setAccessInfo(defaultInfo);
+            setIsValidated(true);
+            setSessionId(`offline-${Date.now()}`);
+            console.log('[RemoteUser] LAN fallback: no cache, using default access');
+            setLoading(false);
+            return;
+          }
         }
 
         // Try Cloud
