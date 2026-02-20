@@ -281,17 +281,38 @@ export default function Trasmetti() {
       const lanPromise = (async (): Promise<SongbookFile | null> => {
         if (!localIP) return null;
         try {
+          // Try direct lookup first (now supports supabase_id matching)
           const resp = await fetch(`http://${localIP}:8080/api/songbook/${songbookFileId}`, {
             signal: AbortSignal.timeout(3000),
           });
-          if (!resp.ok) return null;
-          const file = await resp.json();
-          if (!file?.content) return null;
+          if (resp.ok) {
+            const ct = resp.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+              const file = await resp.json();
+              if (file?.content) {
+                return {
+                  id: file.id || songbookFileId,
+                  title: file.title || '',
+                  artist: file.artist || null,
+                  content: file.content,
+                };
+              }
+            }
+          }
+          // Fallback: search all files by supabase_id/id/slug
+          const allResp = await fetch(`http://${localIP}:8080/api/songbook/all`, {
+            signal: AbortSignal.timeout(3000),
+          });
+          if (!allResp.ok) return null;
+          const allFiles = await allResp.json();
+          if (!Array.isArray(allFiles)) return null;
+          const match = allFiles.find((f: any) => f.supabase_id === songbookFileId || f.id === songbookFileId || f.slug === songbookFileId);
+          if (!match?.content) return null;
           return {
-            id: file.id || songbookFileId,
-            title: file.title || '',
-            artist: file.artist || null,
-            content: file.content,
+            id: match.id || songbookFileId,
+            title: match.title || '',
+            artist: match.artist || null,
+            content: match.content,
           };
         } catch {
           return null;
