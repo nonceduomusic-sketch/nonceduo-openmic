@@ -301,6 +301,41 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
   }, [session?.current_song_id, isSongbookMode]);
 
   // Fetch songbook file (with cache fallback)
+  // WS song cache ref for local mode
+  const wsSongRef = useRef<WebSocket | null>(null);
+  const pendingWsSongRef = useRef<string | null>(null);
+
+  // Connect WS for song fetching in local mode
+  useEffect(() => {
+    if (!isLocalMode) return;
+    const wsUrl = `ws://${localIP}:3456`;
+    try {
+      const ws = new WebSocket(wsUrl);
+      wsSongRef.current = ws;
+      ws.onopen = () => {
+        if (pendingWsSongRef.current) {
+          ws.send(JSON.stringify({ type: 'get_song', id: pendingWsSongRef.current }));
+        }
+      };
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type === 'song_data' && msg.data && msg.id === pendingWsSongRef.current) {
+            setCurrentSongbookFile({
+              title: msg.data.title || '',
+              artist: msg.data.artist || null,
+              content: msg.data.content,
+            });
+            pendingWsSongRef.current = null;
+          }
+        } catch { /* ignore */ }
+      };
+      ws.onerror = () => ws.close();
+      ws.onclose = () => { wsSongRef.current = null; };
+      return () => { ws.close(); wsSongRef.current = null; };
+    } catch { return; }
+  }, [isLocalMode, localIP]);
+
   useEffect(() => {
     if (!isSongbookMode || !songbookFileId) {
       setCurrentSongbookFile(null);
@@ -327,36 +362,55 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
         }
       })();
 
+      // LAN: fetch all files and search (UUID doesn't match server slugs)
       const lanPromise = (async () => {
         if (!lip) return null;
         try {
-          const resp = await fetch(`http://${lip}:8080/api/songbook/${songbookFileId}`, {
+          const resp = await fetch(`http://${lip}:8080/api/songbook/all`, {
             signal: AbortSignal.timeout(3000),
           });
           if (!resp.ok) return null;
           const ct = resp.headers.get('content-type') || '';
           if (!ct.includes('application/json')) return null;
-          const file = await resp.json();
-          if (!file?.content) return null;
+          const allFiles = await resp.json();
+          if (!Array.isArray(allFiles)) return null;
+          const match = allFiles.find((f: any) => f.id === songbookFileId || f.slug === songbookFileId);
+          if (!match?.content) return null;
           return {
-            title: file.title || '',
-            artist: file.artist || null,
-            content: file.content,
+            title: match.title || '',
+            artist: match.artist || null,
+            content: match.content,
           };
         } catch {
           return null;
         }
       })();
 
-      const results = await Promise.allSettled([cloudPromise, lanPromise]);
+      // WS cache: request from server's cached_songs (SongbookLive caches here)
+      const wsPromise = (async () => {
+        if (!isLocalMode) return null;
+        pendingWsSongRef.current = songbookFileId;
+        if (wsSongRef.current?.readyState === WebSocket.OPEN) {
+          wsSongRef.current.send(JSON.stringify({ type: 'get_song', id: songbookFileId }));
+        }
+        // Wait briefly for WS response
+        await new Promise(r => setTimeout(r, 500));
+        return pendingWsSongRef.current === null ? 'handled' : null;
+      })();
+
+      const results = await Promise.allSettled([cloudPromise, lanPromise, wsPromise]);
+      
+      // Check if WS already handled it
+      if (pendingWsSongRef.current === null) return;
+      
       for (const r of results) {
-        if (r.status === 'fulfilled' && r.value) {
-          setCurrentSongbookFile(r.value);
+        if (r.status === 'fulfilled' && r.value && r.value !== 'handled') {
+          setCurrentSongbookFile(r.value as any);
           return;
         }
       }
 
-      // 3) Fallback to IndexedDB cache
+      // 4) Fallback to IndexedDB cache
       const { getCachedFile } = await import('@/lib/songbookCache');
       const cached = await getCachedFile(songbookFileId);
       if (cached) {
@@ -364,7 +418,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
       }
     };
     fetchFile();
-  }, [isSongbookMode, songbookFileId]);
+  }, [isSongbookMode, songbookFileId, isLocalMode]);
 
   // Determine if we have content to show
   const hasContent = isSongbookMode ? !!currentSongbookFile : !!currentSong;
