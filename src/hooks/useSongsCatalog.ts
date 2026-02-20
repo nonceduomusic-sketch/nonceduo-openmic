@@ -59,14 +59,27 @@ export const useSongsCatalog = () => {
       try {
         setLoading(true);
 
-        // 1) Try Cloud (Supabase)
-        const { data, error: fetchError } = await supabase
-          .from('songs')
-          .select('id, titolo, artista')
-          .order('titolo', { ascending: true });
+        // 1) Try Cloud (Supabase) — with timeout to avoid hanging offline
+        let cloudData: any[] | null = null;
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 4000);
+          const { data, error: fetchError } = await supabase
+            .from('songs')
+            .select('id, titolo, artista')
+            .order('titolo', { ascending: true })
+            .abortSignal(controller.signal);
+          clearTimeout(timeout);
 
-        if (!fetchError && data && data.length > 0) {
-          const mapped: CatalogSong[] = data.map(song => ({
+          if (!fetchError && data && data.length > 0) {
+            cloudData = data;
+          }
+        } catch {
+          console.log('[Catalog] Cloud fetch timeout/failed, trying LAN...');
+        }
+
+        if (cloudData && cloudData.length > 0) {
+          const mapped: CatalogSong[] = cloudData.map(song => ({
             id: song.id,
             title: song.titolo,
             artist: song.artista,
@@ -75,7 +88,7 @@ export const useSongsCatalog = () => {
           setSource('cloud');
           setError(null);
           // Also update IndexedDB cache in background
-          cacheSongsCatalog(data.map(s => ({ ...s, testo: null, slug: null }))).catch(() => {});
+          cacheSongsCatalog(cloudData.map(s => ({ ...s, testo: null, slug: null }))).catch(() => {});
           setLoading(false);
           return;
         }
@@ -103,7 +116,7 @@ export const useSongsCatalog = () => {
         }
 
         // All sources failed
-        if (fetchError) throw fetchError;
+        
         setSongs([]);
         setError(null);
       } catch (err) {

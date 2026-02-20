@@ -66,14 +66,53 @@ export function useHybridBroadcast(salaCode: string = 'main') {
     }
   }, [isLocalMode, localSendUpdate]);
 
+  // Local-aware broadcastSong: in local mode, also push via WS so LAN devices update
+  const broadcastSong = useCallback(async (songId: string, reservationId?: string) => {
+    const updates = {
+      current_song_id: songId,
+      current_reservation_id: reservationId || null,
+      display_mode: 'lyrics',
+      scroll_position: 0,
+      highlight_line: 0,
+      is_active: true,
+      is_broadcasting: true,
+      songbook_mode: false,
+      songbook_file_id: null,
+    };
+    if (isLocalMode) {
+      localSendUpdate(updates);
+      setLocalOverrides(prev => ({ ...prev, ...updates }));
+    }
+    // Always call cloud too (for DB persistence when online, local state always)
+    return cloud.broadcastSong(songId, reservationId);
+  }, [isLocalMode, localSendUpdate, cloud.broadcastSong]);
+
+  // Local-aware stopBroadcast
+  const stopBroadcast = useCallback(async () => {
+    const updates = {
+      current_song_id: null,
+      current_reservation_id: null,
+      display_mode: 'waiting',
+      scroll_position: 0,
+      highlight_line: 0,
+      is_broadcasting: false,
+      songbook_mode: false,
+      songbook_file_id: null,
+    };
+    if (isLocalMode) {
+      localSendUpdate(updates);
+      setLocalOverrides(prev => ({ ...prev, ...updates }));
+    }
+    return cloud.stopBroadcast();
+  }, [isLocalMode, localSendUpdate, cloud.stopBroadcast]);
+
   return {
     session,
     loading: cloud.loading,
     syncUpdate,
-    // Cloud-only operations (bookings, songs, etc. still go through cloud)
     updateSession: cloud.updateSession,
-    broadcastSong: cloud.broadcastSong,
-    stopBroadcast: cloud.stopBroadcast,
+    broadcastSong,
+    stopBroadcast,
     toggleActive: cloud.toggleActive,
     refetch: cloud.refetch,
     // Connection state

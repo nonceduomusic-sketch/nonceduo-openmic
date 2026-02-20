@@ -183,16 +183,24 @@ export default function Trasmetti() {
         return;
       }
 
-      // 1) Try Cloud (Supabase)
-      const { data, error } = await supabase
-        .from('songs')
-        .select('id, titolo, artista, testo')
-        .eq('id', session.current_song_id)
-        .single();
+      // 1) Try Cloud (Supabase) — with timeout to avoid hanging offline
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        const { data } = await supabase
+          .from('songs')
+          .select('id, titolo, artista, testo')
+          .eq('id', session.current_song_id)
+          .abortSignal(controller.signal)
+          .single();
+        clearTimeout(timeout);
 
-      if (data) {
-        setCurrentSong(data);
-        return;
+        if (data) {
+          setCurrentSong(data);
+          return;
+        }
+      } catch {
+        console.log('[Trasmetti] Cloud song fetch failed/timeout, trying LAN...');
       }
 
       // 2) Try LAN mini-server
@@ -246,16 +254,24 @@ export default function Trasmetti() {
         return;
       }
 
-      // 1) Try Cloud
-      const { data, error } = await supabase
-        .from('songbook_files')
-        .select('id, title, artist, content')
-        .eq('id', songbookFileId)
-        .single();
+      // 1) Try Cloud — with timeout to avoid hanging offline
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        const { data } = await supabase
+          .from('songbook_files')
+          .select('id, title, artist, content')
+          .eq('id', songbookFileId)
+          .abortSignal(controller.signal)
+          .single();
+        clearTimeout(timeout);
 
-      if (data) {
-        setCurrentSongbookFile(data);
-        return;
+        if (data) {
+          setCurrentSongbookFile(data);
+          return;
+        }
+      } catch {
+        console.log('[Trasmetti] Cloud songbook fetch failed/timeout, trying LAN...');
       }
 
       // 2) Try LAN mini-server
