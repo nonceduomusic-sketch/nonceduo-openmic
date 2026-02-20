@@ -346,12 +346,25 @@ wss.on('connection', (ws, req) => {
         case 'get_song': {
           // 1) Check in-memory cache first
           let song = broadcastState.cached_songs[msg.id];
-          // 2) Fallback: search filesystem by supabase_id/slug/id
+          // 2) Fallback: search songbook filesystem by supabase_id/slug/id
           if (!song) {
             const fileMatch = getSongbookFile(msg.id);
             if (fileMatch) {
               song = { id: fileMatch.supabase_id || fileMatch.id, title: fileMatch.title, artist: fileMatch.artist, content: fileMatch.content };
-              // Cache it for next time
+              broadcastState.cached_songs[msg.id] = song;
+            }
+          }
+          // 3) Fallback: search catalog.json by id
+          if (!song) {
+            const catalog = getCatalog();
+            const catalogMatch = catalog.find(s => s.id === msg.id);
+            if (catalogMatch) {
+              song = {
+                id: catalogMatch.id,
+                title: catalogMatch.titolo || catalogMatch.title || '',
+                artist: catalogMatch.artista || catalogMatch.artist || '',
+                content: catalogMatch.testo || catalogMatch.text || '',
+              };
               broadcastState.cached_songs[msg.id] = song;
             }
           }

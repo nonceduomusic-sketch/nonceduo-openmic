@@ -285,7 +285,12 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
         }
       })();
 
-      const results = await Promise.allSettled([cloudPromise, lanPromise]);
+      // 3) Also try WS cache (server checks songbook + catalog.json)
+      const wsPromise = isLocalMode ? localRequestSong(session.current_song_id!, 2000).then(d => d ? {
+        titolo: d.title || '', artista: d.artist || '', testo: d.content || null
+      } : null) : Promise.resolve(null);
+
+      const results = await Promise.allSettled([cloudPromise, lanPromise, wsPromise]);
       for (const r of results) {
         if (r.status === 'fulfilled' && r.value) {
           setCurrentSong(r.value);
@@ -293,12 +298,12 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
         }
       }
 
-      // 3) Fallback to IndexedDB cache
+      // 4) Fallback to IndexedDB cache
       const cached = await getCachedSongById(session.current_song_id!);
       if (cached) setCurrentSong({ titolo: cached.titolo, artista: cached.artista, testo: cached.testo });
     };
     fetchSong();
-  }, [session?.current_song_id, isSongbookMode]);
+  }, [session?.current_song_id, isSongbookMode, isLocalMode, localRequestSong]);
 
   // Fetch songbook file (with cache fallback)
   useEffect(() => {
