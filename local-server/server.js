@@ -112,9 +112,10 @@ function getSongbookList() {
   }
 }
 
-function getSongbookFile(slug) {
+function getSongbookFile(identifier) {
   const list = getSongbookList();
-  const entry = list.find(f => f.slug === slug || f.id === slug);
+  // Match by supabase_id (UUID), slug, or local id
+  const entry = list.find(f => f.supabase_id === identifier || f.slug === identifier || f.id === identifier);
   if (!entry) return null;
   const content = fs.readFileSync(path.join(SONGBOOK_DIR, entry.filename), 'utf-8');
   return { ...entry, content };
@@ -343,7 +344,17 @@ wss.on('connection', (ws, req) => {
         }
 
         case 'get_song': {
-          const song = broadcastState.cached_songs[msg.id];
+          // 1) Check in-memory cache first
+          let song = broadcastState.cached_songs[msg.id];
+          // 2) Fallback: search filesystem by supabase_id/slug/id
+          if (!song) {
+            const fileMatch = getSongbookFile(msg.id);
+            if (fileMatch) {
+              song = { id: fileMatch.supabase_id || fileMatch.id, title: fileMatch.title, artist: fileMatch.artist, content: fileMatch.content };
+              // Cache it for next time
+              broadcastState.cached_songs[msg.id] = song;
+            }
+          }
           ws.send(JSON.stringify({
             type: 'song_data',
             data: song || null,

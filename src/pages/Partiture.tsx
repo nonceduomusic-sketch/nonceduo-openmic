@@ -3,7 +3,6 @@ import { Guitar, Music, Wifi, WifiOff, Footprints, Minus, Plus } from 'lucide-re
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
-import { useConnectionMode, useLocalBroadcast } from '@/hooks/useLocalBroadcast';
 import { supabase } from '@/integrations/supabase/client';
 import { parseChordPro, transposeSong, ChordProSong } from '@/lib/chordpro';
 import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
@@ -19,8 +18,7 @@ interface SongbookFile {
 import { renderResponsiveSong } from '@/lib/chordproRenderer';
 
 export default function Partiture() {
-  const { session, isLocalMode, localConnected } = useHybridBroadcast('main');
-  const { serverUrl } = useConnectionMode();
+  const { session, isLocalMode, localConnected, localRequestSong } = useHybridBroadcast('main');
   const scrollRef = useRef<HTMLDivElement>(null);
   const [file, setFile] = useState<SongbookFile | null>(null);
   const [localTextScale, setLocalTextScale] = useState<number>(() => {
@@ -43,121 +41,69 @@ export default function Partiture() {
     scrollRef: scrollRef as React.RefObject<HTMLElement>,
   });
 
-  // WS-based song fetch: connect to WS and request song from cached_songs
-  const wsRef = useRef<WebSocket | null>(null);
-  const pendingSongRequestRef = useRef<string | null>(null);
-
-  // Connect to WS for song fetching when in local mode
-  useEffect(() => {
-    if (!isLocalMode) return;
-
-    const ws = new WebSocket(serverUrl);
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      // If we have a pending song request, send it now
-      if (pendingSongRequestRef.current) {
-        ws.send(JSON.stringify({ type: 'get_song', id: pendingSongRequestRef.current }));
-      }
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const msg = JSON.parse(event.data);
-        if (msg.type === 'song_data' && msg.data && msg.id === pendingSongRequestRef.current) {
-          setFile({
-            id: msg.data.id,
-            title: msg.data.title || '',
-            artist: msg.data.artist || null,
-            content: msg.data.content,
-          });
-          pendingSongRequestRef.current = null;
-        }
-      } catch { /* ignore */ }
-    };
-
-    ws.onerror = () => ws.close();
-    ws.onclose = () => { wsRef.current = null; };
-
-    return () => {
-      ws.close();
-      wsRef.current = null;
-    };
-  }, [isLocalMode, serverUrl]);
-
-  // Request song from WS cache
-  const requestSongFromWS = useCallback((id: string) => {
-    pendingSongRequestRef.current = id;
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: 'get_song', id }));
-    }
-  }, []);
-
   // Fetch file when fileId changes — Fallback chain: Cloud → WS Cache → LAN HTTP → IndexedDB
   useEffect(() => {
     if (!fileId) { setFile(null); return; }
     
     const fetchFile = async () => {
-      // 1) Try Cloud — with timeout to avoid hanging offline
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3000);
-        const { data } = await supabase.from('songbook_files').select('*').eq('id', fileId).abortSignal(controller.signal).single();
-        clearTimeout(timeout);
-        if (data) {
-          setFile(data as SongbookFile);
-          return;
-        }
-      } catch {
-        console.log('[Partiture] Cloud fetch failed/timeout, trying alternatives...');
-      }
+      const lip = safeGetItem('local', 'broadcast_local_ip') || '';
 
-      // 2) Try WS cached songs (SongbookLive caches songs here via localCacheSong)
-      if (isLocalMode) {
-        requestSongFromWS(fileId);
-        // Give WS a moment to respond — if it does, the onmessage handler sets the file
-        // Meanwhile continue to other fallbacks
-        await new Promise(r => setTimeout(r, 500));
-        // If WS already set the file, we're done
-        if (pendingSongRequestRef.current === null) return;
-      }
-
-      // 3) Try LAN mini-server (search all files since IDs don't match)
-      const localIP = safeGetItem('local', 'broadcast_local_ip') || '';
-      if (localIP) {
+      // Run all sources in parallel
+      const cloudPromise = (async (): Promise<SongbookFile | null> => {
         try {
-          const resp = await fetch(`http://${localIP}:8080/api/songbook/all`, {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 3000);
+          const { data } = await supabase.from('songbook_files').select('id, title, artist, content').eq('id', fileId).abortSignal(controller.signal).single();
+          clearTimeout(timeout);
+          return data as SongbookFile | null;
+        } catch {
+          return null;
+        }
+      })();
+
+      // WS: use existing hybrid connection (no separate WebSocket!)
+      const wsPromise = isLocalMode ? localRequestSong(fileId, 2000) : Promise.resolve(null);
+
+      // LAN HTTP
+      const lanPromise = (async (): Promise<SongbookFile | null> => {
+        if (!lip) return null;
+        try {
+          // Direct lookup (server now matches by supabase_id too)
+          const resp = await fetch(`http://${lip}:8080/api/songbook/${fileId}`, {
             signal: AbortSignal.timeout(3000),
           });
           if (resp.ok) {
-            const allFiles = await resp.json();
-            // Try matching by ID first, then by slug
-            const match = Array.isArray(allFiles) && allFiles.find((f: any) => 
-              f.supabase_id === fileId || f.id === fileId || f.slug === fileId
-            );
-            if (match && match.content) {
-              setFile({ id: match.id || fileId, title: match.title || '', artist: match.artist || null, content: match.content });
-              return;
+            const ct = resp.headers.get('content-type') || '';
+            if (ct.includes('application/json')) {
+              const f = await resp.json();
+              if (f?.content) return { id: f.id || fileId, title: f.title || '', artist: f.artist || null, content: f.content };
             }
           }
-        } catch { /* LAN not available */ }
+          return null;
+        } catch {
+          return null;
+        }
+      })();
+
+      const results = await Promise.allSettled([cloudPromise, wsPromise, lanPromise]);
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value) {
+          const v = r.value as any;
+          setFile({ id: v.id || fileId, title: v.title || '', artist: v.artist || null, content: v.content });
+          return;
+        }
       }
 
-      // 4) Fallback to IndexedDB cache
+      // Final fallback: IndexedDB cache
       const { getCachedFile } = await import('@/lib/songbookCache');
       const cached = await getCachedFile(fileId);
       if (cached) {
-        setFile({
-          id: cached.id,
-          title: cached.title,
-          artist: cached.artist,
-          content: cached.content,
-        } as SongbookFile);
+        setFile({ id: cached.id, title: cached.title, artist: cached.artist, content: cached.content });
       }
     };
 
     fetchFile();
-  }, [fileId, isLocalMode, requestSongFromWS]);
+  }, [fileId, isLocalMode, localRequestSong]);
 
   // Parse and transpose
   const parsedSong = useMemo(() => {
