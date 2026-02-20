@@ -4,6 +4,7 @@ import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
 import { useScreenShareViewer } from '@/hooks/useScreenShare';
 import { supabase } from '@/integrations/supabase/client';
 import { getCachedSongById } from '@/lib/songsCatalogCache';
+import { safeGetItem } from '@/lib/safeStorage';
 import { ConnectionSettings } from '@/components/songbook/ConnectionSettings';
 import { Maximize, Mic, Guitar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -174,6 +175,7 @@ export default function Trasmetti() {
   }, [currentSongbookFile, songbookTranspose]);
 
   // Fetch current song when it changes (regular catalog songs)
+  // Fallback chain: Cloud → LAN mini-server → IndexedDB cache
   useEffect(() => {
     const fetchSong = async () => {
       if (!session?.current_song_id) {
@@ -181,7 +183,7 @@ export default function Trasmetti() {
         return;
       }
 
-      // Try network first
+      // 1) Try Cloud (Supabase)
       const { data, error } = await supabase
         .from('songs')
         .select('id, titolo, artista, testo')
@@ -193,17 +195,42 @@ export default function Trasmetti() {
         return;
       }
 
-      // Fallback to IndexedDB cache (offline)
-      if (error) {
-        const cached = await getCachedSongById(session.current_song_id);
-        if (cached) {
-          setCurrentSong({
-            id: cached.id,
-            titolo: cached.titolo,
-            artista: cached.artista,
-            testo: cached.testo,
+      // 2) Try LAN mini-server
+      const localIP = safeGetItem('local', 'broadcast_local_ip') || '';
+      if (localIP) {
+        try {
+          const resp = await fetch(`http://${localIP}:8080/api/catalog/list`, {
+            signal: AbortSignal.timeout(3000),
           });
+          if (resp.ok) {
+            const catalog = await resp.json();
+            if (Array.isArray(catalog)) {
+              const found = catalog.find((s: any) => s.id === session.current_song_id);
+              if (found) {
+                setCurrentSong({
+                  id: found.id || session.current_song_id,
+                  titolo: found.titolo || found.title || '',
+                  artista: found.artista || found.artist || '',
+                  testo: found.testo || found.text || null,
+                });
+                return;
+              }
+            }
+          }
+        } catch {
+          // LAN not available, continue to cache
         }
+      }
+
+      // 3) Fallback to IndexedDB cache (offline)
+      const cached = await getCachedSongById(session.current_song_id);
+      if (cached) {
+        setCurrentSong({
+          id: cached.id,
+          titolo: cached.titolo,
+          artista: cached.artista,
+          testo: cached.testo,
+        });
       }
     };
 
@@ -211,6 +238,7 @@ export default function Trasmetti() {
   }, [session?.current_song_id]);
 
   // Fetch songbook file when in songbook mode (with cache fallback)
+  // Fallback chain: Cloud → LAN mini-server → IndexedDB cache
   useEffect(() => {
     const fetchSongbookFile = async () => {
       if (!isSongbookMode || !songbookFileId) {
@@ -218,6 +246,7 @@ export default function Trasmetti() {
         return;
       }
 
+      // 1) Try Cloud
       const { data, error } = await supabase
         .from('songbook_files')
         .select('id, title, artist, content')
@@ -226,13 +255,38 @@ export default function Trasmetti() {
 
       if (data) {
         setCurrentSongbookFile(data);
-      } else if (error) {
-        // Fallback to cache (offline)
-        const { getCachedFile } = await import('@/lib/songbookCache');
-        const cached = await getCachedFile(songbookFileId);
-        if (cached) {
-          setCurrentSongbookFile({ id: cached.id, title: cached.title, artist: cached.artist, content: cached.content });
+        return;
+      }
+
+      // 2) Try LAN mini-server
+      const localIP = safeGetItem('local', 'broadcast_local_ip') || '';
+      if (localIP) {
+        try {
+          const resp = await fetch(`http://${localIP}:8080/api/songbook/${songbookFileId}`, {
+            signal: AbortSignal.timeout(3000),
+          });
+          if (resp.ok) {
+            const file = await resp.json();
+            if (file && file.content) {
+              setCurrentSongbookFile({
+                id: file.id || songbookFileId,
+                title: file.title || '',
+                artist: file.artist || null,
+                content: file.content,
+              });
+              return;
+            }
+          }
+        } catch {
+          // LAN not available, continue to cache
         }
+      }
+
+      // 3) Fallback to IndexedDB cache
+      const { getCachedFile } = await import('@/lib/songbookCache');
+      const cached = await getCachedFile(songbookFileId);
+      if (cached) {
+        setCurrentSongbookFile({ id: cached.id, title: cached.title, artist: cached.artist, content: cached.content });
       }
     };
 
