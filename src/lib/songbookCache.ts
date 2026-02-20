@@ -220,3 +220,44 @@ export async function downloadAllSongbookFilesForOffline(
     return { success: false, count: 0 };
   }
 }
+
+/** Sync songbook files to local mini-server */
+export async function syncSongbookToLocalServer(
+  serverIP: string,
+  supabaseClient: { from: (table: string) => any }
+): Promise<{ success: boolean; count: number }> {
+  try {
+    const allFiles: any[] = [];
+    const pageSize = 1000;
+    let from = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabaseClient
+        .from('songbook_files')
+        .select('filename, content')
+        .range(from, from + pageSize - 1);
+
+      if (error) throw error;
+      if (data && data.length > 0) {
+        allFiles.push(...data);
+        from += pageSize;
+        hasMore = data.length === pageSize;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    const resp = await fetch(`http://${serverIP}:8080/api/songbook/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(allFiles),
+    });
+
+    const result = await resp.json();
+    return { success: result.ok, count: result.count || 0 };
+  } catch (e) {
+    console.error('[SongbookCache] Failed to sync to local server:', e);
+    return { success: false, count: 0 };
+  }
+}

@@ -109,3 +109,84 @@ export async function clearSongsCatalogCache(): Promise<void> {
     console.warn('[SongsCatalogCache] Failed to clear cache:', e);
   }
 }
+
+/** Download ALL catalog songs from Supabase and cache them for offline use */
+export async function downloadAllCatalogForOffline(
+  supabaseClient: { from: (table: string) => any }
+): Promise<{ success: boolean; count: number }> {
+  try {
+    const allSongs: CachedSong[] = [];
+    const pageSize = 1000;
+    let from = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabaseClient
+        .from('songs')
+        .select('id, titolo, artista, testo, slug')
+        .range(from, from + pageSize - 1);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        allSongs.push(...data);
+        from += pageSize;
+        hasMore = data.length === pageSize;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    if (allSongs.length > 0) {
+      await cacheSongsCatalog(allSongs);
+    }
+
+    return { success: true, count: allSongs.length };
+  } catch (e) {
+    console.error('[SongsCatalogCache] Failed to download all songs:', e);
+    return { success: false, count: 0 };
+  }
+}
+
+/** Sync catalog to local mini-server */
+export async function syncCatalogToLocalServer(
+  serverIP: string,
+  supabaseClient: { from: (table: string) => any }
+): Promise<{ success: boolean; count: number }> {
+  try {
+    // First get all songs from cloud
+    const allSongs: any[] = [];
+    const pageSize = 1000;
+    let from = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabaseClient
+        .from('songs')
+        .select('id, titolo, artista, testo, slug')
+        .range(from, from + pageSize - 1);
+
+      if (error) throw error;
+      if (data && data.length > 0) {
+        allSongs.push(...data);
+        from += pageSize;
+        hasMore = data.length === pageSize;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    // Send to local server
+    const resp = await fetch(`http://${serverIP}:8080/api/catalog/sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(allSongs),
+    });
+
+    const result = await resp.json();
+    return { success: result.ok, count: result.count || 0 };
+  } catch (e) {
+    console.error('[SongsCatalogCache] Failed to sync to local server:', e);
+    return { success: false, count: 0 };
+  }
+}

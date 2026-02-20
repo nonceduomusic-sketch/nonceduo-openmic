@@ -2,6 +2,7 @@
  * NonceDuo Local Broadcast Server
  * 
  * 1. HTTP Server (porta 8080) — serve i file dell'app (SPA con fallback a index.html)
+ *    + API per catalogo canzoni e SongBook (.cho) offline
  * 2. WebSocket Server (porta 3456) — sincronizza stato broadcast tra dispositivi LAN
  */
 
@@ -16,6 +17,15 @@ const WS_PORT = 3456;
 
 // Directory contenente la build dell'app (npm run build → dist/)
 const PUBLIC_DIR = path.join(__dirname, 'public');
+
+// Directory per i dati locali (catalogo e songbook)
+const DATA_DIR = path.join(__dirname, 'data');
+const SONGBOOK_DIR = path.join(DATA_DIR, 'songbook');
+const CATALOG_FILE = path.join(DATA_DIR, 'catalog.json');
+
+// Assicura che le cartelle dati esistano
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!fs.existsSync(SONGBOOK_DIR)) fs.mkdirSync(SONGBOOK_DIR, { recursive: true });
 
 // ═══════════════════════════════════════
 // MIME Types per il server HTTP
@@ -43,16 +53,167 @@ const MIME_TYPES = {
   '.txt':  'text/plain; charset=utf-8',
   '.xml':  'application/xml; charset=utf-8',
   '.webmanifest': 'application/manifest+json; charset=utf-8',
+  '.cho':  'text/plain; charset=utf-8',
 };
 
 // ═══════════════════════════════════════
-// HTTP Server — SPA con fallback
+// API Helpers
 // ═══════════════════════════════════════
-const httpServer = http.createServer((req, res) => {
-  // Remove query string
+function sendJSON(res, data, status = 200) {
+  res.writeHead(status, { 
+    'Content-Type': 'application/json; charset=utf-8',
+    'Access-Control-Allow-Origin': '*',
+  });
+  res.end(JSON.stringify(data));
+}
+
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    req.on('data', c => chunks.push(c));
+    req.on('end', () => {
+      try { resolve(JSON.parse(Buffer.concat(chunks).toString())); }
+      catch (e) { reject(e); }
+    });
+    req.on('error', reject);
+  });
+}
+
+// ═══════════════════════════════════════
+// SongBook API — file .cho nella cartella data/songbook/
+// ═══════════════════════════════════════
+function getSongbookList() {
+  try {
+    const files = fs.readdirSync(SONGBOOK_DIR).filter(f => f.endsWith('.cho'));
+    return files.map(filename => {
+      const content = fs.readFileSync(path.join(SONGBOOK_DIR, filename), 'utf-8');
+      const title = (content.match(/\{title:\s*(.+?)\}/i) || [])[1] || filename.replace('.cho', '');
+      const artist = (content.match(/\{artist:\s*(.+?)\}/i) || [])[1] || null;
+      const slug = filename.replace('.cho', '').toLowerCase().replace(/[^a-z0-9-]/g, '-');
+      const isVariant = filename.includes('_');
+      return { id: slug, title: title.trim(), artist: artist?.trim() || null, filename, slug, is_variant: isVariant };
+    });
+  } catch (e) {
+    console.error('❌ Errore lettura songbook:', e.message);
+    return [];
+  }
+}
+
+function getSongbookFile(slug) {
+  const list = getSongbookList();
+  const entry = list.find(f => f.slug === slug || f.id === slug);
+  if (!entry) return null;
+  const content = fs.readFileSync(path.join(SONGBOOK_DIR, entry.filename), 'utf-8');
+  return { ...entry, content };
+}
+
+// ═══════════════════════════════════════
+// Catalog API — catalog.json nella cartella data/
+// ═══════════════════════════════════════
+function getCatalog() {
+  try {
+    if (fs.existsSync(CATALOG_FILE)) {
+      return JSON.parse(fs.readFileSync(CATALOG_FILE, 'utf-8'));
+    }
+    return [];
+  } catch (e) {
+    console.error('❌ Errore lettura catalogo:', e.message);
+    return [];
+  }
+}
+
+function saveCatalog(songs) {
+  fs.writeFileSync(CATALOG_FILE, JSON.stringify(songs, null, 2), 'utf-8');
+}
+
+// ═══════════════════════════════════════
+// HTTP Server — SPA + API
+// ═══════════════════════════════════════
+const httpServer = http.createServer(async (req, res) => {
+  // CORS preflight
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204, {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type',
+    });
+    res.end();
+    return;
+  }
+
   const urlPath = req.url.split('?')[0];
+
+  // ── API Routes ──
   
-  // Try to serve the file directly
+  // SongBook: lista brani
+  if (urlPath === '/api/songbook/list' && req.method === 'GET') {
+    return sendJSON(res, getSongbookList());
+  }
+
+  // SongBook: tutti i brani con contenuto (per download bulk)
+  if (urlPath === '/api/songbook/all' && req.method === 'GET') {
+    const list = getSongbookList();
+    const all = list.map(entry => {
+      const content = fs.readFileSync(path.join(SONGBOOK_DIR, entry.filename), 'utf-8');
+      return { ...entry, content };
+    });
+    return sendJSON(res, all);
+  }
+
+  // SongBook: singolo brano per slug
+  if (urlPath.startsWith('/api/songbook/') && req.method === 'GET') {
+    const slug = urlPath.replace('/api/songbook/', '');
+    if (slug && slug !== 'list' && slug !== 'all') {
+      const file = getSongbookFile(slug);
+      if (file) return sendJSON(res, file);
+      return sendJSON(res, { error: 'File non trovato' }, 404);
+    }
+  }
+
+  // Catalogo: lista brani
+  if (urlPath === '/api/catalog/list' && req.method === 'GET') {
+    return sendJSON(res, getCatalog());
+  }
+
+  // Catalogo: sync (POST) — riceve l'intero catalogo dal cloud e lo salva
+  if (urlPath === '/api/catalog/sync' && req.method === 'POST') {
+    try {
+      const body = await readBody(req);
+      if (Array.isArray(body)) {
+        saveCatalog(body);
+        console.log(`📦 Catalogo sincronizzato: ${body.length} brani`);
+        return sendJSON(res, { ok: true, count: body.length });
+      }
+      return sendJSON(res, { error: 'Body deve essere un array' }, 400);
+    } catch (e) {
+      return sendJSON(res, { error: 'JSON non valido' }, 400);
+    }
+  }
+
+  // SongBook: sync (POST) — riceve tutti i file songbook e li salva
+  if (urlPath === '/api/songbook/sync' && req.method === 'POST') {
+    try {
+      const body = await readBody(req);
+      if (Array.isArray(body)) {
+        // Ogni elemento: { filename, content }
+        let count = 0;
+        for (const file of body) {
+          if (file.filename && file.content) {
+            const safeName = file.filename.replace(/[^a-zA-Z0-9._-]/g, '_');
+            fs.writeFileSync(path.join(SONGBOOK_DIR, safeName), file.content, 'utf-8');
+            count++;
+          }
+        }
+        console.log(`📦 SongBook sincronizzato: ${count} file .cho`);
+        return sendJSON(res, { ok: true, count });
+      }
+      return sendJSON(res, { error: 'Body deve essere un array' }, 400);
+    } catch (e) {
+      return sendJSON(res, { error: 'JSON non valido' }, 400);
+    }
+  }
+
+  // ── Static file serving ──
   let filePath = path.join(PUBLIC_DIR, urlPath);
   
   // Security: prevent directory traversal
@@ -207,6 +368,10 @@ function getLocalIPs() {
 httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
   const ips = getLocalIPs();
   const hasPublic = fs.existsSync(path.join(PUBLIC_DIR, 'index.html'));
+  const songbookCount = fs.existsSync(SONGBOOK_DIR) 
+    ? fs.readdirSync(SONGBOOK_DIR).filter(f => f.endsWith('.cho')).length : 0;
+  const catalogCount = fs.existsSync(CATALOG_FILE) 
+    ? JSON.parse(fs.readFileSync(CATALOG_FILE, 'utf-8')).length : 0;
 
   console.log('');
   console.log('  ╔════════════════════════════════════════════════╗');
@@ -215,6 +380,8 @@ httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
   console.log('');
   console.log(`  HTTP Server:     porta ${HTTP_PORT}`);
   console.log(`  WebSocket:       porta ${WS_PORT}`);
+  console.log(`  📚 SongBook:     ${songbookCount} file .cho`);
+  console.log(`  📋 Catalogo:     ${catalogCount} brani`);
   console.log('');
 
   if (!hasPublic) {
@@ -237,11 +404,17 @@ httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
       console.log(`    ➜ ws://${address}:${WS_PORT}                (WebSocket)`);
       console.log('');
     });
+    console.log('  📡 API disponibili:');
+    ips.forEach(({ address }) => {
+      console.log(`    ➜ http://${address}:${HTTP_PORT}/api/songbook/list`);
+      console.log(`    ➜ http://${address}:${HTTP_PORT}/api/catalog/list`);
+    });
   } else {
     console.log(`    ➜ http://localhost:${HTTP_PORT}`);
     console.log(`    ➜ ws://localhost:${WS_PORT}`);
   }
 
+  console.log('');
   console.log('  In attesa di connessioni...');
   console.log('');
 });
