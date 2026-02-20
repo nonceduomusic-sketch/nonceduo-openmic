@@ -47,11 +47,18 @@ export default function Partiture() {
     if (!fileId) { setFile(null); return; }
     
     const fetchFile = async () => {
-      // 1) Try Cloud
-      const { data, error } = await supabase.from('songbook_files').select('*').eq('id', fileId).single();
-      if (data) {
-        setFile(data as SongbookFile);
-        return;
+      // 1) Try Cloud — with timeout to avoid hanging offline
+      try {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 3000);
+        const { data } = await supabase.from('songbook_files').select('*').eq('id', fileId).abortSignal(controller.signal).single();
+        clearTimeout(timeout);
+        if (data) {
+          setFile(data as SongbookFile);
+          return;
+        }
+      } catch {
+        console.log('[Partiture] Cloud fetch failed/timeout, trying LAN...');
       }
 
       // 2) Try LAN mini-server

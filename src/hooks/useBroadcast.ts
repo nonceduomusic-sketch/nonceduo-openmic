@@ -93,20 +93,29 @@ export function useBroadcast(salaCode: string = 'main') {
     }, []),
   });
 
-  // Fetch session
+  // Fetch session — with timeout to avoid hanging offline
   const fetchSession = useCallback(async () => {
-    const { data, error } = await supabase
-      .from('broadcast_sessions')
-      .select('*')
-      .eq('sala_code', salaCode)
-      .single();
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
+      const { data, error } = await supabase
+        .from('broadcast_sessions')
+        .select('*')
+        .eq('sala_code', salaCode)
+        .abortSignal(controller.signal)
+        .single();
+      clearTimeout(timeout);
 
-    if (error && error.code !== 'PGRST116') {
-      console.error('Error fetching broadcast session:', error);
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching broadcast session:', error);
+      }
+      
+      setSession(data as BroadcastSession | null);
+    } catch (e) {
+      console.warn('[Broadcast] Session fetch timeout/failed, using cached state');
+    } finally {
+      setLoading(false);
     }
-    
-    setSession(data as BroadcastSession | null);
-    setLoading(false);
   }, [salaCode]);
 
   // Subscribe to realtime updates (DB persistence layer - backup for broadcast)
