@@ -102,7 +102,6 @@ export default function Trasmetti() {
   const [currentSongbookFile, setCurrentSongbookFile] = useState<SongbookFile | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [highlightLine, setHighlightLine] = useState(0);
   
   // Screen share viewer hook
   const { remoteStream, isConnecting: screenShareConnecting, isActive: screenShareActive } = useScreenShareViewer({ salaCode });
@@ -179,7 +178,6 @@ export default function Trasmetti() {
     const fetchSong = async () => {
       if (!session?.current_song_id) {
         setCurrentSong(null);
-        setHighlightLine(0);
         return;
       }
 
@@ -192,7 +190,6 @@ export default function Trasmetti() {
 
       if (data) {
         setCurrentSong(data);
-        setHighlightLine(session.highlight_line || 0);
         return;
       }
 
@@ -206,7 +203,6 @@ export default function Trasmetti() {
             artista: cached.artista,
             testo: cached.testo,
           });
-          setHighlightLine(session.highlight_line || 0);
         }
       }
     };
@@ -243,12 +239,8 @@ export default function Trasmetti() {
     fetchSongbookFile();
   }, [isSongbookMode, songbookFileId]);
 
-  // CRITICAL: Always sync highlight line from session (admin controls via database)
-  useEffect(() => {
-    if (session?.highlight_line !== undefined && session?.highlight_line !== null) {
-      setHighlightLine(session.highlight_line);
-    }
-  }, [session?.highlight_line]);
+  // Use session highlight_line directly — no intermediate state to avoid double renders
+  const highlightLine = session?.highlight_line ?? 0;
 
   // Scroll highlighted line into view
   // In songbook mode: always follow highlight_line for cross-view text alignment
@@ -633,7 +625,7 @@ export default function Trasmetti() {
                     key={index}
                     data-line={index}
                     className={cn(
-                      "transition-all duration-300 py-2 px-4 -mx-2 rounded-lg",
+                      "transition-opacity duration-150 py-2 px-4 -mx-2 rounded-lg",
                       highlightEnabled && isMainHighlight && "bg-primary/20 ring-2 ring-primary/40 scale-[1.01]",
                       highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-primary/10"
                     )}
@@ -653,7 +645,7 @@ export default function Trasmetti() {
                   key={index}
                   data-line={index}
                   className={cn(
-                    "transition-all duration-300 py-2 px-4 -mx-2 rounded-lg leading-relaxed",
+                    "transition-opacity duration-150 py-2 px-4 -mx-2 rounded-lg leading-relaxed",
                     highlightEnabled && isMainHighlight && "bg-primary/20 ring-2 ring-primary/40 scale-[1.01] font-semibold",
                     highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-primary/10"
                   )}
@@ -763,7 +755,7 @@ export default function Trasmetti() {
                     key={index}
                     data-line={index}
                     className={cn(
-                      "font-sans leading-loose transition-all duration-300 py-3 px-6 -mx-4 rounded-xl",
+                      "font-sans leading-loose transition-opacity duration-150 py-3 px-6 -mx-4 rounded-xl",
                       highlightEnabled && isMainHighlight && "bg-yellow-400/30 ring-2 ring-yellow-400/50 scale-[1.02] font-bold",
                       highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-yellow-400/15 ring-1 ring-yellow-400/30"
                     )}
@@ -986,7 +978,7 @@ export default function Trasmetti() {
                   key={index}
                   data-line={index}
                   className={cn(
-                    "leading-relaxed transition-all duration-300 px-6 py-3 rounded-xl",
+                    "leading-relaxed transition-opacity duration-150 px-6 py-3 rounded-xl",
                     highlightEnabled && isMainHighlight && "bg-primary/20 text-primary font-bold ring-2 ring-primary/30",
                     highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-primary/10 text-primary/80 ring-1 ring-primary/20"
                   )}
