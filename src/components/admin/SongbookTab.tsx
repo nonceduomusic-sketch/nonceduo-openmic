@@ -23,7 +23,7 @@ import {
   Square,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useBroadcast } from '@/hooks/useBroadcast';
+import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -74,7 +74,7 @@ interface SongbookTabProps {
 
 export function SongbookTab({ canManage = true, canFull = true }: SongbookTabProps) {
   const { files, loading, uploadFiles, updateFile, deleteFile, deleteAllFiles } = useSongbookFiles();
-  const { updateSession } = useBroadcast('main');
+  const { updateSession } = useHybridBroadcast('main');
   
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('title-asc');

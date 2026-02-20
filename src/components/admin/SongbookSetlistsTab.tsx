@@ -14,7 +14,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { useSongbookFiles, useSongbookSetlists, useSongbookSetlistSongs } from '@/hooks/useSongbook';
-import { useBroadcast } from '@/hooks/useBroadcast';
+import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
 import {
   FolderOpen,
   Plus,
@@ -62,7 +62,7 @@ interface SongbookSetlistsTabProps {
 export function SongbookSetlistsTab({ canManage = true, canFull = true }: SongbookSetlistsTabProps) {
   const { files } = useSongbookFiles();
   const { setlists, createSetlist, updateSetlist, deleteSetlist } = useSongbookSetlists();
-  const { updateSession } = useBroadcast('main');
+  const { updateSession } = useHybridBroadcast('main');
   
   const [selectedSetlistId, setSelectedSetlistId] = useState<string | null>(null);
   const { songs: setlistSongs, addSong, removeSong, reorderSongs } = useSongbookSetlistSongs(selectedSetlistId);
