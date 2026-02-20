@@ -2,70 +2,71 @@
 
 ---
 
-## 📂 CARTELLE SUL TUO PC
+## 📂 LE TUE CARTELLE
 
 ```
 C:\Users\iaco_\
-  ├── nonceduo-openmic-nuovo\   ← CODICE SORGENTE (qui scarichi gli aggiornamenti)
-  ├── nonceduo\local-server\    ← SERVER LOCALE (qui gira l'app per la TV/tablet)
-  │     ├── public\             ← File dell'app compilata
-  │     └── server.js           ← Il programma del server
-  │
-  ├── nonceduo-openmic-main\    ← ❌ VECCHIA, PUOI ELIMINARLA
-  └── nonceduo\                 ← ⚠️ TIENI! Contiene il server locale
+  ├── nonceduo-openmic-nuovo\   ← CODICE (da qui scarichi aggiornamenti)
+  ├── nonceduo\local-server\    ← SERVER (da qui parte l'app per TV/tablet)
 ```
 
-### Cosa eliminare?
-- ✅ **Elimina** `nonceduo-openmic-main` → è la vecchia copia senza Git
-- ⚠️ **TIENI** `nonceduo\local-server` → è il tuo server locale!
-- ⚠️ **TIENI** `nonceduo-openmic-nuovo` → è il codice aggiornato con Git
+- ❌ **Elimina** la cartella `nonceduo-openmic-main` (è vecchia, non serve più)
+- ✅ **Tieni** tutto il resto
 
 ---
 
-## 🟢 CASO 1: Devo solo AVVIARE il server (nessun aggiornamento)
+## 🟢 AVVIARE IL SERVER (senza aggiornamenti)
 
-Apri **PowerShell** e scrivi questi comandi uno alla volta:
+> Usa questo quando vuoi solo accendere il server per la serata.
+
+Apri **PowerShell** e scrivi:
 
 ```
 cd C:\Users\iaco_\nonceduo\local-server
 ```
 
+Premi **Invio**. Poi scrivi:
+
 ```
 node server.js
 ```
 
-✅ **Fatto!** Vedrai l'IP da usare sui dispositivi.
+Premi **Invio**.
 
-> Per spegnere il server: premi **Ctrl+C** nella finestra.
+✅ Fatto! Vedrai gli indirizzi IP da usare su TV e tablet.
+
+> Per spegnere: premi **Ctrl+C** nella finestra.
 
 ---
 
-## 🔄 CASO 2: Devo AGGIORNARE e poi avviare
+## 🔄 AGGIORNARE E AVVIARE
 
-Apri **PowerShell** e scrivi questi comandi uno alla volta.
+> Usa questo quando ti dico "aggiorna il server" o dopo che ho fatto modifiche.
+
+Apri **PowerShell** e scrivi i comandi **uno alla volta**.
 **Aspetta che ogni comando finisca prima di scrivere il successivo!**
 
-### Passo 1 — Scarica gli aggiornamenti
+### 1. Vai nella cartella del codice
 
 ```
 cd C:\Users\iaco_\nonceduo-openmic-nuovo
 ```
 
+### 2. Scarica gli aggiornamenti
+
 ```
 git pull
 ```
 
-> Se chiede credenziali, inserisci username e password di GitHub.
-
-### Passo 2 — Installa eventuali nuove dipendenze
+### 3. Installa le dipendenze
 
 ```
 npm install
 ```
 
-> Aspetta che finisca (1-3 minuti).
+> Aspetta 1-3 minuti.
 
-### Passo 3 — Compila l'app
+### 4. Compila l'app
 
 ```
 npm run build
@@ -73,47 +74,47 @@ npm run build
 
 > Aspetta di vedere "built in X.XXs".
 
-### Passo 4 — Copia i file nel server locale
+### 5. Copia i file nel server
 
 ```
 xcopy dist\* ..\nonceduo\local-server\public\ /E /Y
 ```
 
-> Vedrai una lista di file copiati.
-
-### Passo 5 — Avvia il server
+### 6. Vai al server
 
 ```
 cd ..\nonceduo\local-server
 ```
 
+### 7. Avvia il server
+
 ```
 node server.js
 ```
 
-✅ **Fatto!** Server aggiornato e attivo.
+✅ Fatto! Server aggiornato e attivo.
 
 ---
 
-## ⚠️ PROBLEMI COMUNI
+## ⚠️ PROBLEMI?
 
-| Problema | Soluzione |
+| Problema | Cosa fare |
 |----------|-----------|
-| `EADDRINUSE` (porta occupata) | Scrivi: `taskkill /F /IM node.exe` e poi riprova |
-| `git pull` dà errore | Controlla connessione internet |
+| `EADDRINUSE` | Scrivi `taskkill /F /IM node.exe` e riprova |
+| `git pull` dà errore | Controlla la connessione internet |
 | `npm run build` fallisce | Scrivi `npm install` e riprova |
-| La TV non si connette | Assicurati che PC e TV siano sullo **stesso WiFi** |
+| La TV non si connette | PC e TV devono essere sullo **stesso WiFi** |
 
 ---
 
-## 📋 COMANDI RAPIDI (copia-incolla)
+## 📋 COPIA-INCOLLA RAPIDO
 
-### Solo avviare:
+**Solo avviare:**
 ```
 cd C:\Users\iaco_\nonceduo\local-server && node server.js
 ```
 
-### Aggiornare + avviare (tutto insieme):
+**Aggiornare + avviare (tutto in un colpo):**
 ```
 cd C:\Users\iaco_\nonceduo-openmic-nuovo && git pull && npm install && npm run build && xcopy dist\* ..\nonceduo\local-server\public\ /E /Y && cd ..\nonceduo\local-server && node server.js
 ```
