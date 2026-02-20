@@ -178,6 +178,7 @@ export function useBroadcast(salaCode: string = 'main') {
       scroll_position: 0,
       highlight_line: 0,
       is_active: true,
+      is_broadcasting: true,
       songbook_mode: false,
       songbook_file_id: null,
     } as any);
@@ -192,6 +193,7 @@ export function useBroadcast(salaCode: string = 'main') {
       display_mode: 'waiting',
       scroll_position: 0,
       highlight_line: 0,
+      is_broadcasting: false,
       songbook_mode: false,
       songbook_file_id: null,
     } as any);
