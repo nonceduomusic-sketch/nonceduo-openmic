@@ -2,7 +2,7 @@
  * Local WebSocket connection hook for offline broadcast sync.
  * Mirrors the Supabase Realtime behavior but over local WiFi.
  */
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
 
 export type ConnectionMode = 'cloud' | 'local';
@@ -25,11 +25,41 @@ const STORAGE_KEY_MODE = 'broadcast_connection_mode';
 const STORAGE_KEY_IP = 'broadcast_local_ip';
 const RECONNECT_INTERVAL = 3000;
 
+/**
+ * Detect if we're running on the local mini-server (HTTP + LAN IP or localhost).
+ * When detected, auto-switch to local mode using the server's hostname.
+ */
+function detectLocalServer(): { isLocal: boolean; detectedIP: string } {
+  try {
+    const proto = window.location.protocol;
+    const host = window.location.hostname;
+    // Running on HTTP (not HTTPS) and on localhost or a LAN IP → local server
+    if (proto === 'http:') {
+      if (host === 'localhost' || host === '127.0.0.1') {
+        return { isLocal: true, detectedIP: '127.0.0.1' };
+      }
+      // LAN IPs: 192.168.x.x, 10.x.x.x, 172.16-31.x.x
+      if (/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host)) {
+        return { isLocal: true, detectedIP: host };
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return { isLocal: false, detectedIP: '' };
+}
+
 export function useConnectionMode() {
+  const localServer = useMemo(() => detectLocalServer(), []);
+
   const [mode, setModeState] = useState<ConnectionMode>(() => {
+    // Auto-detect: if served from local server, default to 'local'
+    if (localServer.isLocal) return 'local';
     return (safeGetItem('local', STORAGE_KEY_MODE) as ConnectionMode) || 'cloud';
   });
   const [localIP, setLocalIPState] = useState(() => {
+    // Auto-detect: use the server's hostname as the local IP
+    if (localServer.isLocal && localServer.detectedIP) return localServer.detectedIP;
     return safeGetItem('local', STORAGE_KEY_IP) || '192.168.1.100';
   });
 
@@ -45,7 +75,7 @@ export function useConnectionMode() {
 
   const serverUrl = `ws://${localIP}:3456`;
 
-  return { mode, setMode, localIP, setLocalIP, serverUrl };
+  return { mode, setMode, localIP, setLocalIP, serverUrl, isLocalServer: localServer.isLocal };
 }
 
 export function useLocalBroadcast({ enabled, serverUrl, onStateUpdate, onInitialState }: UseLocalBroadcastOptions) {
