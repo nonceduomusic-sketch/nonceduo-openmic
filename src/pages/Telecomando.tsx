@@ -4,6 +4,7 @@ import { useBroadcastRemoteUser, useRemoteControl } from "@/hooks/useBroadcastRe
 import { useHybridBroadcast } from "@/hooks/useHybridBroadcast";
 import { useScrollPositionPublisher } from "@/hooks/useScrollPositionPublisher";
 import { supabase } from "@/integrations/supabase/client";
+import { getCachedSongById } from "@/lib/songsCatalogCache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -240,12 +241,20 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
       return;
     }
     const fetchSong = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("songs")
         .select("titolo, artista, testo")
         .eq("id", session.current_song_id)
         .single();
-      if (data) setCurrentSong(data);
+      if (data) {
+        setCurrentSong(data);
+        return;
+      }
+      // Fallback to cache (offline)
+      if (error) {
+        const cached = await getCachedSongById(session.current_song_id!);
+        if (cached) setCurrentSong({ titolo: cached.titolo, artista: cached.artista, testo: cached.testo });
+      }
     };
     fetchSong();
   }, [session?.current_song_id, isSongbookMode]);

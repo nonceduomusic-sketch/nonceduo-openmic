@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
 import { useScreenShareViewer } from '@/hooks/useScreenShare';
 import { supabase } from '@/integrations/supabase/client';
+import { getCachedSongById } from '@/lib/songsCatalogCache';
 import { ConnectionSettings } from '@/components/songbook/ConnectionSettings';
 import { Maximize, Mic, Guitar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -182,7 +183,8 @@ export default function Trasmetti() {
         return;
       }
 
-      const { data } = await supabase
+      // Try network first
+      const { data, error } = await supabase
         .from('songs')
         .select('id, titolo, artista, testo')
         .eq('id', session.current_song_id)
@@ -191,6 +193,21 @@ export default function Trasmetti() {
       if (data) {
         setCurrentSong(data);
         setHighlightLine(session.highlight_line || 0);
+        return;
+      }
+
+      // Fallback to IndexedDB cache (offline)
+      if (error) {
+        const cached = await getCachedSongById(session.current_song_id);
+        if (cached) {
+          setCurrentSong({
+            id: cached.id,
+            titolo: cached.titolo,
+            artista: cached.artista,
+            testo: cached.testo,
+          });
+          setHighlightLine(session.highlight_line || 0);
+        }
       }
     };
 
