@@ -148,24 +148,28 @@ export async function downloadAllCatalogForOffline(
   }
 }
 
-/** Sync catalog to local mini-server */
+/** Sync catalog to local mini-server.
+ *  Tries Cloud first; if offline, falls back to local IndexedDB cache. */
 export async function syncCatalogToLocalServer(
   serverIP: string,
   supabaseClient: { from: (table: string) => any }
 ): Promise<{ success: boolean; count: number }> {
+  let allSongs: any[] = [];
+
+  // 1) Try Cloud
   try {
-    // First get all songs from cloud
-    const allSongs: any[] = [];
     const pageSize = 1000;
     let from = 0;
     let hasMore = true;
-
     while (hasMore) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
       const { data, error } = await supabaseClient
         .from('songs')
         .select('id, titolo, artista, testo, slug')
-        .range(from, from + pageSize - 1);
-
+        .range(from, from + pageSize - 1)
+        .abortSignal(controller.signal);
+      clearTimeout(timeout);
       if (error) throw error;
       if (data && data.length > 0) {
         allSongs.push(...data);
@@ -175,14 +179,32 @@ export async function syncCatalogToLocalServer(
         hasMore = false;
       }
     }
+  } catch {
+    console.warn('[SongsCatalogCache] Cloud fetch failed for sync, trying local cache...');
+  }
 
-    // Send to local server
+  // 2) Fallback to IndexedDB cache
+  if (allSongs.length === 0) {
+    try {
+      const cached = await getAllCachedSongs();
+      allSongs = cached.map(s => ({ id: s.id, titolo: s.titolo, artista: s.artista, testo: s.testo, slug: s.slug }));
+    } catch {
+      console.warn('[SongsCatalogCache] IndexedDB fallback also failed');
+    }
+  }
+
+  if (allSongs.length === 0) {
+    return { success: false, count: 0 };
+  }
+
+  // 3) Send to local server
+  try {
     const resp = await fetch(`http://${serverIP}:8080/api/catalog/sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(allSongs),
+      signal: AbortSignal.timeout(10000),
     });
-
     const result = await resp.json();
     return { success: result.ok, count: result.count || 0 };
   } catch (e) {

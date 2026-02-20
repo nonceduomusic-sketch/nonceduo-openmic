@@ -221,23 +221,28 @@ export async function downloadAllSongbookFilesForOffline(
   }
 }
 
-/** Sync songbook files to local mini-server */
+/** Sync songbook files to local mini-server.
+ *  Tries Cloud first; if offline, falls back to local IndexedDB cache. */
 export async function syncSongbookToLocalServer(
   serverIP: string,
   supabaseClient: { from: (table: string) => any }
 ): Promise<{ success: boolean; count: number }> {
+  let allFiles: any[] = [];
+
+  // 1) Try Cloud
   try {
-    const allFiles: any[] = [];
     const pageSize = 1000;
     let from = 0;
     let hasMore = true;
-
     while (hasMore) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 4000);
       const { data, error } = await supabaseClient
         .from('songbook_files')
         .select('filename, content')
-        .range(from, from + pageSize - 1);
-
+        .range(from, from + pageSize - 1)
+        .abortSignal(controller.signal);
+      clearTimeout(timeout);
       if (error) throw error;
       if (data && data.length > 0) {
         allFiles.push(...data);
@@ -247,13 +252,32 @@ export async function syncSongbookToLocalServer(
         hasMore = false;
       }
     }
+  } catch {
+    console.warn('[SongbookCache] Cloud fetch failed for sync, trying local cache...');
+  }
 
+  // 2) Fallback to IndexedDB cache
+  if (allFiles.length === 0) {
+    try {
+      const cached = await getAllCachedFiles();
+      allFiles = cached.map(f => ({ filename: f.filename, content: f.content }));
+    } catch {
+      console.warn('[SongbookCache] IndexedDB fallback also failed');
+    }
+  }
+
+  if (allFiles.length === 0) {
+    return { success: false, count: 0 };
+  }
+
+  // 3) Send to local server
+  try {
     const resp = await fetch(`http://${serverIP}:8080/api/songbook/sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(allFiles),
+      signal: AbortSignal.timeout(10000),
     });
-
     const result = await resp.json();
     return { success: result.ok, count: result.count || 0 };
   } catch (e) {
