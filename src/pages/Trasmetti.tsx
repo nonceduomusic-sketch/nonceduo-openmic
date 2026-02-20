@@ -183,50 +183,54 @@ export default function Trasmetti() {
         return;
       }
 
-      // 1) Try Cloud (Supabase) — with timeout to avoid hanging offline
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3000);
-        const { data } = await supabase
-          .from('songs')
-          .select('id, titolo, artista, testo')
-          .eq('id', session.current_song_id)
-          .abortSignal(controller.signal)
-          .single();
-        clearTimeout(timeout);
-
-        if (data) {
-          setCurrentSong(data);
-          return;
-        }
-      } catch {
-        console.log('[Trasmetti] Cloud song fetch failed/timeout, trying LAN...');
-      }
-
-      // 2) Try LAN mini-server
+      // Try Cloud and LAN in parallel — use whichever responds first
       const localIP = safeGetItem('local', 'broadcast_local_ip') || '';
-      if (localIP) {
+
+      const cloudPromise = (async (): Promise<Song | null> => {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 3000);
+          const { data } = await supabase
+            .from('songs')
+            .select('id, titolo, artista, testo')
+            .eq('id', session.current_song_id)
+            .abortSignal(controller.signal)
+            .single();
+          clearTimeout(timeout);
+          return data || null;
+        } catch {
+          return null;
+        }
+      })();
+
+      const lanPromise = (async (): Promise<Song | null> => {
+        if (!localIP) return null;
         try {
           const resp = await fetch(`http://${localIP}:8080/api/catalog/list`, {
             signal: AbortSignal.timeout(3000),
           });
-          if (resp.ok) {
-            const catalog = await resp.json();
-            if (Array.isArray(catalog)) {
-              const found = catalog.find((s: any) => s.id === session.current_song_id);
-              if (found) {
-                setCurrentSong({
-                  id: found.id || session.current_song_id,
-                  titolo: found.titolo || found.title || '',
-                  artista: found.artista || found.artist || '',
-                  testo: found.testo || found.text || null,
-                });
-                return;
-              }
-            }
-          }
+          if (!resp.ok) return null;
+          const catalog = await resp.json();
+          if (!Array.isArray(catalog)) return null;
+          const found = catalog.find((s: any) => s.id === session.current_song_id);
+          if (!found) return null;
+          return {
+            id: found.id || session.current_song_id,
+            titolo: found.titolo || found.title || '',
+            artista: found.artista || found.artist || '',
+            testo: found.testo || found.text || null,
+          };
         } catch {
-          // LAN not available, continue to cache
+          return null;
+        }
+      })();
+
+      // Race: use first non-null result
+      const results = await Promise.allSettled([cloudPromise, lanPromise]);
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value) {
+          setCurrentSong(r.value);
+          return;
         }
       }
 
@@ -254,47 +258,51 @@ export default function Trasmetti() {
         return;
       }
 
-      // 1) Try Cloud — with timeout to avoid hanging offline
-      try {
-        const controller = new AbortController();
-        const timeout = setTimeout(() => controller.abort(), 3000);
-        const { data } = await supabase
-          .from('songbook_files')
-          .select('id, title, artist, content')
-          .eq('id', songbookFileId)
-          .abortSignal(controller.signal)
-          .single();
-        clearTimeout(timeout);
-
-        if (data) {
-          setCurrentSongbookFile(data);
-          return;
-        }
-      } catch {
-        console.log('[Trasmetti] Cloud songbook fetch failed/timeout, trying LAN...');
-      }
-
-      // 2) Try LAN mini-server
+      // Try Cloud and LAN in parallel
       const localIP = safeGetItem('local', 'broadcast_local_ip') || '';
-      if (localIP) {
+
+      const cloudPromise = (async (): Promise<SongbookFile | null> => {
+        try {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), 3000);
+          const { data } = await supabase
+            .from('songbook_files')
+            .select('id, title, artist, content')
+            .eq('id', songbookFileId)
+            .abortSignal(controller.signal)
+            .single();
+          clearTimeout(timeout);
+          return data || null;
+        } catch {
+          return null;
+        }
+      })();
+
+      const lanPromise = (async (): Promise<SongbookFile | null> => {
+        if (!localIP) return null;
         try {
           const resp = await fetch(`http://${localIP}:8080/api/songbook/${songbookFileId}`, {
             signal: AbortSignal.timeout(3000),
           });
-          if (resp.ok) {
-            const file = await resp.json();
-            if (file && file.content) {
-              setCurrentSongbookFile({
-                id: file.id || songbookFileId,
-                title: file.title || '',
-                artist: file.artist || null,
-                content: file.content,
-              });
-              return;
-            }
-          }
+          if (!resp.ok) return null;
+          const file = await resp.json();
+          if (!file?.content) return null;
+          return {
+            id: file.id || songbookFileId,
+            title: file.title || '',
+            artist: file.artist || null,
+            content: file.content,
+          };
         } catch {
-          // LAN not available, continue to cache
+          return null;
+        }
+      })();
+
+      const results = await Promise.allSettled([cloudPromise, lanPromise]);
+      for (const r of results) {
+        if (r.status === 'fulfilled' && r.value) {
+          setCurrentSongbookFile(r.value);
+          return;
         }
       }
 
