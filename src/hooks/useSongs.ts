@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { cacheSongsCatalog, getAllCachedSongs, getCachedSongById } from '@/lib/songsCatalogCache';
 
 export interface Song {
   id: string;
@@ -22,10 +23,38 @@ export interface SongInput {
 export const useSongs = () => {
   const [songs, setSongs] = useState<Song[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isFromCache, setIsFromCache] = useState(false);
   const queryClient = useQueryClient();
+  const hasHydratedFromCache = useRef(false);
 
   const fetchSongs = useCallback(async () => {
     setLoading(true);
+
+    // 1) Hydrate from IndexedDB immediately (only once)
+    if (!hasHydratedFromCache.current) {
+      hasHydratedFromCache.current = true;
+      try {
+        const cached = await getAllCachedSongs();
+        if (cached.length > 0) {
+          const mapped: Song[] = cached.map(c => ({
+            id: c.id,
+            titolo: c.titolo,
+            artista: c.artista,
+            testo: c.testo,
+            slug: c.slug,
+            created_at: '',
+            updated_at: null,
+          })).sort((a, b) => a.titolo.localeCompare(b.titolo, 'it'));
+          setSongs(mapped);
+          setIsFromCache(true);
+          setLoading(false);
+        }
+      } catch (e) {
+        // cache miss, continue to network
+      }
+    }
+
+    // 2) Fetch from network
     const { data, error } = await supabase
       .from('songs')
       .select('*')
@@ -33,10 +62,16 @@ export const useSongs = () => {
 
     if (error) {
       console.error('Error fetching songs:', error);
-      toast.error('Errore nel caricamento delle canzoni');
-      setSongs([]);
+      // Don't overwrite cache data if network fails
+      if (songs.length === 0) {
+        toast.error('Errore nel caricamento delle canzoni');
+      }
     } else {
-      setSongs((data || []) as Song[]);
+      const fetchedSongs = (data || []) as Song[];
+      setSongs(fetchedSongs);
+      setIsFromCache(false);
+      // 3) Update IndexedDB cache in background
+      cacheSongsCatalog(fetchedSongs).catch(() => {});
     }
     setLoading(false);
   }, []);
@@ -164,18 +199,33 @@ export const useSongs = () => {
   };
 
   const getSongById = async (id: string): Promise<Song | null> => {
+    // Try network first
     const { data, error } = await supabase
       .from('songs')
       .select('*')
       .eq('id', id)
       .single();
 
+    if (data) return data as Song;
+
+    // Fallback to cache if network fails
     if (error) {
-      console.error('Error fetching song:', error);
-      return null;
+      console.warn('getSongById network failed, trying cache:', error);
+      const cached = await getCachedSongById(id);
+      if (cached) {
+        return {
+          id: cached.id,
+          titolo: cached.titolo,
+          artista: cached.artista,
+          testo: cached.testo,
+          slug: cached.slug,
+          created_at: '',
+          updated_at: null,
+        };
+      }
     }
 
-    return data as Song;
+    return null;
   };
 
   const getSongBySlug = async (slug: string): Promise<Song | null> => {
@@ -233,6 +283,7 @@ export const useSongs = () => {
   return {
     songs,
     loading,
+    isFromCache,
     refetch: fetchSongs,
     createSong,
     updateSong,

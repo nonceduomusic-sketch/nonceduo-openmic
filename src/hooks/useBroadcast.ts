@@ -80,11 +80,15 @@ export function useBroadcast(salaCode: string = 'main') {
   // Keep ref in sync for use in callbacks
   useEffect(() => { sessionRef.current = session; }, [session]);
 
+  // Track last broadcast update timestamp to prevent DB overwriting faster broadcast updates
+  const lastBroadcastUpdateRef = useRef<number>(0);
+
   // Instant peer-to-peer broadcast channel
   const { send: broadcastSend } = useBroadcastChannel({
     salaCode,
     onUpdate: useCallback((payload: Record<string, unknown>) => {
       // Apply partial update instantly from peer broadcast
+      lastBroadcastUpdateRef.current = Date.now();
       setSession(prev => prev ? { ...prev, ...payload } as BroadcastSession : prev);
     }, []),
   });
@@ -121,6 +125,16 @@ export function useBroadcast(salaCode: string = 'main') {
         },
         (payload) => {
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            const now = Date.now();
+            const timeSinceLastBroadcast = now - lastBroadcastUpdateRef.current;
+            
+            // If a broadcast channel update happened very recently (<500ms ago),
+            // skip this postgres_changes update to avoid stutter/flicker.
+            // The broadcast channel already applied the latest state.
+            if (timeSinceLastBroadcast < 500) {
+              return;
+            }
+            
             setSession(payload.new as BroadcastSession);
           }
         }
