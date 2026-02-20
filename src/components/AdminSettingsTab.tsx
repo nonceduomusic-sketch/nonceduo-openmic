@@ -13,6 +13,9 @@ import {
   Download,
   HardDrive,
   Loader2,
+  Upload,
+  Music,
+  BookOpen,
 } from 'lucide-react';
 import { CatalogSongbookCompare } from '@/components/admin/CatalogSongbookCompare';
 import { Button } from '@/components/ui/button';
@@ -500,8 +503,8 @@ function ConnectionModeSection() {
         )}
       </div>
 
-      {/* Offline SongBook Download */}
-      <OfflineSongbookSection />
+      {/* Offline & Sync Section */}
+      <OfflineDataSection localIP={localIP} />
 
       {/* Confronto Catalogo ↔ SongBook */}
       <div className="pt-6 border-t border-border">
@@ -511,71 +514,144 @@ function ConnectionModeSection() {
   );
 }
 
-function OfflineSongbookSection() {
-  const [downloading, setDownloading] = useState(false);
-  const [cacheStats, setCacheStats] = useState<{ count: number; lastSync: number | null }>({ count: 0, lastSync: null });
+function OfflineDataSection({ localIP }: { localIP: string }) {
+  const [songbookStats, setSongbookStats] = useState<{ count: number; lastSync: number | null }>({ count: 0, lastSync: null });
+  const [catalogStats, setCatalogStats] = useState<{ count: number; lastSync: number | null }>({ count: 0, lastSync: null });
+  const [downloadingSongbook, setDownloadingSongbook] = useState(false);
+  const [downloadingCatalog, setDownloadingCatalog] = useState(false);
+  const [syncingSongbook, setSyncingSongbook] = useState(false);
+  const [syncingCatalog, setSyncingCatalog] = useState(false);
 
   useEffect(() => {
-    import('@/lib/songbookCache').then(({ getCacheStats }) => {
-      getCacheStats().then(setCacheStats);
-    });
+    import('@/lib/songbookCache').then(({ getCacheStats }) => getCacheStats().then(setSongbookStats));
+    import('@/lib/songsCatalogCache').then(({ getSongsCatalogCacheStats }) => getSongsCatalogCacheStats().then(setCatalogStats));
   }, []);
 
-  const handleDownloadAll = async () => {
-    setDownloading(true);
+  const handleDownloadSongbook = async () => {
+    setDownloadingSongbook(true);
     try {
       const { supabase } = await import('@/integrations/supabase/client');
-      const { downloadAllSongbookFilesForOffline } = await import('@/lib/songbookCache');
+      const { downloadAllSongbookFilesForOffline, getCacheStats } = await import('@/lib/songbookCache');
       const result = await downloadAllSongbookFilesForOffline(supabase);
       if (result.success) {
-        const { toast } = await import('sonner');
-        toast.success(`${result.count} brani SongBook scaricati per offline!`);
-        const { getCacheStats } = await import('@/lib/songbookCache');
-        setCacheStats(await getCacheStats());
+        (await import('sonner')).toast.success(`${result.count} brani SongBook scaricati!`);
+        setSongbookStats(await getCacheStats());
       }
-    } catch (e) {
-      const { toast } = await import('sonner');
-      toast.error('Errore durante il download');
-    }
-    setDownloading(false);
+    } catch { (await import('sonner')).toast.error('Errore download SongBook'); }
+    setDownloadingSongbook(false);
+  };
+
+  const handleDownloadCatalog = async () => {
+    setDownloadingCatalog(true);
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { downloadAllCatalogForOffline, getSongsCatalogCacheStats } = await import('@/lib/songsCatalogCache');
+      const result = await downloadAllCatalogForOffline(supabase);
+      if (result.success) {
+        (await import('sonner')).toast.success(`${result.count} canzoni catalogo scaricate!`);
+        setCatalogStats(await getSongsCatalogCacheStats());
+      }
+    } catch { (await import('sonner')).toast.error('Errore download catalogo'); }
+    setDownloadingCatalog(false);
+  };
+
+  const handleSyncSongbook = async () => {
+    setSyncingSongbook(true);
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { syncSongbookToLocalServer } = await import('@/lib/songbookCache');
+      const result = await syncSongbookToLocalServer(localIP, supabase);
+      if (result.success) {
+        (await import('sonner')).toast.success(`${result.count} file .cho sincronizzati col server!`);
+      } else {
+        (await import('sonner')).toast.error('Server locale non raggiungibile');
+      }
+    } catch { (await import('sonner')).toast.error('Errore sync SongBook → server'); }
+    setSyncingSongbook(false);
+  };
+
+  const handleSyncCatalog = async () => {
+    setSyncingCatalog(true);
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { syncCatalogToLocalServer } = await import('@/lib/songsCatalogCache');
+      const result = await syncCatalogToLocalServer(localIP, supabase);
+      if (result.success) {
+        (await import('sonner')).toast.success(`${result.count} brani catalogo sincronizzati col server!`);
+      } else {
+        (await import('sonner')).toast.error('Server locale non raggiungibile');
+      }
+    } catch { (await import('sonner')).toast.error('Errore sync catalogo → server'); }
+    setSyncingCatalog(false);
   };
 
   return (
-    <div className="pt-4 border-t border-border space-y-3">
+    <div className="pt-4 border-t border-border space-y-5">
       <div className="flex items-center gap-3">
         <HardDrive className="w-5 h-5 text-primary" />
         <div>
-          <h3 className="font-medium text-foreground">SongBook Offline</h3>
-          <p className="text-xs text-muted-foreground">Scarica i brani per usarli senza internet</p>
+          <h3 className="font-medium text-foreground">Dati Offline</h3>
+          <p className="text-xs text-muted-foreground">Scarica dati nel browser o sincronizza col server locale</p>
         </div>
       </div>
 
-      {cacheStats.count > 0 && (
+      {/* SongBook Section */}
+      <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-xs">
-            <HardDrive className="w-3 h-3 mr-1" />
-            {cacheStats.count} brani in cache
-          </Badge>
-          {cacheStats.lastSync && (
-            <span className="text-xs text-muted-foreground">
-              Ultimo: {new Date(cacheStats.lastSync).toLocaleDateString('it-IT')}
-            </span>
+          <BookOpen className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium">SongBook (.cho)</span>
+          {songbookStats.count > 0 && (
+            <Badge variant="outline" className="text-xs ml-auto">
+              {songbookStats.count} in cache
+            </Badge>
           )}
         </div>
-      )}
+        <div className="grid grid-cols-2 gap-2">
+          <Button onClick={handleDownloadSongbook} disabled={downloadingSongbook} variant="outline" size="sm" className="w-full">
+            {downloadingSongbook 
+              ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Scaricando...</>
+              : <><Download className="w-3 h-3 mr-1" />Browser</>
+            }
+          </Button>
+          <Button onClick={handleSyncSongbook} disabled={syncingSongbook} variant="outline" size="sm" className="w-full">
+            {syncingSongbook 
+              ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Sync...</>
+              : <><Upload className="w-3 h-3 mr-1" />Server LAN</>
+            }
+          </Button>
+        </div>
+      </div>
 
-      <Button
-        onClick={handleDownloadAll}
-        disabled={downloading}
-        className="w-full"
-        variant={cacheStats.count > 0 ? "outline" : "default"}
-      >
-        {downloading ? (
-          <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Scaricando...</>
-        ) : (
-          <><Download className="w-4 h-4 mr-2" />{cacheStats.count > 0 ? 'Aggiorna cache offline' : 'Scarica tutto per offline'}</>
-        )}
-      </Button>
+      {/* Catalog Section */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Music className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm font-medium">Catalogo Canzoni</span>
+          {catalogStats.count > 0 && (
+            <Badge variant="outline" className="text-xs ml-auto">
+              {catalogStats.count} in cache
+            </Badge>
+          )}
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <Button onClick={handleDownloadCatalog} disabled={downloadingCatalog} variant="outline" size="sm" className="w-full">
+            {downloadingCatalog 
+              ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Scaricando...</>
+              : <><Download className="w-3 h-3 mr-1" />Browser</>
+            }
+          </Button>
+          <Button onClick={handleSyncCatalog} disabled={syncingCatalog} variant="outline" size="sm" className="w-full">
+            {syncingCatalog 
+              ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Sync...</>
+              : <><Upload className="w-3 h-3 mr-1" />Server LAN</>
+            }
+          </Button>
+        </div>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        💡 <strong>Browser</strong>: salva in questo dispositivo (IndexedDB). <strong>Server LAN</strong>: invia al mini-server locale (disponibile per tutti i dispositivi in rete).
+      </p>
     </div>
   );
 }
