@@ -59,20 +59,37 @@ export const useSongsCatalog = () => {
       try {
         setLoading(true);
 
-        // 1) Try Cloud (Supabase) — with timeout to avoid hanging offline
+        // 1) Try Cloud (Supabase) — paginated to avoid 1000-row limit
         let cloudData: any[] | null = null;
         try {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 4000);
-          const { data, error: fetchError } = await supabase
-            .from('songs')
-            .select('id, titolo, artista')
-            .order('titolo', { ascending: true })
-            .abortSignal(controller.signal);
-          clearTimeout(timeout);
+          const allRows: any[] = [];
+          const pageSize = 1000;
+          let from = 0;
+          let hasMore = true;
 
-          if (!fetchError && data && data.length > 0) {
-            cloudData = data;
+          while (hasMore) {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 4000);
+            const { data, error: fetchError } = await supabase
+              .from('songs')
+              .select('id, titolo, artista')
+              .order('titolo', { ascending: true })
+              .range(from, from + pageSize - 1)
+              .abortSignal(controller.signal);
+            clearTimeout(timeout);
+
+            if (fetchError) throw fetchError;
+            if (data && data.length > 0) {
+              allRows.push(...data);
+              from += pageSize;
+              hasMore = data.length === pageSize;
+            } else {
+              hasMore = false;
+            }
+          }
+
+          if (allRows.length > 0) {
+            cloudData = allRows;
           }
         } catch {
           console.log('[Catalog] Cloud fetch timeout/failed, trying LAN...');
