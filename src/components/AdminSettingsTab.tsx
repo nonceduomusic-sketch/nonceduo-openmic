@@ -521,11 +521,44 @@ function OfflineDataSection({ localIP }: { localIP: string }) {
   const [downloadingCatalog, setDownloadingCatalog] = useState(false);
   const [syncingSongbook, setSyncingSongbook] = useState(false);
   const [syncingCatalog, setSyncingCatalog] = useState(false);
+  const [autoSynced, setAutoSynced] = useState(false);
 
+  // Load stats + auto-sync in background on mount
   useEffect(() => {
     import('@/lib/songbookCache').then(({ getCacheStats }) => getCacheStats().then(setSongbookStats));
     import('@/lib/songsCatalogCache').then(({ getSongsCatalogCacheStats }) => getSongsCatalogCacheStats().then(setCatalogStats));
-  }, []);
+
+    // Auto-sync to LAN server if reachable
+    if (localIP && !autoSynced) {
+      const doAutoSync = async () => {
+        try {
+          // Quick check: is the server reachable?
+          const ping = await fetch(`http://${localIP}:8080/api/catalog/list`, { signal: AbortSignal.timeout(2000) });
+          if (!ping.ok) return;
+
+          // Server is up — sync both in parallel
+          const { supabase } = await import('@/integrations/supabase/client');
+          const [catalogMod, songbookMod] = await Promise.all([
+            import('@/lib/songsCatalogCache'),
+            import('@/lib/songbookCache'),
+          ]);
+
+          const [catResult, sbResult] = await Promise.all([
+            catalogMod.syncCatalogToLocalServer(localIP, supabase),
+            songbookMod.syncSongbookToLocalServer(localIP, supabase),
+          ]);
+
+          if (catResult.success || sbResult.success) {
+            console.log(`[AutoSync] Catalogo: ${catResult.count}, SongBook: ${sbResult.count}`);
+            setAutoSynced(true);
+          }
+        } catch {
+          // Server not reachable or no internet — skip silently
+        }
+      };
+      doAutoSync();
+    }
+  }, [localIP, autoSynced]);
 
   const handleDownloadSongbook = async () => {
     setDownloadingSongbook(true);
