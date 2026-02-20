@@ -514,7 +514,13 @@ function ConnectionModeSection() {
   );
 }
 
-function OfflineDataSection({ localIP }: { localIP: string }) {
+function OfflineDataSection({ localIP: configIP }: { localIP: string }) {
+  // If served from local server, use current hostname as IP (auto-detect)
+  const localIP = (() => {
+    const h = window.location.hostname;
+    const isLocal = h.match(/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.|localhost|127\.)/);
+    return isLocal ? h : configIP;
+  })();
   const [songbookStats, setSongbookStats] = useState<{ count: number; lastSync: number | null }>({ count: 0, lastSync: null });
   const [catalogStats, setCatalogStats] = useState<{ count: number; lastSync: number | null }>({ count: 0, lastSync: null });
   const [downloadingSongbook, setDownloadingSongbook] = useState(false);
