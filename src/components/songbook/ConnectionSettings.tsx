@@ -1,9 +1,10 @@
 /**
  * Connection mode settings panel.
  * Toggle between Cloud and Local mode for broadcast sync.
+ * Includes offline download for SongBook files.
  */
-import React, { useState } from 'react';
-import { Wifi, WifiOff, Server, Check, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Wifi, WifiOff, Server, Check, AlertCircle, Download, HardDrive, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,6 +19,8 @@ import {
   DialogTrigger,
 } from '@/components/ui/dialog';
 import { Settings } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { type ConnectionMode } from '@/hooks/useLocalBroadcast';
 
 interface ConnectionSettingsProps {
@@ -39,6 +42,35 @@ export function ConnectionSettings({
 }: ConnectionSettingsProps) {
   const [open, setOpen] = useState(false);
   const [ipInput, setIpInput] = useState(localIP);
+  const [downloading, setDownloading] = useState(false);
+  const [cacheStats, setCacheStats] = useState<{ count: number; lastSync: number | null }>({ count: 0, lastSync: null });
+
+  // Load cache stats on open
+  useEffect(() => {
+    if (open) {
+      import('@/lib/songbookCache').then(({ getCacheStats }) => {
+        getCacheStats().then(setCacheStats);
+      });
+    }
+  }, [open]);
+
+  const handleDownloadAll = async () => {
+    setDownloading(true);
+    try {
+      const { downloadAllSongbookFilesForOffline } = await import('@/lib/songbookCache');
+      const result = await downloadAllSongbookFilesForOffline(supabase);
+      if (result.success) {
+        toast.success(`${result.count} brani SongBook scaricati per offline!`);
+        const { getCacheStats } = await import('@/lib/songbookCache');
+        setCacheStats(await getCacheStats());
+      } else {
+        toast.error('Errore download - controlla la connessione');
+      }
+    } catch (e) {
+      toast.error('Errore durante il download');
+    }
+    setDownloading(false);
+  };
 
   const handleSaveIP = () => {
     const cleaned = ipInput.trim().replace(/^https?:\/\//, '').replace(/:\d+$/, '');
@@ -145,6 +177,44 @@ export function ConnectionSettings({
               </div>
             </div>
           )}
+
+          {/* Offline SongBook Download */}
+          <div className="pt-3 border-t space-y-3">
+            <div className="flex items-center gap-2">
+              <HardDrive className="w-5 h-5 text-muted-foreground" />
+              <div>
+                <p className="font-medium text-sm">SongBook Offline</p>
+                <p className="text-xs text-muted-foreground">Scarica i brani per usarli senza internet</p>
+              </div>
+            </div>
+            
+            {cacheStats.count > 0 && (
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-xs">
+                  <HardDrive className="w-3 h-3 mr-1" />
+                  {cacheStats.count} brani in cache
+                </Badge>
+                {cacheStats.lastSync && (
+                  <span className="text-xs text-muted-foreground">
+                    Ultimo: {new Date(cacheStats.lastSync).toLocaleDateString('it-IT')}
+                  </span>
+                )}
+              </div>
+            )}
+
+            <Button
+              onClick={handleDownloadAll}
+              disabled={downloading}
+              className="w-full"
+              variant={cacheStats.count > 0 ? "outline" : "default"}
+            >
+              {downloading ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Scaricando...</>
+              ) : (
+                <><Download className="w-4 h-4 mr-2" />{cacheStats.count > 0 ? 'Aggiorna cache offline' : 'Scarica tutto per offline'}</>
+              )}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>

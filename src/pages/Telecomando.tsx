@@ -259,19 +259,28 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
     fetchSong();
   }, [session?.current_song_id, isSongbookMode]);
 
-  // Fetch songbook file
+  // Fetch songbook file (with cache fallback)
   useEffect(() => {
     if (!isSongbookMode || !songbookFileId) {
       setCurrentSongbookFile(null);
       return;
     }
     const fetchFile = async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("songbook_files")
         .select("title, artist, content")
         .eq("id", songbookFileId)
         .single();
-      if (data) setCurrentSongbookFile(data);
+      if (data) {
+        setCurrentSongbookFile(data);
+      } else if (error) {
+        // Fallback to cache (offline)
+        const { getCachedFile } = await import('@/lib/songbookCache');
+        const cached = await getCachedFile(songbookFileId);
+        if (cached) {
+          setCurrentSongbookFile({ title: cached.title, artist: cached.artist, content: cached.content });
+        }
+      }
     };
     fetchFile();
   }, [isSongbookMode, songbookFileId]);
