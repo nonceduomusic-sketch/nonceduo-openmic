@@ -142,6 +142,8 @@ export function useSongbookFiles() {
     if (successCount > 0) {
       toast.success(`${successCount} file caricati con successo`);
       await fetchFiles();
+      // Auto-sync to LAN server in background
+      import('@/lib/autoSyncLAN').then(m => m.autoSyncToLAN('songbook')).catch(() => {});
     }
 
     return successCount;
@@ -160,6 +162,7 @@ export function useSongbookFiles() {
     }
 
     toast.success('File aggiornato');
+    import('@/lib/autoSyncLAN').then(m => m.autoSyncToLAN('songbook')).catch(() => {});
     return true;
   }, []);
 
@@ -176,6 +179,7 @@ export function useSongbookFiles() {
     }
 
     toast.success('File eliminato');
+    import('@/lib/autoSyncLAN').then(m => m.autoSyncToLAN('songbook')).catch(() => {});
     return true;
   }, []);
 
