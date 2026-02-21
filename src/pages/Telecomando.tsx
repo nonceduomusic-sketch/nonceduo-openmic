@@ -454,6 +454,13 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
             </div>
           </div>
         </div>
+        {/* Warning banner when WS disconnected in local mode */}
+        {isLocalMode && !localConnected && (
+          <div className="flex items-center gap-2 mt-2 px-2 py-1.5 bg-destructive/10 border border-destructive/30 rounded text-xs text-destructive">
+            <WifiOff className="w-3.5 h-3.5 flex-shrink-0" />
+            <span>Connessione LAN persa. Verifica che il WiFi sia attivo e connesso alla rete del server.</span>
+          </div>
+        )}
       </header>
 
       <main className="flex-1 min-h-0 overflow-hidden">

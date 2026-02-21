@@ -23,7 +23,7 @@ interface UseLocalBroadcastOptions {
 
 const STORAGE_KEY_MODE = 'broadcast_connection_mode';
 const STORAGE_KEY_IP = 'broadcast_local_ip';
-const RECONNECT_INTERVAL = 3000;
+const RECONNECT_INTERVAL = 1500;
 
 /**
  * Detect if we're running on the local mini-server (HTTP + LAN IP or localhost).
@@ -113,6 +113,16 @@ export function useLocalBroadcast({ enabled, serverUrl, onStateUpdate, onInitial
         setConnected(true);
         console.log('[LocalBroadcast] Connesso a', serverUrl);
         ws.send(JSON.stringify({ type: 'ping' }));
+
+        // Periodic ping to detect dead connections quickly (every 10s)
+        const pingInterval = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: 'ping' }));
+          } else {
+            clearInterval(pingInterval);
+          }
+        }, 10000);
+        (ws as any)._pingInterval = pingInterval;
       };
 
       ws.onmessage = (event) => {
@@ -148,6 +158,7 @@ export function useLocalBroadcast({ enabled, serverUrl, onStateUpdate, onInitial
 
       ws.onclose = () => {
         setConnected(false);
+        if ((ws as any)._pingInterval) clearInterval((ws as any)._pingInterval);
         wsRef.current = null;
         if (enabled) {
           reconnectRef.current = setTimeout(connect, RECONNECT_INTERVAL);
@@ -165,6 +176,19 @@ export function useLocalBroadcast({ enabled, serverUrl, onStateUpdate, onInitial
     }
   }, [enabled, serverUrl]);
 
+  // Force reconnect helper (closes existing + reconnects)
+  const forceReconnect = useCallback(() => {
+    if (!enabled) return;
+    if (wsRef.current) {
+      // Already open and healthy? Skip
+      if (wsRef.current.readyState === WebSocket.OPEN) return;
+      try { wsRef.current.close(); } catch {}
+      wsRef.current = null;
+    }
+    if (reconnectRef.current) clearTimeout(reconnectRef.current);
+    connect();
+  }, [enabled, connect]);
+
   useEffect(() => {
     if (enabled) {
       connect();
@@ -174,12 +198,39 @@ export function useLocalBroadcast({ enabled, serverUrl, onStateUpdate, onInitial
       setConnected(false);
     }
 
+    // Auto-reconnect on visibility change (phone wakes up / tab switch)
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && enabled) {
+        // Small delay to let network stabilize after wake
+        setTimeout(forceReconnect, 300);
+      }
+    };
+
+    // Auto-reconnect on network change (WiFi reconnects, mobile data toggle)
+    const onOnline = () => {
+      if (enabled) setTimeout(forceReconnect, 500);
+    };
+
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('online', onOnline);
+
+    // NetworkInformation API: detect WiFi reconnection even if 'online' didn't fire
+    const nav = navigator as any;
+    const conn = nav.connection || nav.mozConnection || nav.webkitConnection;
+    const onConnectionChange = () => {
+      if (enabled) setTimeout(forceReconnect, 500);
+    };
+    conn?.addEventListener?.('change', onConnectionChange);
+
     return () => {
       wsRef.current?.close();
       wsRef.current = null;
       if (reconnectRef.current) clearTimeout(reconnectRef.current);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('online', onOnline);
+      conn?.removeEventListener?.('change', onConnectionChange);
     };
-  }, [enabled, connect]);
+  }, [enabled, connect, forceReconnect]);
 
   const sendUpdate = useCallback((data: Partial<LocalBroadcastState>) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
