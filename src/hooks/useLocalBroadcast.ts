@@ -113,15 +113,24 @@ export function useLocalBroadcast({ enabled, serverUrl, onStateUpdate, onInitial
         setConnected(true);
         console.log('[LocalBroadcast] Connesso a', serverUrl);
         ws.send(JSON.stringify({ type: 'ping' }));
+        (ws as any)._lastPong = Date.now();
 
-        // Periodic ping to detect dead connections quickly (every 10s)
+        // Periodic ping + pong timeout to detect zombie connections (every 5s)
         const pingInterval = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
+            // If no pong received within 12s, connection is dead — force close
+            const lastPong = (ws as any)._lastPong || 0;
+            if (Date.now() - lastPong > 12000) {
+              console.warn('[LocalBroadcast] Pong timeout — connessione zombie rilevata, riconnessione...');
+              clearInterval(pingInterval);
+              try { ws.close(); } catch {}
+              return;
+            }
             ws.send(JSON.stringify({ type: 'ping' }));
           } else {
             clearInterval(pingInterval);
           }
-        }, 10000);
+        }, 5000);
         (ws as any)._pingInterval = pingInterval;
       };
 
@@ -138,6 +147,7 @@ export function useLocalBroadcast({ enabled, serverUrl, onStateUpdate, onInitial
               onStateUpdateRef.current?.(msg.data);
               break;
             case 'pong':
+              if (wsRef.current) (wsRef.current as any)._lastPong = Date.now();
               if (msg.timestamp) {
                 setLatency(Date.now() - msg.timestamp);
               }
