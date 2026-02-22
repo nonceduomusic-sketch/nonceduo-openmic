@@ -52,10 +52,10 @@ export function TVPreviewDialog({ open, onOpenChange, previewSongId }: TVPreview
 
   // Get TV settings
   const tvSettings = useMemo(() => ({
-    title: (session as any)?.tv_title || 'Open Mic',
-    subtitle: (session as any)?.tv_subtitle || 'NonceDuo Live Experience',
-    footer: (session as any)?.tv_footer || 'Powered by NonceDuo',
-    logoUrl: (session as any)?.tv_logo_url || '',
+    title: (session as any)?.tv_title ?? 'Open Mic',
+    subtitle: (session as any)?.tv_subtitle ?? 'NonceDuo Live Experience',
+    footer: (session as any)?.tv_footer ?? 'Powered by NonceDuo',
+    logoUrl: (session as any)?.tv_logo_url ?? '',
   }), [session]);
 
   // Auto-scroll effect

@@ -152,12 +152,12 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
     onAdminLyricsScroll(e.currentTarget);
   }, [highlightEnabled, onAdminLyricsScroll]);
  
-   const tvSettings = useMemo(() => ({
-     title: (session as any)?.tv_title || 'Open Mic',
-     subtitle: (session as any)?.tv_subtitle || 'NonceDuo Live Experience',
-     footer: (session as any)?.tv_footer || 'Powered by NonceDuo',
-     logoUrl: (session as any)?.tv_logo_url || '',
-     showLogo: (session as any)?.tv_show_logo ?? true,
+  const tvSettings = useMemo(() => ({
+    title: (session as any)?.tv_title ?? 'Open Mic',
+    subtitle: (session as any)?.tv_subtitle ?? 'NonceDuo Live Experience',
+    footer: (session as any)?.tv_footer ?? 'Powered by NonceDuo',
+    logoUrl: (session as any)?.tv_logo_url ?? '',
+    showLogo: (session as any)?.tv_show_logo ?? true,
      showQr: (session as any)?.tv_show_qr ?? true,
      showTitle: (session as any)?.tv_show_title ?? true,
      showSubtitle: (session as any)?.tv_show_subtitle ?? true,

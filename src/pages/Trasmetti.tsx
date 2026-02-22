@@ -148,11 +148,11 @@ export default function Trasmetti() {
 
   // Extract TV settings from session with defaults
   const tvSettings = useMemo(() => ({
-    title: (session as any)?.tv_title || 'Open Mic',
-    subtitle: (session as any)?.tv_subtitle || 'NonceDuo Live Experience',
-    footer: (session as any)?.tv_footer || 'Powered by NonceDuo',
-    qrUrl: (session as any)?.tv_qr_url || '',
-    logoUrl: (session as any)?.tv_logo_url || '',
+    title: (session as any)?.tv_title ?? 'Open Mic',
+    subtitle: (session as any)?.tv_subtitle ?? 'NonceDuo Live Experience',
+    footer: (session as any)?.tv_footer ?? 'Powered by NonceDuo',
+    qrUrl: (session as any)?.tv_qr_url ?? '',
+    logoUrl: (session as any)?.tv_logo_url ?? '',
     qrCta: (session as any)?.tv_qr_cta || 'Scansiona per prenotare la tua canzone',
     showQr: (session as any)?.tv_show_qr ?? true,
     showLogo: (session as any)?.tv_show_logo ?? true,
