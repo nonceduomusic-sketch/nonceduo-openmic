@@ -684,79 +684,84 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
                          <Button key={mode} variant={viewMode === mode ? 'default' : 'outline'} size="sm" onClick={() => handleViewModeChange(mode)} className="h-8 text-xs capitalize">{mode === 'compact' ? 'Compatta' : mode === 'karaoke' ? 'Karaoke' : 'Spotify'}</Button>
                        ))}
                      </div>
-                      {/* HIGHLIGHT TOGGLE + LINES COUNT SELECTOR - Always visible, critical for live use */}
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant={highlightEnabled ? 'default' : 'outline'}
-                          size="sm"
-                          onClick={handleToggleHighlight}
-                          disabled={!canManage}
-                          className={cn(
-                            "h-10 min-w-[130px] font-medium transition-all",
-                            highlightEnabled 
-                              ? "bg-yellow-500 hover:bg-yellow-600 text-yellow-950" 
-                              : "border-dashed"
-                          )}
-                        >
-                          <Highlighter className="w-4 h-4 mr-2" />
-                          Evidenziazione {highlightEnabled ? 'ON' : 'OFF'}
-                        </Button>
-                        
-                         {/* Multi-line highlight selector - only visible when highlight is ON */}
-                         {highlightEnabled && (
-                           <div className="flex items-center gap-2 px-3 py-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex-wrap">
-                             <Rows3 className="w-4 h-4 text-yellow-600" />
-                             <Label className="text-xs font-medium text-yellow-700">Righe:</Label>
-                             <Select
-                               value={String(highlightLinesCount)}
-                               onValueChange={handleHighlightLinesCountChange}
-                               disabled={!canManage}
-                             >
-                               <SelectTrigger className="w-14 h-8 text-sm font-bold border-yellow-500/50 bg-yellow-500/20">
-                                 <SelectValue />
-                               </SelectTrigger>
-                               <SelectContent>
-                                 {[1,2,3,4,5,6].map(n => (
-                                   <SelectItem key={n} value={String(n)}>{n}</SelectItem>
-                                 ))}
-                               </SelectContent>
-                             </Select>
-                             <div className="flex items-center gap-1 ml-1">
-                                <Button
-                                  variant={highlightStyle === 'gradient' ? 'default' : 'outline'}
-                                  size="sm"
-                                  onClick={() => handleHighlightStyleChange('gradient')}
-                                  disabled={!canManage}
-                                  className="h-7 text-xs px-2"
-                                  title="Prima riga più forte, le altre sfumano"
-                                >
-                                  Gradiente
-                                </Button>
-                                <Button
-                                  variant={highlightStyle === 'uniform' ? 'default' : 'outline'}
-                                  size="sm"
-                                  onClick={() => handleHighlightStyleChange('uniform')}
-                                  disabled={!canManage}
-                                  className="h-7 text-xs px-2"
-                                  title="Tutte le righe uguali, leggibili"
-                                >
-                                  Uniforme
-                                </Button>
-                                <Button
-                                  variant={highlightStyle === 'uniform-gradient' ? 'default' : 'outline'}
-                                  size="sm"
-                                  onClick={() => handleHighlightStyleChange('uniform-gradient')}
-                                  disabled={!canManage}
-                                  className="h-7 text-xs px-2"
-                                  title="Tutte le righe in risalto"
-                                >
-                                  Risalto
-                                </Button>
-                              </div>
-                           </div>
-                         )}
-                      </div>
                     </div>
+
+                    {/* HIGHLIGHT TOGGLE - row 1 */}
+                    <div className="w-full">
+                      <Button
+                        variant={highlightEnabled ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={handleToggleHighlight}
+                        disabled={!canManage}
+                        className={cn(
+                          "h-10 w-full sm:w-auto min-w-[160px] font-medium transition-all",
+                          highlightEnabled 
+                            ? "bg-yellow-500 hover:bg-yellow-600 text-yellow-950" 
+                            : "border-dashed"
+                        )}
+                      >
+                        <Highlighter className="w-4 h-4 mr-2" />
+                        Evidenziazione {highlightEnabled ? 'ON' : 'OFF'}
+                      </Button>
+                    </div>
+
+                    {/* HIGHLIGHT OPTIONS - row 2, only when ON */}
+                    {highlightEnabled && (
+                      <div className="w-full flex flex-col sm:flex-row items-stretch sm:items-center gap-2 px-3 py-2.5 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                        {/* Lines count */}
+                        <div className="flex items-center gap-2">
+                          <Rows3 className="w-4 h-4 text-yellow-600 shrink-0" />
+                          <Label className="text-xs font-medium text-yellow-700 whitespace-nowrap">Righe:</Label>
+                          <Select
+                            value={String(highlightLinesCount)}
+                            onValueChange={handleHighlightLinesCountChange}
+                            disabled={!canManage}
+                          >
+                            <SelectTrigger className="w-14 h-9 text-sm font-bold border-yellow-500/50 bg-yellow-500/20">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[1,2,3,4,5,6].map(n => (
+                                <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        {/* Style buttons */}
+                        <div className="flex items-center gap-1 flex-wrap">
+                          <Button
+                            variant={highlightStyle === 'gradient' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => handleHighlightStyleChange('gradient')}
+                            disabled={!canManage}
+                            className="h-9 text-xs px-3 flex-1 sm:flex-none"
+                            title="Prima riga più forte, le altre sfumano"
+                          >
+                            Gradiente
+                          </Button>
+                          <Button
+                            variant={highlightStyle === 'uniform' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => handleHighlightStyleChange('uniform')}
+                            disabled={!canManage}
+                            className="h-9 text-xs px-3 flex-1 sm:flex-none"
+                            title="Tutte le righe uguali, leggibili"
+                          >
+                            Uniforme
+                          </Button>
+                          <Button
+                            variant={highlightStyle === 'uniform-gradient' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => handleHighlightStyleChange('uniform-gradient')}
+                            disabled={!canManage}
+                            className="h-9 text-xs px-3 flex-1 sm:flex-none"
+                            title="Tutte le righe in risalto"
+                          >
+                            Risalto
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                  {renderLyricsPreview()}
                   {/* Controls */}
                   <div className="p-3 bg-muted/50 rounded-xl">
