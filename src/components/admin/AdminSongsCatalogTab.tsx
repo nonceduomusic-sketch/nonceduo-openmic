@@ -376,7 +376,7 @@ export const AdminSongsCatalogTab: React.FC = () => {
                         {truncateText(song.testo, 100)}
                       </TableCell>
                       <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
-                        {format(new Date(song.created_at), 'dd MMM yyyy', { locale: it })}
+                        {song.created_at ? format(new Date(song.created_at), 'dd MMM yyyy', { locale: it }) : '—'}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
