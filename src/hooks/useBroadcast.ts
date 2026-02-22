@@ -19,8 +19,9 @@ export interface BroadcastSession {
   tv_view_mode: 'compact' | 'karaoke' | 'spotify';
   is_broadcasting: boolean;
   highlight_enabled: boolean; // When true, active line is highlighted; when false, all text visible
-  highlight_lines_count: number; // Number of lines to highlight (1, 2, or 3)
-  font_size: number; // Font size percentage (50-150)
+  highlight_lines_count: number; // Number of lines to highlight (1-6)
+  highlight_style: 'gradient' | 'uniform'; // gradient = main brighter, uniform = all same
+  font_size: number; // Font size percentage (50-200)
   text_align: 'left' | 'center' | 'right'; // Text alignment
   remote_scroll_enabled: boolean; // When false, remote can only use buttons, no scroll sync
   // Screen share fields (JSON types to match DB)
@@ -100,6 +101,7 @@ export function useBroadcast(salaCode: string = 'main') {
     is_broadcasting: false,
     highlight_enabled: true,
     highlight_lines_count: 1,
+    highlight_style: 'gradient',
     font_size: 100,
     text_align: 'center',
     remote_scroll_enabled: true,

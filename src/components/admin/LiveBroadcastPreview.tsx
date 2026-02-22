@@ -70,9 +70,10 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
    const [activeTab, setActiveTab] = useState<'waiting' | 'content'>('waiting');
    const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
    const [isExpanded, setIsExpanded] = useState(false);
-   const [highlightEnabled, setHighlightEnabled] = useState(true);
-   const [highlightLinesCount, setHighlightLinesCount] = useState<number>(1);
-   const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center');
+  const [highlightEnabled, setHighlightEnabled] = useState(true);
+    const [highlightLinesCount, setHighlightLinesCount] = useState<number>(1);
+    const [highlightStyle, setHighlightStyle] = useState<'gradient' | 'uniform'>('gradient');
+    const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center');
    const [remoteScrollEnabled, setRemoteScrollEnabled] = useState(true);
    const lyricsRef = useRef<HTMLDivElement>(null);
    const isMobile = useIsMobile();
@@ -210,6 +211,14 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
       setHighlightLinesCount(sessionLinesCount);
     }
   }, [(session as any)?.highlight_lines_count]);
+
+  // Sync highlightStyle from session
+  useEffect(() => {
+    const sessionStyle = (session as any)?.highlight_style;
+    if (sessionStyle === 'gradient' || sessionStyle === 'uniform') {
+      setHighlightStyle(sessionStyle);
+    }
+  }, [(session as any)?.highlight_style]);
 
   // Sync fontSize from session
   useEffect(() => {
@@ -407,11 +416,18 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
   // Handle highlight lines count change
   const handleHighlightLinesCountChange = useCallback(async (value: string) => {
     const count = parseInt(value, 10);
-    if (count >= 1 && count <= 3) {
+    if (count >= 1 && count <= 6) {
       setHighlightLinesCount(count);
       syncUpdate({ highlight_lines_count: count });
       toast.success(`Righe evidenziate: ${count}`);
     }
+  }, [syncUpdate]);
+
+  // Handle highlight style change
+  const handleHighlightStyleChange = useCallback(async (style: 'gradient' | 'uniform') => {
+    setHighlightStyle(style);
+    syncUpdate({ highlight_style: style });
+    toast.success(style === 'gradient' ? 'Stile: Gradiente' : 'Stile: Uniforme');
   }, [syncUpdate]);
 
   // Font size change synced to DB
@@ -503,13 +519,13 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
                     const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
                     const isPast = index < highlightVisualIndex;
                    // When highlight is OFF, show all lines fully visible
-                   let opacity = 1;
-                   if (highlightEnabled) {
-                     if (isMainHighlight) opacity = 1;
-                     else if (isInHighlightRange) opacity = 0.85 - (distanceFromMain * 0.1);
-                     else if (isPast) opacity = 0.35;
-                     else opacity = 0.45;
-                   }
+                    let opacity = 1;
+                    if (highlightEnabled) {
+                      if (isInHighlightRange) {
+                        opacity = highlightStyle === 'uniform' ? 1 : (isMainHighlight ? 1 : 0.85 - (distanceFromMain * 0.05));
+                      } else if (isPast) opacity = 0.35;
+                      else opacity = 0.45;
+                    }
                    return (
                      <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn(
                        "font-sans leading-loose transition-all duration-300 cursor-pointer py-2 px-4 -mx-1 rounded-lg text-white",
@@ -529,14 +545,14 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
                     const isPast = index < highlightVisualIndex;
                     const dist = Math.abs(index - highlightVisualIndex);
                    // When highlight is OFF, show all lines fully visible
-                   let opacity = 1;
-                   if (highlightEnabled) {
-                     if (isMainHighlight) opacity = 1;
-                     else if (isInHighlightRange) opacity = 0.9 - (distanceFromMain * 0.1);
-                     else if (isPast) opacity = 0.3;
-                     else if (dist <= highlightLinesCount + 1) opacity = 0.6;
-                     else opacity = 0.3;
-                   }
+                    let opacity = 1;
+                    if (highlightEnabled) {
+                      if (isInHighlightRange) {
+                        opacity = highlightStyle === 'uniform' ? 1 : (isMainHighlight ? 1 : 0.9 - (distanceFromMain * 0.05));
+                      } else if (isPast) opacity = 0.3;
+                      else if (dist <= highlightLinesCount + 1) opacity = 0.6;
+                      else opacity = 0.3;
+                    }
                    const baseFontSize = Math.max(14, 16 * fontSize / 100);
                    return (
                      <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn(
@@ -563,12 +579,12 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
                     const distanceFromMain = index - highlightVisualIndex;
                     const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
                    // When highlight is OFF, show all lines fully visible as continuous text
-                   let opacity = 1;
-                   if (highlightEnabled) {
-                     if (isMainHighlight) opacity = 1;
-                     else if (isInHighlightRange) opacity = 0.9 - (distanceFromMain * 0.1);
-                     else opacity = 0.5;
-                   }
+                    let opacity = 1;
+                    if (highlightEnabled) {
+                      if (isInHighlightRange) {
+                        opacity = highlightStyle === 'uniform' ? 1 : (isMainHighlight ? 1 : 0.9 - (distanceFromMain * 0.05));
+                      } else opacity = 0.5;
+                    }
                    return (
                      <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn(
                        "transition-all duration-300 cursor-pointer px-4 py-2 rounded-lg leading-relaxed",
@@ -674,27 +690,47 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
                           Evidenziazione {highlightEnabled ? 'ON' : 'OFF'}
                         </Button>
                         
-                        {/* Multi-line highlight selector - only visible when highlight is ON */}
-                        {highlightEnabled && (
-                          <div className="flex items-center gap-2 px-3 py-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
-                            <Rows3 className="w-4 h-4 text-yellow-600" />
-                            <Label className="text-xs font-medium text-yellow-700">Righe:</Label>
-                            <Select
-                              value={String(highlightLinesCount)}
-                              onValueChange={handleHighlightLinesCountChange}
-                              disabled={!canManage}
-                            >
-                              <SelectTrigger className="w-14 h-8 text-sm font-bold border-yellow-500/50 bg-yellow-500/20">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="1">1</SelectItem>
-                                <SelectItem value="2">2</SelectItem>
-                                <SelectItem value="3">3</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
+                         {/* Multi-line highlight selector - only visible when highlight is ON */}
+                         {highlightEnabled && (
+                           <div className="flex items-center gap-2 px-3 py-2 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex-wrap">
+                             <Rows3 className="w-4 h-4 text-yellow-600" />
+                             <Label className="text-xs font-medium text-yellow-700">Righe:</Label>
+                             <Select
+                               value={String(highlightLinesCount)}
+                               onValueChange={handleHighlightLinesCountChange}
+                               disabled={!canManage}
+                             >
+                               <SelectTrigger className="w-14 h-8 text-sm font-bold border-yellow-500/50 bg-yellow-500/20">
+                                 <SelectValue />
+                               </SelectTrigger>
+                               <SelectContent>
+                                 {[1,2,3,4,5,6].map(n => (
+                                   <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                                 ))}
+                               </SelectContent>
+                             </Select>
+                             <div className="flex items-center gap-1 ml-1">
+                               <Button
+                                 variant={highlightStyle === 'gradient' ? 'default' : 'outline'}
+                                 size="sm"
+                                 onClick={() => handleHighlightStyleChange('gradient')}
+                                 disabled={!canManage}
+                                 className="h-7 text-xs px-2"
+                               >
+                                 Gradiente
+                               </Button>
+                               <Button
+                                 variant={highlightStyle === 'uniform' ? 'default' : 'outline'}
+                                 size="sm"
+                                 onClick={() => handleHighlightStyleChange('uniform')}
+                                 disabled={!canManage}
+                                 className="h-7 text-xs px-2"
+                               >
+                                 Uniforme
+                               </Button>
+                             </div>
+                           </div>
+                         )}
                       </div>
                     </div>
                  {renderLyricsPreview()}

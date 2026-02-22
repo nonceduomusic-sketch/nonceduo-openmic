@@ -129,8 +129,11 @@ export default function Trasmetti() {
   // Highlight enabled from database (admin controlled)
   const highlightEnabled = (session as any)?.highlight_enabled ?? true;
   
-  // Number of lines to highlight (1, 2, or 3)
+  // Number of lines to highlight (1-6)
   const highlightLinesCount = (session as any)?.highlight_lines_count ?? 1;
+  
+  // Highlight style: gradient (main brighter) or uniform (all same)
+  const highlightStyle: 'gradient' | 'uniform' = (session as any)?.highlight_style ?? 'gradient';
   
   // Is broadcasting? (admin controls when to show lyrics vs waiting screen)
   const isBroadcasting = (session as any)?.is_broadcasting ?? false;
@@ -947,19 +950,29 @@ export default function Trasmetti() {
                 // When highlight is OFF, all lines fully visible
                 let opacity = 1;
                 if (highlightEnabled) {
-                  if (isMainHighlight) opacity = 1;
-                  else if (isInHighlightRange) opacity = 0.95 - (distanceFromMain * 0.05);
-                  else if (isPast) opacity = 0.5; // Brighter
-                  else if (distanceFromHighlight === highlightLinesCount) opacity = 0.85;
-                  else if (distanceFromHighlight === highlightLinesCount + 1) opacity = 0.7;
-                  else opacity = 0.55; // Brighter
+                  if (isInHighlightRange) {
+                    if (highlightStyle === 'uniform') {
+                      opacity = 1;
+                    } else {
+                      // gradient: main=1, others fade slightly
+                      opacity = isMainHighlight ? 1 : 0.95 - (distanceFromMain * 0.03);
+                    }
+                  } else if (isPast) {
+                    opacity = 0.5;
+                  } else if (distanceFromHighlight === highlightLinesCount) {
+                    opacity = 0.85;
+                  } else if (distanceFromHighlight === highlightLinesCount + 1) {
+                    opacity = 0.7;
+                  } else {
+                    opacity = 0.55;
+                  }
                 }
                 
                 // Font size from settings
                 const baseFontSize = Math.max(18, 32 * tvSettings.fontSize / 100);
-                const highlightedFontSize = baseFontSize * 1.4;
+                const highlightedFontSize = baseFontSize * (highlightStyle === 'uniform' ? 1.25 : 1.4);
+                const secondaryHighlightFontSize = baseFontSize * (highlightStyle === 'uniform' ? 1.25 : 1.25);
                 const nearFontSize = baseFontSize * 1.15;
-                const secondaryHighlightFontSize = baseFontSize * 1.25;
 
                 return (
                   <p
@@ -973,17 +986,17 @@ export default function Trasmetti() {
                     )}
                     style={{
                       opacity,
-                      fontSize: (highlightEnabled && isMainHighlight) 
-                        ? `${highlightedFontSize}px` 
-                        : (highlightEnabled && isInHighlightRange && !isMainHighlight)
-                          ? `${secondaryHighlightFontSize}px`
-                          : (highlightEnabled && distanceFromHighlight <= highlightLinesCount)
+                      fontSize: (highlightEnabled && isInHighlightRange)
+                        ? (isMainHighlight ? `${highlightedFontSize}px` : `${secondaryHighlightFontSize}px`)
+                        : (highlightEnabled && distanceFromHighlight <= highlightLinesCount)
                             ? `${nearFontSize}px`
                             : `${baseFontSize}px`,
                       textShadow: (highlightEnabled && isMainHighlight)
                         ? '0 0 40px hsl(var(--primary) / 0.4), 0 0 80px hsl(var(--primary) / 0.2)'
                         : (highlightEnabled && isInHighlightRange && !isMainHighlight)
-                          ? '0 0 30px hsl(var(--primary) / 0.3)'
+                          ? (highlightStyle === 'uniform' 
+                              ? '0 0 40px hsl(var(--primary) / 0.4), 0 0 80px hsl(var(--primary) / 0.2)' 
+                              : '0 0 30px hsl(var(--primary) / 0.3)')
                           : 'none',
                     }}
                   >
