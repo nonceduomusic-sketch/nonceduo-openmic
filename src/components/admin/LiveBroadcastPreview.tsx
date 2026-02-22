@@ -728,7 +728,7 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
                           </Select>
                         </div>
                         {/* Style buttons */}
-                        <div className="flex items-center gap-1 flex-wrap">
+                        <div className="flex items-center gap-1">
                           <Button
                             variant={highlightStyle === 'gradient' ? 'default' : 'outline'}
                             size="sm"

@@ -661,11 +661,11 @@ export const AdminDashboard: React.FC = () => {
               {/* Desktop sidebar trigger */}
               <SidebarTrigger className="-ml-1 hidden md:inline-flex" />
               
-              <div className="flex items-center gap-2">
-                <h1 className="font-display text-base sm:text-lg font-bold tracking-tight">
+              <div className="flex items-center gap-2 min-w-0">
+                <h1 className="font-display text-sm sm:text-base md:text-lg font-bold tracking-tight truncate">
                   Ciao {userName}! 👋
                 </h1>
-                <Badge variant="secondary" className="capitalize text-[10px] h-5 font-medium">{staffLabel}</Badge>
+                <Badge variant="secondary" className="capitalize text-[10px] h-5 font-medium shrink-0">{staffLabel}</Badge>
               </div>
             </div>
 
