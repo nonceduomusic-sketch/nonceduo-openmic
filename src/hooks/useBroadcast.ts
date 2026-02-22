@@ -20,7 +20,7 @@ export interface BroadcastSession {
   is_broadcasting: boolean;
   highlight_enabled: boolean; // When true, active line is highlighted; when false, all text visible
   highlight_lines_count: number; // Number of lines to highlight (1-6)
-  highlight_style: 'gradient' | 'uniform'; // gradient = main brighter, uniform = all same
+  highlight_style: 'gradient' | 'uniform' | 'uniform-gradient'; // gradient = main brighter, uniform = all same, uniform-gradient = all prominent
   font_size: number; // Font size percentage (50-200)
   text_align: 'left' | 'center' | 'right'; // Text alignment
   remote_scroll_enabled: boolean; // When false, remote can only use buttons, no scroll sync
