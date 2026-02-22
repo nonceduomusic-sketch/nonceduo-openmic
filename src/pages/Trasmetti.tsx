@@ -133,7 +133,7 @@ export default function Trasmetti() {
   const highlightLinesCount = (session as any)?.highlight_lines_count ?? 1;
   
   // Highlight style: gradient (main brighter) or uniform (all same)
-  const highlightStyle: 'gradient' | 'uniform' = (session as any)?.highlight_style ?? 'gradient';
+  const highlightStyle: 'gradient' | 'uniform' | 'uniform-gradient' = (session as any)?.highlight_style ?? 'gradient';
   
   // Is broadcasting? (admin controls when to show lyrics vs waiting screen)
   const isBroadcasting = (session as any)?.is_broadcasting ?? false;
@@ -684,13 +684,16 @@ export default function Trasmetti() {
               const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
               const isPast = index < highlightLine;
               
-              // Opacity logic - BRIGHTER for better readability
+              // Opacity logic
               let opacity = 1;
               if (highlightEnabled) {
-                if (isMainHighlight) opacity = 1;
-                else if (isInHighlightRange) opacity = 0.95 - (distanceFromMain * 0.05);
-                else if (isPast) opacity = 0.55; // More visible for past lines
-                else opacity = 0.75; // Much brighter for upcoming lines
+                if (isInHighlightRange) {
+                  opacity = highlightStyle === 'gradient' ? (isMainHighlight ? 1 : 0.95 - (distanceFromMain * 0.05)) : 1;
+                } else if (isPast) {
+                  opacity = 0.55;
+                } else {
+                  opacity = 0.75;
+                }
               }
               
               const baseFontSize = Math.max(16, 28 * tvSettings.fontSize / 100);
@@ -728,8 +731,8 @@ export default function Trasmetti() {
                     data-line={index}
                     className={cn(
                       "transition-opacity duration-150 py-2 px-4 -mx-2 rounded-lg",
-                      highlightEnabled && isMainHighlight && "bg-primary/20 ring-2 ring-primary/40 scale-[1.01]",
-                      highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-primary/10"
+                      highlightEnabled && (highlightStyle !== 'gradient' ? isInHighlightRange : isMainHighlight) && "bg-primary/20 ring-2 ring-primary/40 scale-[1.01]",
+                      highlightEnabled && (highlightStyle === 'gradient' && isInHighlightRange && !isMainHighlight) && "bg-primary/10"
                     )}
                     style={{ opacity, fontSize: `${baseFontSize}px` }}
                   >
@@ -748,8 +751,8 @@ export default function Trasmetti() {
                   data-line={index}
                   className={cn(
                     "transition-opacity duration-150 py-2 px-4 -mx-2 rounded-lg leading-relaxed",
-                    highlightEnabled && isMainHighlight && "bg-primary/20 ring-2 ring-primary/40 scale-[1.01] font-semibold",
-                    highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-primary/10"
+                    highlightEnabled && (highlightStyle !== 'gradient' ? isInHighlightRange : isMainHighlight) && "bg-primary/20 ring-2 ring-primary/40 scale-[1.01] font-semibold",
+                    highlightEnabled && (highlightStyle === 'gradient' && isInHighlightRange && !isMainHighlight) && "bg-primary/10"
                   )}
                   style={{ opacity, fontSize: `${baseFontSize}px` }}
                 >
@@ -841,13 +844,12 @@ export default function Trasmetti() {
                 const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
                 const isPast = index < highlightLine;
                 
-                // When highlight is OFF, all lines fully visible
                 let opacity = 1;
                 if (highlightEnabled) {
-                  if (isMainHighlight) opacity = 1;
-                  else if (isInHighlightRange) opacity = 0.92 - (distanceFromMain * 0.05); // Secondary lines visible
-                  else if (isPast) opacity = 0.55; // Brighter past lines
-                  else opacity = 0.8; // Much brighter upcoming
+                  if (isInHighlightRange) {
+                    opacity = highlightStyle === 'gradient' ? (isMainHighlight ? 1 : 0.92 - (distanceFromMain * 0.05)) : 1;
+                  } else if (isPast) opacity = 0.55;
+                  else opacity = 0.8;
                 }
                 
                 const baseFontSize = Math.max(14, 24 * tvSettings.fontSize / 100);
@@ -858,8 +860,8 @@ export default function Trasmetti() {
                     data-line={index}
                     className={cn(
                       "font-sans leading-loose transition-opacity duration-150 py-3 px-6 -mx-4 rounded-xl",
-                      highlightEnabled && isMainHighlight && "bg-yellow-400/30 ring-2 ring-yellow-400/50 scale-[1.02] font-bold",
-                      highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-yellow-400/15 ring-1 ring-yellow-400/30"
+                      highlightEnabled && (highlightStyle !== 'gradient' ? isInHighlightRange : isMainHighlight) && "bg-yellow-400/30 ring-2 ring-yellow-400/50 scale-[1.02] font-bold",
+                      highlightEnabled && (highlightStyle === 'gradient' && isInHighlightRange && !isMainHighlight) && "bg-yellow-400/15 ring-1 ring-yellow-400/30"
                     )}
                     style={{ opacity, fontSize: `${baseFontSize}px` }}
                   >
@@ -951,11 +953,10 @@ export default function Trasmetti() {
                 let opacity = 1;
                 if (highlightEnabled) {
                   if (isInHighlightRange) {
-                    if (highlightStyle === 'uniform') {
-                      opacity = 1;
-                    } else {
-                      // gradient: main=1, others fade slightly
+                    if (highlightStyle === 'gradient') {
                       opacity = isMainHighlight ? 1 : 0.95 - (distanceFromMain * 0.03);
+                    } else {
+                      opacity = 1;
                     }
                   } else if (isPast) {
                     opacity = 0.5;
@@ -968,11 +969,14 @@ export default function Trasmetti() {
                   }
                 }
                 
-                // Font size from settings
                 const baseFontSize = Math.max(18, 32 * tvSettings.fontSize / 100);
-                const highlightedFontSize = baseFontSize * (highlightStyle === 'uniform' ? 1.25 : 1.4);
-                const secondaryHighlightFontSize = baseFontSize * (highlightStyle === 'uniform' ? 1.25 : 1.25);
+                // In uniform/uniform-gradient: all highlighted lines get same size
+                const allSameSize = highlightStyle !== 'gradient';
+                const highlightedFontSize = baseFontSize * (allSameSize ? 1.3 : 1.4);
+                const secondaryHighlightFontSize = baseFontSize * (allSameSize ? 1.3 : 1.25);
                 const nearFontSize = baseFontSize * 1.15;
+                const showAsMain = allSameSize ? isInHighlightRange : isMainHighlight;
+                const showAsSecondary = allSameSize ? false : (isInHighlightRange && !isMainHighlight);
 
                 return (
                   <p
@@ -981,22 +985,20 @@ export default function Trasmetti() {
                     className={cn(
                       "font-bold leading-relaxed transition-all duration-300 ease-out",
                       "font-sans tracking-wide",
-                      highlightEnabled && isMainHighlight && "text-primary",
-                      highlightEnabled && isInHighlightRange && !isMainHighlight && "text-primary/80"
+                      highlightEnabled && showAsMain && "text-primary",
+                      highlightEnabled && showAsSecondary && "text-primary/80"
                     )}
                     style={{
                       opacity,
                       fontSize: (highlightEnabled && isInHighlightRange)
-                        ? (isMainHighlight ? `${highlightedFontSize}px` : `${secondaryHighlightFontSize}px`)
+                        ? (showAsMain ? `${highlightedFontSize}px` : `${secondaryHighlightFontSize}px`)
                         : (highlightEnabled && distanceFromHighlight <= highlightLinesCount)
                             ? `${nearFontSize}px`
                             : `${baseFontSize}px`,
-                      textShadow: (highlightEnabled && isMainHighlight)
+                      textShadow: (highlightEnabled && showAsMain)
                         ? '0 0 40px hsl(var(--primary) / 0.4), 0 0 80px hsl(var(--primary) / 0.2)'
-                        : (highlightEnabled && isInHighlightRange && !isMainHighlight)
-                          ? (highlightStyle === 'uniform' 
-                              ? '0 0 40px hsl(var(--primary) / 0.4), 0 0 80px hsl(var(--primary) / 0.2)' 
-                              : '0 0 30px hsl(var(--primary) / 0.3)')
+                        : (highlightEnabled && showAsSecondary)
+                          ? '0 0 30px hsl(var(--primary) / 0.3)'
                           : 'none',
                     }}
                   >
@@ -1073,12 +1075,11 @@ export default function Trasmetti() {
               const distanceFromMain = index - highlightLine;
               const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
               
-              // When highlight is OFF, show as continuous block
               let opacity = 1;
               if (highlightEnabled) {
-                if (isMainHighlight) opacity = 1;
-                else if (isInHighlightRange) opacity = 0.95 - (distanceFromMain * 0.05);
-                else opacity = 0.7; // Brighter for all
+                if (isInHighlightRange) {
+                  opacity = highlightStyle === 'gradient' ? (isMainHighlight ? 1 : 0.95 - (distanceFromMain * 0.05)) : 1;
+                } else opacity = 0.7;
               }
               
               const baseFontSize = Math.max(16, 24 * tvSettings.fontSize / 100);
@@ -1089,8 +1090,8 @@ export default function Trasmetti() {
                   data-line={index}
                   className={cn(
                     "leading-relaxed transition-opacity duration-150 px-6 py-3 rounded-xl",
-                    highlightEnabled && isMainHighlight && "bg-primary/20 text-primary font-bold ring-2 ring-primary/30",
-                    highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-primary/10 text-primary/80 ring-1 ring-primary/20"
+                    highlightEnabled && (highlightStyle !== 'gradient' ? isInHighlightRange : isMainHighlight) && "bg-primary/20 text-primary font-bold ring-2 ring-primary/30",
+                    highlightEnabled && (highlightStyle === 'gradient' && isInHighlightRange && !isMainHighlight) && "bg-primary/10 text-primary/80 ring-1 ring-primary/20"
                   )}
                   style={{ opacity, fontSize: `${baseFontSize}px` }}
                 >

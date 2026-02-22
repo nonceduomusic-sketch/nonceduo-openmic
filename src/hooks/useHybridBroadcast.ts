@@ -29,7 +29,7 @@ const LOCAL_DEFAULT_SESSION: BroadcastSession = {
   is_broadcasting: false,
   highlight_enabled: true,
   highlight_lines_count: 1,
-  highlight_style: 'gradient',
+  highlight_style: 'gradient' as const,
   font_size: 100,
   text_align: 'center',
   remote_scroll_enabled: true,

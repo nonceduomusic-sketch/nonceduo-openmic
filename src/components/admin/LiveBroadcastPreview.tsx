@@ -72,7 +72,10 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
    const [isExpanded, setIsExpanded] = useState(false);
   const [highlightEnabled, setHighlightEnabled] = useState(true);
     const [highlightLinesCount, setHighlightLinesCount] = useState<number>(1);
-    const [highlightStyle, setHighlightStyle] = useState<'gradient' | 'uniform'>('gradient');
+    const [highlightStyle, setHighlightStyle] = useState<'gradient' | 'uniform' | 'uniform-gradient'>('gradient');
+    // Guard refs to prevent session sync from reverting local changes
+    const lastLocalLinesCountUpdate = useRef(0);
+    const lastLocalStyleUpdate = useRef(0);
     const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center');
    const [remoteScrollEnabled, setRemoteScrollEnabled] = useState(true);
    const lyricsRef = useRef<HTMLDivElement>(null);
@@ -204,18 +207,20 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
     }
   }, [(session as any)?.highlight_enabled]);
 
-  // Sync highlightLinesCount from session
+  // Sync highlightLinesCount from session (skip if locally changed recently)
   useEffect(() => {
+    if (Date.now() - lastLocalLinesCountUpdate.current < 2000) return;
     const sessionLinesCount = (session as any)?.highlight_lines_count;
     if (sessionLinesCount !== undefined && sessionLinesCount !== null) {
       setHighlightLinesCount(sessionLinesCount);
     }
   }, [(session as any)?.highlight_lines_count]);
 
-  // Sync highlightStyle from session
+  // Sync highlightStyle from session (skip if locally changed recently)
   useEffect(() => {
+    if (Date.now() - lastLocalStyleUpdate.current < 2000) return;
     const sessionStyle = (session as any)?.highlight_style;
-    if (sessionStyle === 'gradient' || sessionStyle === 'uniform') {
+    if (sessionStyle === 'gradient' || sessionStyle === 'uniform' || sessionStyle === 'uniform-gradient') {
       setHighlightStyle(sessionStyle);
     }
   }, [(session as any)?.highlight_style]);
@@ -417,6 +422,7 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
   const handleHighlightLinesCountChange = useCallback(async (value: string) => {
     const count = parseInt(value, 10);
     if (count >= 1 && count <= 6) {
+      lastLocalLinesCountUpdate.current = Date.now();
       setHighlightLinesCount(count);
       syncUpdate({ highlight_lines_count: count });
       toast.success(`Righe evidenziate: ${count}`);
@@ -424,10 +430,12 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
   }, [syncUpdate]);
 
   // Handle highlight style change
-  const handleHighlightStyleChange = useCallback(async (style: 'gradient' | 'uniform') => {
+  const handleHighlightStyleChange = useCallback(async (style: 'gradient' | 'uniform' | 'uniform-gradient') => {
+    lastLocalStyleUpdate.current = Date.now();
     setHighlightStyle(style);
     syncUpdate({ highlight_style: style });
-    toast.success(style === 'gradient' ? 'Stile: Gradiente' : 'Stile: Uniforme');
+    const labels: Record<string, string> = { gradient: 'Gradiente', uniform: 'Uniforme', 'uniform-gradient': 'Risalto' };
+    toast.success(`Stile: ${labels[style]}`);
   }, [syncUpdate]);
 
   // Font size change synced to DB
@@ -518,19 +526,21 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
                     const distanceFromMain = index - highlightVisualIndex;
                     const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
                     const isPast = index < highlightVisualIndex;
-                   // When highlight is OFF, show all lines fully visible
                     let opacity = 1;
                     if (highlightEnabled) {
                       if (isInHighlightRange) {
-                        opacity = highlightStyle === 'uniform' ? 1 : (isMainHighlight ? 1 : 0.85 - (distanceFromMain * 0.05));
+                        opacity = highlightStyle === 'gradient' ? (isMainHighlight ? 1 : 0.85 - (distanceFromMain * 0.05)) : 1;
                       } else if (isPast) opacity = 0.35;
                       else opacity = 0.45;
                     }
+                    // In uniform/uniform-gradient: all highlighted lines get same visual treatment
+                    const showAsMain = highlightStyle !== 'gradient' ? isInHighlightRange : isMainHighlight;
+                    const showAsSecondary = highlightStyle !== 'gradient' ? false : (isInHighlightRange && !isMainHighlight);
                    return (
                      <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn(
                        "font-sans leading-loose transition-all duration-300 cursor-pointer py-2 px-4 -mx-1 rounded-lg text-white",
-                       highlightEnabled && isMainHighlight && "bg-yellow-400/40 ring-2 ring-yellow-400/60 font-bold shadow-lg scale-[1.02]",
-                       highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-yellow-400/20 ring-1 ring-yellow-400/40",
+                       highlightEnabled && showAsMain && "bg-yellow-400/40 ring-2 ring-yellow-400/60 font-bold shadow-lg scale-[1.02]",
+                       highlightEnabled && showAsSecondary && "bg-yellow-400/20 ring-1 ring-yellow-400/40",
                        !isInHighlightRange && "hover:bg-white/10"
                      )} style={{ fontSize: `${Math.max(14, 16 * fontSize / 100)}px`, opacity }}>{line || '\u00A0'}</p>
                    );
@@ -544,28 +554,29 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
                     const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
                     const isPast = index < highlightVisualIndex;
                     const dist = Math.abs(index - highlightVisualIndex);
-                   // When highlight is OFF, show all lines fully visible
                     let opacity = 1;
                     if (highlightEnabled) {
                       if (isInHighlightRange) {
-                        opacity = highlightStyle === 'uniform' ? 1 : (isMainHighlight ? 1 : 0.9 - (distanceFromMain * 0.05));
+                        opacity = highlightStyle === 'gradient' ? (isMainHighlight ? 1 : 0.9 - (distanceFromMain * 0.05)) : 1;
                       } else if (isPast) opacity = 0.3;
                       else if (dist <= highlightLinesCount + 1) opacity = 0.6;
                       else opacity = 0.3;
                     }
                    const baseFontSize = Math.max(14, 16 * fontSize / 100);
+                   const showAsMain = highlightStyle !== 'gradient' ? isInHighlightRange : isMainHighlight;
+                   const showAsSecondary = highlightStyle !== 'gradient' ? false : (isInHighlightRange && !isMainHighlight);
                    return (
                      <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn(
                        "font-bold transition-all duration-500 cursor-pointer text-white py-2",
-                       highlightEnabled && isMainHighlight && "text-primary scale-110 bg-primary/20 rounded-lg px-4 shadow-lg",
-                       highlightEnabled && isInHighlightRange && !isMainHighlight && "text-primary/80 scale-105 bg-primary/10 rounded-lg px-3"
+                       highlightEnabled && showAsMain && "text-primary scale-110 bg-primary/20 rounded-lg px-4 shadow-lg",
+                       highlightEnabled && showAsSecondary && "text-primary/80 scale-105 bg-primary/10 rounded-lg px-3"
                      )} style={{ 
-                       fontSize: (highlightEnabled && isMainHighlight) ? `${baseFontSize * 1.4}px` 
-                         : (highlightEnabled && isInHighlightRange) ? `${baseFontSize * 1.2}px`
+                       fontSize: (highlightEnabled && showAsMain) ? `${baseFontSize * 1.4}px` 
+                         : (highlightEnabled && showAsSecondary) ? `${baseFontSize * 1.2}px`
                          : `${baseFontSize}px`, 
                        opacity, 
-                       textShadow: (highlightEnabled && isMainHighlight) ? '0 0 40px hsl(var(--primary) / 0.6)' 
-                         : (highlightEnabled && isInHighlightRange && !isMainHighlight) ? '0 0 25px hsl(var(--primary) / 0.4)'
+                       textShadow: (highlightEnabled && showAsMain) ? '0 0 40px hsl(var(--primary) / 0.6)' 
+                         : (highlightEnabled && showAsSecondary) ? '0 0 25px hsl(var(--primary) / 0.4)'
                          : 'none' 
                      }}>{line || '\u00A0'}</p>
                    );
@@ -578,18 +589,19 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
                    const isMainHighlight = highlightVisualIndex === index;
                     const distanceFromMain = index - highlightVisualIndex;
                     const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < highlightLinesCount;
-                   // When highlight is OFF, show all lines fully visible as continuous text
                     let opacity = 1;
                     if (highlightEnabled) {
                       if (isInHighlightRange) {
-                        opacity = highlightStyle === 'uniform' ? 1 : (isMainHighlight ? 1 : 0.9 - (distanceFromMain * 0.05));
+                        opacity = highlightStyle === 'gradient' ? (isMainHighlight ? 1 : 0.9 - (distanceFromMain * 0.05)) : 1;
                       } else opacity = 0.5;
                     }
+                    const showAsMain = highlightStyle !== 'gradient' ? isInHighlightRange : isMainHighlight;
+                    const showAsSecondary = highlightStyle !== 'gradient' ? false : (isInHighlightRange && !isMainHighlight);
                    return (
                      <p key={index} data-line={index} onClick={() => handleLineClick(index)} className={cn(
                        "transition-all duration-300 cursor-pointer px-4 py-2 rounded-lg leading-relaxed",
-                       highlightEnabled && isMainHighlight && "bg-primary text-primary-foreground font-bold shadow-md ring-2 ring-primary/50",
-                       highlightEnabled && isInHighlightRange && !isMainHighlight && "bg-primary/70 text-primary-foreground ring-1 ring-primary/30",
+                       highlightEnabled && showAsMain && "bg-primary text-primary-foreground font-bold shadow-md ring-2 ring-primary/50",
+                       highlightEnabled && showAsSecondary && "bg-primary/70 text-primary-foreground ring-1 ring-primary/30",
                        !isInHighlightRange && "hover:bg-muted"
                      )} style={{ fontSize: `${Math.max(14, 16 * fontSize / 100)}px`, opacity }}>{line || '\u00A0'}</p>
                    );
@@ -710,25 +722,37 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
                                </SelectContent>
                              </Select>
                              <div className="flex items-center gap-1 ml-1">
-                               <Button
-                                 variant={highlightStyle === 'gradient' ? 'default' : 'outline'}
-                                 size="sm"
-                                 onClick={() => handleHighlightStyleChange('gradient')}
-                                 disabled={!canManage}
-                                 className="h-7 text-xs px-2"
-                               >
-                                 Gradiente
-                               </Button>
-                               <Button
-                                 variant={highlightStyle === 'uniform' ? 'default' : 'outline'}
-                                 size="sm"
-                                 onClick={() => handleHighlightStyleChange('uniform')}
-                                 disabled={!canManage}
-                                 className="h-7 text-xs px-2"
-                               >
-                                 Uniforme
-                               </Button>
-                             </div>
+                                <Button
+                                  variant={highlightStyle === 'gradient' ? 'default' : 'outline'}
+                                  size="sm"
+                                  onClick={() => handleHighlightStyleChange('gradient')}
+                                  disabled={!canManage}
+                                  className="h-7 text-xs px-2"
+                                  title="Prima riga più forte, le altre sfumano"
+                                >
+                                  Gradiente
+                                </Button>
+                                <Button
+                                  variant={highlightStyle === 'uniform' ? 'default' : 'outline'}
+                                  size="sm"
+                                  onClick={() => handleHighlightStyleChange('uniform')}
+                                  disabled={!canManage}
+                                  className="h-7 text-xs px-2"
+                                  title="Tutte le righe uguali, leggibili"
+                                >
+                                  Uniforme
+                                </Button>
+                                <Button
+                                  variant={highlightStyle === 'uniform-gradient' ? 'default' : 'outline'}
+                                  size="sm"
+                                  onClick={() => handleHighlightStyleChange('uniform-gradient')}
+                                  disabled={!canManage}
+                                  className="h-7 text-xs px-2"
+                                  title="Tutte le righe in risalto"
+                                >
+                                  Risalto
+                                </Button>
+                              </div>
                            </div>
                          )}
                       </div>
