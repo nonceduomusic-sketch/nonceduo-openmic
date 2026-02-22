@@ -983,16 +983,31 @@ export default function Trasmetti() {
                 }
                 
                 const baseFontSize = Math.max(18, 32 * tvSettings.fontSize / 100);
-                // gradient: main big, secondary smaller
-                // uniform: all highlighted lines same size
-                // uniform-gradient (Risalto): main line slightly bigger than others
+                // gradient: main line biggest, secondary lines progressively smaller
+                // uniform: all highlighted lines exactly same size, no enlargement
+                // uniform-gradient (Risalto): ALL highlighted lines enlarge equally
                 const isUniform = highlightStyle === 'uniform';
                 const isRisalto = highlightStyle === 'uniform-gradient';
-                const highlightedFontSize = baseFontSize * (isUniform ? 1.3 : 1.4);
-                const secondaryHighlightFontSize = baseFontSize * (isUniform ? 1.3 : isRisalto ? 1.2 : 1.25);
-                const nearFontSize = baseFontSize * 1.15;
-                const showAsMain = isUniform ? isInHighlightRange : isMainHighlight;
-                const showAsSecondary = isUniform ? false : (isInHighlightRange && !isMainHighlight);
+                const isGradient = highlightStyle === 'gradient';
+
+                // Calculate font size for this line
+                let lineFontSize = baseFontSize;
+                if (highlightEnabled && isInHighlightRange) {
+                  if (isGradient) {
+                    // Main line biggest, others progressively smaller
+                    lineFontSize = isMainHighlight 
+                      ? baseFontSize * 1.4 
+                      : baseFontSize * (1.25 - distanceFromMain * 0.03);
+                  } else if (isRisalto) {
+                    // ALL highlighted lines enlarge equally
+                    lineFontSize = baseFontSize * 1.3;
+                  }
+                  // uniform: stays at baseFontSize (no enlargement)
+                }
+
+                // Color logic
+                const showPrimaryColor = highlightEnabled && isInHighlightRange && (isGradient ? isMainHighlight : true);
+                const showSecondaryColor = highlightEnabled && isInHighlightRange && isGradient && !isMainHighlight;
 
                 return (
                   <p
@@ -1001,21 +1016,17 @@ export default function Trasmetti() {
                     className={cn(
                       "font-bold leading-relaxed transition-[color,opacity,text-shadow] duration-500 ease-out",
                       "font-sans tracking-wide",
-                      highlightEnabled && showAsMain && "text-primary",
-                      highlightEnabled && showAsSecondary && "text-primary/80"
+                      showPrimaryColor && "text-primary",
+                      showSecondaryColor && "text-primary/80"
                     )}
                     style={{
                       opacity,
-                      fontSize: (highlightEnabled && isInHighlightRange)
-                        ? (showAsMain ? `${highlightedFontSize}px` : `${secondaryHighlightFontSize}px`)
-                        : (highlightEnabled && distanceFromHighlight <= highlightLinesCount)
-                            ? `${nearFontSize}px`
-                            : `${baseFontSize}px`,
-                      textShadow: (highlightEnabled && showAsMain)
-                        ? '0 0 40px hsl(var(--primary) / 0.4), 0 0 80px hsl(var(--primary) / 0.2)'
-                        : (highlightEnabled && showAsSecondary)
-                          ? '0 0 30px hsl(var(--primary) / 0.3)'
-                          : 'none',
+                      fontSize: `${lineFontSize}px`,
+                      textShadow: (highlightEnabled && isInHighlightRange)
+                        ? isMainHighlight && isGradient
+                          ? '0 0 40px hsl(var(--primary) / 0.4), 0 0 80px hsl(var(--primary) / 0.2)'
+                          : '0 0 30px hsl(var(--primary) / 0.3)'
+                        : 'none',
                     }}
                   >
                     {line || '\u00A0'}
