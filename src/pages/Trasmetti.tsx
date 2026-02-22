@@ -983,13 +983,16 @@ export default function Trasmetti() {
                 }
                 
                 const baseFontSize = Math.max(18, 32 * tvSettings.fontSize / 100);
-                // In uniform/uniform-gradient: all highlighted lines get same size
-                const allSameSize = highlightStyle !== 'gradient';
-                const highlightedFontSize = baseFontSize * (allSameSize ? 1.3 : 1.4);
-                const secondaryHighlightFontSize = baseFontSize * (allSameSize ? 1.3 : 1.25);
+                // gradient: main big, secondary smaller
+                // uniform: all highlighted lines same size
+                // uniform-gradient (Risalto): main line slightly bigger than others
+                const isUniform = highlightStyle === 'uniform';
+                const isRisalto = highlightStyle === 'uniform-gradient';
+                const highlightedFontSize = baseFontSize * (isUniform ? 1.3 : 1.4);
+                const secondaryHighlightFontSize = baseFontSize * (isUniform ? 1.3 : isRisalto ? 1.2 : 1.25);
                 const nearFontSize = baseFontSize * 1.15;
-                const showAsMain = allSameSize ? isInHighlightRange : isMainHighlight;
-                const showAsSecondary = allSameSize ? false : (isInHighlightRange && !isMainHighlight);
+                const showAsMain = isUniform ? isInHighlightRange : isMainHighlight;
+                const showAsSecondary = isUniform ? false : (isInHighlightRange && !isMainHighlight);
 
                 return (
                   <p
