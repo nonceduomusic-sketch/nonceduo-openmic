@@ -344,7 +344,7 @@ export default function Trasmetti() {
   // Use session highlight_line directly — no intermediate state to avoid double renders
   const highlightLine = session?.highlight_line ?? 0;
 
-  // Scroll highlighted line into view
+  // Scroll highlighted line(s) into view — center the GROUP of highlighted lines
   // In songbook mode: always follow highlight_line for cross-view text alignment
   // In normal mode: only follow when highlight is enabled
   useEffect(() => {
@@ -352,11 +352,24 @@ export default function Trasmetti() {
     const shouldFollow = isSongbookMode || (highlightEnabled && lines.length > 0);
     if (!shouldFollow) return;
     
-    const el = lyricsRef.current.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement;
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  }, [highlightLine, lines.length, highlightEnabled, isSongbookMode, isBroadcasting]);
+    const container = lyricsRef.current;
+    const firstEl = container.querySelector(`[data-line="${highlightLine}"]`) as HTMLElement;
+    if (!firstEl) return;
+
+    // Find the last highlighted line to center the whole group
+    const lastHighlightIdx = highlightLine + highlightLinesCount - 1;
+    const lastEl = container.querySelector(`[data-line="${lastHighlightIdx}"]`) as HTMLElement;
+
+    // Calculate the center of the highlight group
+    const groupTop = firstEl.offsetTop;
+    const groupBottom = lastEl 
+      ? lastEl.offsetTop + lastEl.offsetHeight 
+      : firstEl.offsetTop + firstEl.offsetHeight;
+    const groupCenter = (groupTop + groupBottom) / 2;
+    const scrollTarget = groupCenter - container.clientHeight / 2;
+
+    container.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
+  }, [highlightLine, highlightLinesCount, lines.length, highlightEnabled, isSongbookMode, isBroadcasting]);
 
   // Follow scroll_position (0-1000) — always for songbook, only when highlight OFF for normal
   useEffect(() => {
@@ -983,7 +996,7 @@ export default function Trasmetti() {
                     key={index}
                     data-line={index}
                     className={cn(
-                      "font-bold leading-relaxed transition-all duration-300 ease-out",
+                      "font-bold leading-relaxed transition-[color,opacity,text-shadow] duration-500 ease-out",
                       "font-sans tracking-wide",
                       highlightEnabled && showAsMain && "text-primary",
                       highlightEnabled && showAsSecondary && "text-primary/80"
