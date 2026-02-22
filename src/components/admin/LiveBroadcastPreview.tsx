@@ -416,7 +416,7 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
 
   // Font size change synced to DB
   const handleFontSizeChange = useCallback(async (delta: number) => {
-    const newSize = Math.max(50, Math.min(150, fontSize + delta));
+    const newSize = Math.max(50, Math.min(200, fontSize + delta));
     setFontSize(newSize);
     syncUpdate({ font_size: newSize });
   }, [fontSize, syncUpdate]);
