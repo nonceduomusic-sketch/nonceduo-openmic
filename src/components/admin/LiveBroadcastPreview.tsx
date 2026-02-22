@@ -306,23 +306,28 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
      return () => clearInterval(interval);
    }, [autoScroll, lineMapping, scrollSpeed, updateSession]);
  
-  // Scroll within container only (no page scroll)
+  // Scroll within container — center the GROUP of highlighted lines
   useEffect(() => {
     if (!highlightEnabled) return;
 
     if (lyricsRef.current && lines.length > 0) {
       const container = lyricsRef.current;
-      const lineElement = container.querySelector(`[data-line="${localHighlightLine}"]`) as HTMLElement;
-      if (lineElement) {
-        // Calculate scroll to center the highlighted line in the container
-        const containerHeight = container.clientHeight;
-        const lineTop = lineElement.offsetTop;
-        const lineHeight = lineElement.offsetHeight;
-        const scrollTarget = lineTop - (containerHeight / 2) + (lineHeight / 2);
-        container.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
-      }
+      const firstEl = container.querySelector(`[data-line="${localHighlightLine}"]`) as HTMLElement;
+      if (!firstEl) return;
+
+      const lastHighlightIdx = localHighlightLine + highlightLinesCount - 1;
+      const lastEl = container.querySelector(`[data-line="${lastHighlightIdx}"]`) as HTMLElement;
+
+      const groupTop = firstEl.offsetTop;
+      const groupBottom = lastEl 
+        ? lastEl.offsetTop + lastEl.offsetHeight 
+        : firstEl.offsetTop + firstEl.offsetHeight;
+      const groupCenter = (groupTop + groupBottom) / 2;
+      const scrollTarget = groupCenter - container.clientHeight / 2;
+
+      container.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
     }
-  }, [localHighlightLine, lines.length, highlightEnabled]);
+  }, [localHighlightLine, highlightLinesCount, lines.length, highlightEnabled]);
  
    const handleLineChange = useCallback(async (direction: 'up' | 'down') => {
      if (!canManage) return;
