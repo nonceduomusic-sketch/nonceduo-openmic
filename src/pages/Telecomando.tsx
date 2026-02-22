@@ -168,8 +168,16 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
   const { session, syncUpdate, updateSession, mode, setMode, localIP, setLocalIP, localConnected, localLatency, isLocalMode, localRequestSong } = useHybridBroadcast(salaCode);
   const { updateScrollPosition } = useRemoteControl(sessionId, salaCode);
 
+  // Optimistic ref to prevent stale reads during rapid button presses
+  const optimisticHighlightRef = useRef(session?.highlight_line ?? 0);
+  // Keep ref in sync with session when it updates (but never overwrite a newer optimistic value)
+  useEffect(() => {
+    optimisticHighlightRef.current = session?.highlight_line ?? 0;
+  }, [session?.highlight_line]);
+
   // Hybrid highlight update: use syncUpdate for fastest path (direct DB update or local WS)
   const updateHighlightLine = useCallback(async (line: number) => {
+    optimisticHighlightRef.current = line;
     syncUpdate({ highlight_line: line });
     return true;
   }, [syncUpdate]);
@@ -397,13 +405,15 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
 
   const scrollUp = async () => {
     if (!remoteScrollEnabled) return;
-    const newLine = Math.max(0, highlightLine - 1);
+    const current = optimisticHighlightRef.current;
+    const newLine = Math.max(0, current - 1);
     await updateHighlightLine(newLine);
   };
 
   const scrollDown = async () => {
     if (!remoteScrollEnabled) return;
-    const newLine = Math.min(lines.length - 1, highlightLine + 1);
+    const current = optimisticHighlightRef.current;
+    const newLine = Math.min(lines.length - 1, current + 1);
     await updateHighlightLine(newLine);
   };
 
