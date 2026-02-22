@@ -378,6 +378,7 @@ export type Database = {
           highlight_enabled: boolean | null
           highlight_line: number | null
           highlight_lines_count: number | null
+          highlight_style: string | null
           id: string
           is_active: boolean
           is_broadcasting: boolean | null
@@ -431,6 +432,7 @@ export type Database = {
           highlight_enabled?: boolean | null
           highlight_line?: number | null
           highlight_lines_count?: number | null
+          highlight_style?: string | null
           id?: string
           is_active?: boolean
           is_broadcasting?: boolean | null
@@ -484,6 +486,7 @@ export type Database = {
           highlight_enabled?: boolean | null
           highlight_line?: number | null
           highlight_lines_count?: number | null
+          highlight_style?: string | null
           id?: string
           is_active?: boolean
           is_broadcasting?: boolean | null

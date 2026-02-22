@@ -191,6 +191,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
   const highlightLine = session?.highlight_line ?? 0;
   const highlightEnabled = (session as any)?.highlight_enabled ?? true;
   const highlightLinesCount = (session as any)?.highlight_lines_count ?? 1;
+  const highlightStyle: 'gradient' | 'uniform' = (session as any)?.highlight_style ?? 'gradient';
   const remoteScrollEnabled = (session as any)?.remote_scroll_enabled ?? true;
   const fontSize = (session as any)?.font_size ?? 100;
   const textAlign = ((session as any)?.text_align as 'left' | 'center' | 'right') || 'center';
