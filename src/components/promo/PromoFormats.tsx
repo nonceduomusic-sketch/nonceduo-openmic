@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Mic2, MessageSquareHeart, Music, Guitar, Heart } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 interface PromoFormatsProps {
@@ -11,6 +12,13 @@ interface PromoFormatsProps {
   variant?: 'locali' | 'eventi' | 'matrimoni' | 'piazza';
   className?: string;
 }
+
+const formatLinks: Record<string, string> = {
+  duo: '/partyband',
+  openmic: '/openmic',
+  dediche: '/messaggi',
+  band: '/partyband',
+};
 
 const formats = [
   {
@@ -87,6 +95,8 @@ export const PromoFormats: React.FC<PromoFormatsProps> = ({
   variant = 'locali',
   className,
 }) => {
+  const navigate = useNavigate();
+  
   const visibleFormats = formats.filter((f) => {
     if (f.key === 'duo') return showDuo;
     if (f.key === 'openmic') return showOpenMic;
@@ -135,8 +145,9 @@ export const PromoFormats: React.FC<PromoFormatsProps> = ({
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1, duration: 0.5 }}
+                onClick={() => navigate(formatLinks[format.key])}
                 className={cn(
-                  "relative p-6 md:p-8 rounded-3xl bg-card border-2 transition-all duration-300 hover:-translate-y-1",
+                  "relative p-6 md:p-8 rounded-3xl bg-card border-2 transition-all duration-300 hover:-translate-y-1 cursor-pointer",
                   style.border,
                   isFeatured && "ring-2 ring-amber-500/30 shadow-lg",
                   isFeatured && style.glow
