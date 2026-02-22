@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { useBroadcast } from '@/hooks/useBroadcast';
+import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   Settings, 
@@ -94,7 +94,7 @@ interface BroadcastTVSettingsProps {
 }
 
 export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsProps) {
-  const { session, updateSession } = useBroadcast('main');
+  const { session, syncUpdate } = useHybridBroadcast('main');
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   
@@ -156,7 +156,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
     if (!canManage) return;
     setIsSaving(true);
     try {
-      const success = await updateSession({
+      syncUpdate({
         tv_title: settings.tv_title,
         tv_subtitle: settings.tv_subtitle,
         tv_footer: settings.tv_footer,
@@ -170,12 +170,10 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
         tv_show_footer: settings.tv_show_footer,
         tv_show_status: settings.tv_show_status,
         tv_element_positions: settings.tv_element_positions,
-      } as any);
+      });
       
-      if (success) {
-        toast.success('Impostazioni salvate!');
-        setHasChanges(false);
-      }
+      toast.success('Impostazioni salvate!');
+      setHasChanges(false);
     } catch (error) {
       toast.error('Errore nel salvataggio');
     } finally {
@@ -204,7 +202,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
     setIsSaving(true);
     
     try {
-      const success = await updateSession({
+      syncUpdate({
         tv_title: defaultSettings.tv_title,
         tv_subtitle: defaultSettings.tv_subtitle,
         tv_footer: defaultSettings.tv_footer,
@@ -218,14 +216,10 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
         tv_show_footer: defaultSettings.tv_show_footer,
         tv_show_status: defaultSettings.tv_show_status,
         tv_element_positions: defaultSettings.tv_element_positions,
-      } as any);
+      });
       
-      if (success) {
-        setHasChanges(false);
-        toast.success('Impostazioni ripristinate ai valori predefiniti!');
-      } else {
-        toast.error('Errore nel ripristino');
-      }
+      setHasChanges(false);
+      toast.success('Impostazioni ripristinate ai valori predefiniti!');
     } catch (err) {
       console.error('Reset error:', err);
       toast.error('Errore nel ripristino');
