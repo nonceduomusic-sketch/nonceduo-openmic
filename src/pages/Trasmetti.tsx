@@ -931,7 +931,7 @@ export default function Trasmetti() {
             className="relative z-10 flex-1 min-h-0 px-8 md:px-16 lg:px-24 py-8 overflow-y-auto"
           >
             <div className={cn(
-              "max-w-5xl mx-auto space-y-6 md:space-y-8 py-[20vh]",
+              "max-w-5xl mx-auto space-y-4 md:space-y-6 py-[10vh]",
               tvSettings.textAlign === 'left' && 'text-left',
               tvSettings.textAlign === 'center' && 'text-center',
               tvSettings.textAlign === 'right' && 'text-right'
@@ -966,9 +966,9 @@ export default function Trasmetti() {
                     key={index}
                     data-line={index}
                     className={cn(
-                      "font-bold leading-relaxed transition-all duration-700 ease-out",
+                      "font-bold leading-relaxed transition-all duration-300 ease-out",
                       "font-sans tracking-wide",
-                      highlightEnabled && isMainHighlight && "text-primary scale-105",
+                      highlightEnabled && isMainHighlight && "text-primary",
                       highlightEnabled && isInHighlightRange && !isMainHighlight && "text-primary/80"
                     )}
                     style={{
@@ -981,12 +981,10 @@ export default function Trasmetti() {
                             ? `${nearFontSize}px`
                             : `${baseFontSize}px`,
                       textShadow: (highlightEnabled && isMainHighlight)
-                        ? '0 0 60px hsl(var(--primary) / 0.6), 0 0 120px hsl(var(--primary) / 0.3)'
+                        ? '0 0 40px hsl(var(--primary) / 0.4), 0 0 80px hsl(var(--primary) / 0.2)'
                         : (highlightEnabled && isInHighlightRange && !isMainHighlight)
-                          ? '0 0 40px hsl(var(--primary) / 0.4)'
+                          ? '0 0 30px hsl(var(--primary) / 0.3)'
                           : 'none',
-                      transform: (highlightEnabled && isMainHighlight) ? 'scale(1.05)' : 
-                                 (highlightEnabled && isInHighlightRange && !isMainHighlight) ? 'scale(1.02)' : 'scale(1)',
                     }}
                   >
                     {line || '\u00A0'}
