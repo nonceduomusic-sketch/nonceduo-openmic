@@ -118,13 +118,14 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
   // Sync with session data
   useEffect(() => {
     if (session) {
+      const s = session as any;
       setSettings({
-        tv_title: (session as any).tv_title || 'Open Mic',
-        tv_subtitle: (session as any).tv_subtitle || 'NonceDuo Live Experience',
-        tv_footer: (session as any).tv_footer || 'Powered by NonceDuo',
-        tv_qr_url: (session as any).tv_qr_url || '',
-        tv_logo_url: (session as any).tv_logo_url || '',
-        tv_qr_cta: (session as any).tv_qr_cta || 'Scansiona per prenotare la tua canzone',
+        tv_title: s.tv_title ?? 'Open Mic',
+        tv_subtitle: s.tv_subtitle ?? 'NonceDuo Live Experience',
+        tv_footer: s.tv_footer ?? 'Powered by NonceDuo',
+        tv_qr_url: s.tv_qr_url ?? '',
+        tv_logo_url: s.tv_logo_url ?? '',
+        tv_qr_cta: s.tv_qr_cta ?? 'Scansiona per prenotare la tua canzone',
         tv_show_qr: (session as any).tv_show_qr ?? true,
         tv_show_logo: (session as any).tv_show_logo ?? true,
         tv_show_title: (session as any).tv_show_title ?? true,
@@ -454,46 +455,78 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                   <div className="space-y-3">
                     <div>
                       <Label htmlFor="tv-title">Titolo principale</Label>
-                      <Input
-                        id="tv-title"
-                        value={settings.tv_title}
-                        onChange={(e) => updateSetting('tv_title', e.target.value)}
-                        placeholder="Open Mic"
-                        disabled={!canManage}
-                      />
+                      <div className="flex gap-1.5">
+                        <Input
+                          id="tv-title"
+                          value={settings.tv_title}
+                          onChange={(e) => updateSetting('tv_title', e.target.value)}
+                          placeholder="(vuoto – non mostrato)"
+                          disabled={!canManage}
+                          className="flex-1"
+                        />
+                        {settings.tv_title !== '' && (
+                          <Button variant="ghost" size="icon" className="shrink-0 h-9 w-9" onClick={() => updateSetting('tv_title', '')} disabled={!canManage}>
+                            <X className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     
                     <div>
                       <Label htmlFor="tv-subtitle">Sottotitolo</Label>
-                      <Input
-                        id="tv-subtitle"
-                        value={settings.tv_subtitle}
-                        onChange={(e) => updateSetting('tv_subtitle', e.target.value)}
-                        placeholder="NonceDuo Live Experience"
-                        disabled={!canManage}
-                      />
+                      <div className="flex gap-1.5">
+                        <Input
+                          id="tv-subtitle"
+                          value={settings.tv_subtitle}
+                          onChange={(e) => updateSetting('tv_subtitle', e.target.value)}
+                          placeholder="(vuoto – non mostrato)"
+                          disabled={!canManage}
+                          className="flex-1"
+                        />
+                        {settings.tv_subtitle !== '' && (
+                          <Button variant="ghost" size="icon" className="shrink-0 h-9 w-9" onClick={() => updateSetting('tv_subtitle', '')} disabled={!canManage}>
+                            <X className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     
                     <div>
                       <Label htmlFor="tv-footer">Footer</Label>
-                      <Input
-                        id="tv-footer"
-                        value={settings.tv_footer}
-                        onChange={(e) => updateSetting('tv_footer', e.target.value)}
-                        placeholder="Powered by NonceDuo"
-                        disabled={!canManage}
-                      />
+                      <div className="flex gap-1.5">
+                        <Input
+                          id="tv-footer"
+                          value={settings.tv_footer}
+                          onChange={(e) => updateSetting('tv_footer', e.target.value)}
+                          placeholder="(vuoto – non mostrato)"
+                          disabled={!canManage}
+                          className="flex-1"
+                        />
+                        {settings.tv_footer !== '' && (
+                          <Button variant="ghost" size="icon" className="shrink-0 h-9 w-9" onClick={() => updateSetting('tv_footer', '')} disabled={!canManage}>
+                            <X className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                     
                     <div>
                       <Label htmlFor="tv-qr-cta">Testo CTA QR Code</Label>
-                      <Input
-                        id="tv-qr-cta"
-                        value={settings.tv_qr_cta}
-                        onChange={(e) => updateSetting('tv_qr_cta', e.target.value)}
-                        placeholder="Scansiona per prenotare la tua canzone"
-                        disabled={!canManage}
-                      />
+                      <div className="flex gap-1.5">
+                        <Input
+                          id="tv-qr-cta"
+                          value={settings.tv_qr_cta}
+                          onChange={(e) => updateSetting('tv_qr_cta', e.target.value)}
+                          placeholder="(vuoto – non mostrato)"
+                          disabled={!canManage}
+                          className="flex-1"
+                        />
+                        {settings.tv_qr_cta !== '' && (
+                          <Button variant="ghost" size="icon" className="shrink-0 h-9 w-9" onClick={() => updateSetting('tv_qr_cta', '')} disabled={!canManage}>
+                            <X className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
