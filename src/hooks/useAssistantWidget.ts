@@ -230,20 +230,9 @@ export function useAssistantWidget(currentSection: Section = 'site') {
     }
   }, [settings, currentSection]);
 
-  // Proactive opening - only if welcome message is enabled for this section
-  useEffect(() => {
-    if (!isEnabled() || isOpen || !shouldShowWelcome()) return;
-
-    const delay = settings?.proactive_delay_seconds || 5;
-    const timer = setTimeout(() => {
-      const hasInteracted = safeGetItem('session', 'assistant_interacted');
-      if (!hasInteracted) {
-        setShowProactive(true);
-      }
-    }, delay * 1000);
-
-    return () => clearTimeout(timer);
-  }, [settings, isEnabled, isOpen, shouldShowWelcome]);
+  // Proactive opening disabled — the bubble is always visible but never auto-opens
+  // Users must explicitly click the bubble to open the chat
+  // (The old behaviour showed a proactive welcome card after a delay)
 
   // Create or get conversation
   const getOrCreateConversation = useCallback(async (
