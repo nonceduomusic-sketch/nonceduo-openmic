@@ -737,6 +737,15 @@ export default function SongbookLive() {
                   syncUpdate({ partiture_dim_inactive: checked });
                 }}
               />
+              <SettingRow
+                icon={<Highlighter className="w-4 h-4" />}
+                label="Evidenziazione su Partiture"
+                description="Mostra righe evidenziate ai musicisti"
+                checked={(session as any)?.partiture_highlight ?? true}
+                onChange={(checked) => {
+                  syncUpdate({ partiture_highlight: checked });
+                }}
+              />
             </div>
 
             {/* Swipe */}
@@ -863,15 +872,14 @@ export default function SongbookLive() {
                   <Server className="w-3 h-3 mr-1" /> LAN
                 </Badge>
               )}
+              {SettingsDrawer}
               <Button 
                 variant="ghost" 
                 size="icon" 
                 className="h-10 w-10 rounded-xl text-muted-foreground hover:text-foreground"
                 onClick={() => {
-                  // If opened from admin (new tab), close tab; otherwise navigate back
                   if (window.history.length <= 1 || document.referrer.includes('/admin')) {
                     window.close();
-                    // Fallback if window.close() is blocked
                     setTimeout(() => navigate('/admin'), 100);
                   } else {
                     navigate(-1);
