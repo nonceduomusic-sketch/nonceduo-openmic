@@ -355,7 +355,7 @@ export default function Partiture() {
         {parsedSong && (
           <div
             className="font-mono whitespace-pre-wrap leading-relaxed text-foreground"
-            style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px` }}
+            style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px`, overflowWrap: 'break-word', wordBreak: 'keep-all' as const }}
           >
             {parsedSong.lines.map((line, idx) => {
               const isHighlighted = showHighlight && idx >= remoteHighlightLine && idx < remoteHighlightLine + highlightLinesCount;
