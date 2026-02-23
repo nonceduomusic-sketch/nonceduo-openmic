@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { safeGetItem, safeSetItem } from "@/lib/safeStorage";
+import { BroadcastLinksCards } from "./LocalLinksCard";
 
 // ── Normalizzazione per matching ──
 function normalize(s: string): string {
@@ -503,6 +504,9 @@ export function AdminCatalogSongbookTab() {
            </Card>
          </div>
        )}
+
+      {/* Broadcast page links - always visible */}
+      <BroadcastLinksCards filter={['tv', 'partiture', 'songbook']} />
 
       {/* ── Live Queue Section ── */}
       {activeReservations.length > 0 && (
