@@ -129,7 +129,8 @@ export default function Trasmetti() {
     : (((session as any)?.tv_view_mode as LyricsViewMode) || 'karaoke');
   
   // Highlight enabled from database (admin controlled)
-  const highlightEnabled = (session as any)?.highlight_enabled ?? true;
+  // In dual broadcast, disable per-line highlighting on TV since highlight_line comes from chordpro indices
+  const highlightEnabled = isDualBroadcast ? false : ((session as any)?.highlight_enabled ?? true);
   
   // Number of lines to highlight (1-6)
   const highlightLinesCount = (session as any)?.highlight_lines_count ?? 1;
@@ -355,6 +356,9 @@ export default function Trasmetti() {
   
   useEffect(() => {
     if (!lyricsRef.current || !isBroadcasting) return;
+    // In dual broadcast, highlight_line comes from chordpro indexing which doesn't match catalog text
+    // Use scroll_position ratio instead (handled in the next effect)
+    if (isDualBroadcast) return;
     const shouldFollow = isSongbookMode || (highlightEnabled && lines.length > 0);
     if (!shouldFollow) return;
     
@@ -395,18 +399,20 @@ export default function Trasmetti() {
     scrollAnimFrameRef.current = requestAnimationFrame(animate);
     
     return () => { if (scrollAnimFrameRef.current) cancelAnimationFrame(scrollAnimFrameRef.current); };
-  }, [highlightLine, highlightLinesCount, lines.length, highlightEnabled, isSongbookMode, isBroadcasting]);
+  }, [highlightLine, highlightLinesCount, lines.length, highlightEnabled, isSongbookMode, isBroadcasting, isDualBroadcast]);
 
   // Follow scroll_position (0-1000) — always for songbook, only when highlight OFF for normal
+  // In dual broadcast: ALWAYS use scroll_position (highlight_line indices come from chordpro, not catalog)
   useEffect(() => {
     if (!lyricsRef.current) return;
     if (!isBroadcasting) return;
     const hasContent = session?.display_mode === 'lyrics' && (currentSong || (isSongbookMode && parsedSongbook));
     if (!hasContent) return;
     // In songbook mode, always follow scroll_position (no highlight system)
+    // In dual broadcast mode, always follow scroll_position (highlight_line doesn't match catalog text)
     // In normal mode, only follow when highlight is disabled
     if (isSongbookMode) return; // songbook uses highlight_line for sync
-    if (highlightEnabled) return;
+    if (!isDualBroadcast && highlightEnabled) return;
 
     const scrollPosition = (session as any)?.scroll_position ?? 0;
     scrollElementToRatio(lyricsRef.current, scrollPosition);
@@ -418,6 +424,7 @@ export default function Trasmetti() {
     currentSong?.id,
     parsedSongbook?.title,
     isSongbookMode,
+    isDualBroadcast,
     lines.length,
     viewMode,
   ]);

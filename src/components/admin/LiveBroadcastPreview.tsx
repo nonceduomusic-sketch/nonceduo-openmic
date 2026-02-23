@@ -82,7 +82,9 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
    const isMobile = useIsMobile();
 
    // SongBook mode state from session
-   const isSongbookMode = (session as any)?.songbook_mode ?? false;
+   // In dual broadcast, Contenuto Live should show catalog text (like Trasmetti), not songbook
+   const isDualBroadcast = (session as any)?.dual_broadcast ?? false;
+   const isSongbookMode = !isDualBroadcast && ((session as any)?.songbook_mode ?? false);
    const songbookFileId = (session as any)?.songbook_file_id ?? null;
    const songbookTranspose = (session as any)?.songbook_transpose ?? 0;
    const songbookShowChords = (session as any)?.songbook_show_chords_on_tv ?? false;
