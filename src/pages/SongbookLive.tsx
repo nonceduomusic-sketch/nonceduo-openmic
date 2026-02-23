@@ -52,7 +52,7 @@ import { toast } from 'sonner';
 import { usePedalScroll, usePedalControl } from '@/hooks/usePedalControl';
 import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
 
-import { renderResponsiveSong, renderLyricsOnlyNodes } from '@/lib/chordproRenderer';
+import { renderResponsiveSong, renderLyricsOnlyNodes, renderResponsiveChordLine } from '@/lib/chordproRenderer';
 
 export default function SongbookLive() {
   const navigate = useNavigate();
@@ -989,13 +989,76 @@ export default function SongbookLive() {
       >
         {parsedSong && (
           <div 
-            className="font-mono whitespace-pre-wrap leading-relaxed text-foreground"
+            className="font-mono whitespace-pre-wrap leading-relaxed text-foreground space-y-0.5"
             style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px` }}
           >
-            {coloredChords 
-              ? renderResponsiveSong(parsedSong, { coloredChords: true }) 
-              : renderLyricsOnlyNodes(parsedSong)
-            }
+            {parsedSong.lines.map((line, index) => {
+              const hlLine = highlightLineFromSession;
+              const hlCount = highlightLines;
+              const hlEnabled = hlCount > 0 && isThisFileBroadcasting;
+              const isMainHighlight = hlLine === index;
+              const distanceFromMain = index - hlLine;
+              const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < hlCount;
+              const isPast = index < hlLine;
+
+              let opacity = 1;
+              if (hlEnabled) {
+                if (isInHighlightRange) {
+                  opacity = isMainHighlight ? 1 : 0.95 - (distanceFromMain * 0.05);
+                } else if (isPast) {
+                  opacity = 0.45;
+                } else {
+                  opacity = 0.65;
+                }
+              }
+
+              if (line.type === 'directive' || line.type === 'comment') {
+                if (line.directiveKey && ['chorus', 'verse', 'bridge', 'intro', 'outro', 'tab'].includes(line.directiveKey)) {
+                  return (
+                    <div key={index} data-line={index} className="mt-3 mb-1" style={{ opacity }}>
+                      <span className="text-[0.75em] uppercase tracking-wider text-muted-foreground font-semibold">
+                        {line.directiveValue || line.directiveKey}
+                      </span>
+                    </div>
+                  );
+                }
+                return null;
+              }
+
+              if (line.type === 'empty') {
+                return <div key={index} data-line={index} className="h-3" style={{ opacity }} />;
+              }
+
+              if (line.type === 'chord-text' && line.chords && coloredChords) {
+                return (
+                  <div
+                    key={index}
+                    data-line={index}
+                    className={cn(
+                      "transition-opacity duration-150 py-1 px-2 -mx-1 rounded-lg leading-normal",
+                      hlEnabled && isInHighlightRange && "bg-primary/15 ring-1 ring-primary/30",
+                    )}
+                    style={{ opacity }}
+                  >
+                    {renderResponsiveChordLine(line, { coloredChords: true, chordClassName: 'text-primary' })}
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={index}
+                  data-line={index}
+                  className={cn(
+                    "transition-opacity duration-150 py-1 px-2 -mx-1 rounded-lg leading-normal",
+                    hlEnabled && isInHighlightRange && "bg-primary/15 ring-1 ring-primary/30 font-semibold",
+                  )}
+                  style={{ opacity }}
+                >
+                  {line.text || '\u00A0'}
+                </div>
+              );
+            })}
           </div>
         )}
       </div>
