@@ -85,28 +85,29 @@ export default function SongbookLive() {
   const [coloredChords, setColoredChords] = useState(true);
   const [autoScroll, setAutoScroll] = useState(false);
   const [scrollSpeed, setScrollSpeed] = useState(50);
-  // Track whether highlight was toggled locally to avoid useEffect overriding it
-  const highlightLocalToggleRef = useRef(false);
-  const [highlightLines, setHighlightLines] = useState(() => {
-    // Default OFF in Songbook Live
-    const fromSession = (session as any)?.highlight_lines_count;
-    const enabled = (session as any)?.highlight_enabled ?? false;
-    if (!enabled) return 0;
-    return fromSession ?? 2;
-  });
   
-  // Keep highlightLines in sync with session changes (e.g. toggled from admin)
-  // BUT skip if the change originated from this component (local toggle)
+  // Highlight is a LOCAL preference, persisted in localStorage.
+  // SongbookLive is the SOURCE OF TRUTH — it pushes to session, never reads back.
+  const [highlightEnabled, setHighlightEnabled] = useState<boolean>(() => {
+    const saved = safeGetItem('local', 'songbook_highlight_enabled');
+    return saved === 'true'; // default OFF
+  });
+  const [highlightLinesCount, setHighlightLinesCount] = useState<number>(() => {
+    const saved = safeGetItem('local', 'songbook_highlight_lines');
+    const val = saved ? parseInt(saved, 10) : 2;
+    return val >= 1 && val <= 6 ? val : 2;
+  });
+  const highlightLines = highlightEnabled ? highlightLinesCount : 0;
+  
+  // Push highlight preference to session on mount and on change
   useEffect(() => {
-    if (highlightLocalToggleRef.current) {
-      highlightLocalToggleRef.current = false;
-      return;
-    }
-    const enabled = (session as any)?.highlight_enabled ?? false;
-    const count = (session as any)?.highlight_lines_count ?? 2;
-    setHighlightLines(enabled ? count : 0);
-  }, [(session as any)?.highlight_enabled, (session as any)?.highlight_lines_count]);
+    syncUpdate({ highlight_enabled: highlightEnabled, highlight_lines_count: highlightLines });
+  }, [highlightEnabled, highlightLines]);
   const [searchQuery, setSearchQuery] = useState('');
+  // "Show TV viewport" toggle — persisted locally
+  const [showTVViewport, setShowTVViewport] = useState(() => {
+    return safeGetItem('local', 'songbook_show_tv_viewport') === 'true';
+  });
   const [sortMode, setSortMode] = useState<'title' | 'artist' | 'recent'>('title');
   const [swipeEnabled, setSwipeEnabled] = useState(() => safeGetItem('local', 'songbook_swipe_enabled') === 'true');
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -606,18 +607,25 @@ export default function SongbookLive() {
               <SettingRow
                 icon={<Highlighter className="w-4 h-4" />}
                 label="Evidenziazione testo"
-                description={`${highlightLines} righe`}
-                checked={highlightLines > 0}
+                description={highlightEnabled ? `${highlightLinesCount} righe` : 'OFF'}
+                checked={highlightEnabled}
                 onChange={(checked) => {
-                  const val = checked ? 2 : 0;
-                  highlightLocalToggleRef.current = true;
-                  setHighlightLines(val);
-                  syncUpdate({ highlight_lines_count: val, highlight_enabled: checked });
+                  setHighlightEnabled(checked);
+                  safeSetItem('local', 'songbook_highlight_enabled', String(checked));
                 }}
               />
 
+              <SettingRow
+                icon={<Tv className="w-4 h-4" />}
+                label="Mostra area TV"
+                description="Evidenzia porzione visibile su Trasmetti"
+                checked={showTVViewport}
+                onChange={(checked) => {
+                  setShowTVViewport(checked);
+                  safeSetItem('local', 'songbook_show_tv_viewport', String(checked));
+                }}
+              />
 
-              {/* Text scale slider */}
               <div className="space-y-2 pt-2 border-t border-border/40">
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Dimensione testo</span>
@@ -1009,6 +1017,12 @@ export default function SongbookLive() {
               const distanceFromMain = index - hlLine;
               const isInHighlightRange = distanceFromMain >= 0 && distanceFromMain < hlCount;
               const isPast = index < hlLine;
+              
+              // TV viewport: approximate ~7 visible lines around highlight_line on Trasmetti
+              const TV_VISIBLE_LINES = 7;
+              const tvHalfRange = Math.floor(TV_VISIBLE_LINES / 2);
+              const isInTVViewport = showTVViewport && isThisFileBroadcasting && 
+                index >= hlLine - tvHalfRange && index <= hlLine + tvHalfRange;
 
               let opacity = 1;
               if (hlEnabled) {
@@ -1046,8 +1060,9 @@ export default function SongbookLive() {
                     className={cn(
                       "transition-opacity duration-150 py-1 px-2 -mx-1 rounded-lg leading-normal",
                       hlEnabled && isInHighlightRange && "bg-primary/15 ring-1 ring-primary/30",
+                      isInTVViewport && !hlEnabled && "border-l-2 border-primary/40",
                     )}
-                    style={{ opacity }}
+                    style={{ opacity, background: isInTVViewport && !(hlEnabled && isInHighlightRange) ? 'hsl(var(--primary) / 0.06)' : undefined }}
                   >
                     {renderResponsiveChordLine(line, { coloredChords: true, chordClassName: 'text-primary' })}
                   </div>
@@ -1061,8 +1076,9 @@ export default function SongbookLive() {
                   className={cn(
                     "transition-opacity duration-150 py-1 px-2 -mx-1 rounded-lg leading-normal",
                     hlEnabled && isInHighlightRange && "bg-primary/15 ring-1 ring-primary/30 font-semibold",
+                    isInTVViewport && !hlEnabled && "border-l-2 border-primary/40",
                   )}
-                  style={{ opacity }}
+                  style={{ opacity, background: isInTVViewport && !(hlEnabled && isInHighlightRange) ? 'hsl(var(--primary) / 0.06)' : undefined }}
                 >
                   {line.text || '\u00A0'}
                 </div>
