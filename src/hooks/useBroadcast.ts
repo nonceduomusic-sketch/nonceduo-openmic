@@ -251,10 +251,10 @@ export function useBroadcast(salaCode: string = 'main') {
     const isHighFreq = Object.keys(updates).every(k => HIGH_FREQ_KEYS.has(k));
     
     if (isHighFreq) {
-      // Merge into pending and debounce (200ms)
+      // Merge into pending and debounce (100ms for snappy persistence)
       pendingDbUpdatesRef.current = { ...pendingDbUpdatesRef.current, ...updates };
       if (!dbPersistTimerRef.current) {
-        dbPersistTimerRef.current = window.setTimeout(flushDbUpdates, 200);
+        dbPersistTimerRef.current = window.setTimeout(flushDbUpdates, 100);
       }
     } else {
       // Flush any pending + send this immediately
