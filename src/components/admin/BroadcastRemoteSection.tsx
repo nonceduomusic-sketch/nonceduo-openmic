@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useBroadcastRemoteAdmin } from '@/hooks/useBroadcastRemote';
-import { useBroadcast } from '@/hooks/useBroadcast';
+import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,11 +51,11 @@ export function BroadcastRemoteSection() {
     getActiveSessionCount,
   } = useBroadcastRemoteAdmin();
 
-  const { session, updateSession } = useBroadcast('main');
+  const { session, syncUpdate } = useHybridBroadcast('main');
   const remoteScrollEnabled = (session as any)?.remote_scroll_enabled ?? true;
 
   const handleToggleRemoteScroll = async (enabled: boolean) => {
-    await updateSession({ remote_scroll_enabled: enabled } as any);
+    syncUpdate({ remote_scroll_enabled: enabled });
     toast.success(enabled ? 'Scroll da telecomando abilitato' : 'Scroll da telecomando disabilitato');
   };
  
