@@ -76,12 +76,12 @@ export const MemoizedChordLine = memo(function MemoizedChordLine({
   const chordClass = chordClassName || (coloredChords ? 'text-primary' : 'text-muted-foreground');
 
   return (
-    <span className="inline leading-normal">
+    <span className="inline leading-normal" style={{ overflowWrap: 'break-word', wordBreak: 'keep-all' }}>
       {segments.map((seg, i) => (
         <span
           key={i}
           className="inline-block align-bottom"
-          style={{ whiteSpace: 'pre-wrap' }}
+          style={{ whiteSpace: 'pre-wrap', overflowWrap: 'break-word', wordBreak: 'keep-all' }}
         >
           <span
             className={`block font-bold text-[0.85em] leading-tight min-h-[1.1em] ${chordClass}`}

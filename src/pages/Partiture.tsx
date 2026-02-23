@@ -336,7 +336,7 @@ export default function Partiture() {
               size="icon"
               className="h-8 w-8 rounded-lg"
               onClick={() => {
-                const v = Math.min(200, localTextScale + 10);
+                const v = Math.min(300, localTextScale + 10);
                 setLocalTextScale(v);
                 safeSetItem('local', 'partiture_text_scale', String(v));
               }}

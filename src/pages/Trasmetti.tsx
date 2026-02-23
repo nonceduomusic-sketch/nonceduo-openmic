@@ -723,7 +723,7 @@ export default function Trasmetti() {
             tvSettings.textAlign === 'left' && 'text-left',
             tvSettings.textAlign === 'center' && 'text-center',
             tvSettings.textAlign === 'right' && 'text-right'
-          )}>
+          )} style={{ overflowWrap: 'break-word', wordBreak: 'keep-all' }}>
             {parsedSongbook.lines.map((line, index) => {
               const isMainHighlight = highlightLine === index;
               const distanceFromMain = index - highlightLine;
@@ -882,7 +882,7 @@ export default function Trasmetti() {
               tvSettings.textAlign === 'left' && 'text-left',
               tvSettings.textAlign === 'center' && 'text-center',
               tvSettings.textAlign === 'right' && 'text-right'
-            )}>
+            )} style={{ overflowWrap: 'break-word', wordBreak: 'keep-all' }}>
               {lines.map((line, index) => {
                 const isMainHighlight = highlightLine === index;
                 // Check if this line is within the highlight range (next lines after the current one)
@@ -986,7 +986,7 @@ export default function Trasmetti() {
               tvSettings.textAlign === 'left' && 'text-left',
               tvSettings.textAlign === 'center' && 'text-center',
               tvSettings.textAlign === 'right' && 'text-right'
-            )}>
+            )} style={{ overflowWrap: 'break-word', wordBreak: 'keep-all' }}>
               {lines.map((line, index) => {
                 const isMainHighlight = highlightLine === index;
                 // Check if this line is within the highlight range
@@ -1128,7 +1128,7 @@ export default function Trasmetti() {
             tvSettings.textAlign === 'left' && 'text-left',
             tvSettings.textAlign === 'center' && 'text-center',
             tvSettings.textAlign === 'right' && 'text-right'
-          )}>
+          )} style={{ overflowWrap: 'break-word', wordBreak: 'keep-all' }}>
             {lines.map((line, index) => {
               const isMainHighlight = highlightLine === index;
               // Check if this line is within the highlight range
