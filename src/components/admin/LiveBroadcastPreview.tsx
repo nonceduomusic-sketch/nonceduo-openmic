@@ -542,7 +542,7 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
             style={{ height: lyricsHeight }}
           >
             {viewMode === 'spotify' ? (
-               <div className="bg-black/30 backdrop-blur-sm rounded-xl p-4 space-y-2 text-center">
+               <div className={cn("bg-black/30 backdrop-blur-sm rounded-xl p-4 space-y-2", textAlign === 'left' ? 'text-left' : textAlign === 'right' ? 'text-right' : 'text-center')}>
                  {lines.map((line, index) => {
                    const isMainHighlight = highlightVisualIndex === index;
                     const distanceFromMain = index - highlightVisualIndex;
@@ -569,7 +569,7 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
                  })}
                </div>
              ) : viewMode === 'karaoke' ? (
-               <div className="text-center space-y-2 py-4">
+               <div className={cn("space-y-2 py-4", textAlign === 'left' ? 'text-left' : textAlign === 'right' ? 'text-right' : 'text-center')}>
                  {lines.map((line, index) => {
                    const isMainHighlight = highlightVisualIndex === index;
                     const distanceFromMain = index - highlightVisualIndex;
@@ -605,8 +605,8 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
                  })}
                </div>
              ) : (
-               /* COMPACT MODE - No line numbers, centered, larger font, continuous text */
-               <div className="text-center space-y-1 py-4">
+               /* COMPACT MODE */
+               <div className={cn("space-y-1 py-4", textAlign === 'left' ? 'text-left' : textAlign === 'right' ? 'text-right' : 'text-center')}>
                  {lines.map((line, index) => {
                    const isMainHighlight = highlightVisualIndex === index;
                     const distanceFromMain = index - highlightVisualIndex;
