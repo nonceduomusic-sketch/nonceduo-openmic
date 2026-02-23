@@ -29,6 +29,9 @@ import {
   Radio,
   ListPlus,
   LayoutDashboard,
+  Monitor,
+  PanelBottomClose,
+  PanelBottomOpen,
 } from 'lucide-react';
 import { SongbookLiveDrawer } from '@/components/songbook/SongbookLiveDrawer';
 import { Button } from '@/components/ui/button';
@@ -53,6 +56,14 @@ import { usePedalScroll, usePedalControl } from '@/hooks/usePedalControl';
 import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
 
 import { renderResponsiveSong, renderLyricsOnlyNodes, renderResponsiveChordLine } from '@/lib/chordproRenderer';
+
+// Catalog song type for TV preview
+interface CatalogSong {
+  id: string;
+  titolo: string;
+  artista: string;
+  testo: string;
+}
 
 export default function SongbookLive() {
   const navigate = useNavigate();
@@ -111,6 +122,10 @@ export default function SongbookLive() {
   const [sortMode, setSortMode] = useState<'title' | 'artist' | 'recent'>('title');
   const [swipeEnabled, setSwipeEnabled] = useState(() => safeGetItem('local', 'songbook_swipe_enabled') === 'true');
   const [settingsOpen, setSettingsOpen] = useState(false);
+  
+  // TV Preview panel: shows catalog text in dual broadcast mode
+  const [tvPreviewOpen, setTvPreviewOpen] = useState(() => safeGetItem('local', 'songbook_tv_preview') === 'true');
+  const [catalogSong, setCatalogSong] = useState<CatalogSong | null>(null);
   
   // Local text scale (50-200%, persisted)
   const [localTextScale, setLocalTextScale] = useState<number>(() => {
@@ -429,6 +444,32 @@ export default function SongbookLive() {
     }
   }, [(session as any)?.dual_broadcast, (session as any)?.songbook_file_id, files]);
 
+  // Fetch catalog song text for TV preview when in dual broadcast mode
+  useEffect(() => {
+    const isDual = !!(session as any)?.dual_broadcast;
+    const catalogSongId = (session as any)?.current_song_id;
+    if (!isDual || !catalogSongId) {
+      setCatalogSong(null);
+      return;
+    }
+    const controller = new AbortController();
+    supabase
+      .from('songs')
+      .select('id, titolo, artista, testo')
+      .eq('id', catalogSongId)
+      .abortSignal(controller.signal)
+      .single()
+      .then(({ data }) => {
+        if (data) setCatalogSong(data as CatalogSong);
+      });
+    return () => controller.abort();
+  }, [(session as any)?.dual_broadcast, (session as any)?.current_song_id]);
+
+  const handleTvPreviewToggle = useCallback((open: boolean) => {
+    setTvPreviewOpen(open);
+    safeSetItem('local', 'songbook_tv_preview', open ? 'true' : 'false');
+  }, []);
+
   // Stop songbook mode on unmount — but NOT if dual broadcast is active (managed elsewhere)
   useEffect(() => {
     return () => {
@@ -667,6 +708,15 @@ export default function SongbookLive() {
                   safeSetItem('local', 'songbook_show_tv_viewport', String(checked));
                 }}
               />
+
+              <SettingRow
+                icon={<Monitor className="w-4 h-4" />}
+                label="Anteprima TV (Duale)"
+                description="Mostra testo catalogo trasmesso alla TV"
+                checked={tvPreviewOpen}
+                onChange={handleTvPreviewToggle}
+              />
+
 
               <div className="space-y-2 pt-2 border-t border-border/40">
                 <div className="flex items-center justify-between">
@@ -1000,6 +1050,17 @@ export default function SongbookLive() {
                 <Tv className="w-3 h-3 mr-0.5" /> OFF
               </Badge>
             )}
+            {catalogSong && !!(session as any)?.dual_broadcast && (
+              <Button
+                variant={tvPreviewOpen ? "default" : "ghost"}
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                onClick={() => handleTvPreviewToggle(!tvPreviewOpen)}
+                title="Anteprima TV"
+              >
+                <Monitor className="w-4 h-4" />
+              </Button>
+            )}
             {SettingsDrawer}
           </div>
         </div>
@@ -1161,7 +1222,52 @@ export default function SongbookLive() {
         )}
       </div>
 
-      {/* Pedal indicator (floating, non-intrusive) */}
+      {/* TV Preview Panel — shows catalog text in dual broadcast mode */}
+      {catalogSong && !!(session as any)?.dual_broadcast && (
+        <div className="shrink-0 border-t border-border/50 bg-muted/30">
+          <button
+            className="w-full flex items-center justify-between px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:bg-muted/50 transition-colors"
+            onClick={() => handleTvPreviewToggle(!tvPreviewOpen)}
+          >
+            <div className="flex items-center gap-2">
+              <Monitor className="w-3.5 h-3.5" />
+              <span>Anteprima TV — {catalogSong.titolo}</span>
+            </div>
+            {tvPreviewOpen ? <PanelBottomClose className="w-3.5 h-3.5" /> : <PanelBottomOpen className="w-3.5 h-3.5" />}
+          </button>
+          {tvPreviewOpen && (
+            <div className="max-h-[30vh] overflow-auto px-4 pb-3">
+              <div className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/80">
+                {catalogSong.testo?.split('\n').map((line, idx) => {
+                  const hlLine = highlightLineFromSession;
+                  const hlCount = highlightLines;
+                  const hlEnabled = hlCount > 0 && isThisFileBroadcasting;
+                  const isInRange = hlEnabled && idx >= hlLine && idx < hlLine + hlCount;
+                  return (
+                    <div
+                      key={idx}
+                      className={cn(
+                        "transition-opacity duration-150 py-0.5 px-1 -mx-1 rounded",
+                        isInRange
+                          ? "bg-primary/15 border-l-2 border-primary opacity-100 font-medium"
+                          : hlEnabled && idx < hlLine
+                            ? "opacity-40"
+                            : hlEnabled
+                              ? "opacity-60"
+                              : "opacity-100"
+                      )}
+                    >
+                      {line || '\u00A0'}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+
       {pedalActive && (
         <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+8px)] left-1/2 -translate-x-1/2 z-40">
           <Badge variant="outline" className="bg-background/90 backdrop-blur-sm text-primary border-primary/30 rounded-full px-3 py-1 shadow-lg">
