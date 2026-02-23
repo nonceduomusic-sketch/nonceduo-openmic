@@ -32,6 +32,9 @@ import {
   ListMusic,
   Mic2,
   MoreHorizontal,
+  ExternalLink,
+  Tv,
+  BookOpen,
 } from "lucide-react";
 import {
   Select,
@@ -481,9 +484,25 @@ export function AdminCatalogSongbookTab() {
                 <span className="hidden sm:inline">Ferma</span>
               </Button>
             </div>
-          </Card>
-        </div>
-      )}
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <a href="/trasmetti" target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
+                  <Tv className="w-3.5 h-3.5" />
+                  <span>Trasmetti (TV)</span>
+                  <ExternalLink className="w-3 h-3 opacity-60" />
+                </Button>
+              </a>
+              <a href="/partiture" target="_blank" rel="noopener noreferrer">
+                <Button variant="outline" size="sm" className="h-7 gap-1.5 text-xs">
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Partiture</span>
+                  <ExternalLink className="w-3 h-3 opacity-60" />
+                </Button>
+              </a>
+            </div>
+           </Card>
+         </div>
+       )}
 
       {/* ── Live Queue Section ── */}
       {activeReservations.length > 0 && (
