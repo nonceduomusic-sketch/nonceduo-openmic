@@ -198,7 +198,7 @@ export function AdminCatalogSongbookTab() {
     return list;
   }, [songs, search, filterMode, linksBySongId]);
 
-  // ── Smart suggestions for a song ──
+  // ── Smart suggestions for a song (excludes already linked) ──
   const getSuggestions = useCallback(
     (song: Song): { file: SongbookFile; score: number }[] => {
       const linkedFileIds = new Set((linksBySongId.get(song.id) || []).map((l) => l.songbook_file_id));
@@ -215,6 +215,23 @@ export function AdminCatalogSongbookTab() {
         .slice(0, 5);
     },
     [songbookFiles, linksBySongId]
+  );
+
+  // ── All matching files for a song (including already linked, for alternative selection) ──
+  const getAllMatchingFiles = useCallback(
+    (song: Song): { file: SongbookFile; score: number }[] => {
+      return songbookFiles
+        .map((f) => {
+          const titleScore = matchScore(song.titolo, f.title);
+          const artistScore = f.artist ? matchScore(song.artista, f.artist) : 0;
+          const combined = titleScore * 0.7 + artistScore * 0.3;
+          return { file: f, score: combined };
+        })
+        .filter((s) => s.score >= 0.5)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 8);
+    },
+    [songbookFiles]
   );
 
   // ── Create link mutation ──
@@ -293,11 +310,12 @@ export function AdminCatalogSongbookTab() {
       const songLinks = catalogSong ? linksBySongId.get(catalogSong.id) || [] : [];
       const primaryLink = songLinks.find((l) => l.is_primary) || songLinks[0];
       const linkedFile = primaryLink ? songbookMap.get(primaryLink.songbook_file_id) : undefined;
-      // Find suggestions if no link
       const suggestions = catalogSong && !primaryLink ? getSuggestions(catalogSong) : [];
-      return { reservation: res, catalogSong, primaryLink, linkedFile, suggestions };
+      // All matching files (including linked) for alternative selection
+      const allSuggestions = catalogSong ? getAllMatchingFiles(catalogSong).filter(s => s.file.id !== linkedFile?.id) : [];
+      return { reservation: res, catalogSong, primaryLink, linkedFile, suggestions, allSuggestions };
     });
-  }, [activeReservations, songsByNormalized, linksBySongId, songbookMap, getSuggestions]);
+  }, [activeReservations, songsByNormalized, linksBySongId, songbookMap, getSuggestions, getAllMatchingFiles]);
 
   if (isLoading) {
     return (
@@ -351,13 +369,14 @@ export function AdminCatalogSongbookTab() {
           </button>
           {showLiveQueue && (
             <div className="border-t px-3 pb-3 pt-2 space-y-1.5">
-              {liveQueueItems.map(({ reservation, catalogSong, primaryLink, linkedFile, suggestions }) => (
+              {liveQueueItems.map(({ reservation, catalogSong, primaryLink, linkedFile, suggestions, allSuggestions }) => (
                 <LiveQueueItem
                   key={reservation.id}
                   reservation={reservation}
                   catalogSong={catalogSong}
                   linkedFile={linkedFile}
                   suggestions={suggestions}
+                  allSuggestions={allSuggestions}
                   isDualBroadcasting={isDualBroadcasting}
                   currentBroadcastSongId={currentBroadcastSongId}
                   onBroadcast={async (songId, fileId) => {
@@ -556,10 +575,10 @@ export function AdminCatalogSongbookTab() {
 
                     <Separator />
 
-                    {/* Suggestions */}
+                    {/* Suggestions / Alternatives */}
                     <div className="space-y-1.5">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                        Suggerimenti SongBook
+                        {songLinks.length > 0 ? "Alternative SongBook" : "Suggerimenti SongBook"}
                       </p>
                       <SuggestionsList
                         song={song}
@@ -567,6 +586,10 @@ export function AdminCatalogSongbookTab() {
                         onLink={(fileId, score) =>
                           createLink.mutate({ songId: song.id, fileId, confidence: score, linkedBy: "manual" })
                         }
+                        onBroadcast={async (fileId) => {
+                          await broadcastDual(song.id, fileId);
+                          toast({ title: "Trasmissione Duale avviata" });
+                        }}
                         isLinking={createLink.isPending}
                       />
                     </div>
@@ -587,6 +610,7 @@ function LiveQueueItem({
   catalogSong,
   linkedFile,
   suggestions,
+  allSuggestions,
   isDualBroadcasting,
   currentBroadcastSongId,
   onBroadcast,
@@ -598,6 +622,7 @@ function LiveQueueItem({
   catalogSong?: Song;
   linkedFile?: SongbookFile;
   suggestions: { file: SongbookFile; score: number }[];
+  allSuggestions: { file: SongbookFile; score: number }[];
   isDualBroadcasting: boolean;
   currentBroadcastSongId: string | null;
   onBroadcast: (songId: string, fileId: string) => Promise<void>;
@@ -605,8 +630,12 @@ function LiveQueueItem({
   onLink: (songId: string, fileId: string, score: number) => void;
   isLinking: boolean;
 }) {
-  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [showAlternatives, setShowAlternatives] = useState(false);
   const isBroadcasting = catalogSong && currentBroadcastSongId === catalogSong.id;
+
+  // Combine linked file + unlinked suggestions for "choose alternative" view
+  const alternativeFiles = allSuggestions;
+  const hasAlternatives = alternativeFiles.length > 0;
 
   return (
     <div className={cn(
@@ -622,6 +651,7 @@ function LiveQueueItem({
           </div>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
+          {/* Main broadcast button for linked file */}
           {linkedFile && catalogSong && (
             isBroadcasting ? (
               <Button variant="destructive" size="sm" className="h-7 gap-1" onClick={onStop}>
@@ -635,17 +665,19 @@ function LiveQueueItem({
               </Button>
             )
           )}
-          {!linkedFile && catalogSong && suggestions.length > 0 && (
+          {/* Choose alternative / show candidates button */}
+          {catalogSong && hasAlternatives && (
             <Button
               variant="outline"
               size="sm"
-              className="h-7 gap-1"
-              onClick={() => setShowSuggestions(!showSuggestions)}
+              className={cn("h-7 gap-1", showAlternatives && "border-primary text-primary")}
+              onClick={() => setShowAlternatives(!showAlternatives)}
             >
-              <Eye className="w-3 h-3" />
-              {suggestions.length} file
+              {showAlternatives ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+              {linkedFile ? "Cambia" : `${alternativeFiles.length} file`}
             </Button>
           )}
+          {/* Status badges */}
           {linkedFile && (
             <Badge variant="outline" className="text-[9px] text-green-600 border-green-500/30">
               <Guitar className="w-3 h-3 mr-0.5" />SB
@@ -656,27 +688,50 @@ function LiveQueueItem({
               Non in catalogo
             </Badge>
           )}
-          {!linkedFile && catalogSong && suggestions.length === 0 && (
+          {!linkedFile && catalogSong && alternativeFiles.length === 0 && (
             <Badge variant="outline" className="text-[9px] text-orange-500 border-orange-500/30">
               No SB
             </Badge>
           )}
         </div>
       </div>
-      {/* Expandable suggestions with preview */}
-      {showSuggestions && catalogSong && suggestions.length > 0 && (
+      {/* Linked file info when collapsed */}
+      {linkedFile && !showAlternatives && (
+        <div className="mt-1 ml-6 text-[10px] text-muted-foreground truncate">
+          <Guitar className="w-3 h-3 inline mr-0.5" />
+          {linkedFile.title} · {linkedFile.filename}
+        </div>
+      )}
+      {/* Expandable alternatives with preview */}
+      {showAlternatives && catalogSong && (
         <div className="mt-2 pl-6 space-y-1">
-          {suggestions.slice(0, 3).map(({ file, score }) => (
+          {/* Show currently linked file first if exists */}
+          {linkedFile && (
+            <div className="rounded-lg bg-green-500/10 p-2 flex items-center gap-2 mb-1">
+              <Guitar className="w-3.5 h-3.5 text-green-600 shrink-0" />
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-medium truncate">{linkedFile.title}</div>
+                <div className="text-[10px] text-muted-foreground truncate">{linkedFile.artist || "—"} · {linkedFile.filename}</div>
+              </div>
+              <Badge variant="default" className="text-[9px] shrink-0">Attuale</Badge>
+              {!isBroadcasting && (
+                <Button variant="default" size="sm" className="h-6 text-[10px] gap-0.5 shrink-0" onClick={() => onBroadcast(catalogSong.id, linkedFile.id)}>
+                  <Play className="w-3 h-3" />
+                </Button>
+              )}
+            </div>
+          )}
+          {/* Other alternatives */}
+          {alternativeFiles.map(({ file, score }) => (
             <SuggestionWithPreview
               key={file.id}
               file={file}
               score={score}
               onLink={() => onLink(catalogSong.id, file.id, score)}
-              onBroadcast={catalogSong ? () => {
-                // Link first, then broadcast
+              onBroadcast={() => {
                 onLink(catalogSong.id, file.id, score);
                 setTimeout(() => onBroadcast(catalogSong.id, file.id), 500);
-              } : undefined}
+              }}
               isLinking={isLinking}
             />
           ))}
@@ -831,11 +886,13 @@ function SuggestionsList({
   song,
   suggestions,
   onLink,
+  onBroadcast,
   isLinking,
 }: {
   song: Song;
   suggestions: { file: SongbookFile; score: number }[];
   onLink: (fileId: string, score: number) => void;
+  onBroadcast?: (fileId: string) => Promise<void>;
   isLinking: boolean;
 }) {
   if (suggestions.length === 0) {
@@ -854,6 +911,10 @@ function SuggestionsList({
           file={file}
           score={score}
           onLink={() => onLink(file.id, score)}
+          onBroadcast={onBroadcast ? () => {
+            onLink(file.id, score);
+            setTimeout(() => onBroadcast(file.id), 500);
+          } : undefined}
           isLinking={isLinking}
         />
       ))}
