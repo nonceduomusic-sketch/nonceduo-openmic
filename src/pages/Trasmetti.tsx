@@ -115,7 +115,9 @@ export default function Trasmetti() {
   const screenStreamUrl = (session as any)?.screen_stream_url ?? '';
   
   // SongBook mode settings
-  const isSongbookMode = (session as any)?.songbook_mode ?? false;
+  const isDualBroadcast = (session as any)?.dual_broadcast ?? false;
+  // In dual mode: /trasmetti shows catalog text, not songbook content
+  const isSongbookMode = !isDualBroadcast && ((session as any)?.songbook_mode ?? false);
   const songbookFileId = (session as any)?.songbook_file_id ?? null;
   const songbookShowChords = (session as any)?.songbook_show_chords_on_tv ?? false;
   const songbookTranspose = (session as any)?.songbook_transpose ?? 0;

@@ -374,6 +374,7 @@ export type Database = {
           current_reservation_id: string | null
           current_song_id: string | null
           display_mode: string
+          dual_broadcast: boolean | null
           font_size: number | null
           highlight_enabled: boolean | null
           highlight_line: number | null
@@ -428,6 +429,7 @@ export type Database = {
           current_reservation_id?: string | null
           current_song_id?: string | null
           display_mode?: string
+          dual_broadcast?: boolean | null
           font_size?: number | null
           highlight_enabled?: boolean | null
           highlight_line?: number | null
@@ -482,6 +484,7 @@ export type Database = {
           current_reservation_id?: string | null
           current_song_id?: string | null
           display_mode?: string
+          dual_broadcast?: boolean | null
           font_size?: number | null
           highlight_enabled?: boolean | null
           highlight_line?: number | null
