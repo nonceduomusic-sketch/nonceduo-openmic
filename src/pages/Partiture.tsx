@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useMemo, useState, useCallback } from 'react';
-import { Guitar, Music, Wifi, WifiOff, Footprints, Minus, Plus, Eye, EyeOff } from 'lucide-react';
+import { Guitar, Music, Wifi, WifiOff, Footprints, Minus, Plus, Eye, EyeOff, Highlighter } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -56,6 +56,18 @@ export default function Partiture() {
     safeSetItem('local', 'partiture_dim_override', enabled ? 'true' : 'false');
   }, []);
 
+  // "Highlight on Partiture" — from session, local override
+  const remoteHighlightOn = (session as any)?.partiture_highlight ?? true;
+  const [localHighlightOverride, setLocalHighlightOverride] = useState<boolean | null>(() => {
+    const saved = safeGetItem('local', 'partiture_highlight_override');
+    return saved !== null ? saved === 'true' : null;
+  });
+  const showHighlight = localHighlightOverride !== null ? localHighlightOverride : remoteHighlightOn;
+
+  const handleHighlightToggle = useCallback((enabled: boolean) => {
+    setLocalHighlightOverride(enabled);
+    safeSetItem('local', 'partiture_highlight_override', enabled ? 'true' : 'false');
+  }, []);
   const broadcastToPartiture = (session as any)?.broadcast_to_partiture ?? true;
   const isDualBroadcast = !!(session as any)?.dual_broadcast;
   // Show content in both normal songbook mode AND dual mode
@@ -292,6 +304,17 @@ export default function Partiture() {
                 Oscura
               </Label>
             </div>
+            <div className="flex items-center gap-1.5">
+              <Switch
+                id="highlight-mode"
+                checked={showHighlight}
+                onCheckedChange={handleHighlightToggle}
+                className="data-[state=checked]:bg-primary"
+              />
+              <Label htmlFor="highlight-mode" className="text-xs font-medium cursor-pointer flex items-center gap-1">
+                <Highlighter className="w-3.5 h-3.5" />
+              </Label>
+            </div>
           </div>
           {/* Text scale controls */}
           <div className="flex items-center gap-1.5">
@@ -335,7 +358,7 @@ export default function Partiture() {
             style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px` }}
           >
             {parsedSong.lines.map((line, idx) => {
-              const isHighlighted = idx >= remoteHighlightLine && idx < remoteHighlightLine + highlightLinesCount;
+              const isHighlighted = showHighlight && idx >= remoteHighlightLine && idx < remoteHighlightLine + highlightLinesCount;
               
               if (line.type === 'directive') {
                 const sectionLabel = line.directiveValue || line.directiveKey || '';
