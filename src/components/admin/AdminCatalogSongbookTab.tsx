@@ -50,8 +50,15 @@ function matchScore(a: string, b: string): number {
   const na = normalize(a);
   const nb = normalize(b);
   if (na === nb) return 1;
-  // Uno contiene l'altro
-  if (na.includes(nb) || nb.includes(na)) return 0.85;
+  // Penalizza titoli troppo corti (< 3 char) — troppi falsi positivi
+  if (na.length < 3 || nb.length < 3) {
+    return na === nb ? 1 : 0;
+  }
+  // Penalizza differenze di lunghezza eccessive
+  const lenRatio = Math.min(na.length, nb.length) / Math.max(na.length, nb.length);
+  if (lenRatio < 0.4) return 0;
+  // Uno contiene l'altro (solo se il contenuto è significativo)
+  if (na.includes(nb) || nb.includes(na)) return 0.85 * lenRatio;
   // Dice coefficient
   const bigrams = (s: string) => {
     const set: string[] = [];
@@ -62,7 +69,8 @@ function matchScore(a: string, b: string): number {
   const bBi = bigrams(nb);
   if (aBi.length === 0 || bBi.length === 0) return 0;
   const intersection = aBi.filter((b) => bBi.includes(b)).length;
-  return (2 * intersection) / (aBi.length + bBi.length);
+  const dice = (2 * intersection) / (aBi.length + bBi.length);
+  return dice * lenRatio;
 }
 
 type Song = { id: string; titolo: string; artista: string };
