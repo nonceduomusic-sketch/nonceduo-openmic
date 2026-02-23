@@ -15,6 +15,7 @@ import {
   Bot,
   BookOpen,
   Calendar, 
+  Guitar,
   ListMusic, 
   MessageSquare, 
   Music, 
@@ -41,6 +42,7 @@ export type AdminMainTab =
   | "formats"
   | "grafiche"
   | "trasmetti"
+  | "songbook-live"
   | "notifiche-live"
   | "assistant"
   | "operators"
@@ -70,6 +72,7 @@ const ITEMS: Item[] = [
   { key: "event", label: "Eventi", icon: Calendar, group: "Live", description: "Eventi liberi e programmati" },
   { key: "formats", label: "Formati", icon: SlidersHorizontal, group: "Live", description: "Toggle e votazioni" },
   { key: "trasmetti", label: "Trasmetti", icon: Tv, group: "Live", description: "Karaoke TV broadcast" },
+  { key: "songbook-live" as AdminMainTab, label: "SongBook Live", icon: Guitar, group: "Live", description: "Console ChordPro" },
   { key: "notifiche-live", label: "Notifiche Live", icon: Send, group: "Live", description: "Email e Telegram" },
   { key: "grafiche", label: "Grafiche", icon: Image, group: "Live", description: "Locandine e storie" },
   

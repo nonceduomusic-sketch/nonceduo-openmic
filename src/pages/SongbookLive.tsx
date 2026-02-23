@@ -735,24 +735,29 @@ export default function SongbookLive() {
   if (!selectedFile) {
     return (
       <div className="h-[100dvh] bg-background flex flex-col overflow-hidden">
-        {/* Header - Apple style */}
-        <header className="shrink-0 z-50 bg-background/90 backdrop-blur-2xl border-b border-border/40 px-4 py-2.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+        {/* Header - App-style immersive */}
+        <header className="shrink-0 z-50 bg-background/95 backdrop-blur-2xl border-b border-border/30 safe-area-top">
+          <div className="px-4 py-3 flex items-center justify-between">
+            <div className="flex items-center gap-3">
               <SongbookLiveDrawer
                 files={files}
                 onSelectFile={handleSelectFile}
                 onBroadcastFile={handleBroadcastFile}
                 onSetlistBroadcast={handleSetlistBroadcast}
               />
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
-                  <Guitar className="w-4 h-4 text-primary" />
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Guitar className="w-5 h-5 text-primary" />
                 </div>
-                <h1 className="font-bold text-lg font-sans">SongBook</h1>
+                <div>
+                  <h1 className="font-bold text-lg leading-tight">SongBook Live</h1>
+                  <p className="text-[11px] text-muted-foreground leading-tight">
+                    {filteredFiles.length} brani
+                  </p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               {isFromCache && (
                 <Badge variant="outline" className="text-xs text-amber-500 border-amber-500/30 bg-amber-500/5 rounded-lg">
                   <WifiOff className="w-3 h-3 mr-1" /> Offline
@@ -763,33 +768,32 @@ export default function SongbookLive() {
                   <Server className="w-3 h-3 mr-1" /> LAN
                 </Badge>
               )}
-              <Badge variant="secondary" className="text-xs rounded-lg">{filteredFiles.length}</Badge>
             </div>
           </div>
         </header>
 
         {/* Search Bar + Sort */}
-        <div className="px-4 py-3 border-b border-border/40 bg-background/90 backdrop-blur-xl space-y-2 shrink-0">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <div className="px-4 py-3 border-b border-border/30 bg-background/95 backdrop-blur-xl shrink-0">
+          <div className="relative mb-2">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Cerca titolo o artista..."
-              className="pl-10 h-11 bg-muted/50 border-0 rounded-xl focus:bg-muted/80 transition-colors"
+              className="pl-10 h-11 bg-muted/40 border-0 rounded-xl focus:bg-muted/60 transition-colors text-sm"
             />
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
             {(['title', 'artist', 'recent'] as const).map((m) => (
               <button
                 key={m}
                 className={cn(
-                  "px-3 py-1 rounded-lg text-xs font-medium transition-all",
+                  "px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
                   sortMode === m 
-                    ? "bg-foreground text-background" 
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-primary text-primary-foreground" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 )}
                 onClick={() => setSortMode(m)}
               >
@@ -823,90 +827,16 @@ export default function SongbookLive() {
           </div>
         )}
 
-        {/* File List */}
-        <div className="flex-1 min-h-0 overflow-auto px-4 py-3">
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
-            </div>
-          ) : filteredFiles.length === 0 ? (
-            <div className="text-center py-16 text-muted-foreground">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-muted/50 flex items-center justify-center">
-                <Guitar className="w-8 h-8 opacity-40" />
-              </div>
-              {searchQuery ? (
-                <p className="font-medium">Nessun risultato per "{searchQuery}"</p>
-              ) : (
-                <>
-                  <p className="font-medium">Nessun file ChordPro</p>
-                  <p className="text-sm mt-1 opacity-70">Carica file .cho dalla sezione Admin</p>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-0.5">
-              {filteredFiles.map((file) => (
-                <div
-                  key={file.id}
-                  className="rounded-xl hover:bg-muted/40 active:bg-muted/60 transition-colors px-2.5 py-2"
-                >
-                  <div 
-                    className="flex items-center gap-2 cursor-pointer"
-                    onClick={() => handleSelectFile(file)}
-                  >
-                    <Music className="w-3.5 h-3.5 text-primary shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-sm truncate leading-snug">{file.title}</p>
-                      {file.artist && (
-                        <p className="text-[11px] text-muted-foreground truncate leading-snug">{file.artist}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-1.5 pl-5">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-[11px] px-2.5 rounded-lg"
-                      onClick={() => handleBroadcastFile(file)}
-                    >
-                      <Play className="w-3 h-3 mr-1" />
-                      Avvia
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-7 text-[11px] px-2.5 rounded-lg"
-                      onClick={() => handleSelectFile(file)}
-                    >
-                      <Eye className="w-3 h-3 mr-1" />
-                      Mostra
-                    </Button>
-                    {setlists.length > 0 && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button size="sm" variant="ghost" className="h-7 text-[11px] px-2.5 rounded-lg">
-                            <ListPlus className="w-3 h-3 mr-1" />
-                            Scaletta
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="min-w-[160px]">
-                          {setlists.map((sl) => (
-                            <DropdownMenuItem 
-                              key={sl.id}
-                              onClick={() => handleAddToSetlist(file, sl.id)}
-                            >
-                              {sl.name}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* File List - Virtualized for performance */}
+        <VirtualizedFileList
+          files={filteredFiles}
+          loading={loading}
+          searchQuery={searchQuery}
+          setlists={setlists}
+          onSelectFile={handleSelectFile}
+          onBroadcastFile={handleBroadcastFile}
+          onAddToSetlist={handleAddToSetlist}
+        />
       </div>
     );
   }
@@ -1070,6 +1000,158 @@ function SettingRow({ icon, label, description, checked, onChange }: {
         </div>
       </div>
       <Switch checked={checked} onCheckedChange={onChange} />
+    </div>
+  );
+}
+
+// ─── Virtualized File List (renders only visible items) ───
+const ITEM_HEIGHT = 72; // approximate height per item
+const OVERSCAN = 5;
+
+function VirtualizedFileList({ files, loading, searchQuery, setlists, onSelectFile, onBroadcastFile, onAddToSetlist }: {
+  files: SongbookFile[];
+  loading: boolean;
+  searchQuery: string;
+  setlists: { id: string; name: string }[];
+  onSelectFile: (f: SongbookFile) => void;
+  onBroadcastFile: (f: SongbookFile) => void;
+  onAddToSetlist: (f: SongbookFile, setlistId: string) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(600);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        setContainerHeight(entry.contentRect.height);
+      }
+    });
+    observer.observe(el);
+    setContainerHeight(el.clientHeight);
+    return () => observer.disconnect();
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    if (containerRef.current) {
+      setScrollTop(containerRef.current.scrollTop);
+    }
+  }, []);
+
+  const totalHeight = files.length * ITEM_HEIGHT;
+  const startIdx = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - OVERSCAN);
+  const endIdx = Math.min(files.length, Math.ceil((scrollTop + containerHeight) / ITEM_HEIGHT) + OVERSCAN);
+  const visibleFiles = files.slice(startIdx, endIdx);
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (files.length === 0) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <div className="text-center py-16 text-muted-foreground">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-muted/50 flex items-center justify-center">
+            <Guitar className="w-8 h-8 opacity-40" />
+          </div>
+          {searchQuery ? (
+            <p className="font-medium">Nessun risultato per "{searchQuery}"</p>
+          ) : (
+            <>
+              <p className="font-medium">Nessun file ChordPro</p>
+              <p className="text-sm mt-1 opacity-70">Carica file .cho dalla sezione Admin</p>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className="flex-1 min-h-0 overflow-auto px-4 py-3"
+      onScroll={handleScroll}
+    >
+      <div style={{ height: totalHeight, position: 'relative' }}>
+        {visibleFiles.map((file, i) => {
+          const idx = startIdx + i;
+          return (
+            <div
+              key={file.id}
+              style={{
+                position: 'absolute',
+                top: idx * ITEM_HEIGHT,
+                left: 0,
+                right: 0,
+                height: ITEM_HEIGHT,
+              }}
+              className="px-0.5"
+            >
+              <div className="rounded-xl hover:bg-muted/40 active:bg-muted/60 transition-colors px-2.5 py-2 h-full">
+                <div
+                  className="flex items-center gap-2 cursor-pointer"
+                  onClick={() => onSelectFile(file)}
+                >
+                  <Music className="w-3.5 h-3.5 text-primary shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-sm truncate leading-snug">{file.title}</p>
+                    {file.artist && (
+                      <p className="text-[11px] text-muted-foreground truncate leading-snug">{file.artist}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 mt-1 pl-5 flex-wrap">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-[11px] px-2.5 rounded-lg"
+                    onClick={() => onBroadcastFile(file)}
+                  >
+                    <Play className="w-3 h-3 mr-1" />
+                    Avvia
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-[11px] px-2.5 rounded-lg"
+                    onClick={() => onSelectFile(file)}
+                  >
+                    <Eye className="w-3 h-3 mr-1" />
+                    Mostra
+                  </Button>
+                  {setlists.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button size="sm" variant="ghost" className="h-7 text-[11px] px-2.5 rounded-lg">
+                          <ListPlus className="w-3 h-3 mr-1" />
+                          Scaletta
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="min-w-[160px]">
+                        {setlists.map((sl) => (
+                          <DropdownMenuItem
+                            key={sl.id}
+                            onClick={() => onAddToSetlist(file, sl.id)}
+                          >
+                            {sl.name}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
