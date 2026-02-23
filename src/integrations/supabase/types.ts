@@ -622,6 +622,60 @@ export type Database = {
         }
         Relationships: []
       }
+      catalog_songbook_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_primary: boolean
+          linked_by: string
+          match_confidence: number | null
+          notes: string | null
+          song_id: string
+          songbook_file_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_primary?: boolean
+          linked_by?: string
+          match_confidence?: number | null
+          notes?: string | null
+          song_id: string
+          songbook_file_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_primary?: boolean
+          linked_by?: string
+          match_confidence?: number | null
+          notes?: string | null
+          song_id?: string
+          songbook_file_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_songbook_links_song_id_fkey"
+            columns: ["song_id"]
+            isOneToOne: false
+            referencedRelation: "songs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "catalog_songbook_links_songbook_file_id_fkey"
+            columns: ["songbook_file_id"]
+            isOneToOne: false
+            referencedRelation: "songbook_files"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_invite_links: {
         Row: {
           conversation_id: string

@@ -8,6 +8,7 @@ import {
   Database,
   Guitar,
   Image,
+  Link2,
   ListMusic,
   LogOut,
   Menu,
@@ -52,6 +53,7 @@ const MENU_ITEMS: MenuItem[] = [
   { key: "formats", label: "Formati", icon: SlidersHorizontal, group: "Live" },
   { key: "trasmetti", label: "Trasmetti", icon: Tv, group: "Live" },
   { key: "songbook-live" as AdminMainTab, label: "SongBook Live", icon: Guitar, group: "Live" },
+  { key: "catalog-songbook" as AdminMainTab, label: "Catalogo ↔ SB", icon: Link2, group: "Live" },
   { key: "notifiche-live", label: "Notifiche Live", icon: Send, group: "Live" },
   { key: "grafiche", label: "Grafiche", icon: Image, group: "Live" },
 

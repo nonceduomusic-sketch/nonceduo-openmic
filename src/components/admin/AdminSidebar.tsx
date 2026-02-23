@@ -16,6 +16,7 @@ import {
   BookOpen,
   Calendar, 
   Guitar,
+  Link2,
   ListMusic, 
   MessageSquare, 
   Music, 
@@ -50,7 +51,8 @@ export type AdminMainTab =
   | "permissions"
   | "settings"
   | "audit"
-  | "manuale";
+  | "manuale"
+  | "catalog-songbook";
 
 type Item = {
   key: AdminMainTab;
@@ -73,6 +75,7 @@ const ITEMS: Item[] = [
   { key: "formats", label: "Formati", icon: SlidersHorizontal, group: "Live", description: "Toggle e votazioni" },
   { key: "trasmetti", label: "Trasmetti", icon: Tv, group: "Live", description: "Karaoke TV broadcast" },
   { key: "songbook-live" as AdminMainTab, label: "SongBook Live", icon: Guitar, group: "Live", description: "Console ChordPro" },
+  { key: "catalog-songbook" as AdminMainTab, label: "Catalogo ↔ SB", icon: Link2, group: "Live", description: "Collega Catalogo e SongBook" },
   { key: "notifiche-live", label: "Notifiche Live", icon: Send, group: "Live", description: "Email e Telegram" },
   { key: "grafiche", label: "Grafiche", icon: Image, group: "Live", description: "Locandine e storie" },
   
