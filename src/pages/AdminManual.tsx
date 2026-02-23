@@ -138,7 +138,6 @@ const handlePrintSection = (sectionId: string, title: string) => {
   const printWindow = window.open('', '_blank');
   if (!printWindow) return;
 
-  // Gather all content from the manual
   const content = document.getElementById(sectionId);
   if (!content) return;
 
@@ -167,6 +166,30 @@ const handlePrintSection = (sectionId: string, title: string) => {
   `);
   printWindow.document.close();
   setTimeout(() => printWindow.print(), 500);
+};
+
+// TXT Download helper
+const handleDownloadTxt = (sectionId: string, title: string) => {
+  const content = document.getElementById(sectionId);
+  if (!content) return;
+
+  // Extract text content, cleaning up whitespace
+  const textContent = content.innerText
+    .replace(/\n{3,}/g, '\n\n') // collapse multiple blank lines
+    .trim();
+
+  const header = `🎵 Non C'è Duo — ${title}\nGenerato il ${new Date().toLocaleDateString('it-IT')}\n${'='.repeat(50)}\n\n`;
+  const footer = `\n\n${'='.repeat(50)}\nNon C'è Duo — Manuale Operativo`;
+
+  const blob = new Blob([header + textContent + footer], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${title.replace(/\s+/g, '-').toLowerCase()}-nonceduo.txt`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 };
 
 const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
@@ -218,44 +241,91 @@ const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false
             Stampa o salva come PDF le guide per consultarle offline
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={() => {
-              expandAll('user');
-              setTimeout(() => handlePrintSection('manual-user-content', 'Guida Utente'), 400);
-            }}
-          >
-            <FileText className="w-4 h-4" />
-            Guida Utente
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={() => {
-              expandAll('admin');
-              setTimeout(() => handlePrintSection('manual-admin-content', 'Guida Admin'), 400);
-            }}
-          >
-            <Shield className="w-4 h-4" />
-            Guida Admin
-          </Button>
-          <Button
-            variant="default"
-            size="sm"
-            className="gap-2"
-            onClick={() => {
-              expandAll('user');
-              expandAll('admin');
-              setTimeout(() => handlePrintSection('manual-full-content', 'Manuale Completo'), 400);
-            }}
-          >
-            <Book className="w-4 h-4" />
-            Manuale Completo
-          </Button>
+        <CardContent className="space-y-3">
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">📄 Salva come PDF (stampa)</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => {
+                  expandAll('user');
+                  setTimeout(() => handlePrintSection('manual-user-content', 'Guida Utente'), 400);
+                }}
+              >
+                <FileText className="w-4 h-4" />
+                Guida Utente
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => {
+                  expandAll('admin');
+                  setTimeout(() => handlePrintSection('manual-admin-content', 'Guida Admin'), 400);
+                }}
+              >
+                <Shield className="w-4 h-4" />
+                Guida Admin
+              </Button>
+              <Button
+                variant="default"
+                size="sm"
+                className="gap-2"
+                onClick={() => {
+                  expandAll('user');
+                  expandAll('admin');
+                  setTimeout(() => handlePrintSection('manual-full-content', 'Manuale Completo'), 400);
+                }}
+              >
+                <Book className="w-4 h-4" />
+                Manuale Completo
+              </Button>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">📝 Scarica come TXT</p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => {
+                  expandAll('user');
+                  setTimeout(() => handleDownloadTxt('manual-user-content', 'Guida Utente'), 400);
+                }}
+              >
+                <Download className="w-4 h-4" />
+                Guida Utente
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => {
+                  expandAll('admin');
+                  setTimeout(() => handleDownloadTxt('manual-admin-content', 'Guida Admin'), 400);
+                }}
+              >
+                <Download className="w-4 h-4" />
+                Guida Admin
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="gap-2"
+                onClick={() => {
+                  expandAll('user');
+                  expandAll('admin');
+                  setTimeout(() => handleDownloadTxt('manual-full-content', 'Manuale Completo'), 400);
+                }}
+              >
+                <Download className="w-4 h-4" />
+                Manuale Completo
+              </Button>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
