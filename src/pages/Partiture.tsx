@@ -1,12 +1,15 @@
 import React, { useEffect, useRef, useMemo, useState, useCallback } from 'react';
-import { Guitar, Music, Wifi, WifiOff, Footprints, Minus, Plus } from 'lucide-react';
+import { Guitar, Music, Wifi, WifiOff, Footprints, Minus, Plus, Eye, EyeOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
 import { supabase } from '@/integrations/supabase/client';
 import { parseChordPro, transposeSong, ChordProSong } from '@/lib/chordpro';
 import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
 import { usePedalScroll } from '@/hooks/usePedalControl';
+import { cn } from '@/lib/utils';
 
 interface SongbookFile {
   id: string;
@@ -27,11 +30,25 @@ export default function Partiture() {
     return val >= 50 && val <= 200 ? val : 100;
   });
 
+  // "Segui" toggle — persisted locally, default ON
+  const [followMode, setFollowMode] = useState<boolean>(() => {
+    const saved = safeGetItem('local', 'partiture_follow_mode');
+    return saved !== 'false'; // default ON
+  });
+
+  const handleFollowToggle = useCallback((enabled: boolean) => {
+    setFollowMode(enabled);
+    safeSetItem('local', 'partiture_follow_mode', enabled ? 'true' : 'false');
+  }, []);
+
   const broadcastToPartiture = (session as any)?.broadcast_to_partiture ?? true;
-  const isSongbookLive = !!(session as any)?.songbook_mode && broadcastToPartiture;
+  const isDualBroadcast = !!(session as any)?.dual_broadcast;
+  // Show content in both normal songbook mode AND dual mode
+  const isSongbookLive = (!!(session as any)?.songbook_mode && broadcastToPartiture) || isDualBroadcast;
   const fileId = (session as any)?.songbook_file_id;
   const remoteTranspose = (session as any)?.songbook_transpose ?? 0;
   const remoteHighlightLine = (session as any)?.highlight_line ?? 0;
+  const highlightLinesCount = (session as any)?.highlight_lines_count ?? 2;
   const baseFontSize = (session as any)?.font_size ?? 100;
   const fontSize = baseFontSize * localTextScale / 100;
 
@@ -48,7 +65,6 @@ export default function Partiture() {
     const fetchFile = async () => {
       const lip = safeGetItem('local', 'broadcast_local_ip') || '';
 
-      // Run all sources in parallel
       const cloudPromise = (async (): Promise<SongbookFile | null> => {
         try {
           const controller = new AbortController();
@@ -61,14 +77,11 @@ export default function Partiture() {
         }
       })();
 
-      // WS: use existing hybrid connection (no separate WebSocket!)
       const wsPromise = isLocalMode ? localRequestSong(fileId, 2000) : Promise.resolve(null);
 
-      // LAN HTTP
       const lanPromise = (async (): Promise<SongbookFile | null> => {
         if (!lip) return null;
         try {
-          // Direct lookup (server now matches by supabase_id too)
           const resp = await fetch(`http://${lip}:8080/api/songbook/${fileId}`, {
             signal: AbortSignal.timeout(3000),
           });
@@ -94,7 +107,6 @@ export default function Partiture() {
         }
       }
 
-      // Final fallback: IndexedDB cache
       const { getCachedFile } = await import('@/lib/songbookCache');
       const cached = await getCachedFile(fileId);
       if (cached) {
@@ -111,12 +123,11 @@ export default function Partiture() {
     return transposeSong(parseChordPro(file.content), remoteTranspose);
   }, [file, remoteTranspose]);
 
-  // Sync scroll from broadcast session using highlight_line — fast interpolated scroll
+  // Sync scroll from broadcast session using highlight_line — only when followMode is ON
   const scrollAnimRef = useRef<number | null>(null);
   useEffect(() => {
-    if (!scrollRef.current || !isSongbookLive) return;
+    if (!scrollRef.current || !isSongbookLive || !followMode) return;
     const container = scrollRef.current;
-    const highlightLinesCount = (session as any)?.highlight_lines_count ?? 2;
     
     const firstEl = container.querySelector(`[data-line="${remoteHighlightLine}"]`) as HTMLElement;
     if (!firstEl) return;
@@ -131,7 +142,6 @@ export default function Partiture() {
     const groupCenter = (groupTop + groupBottom) / 2;
     const target = Math.max(0, groupCenter - container.clientHeight / 2);
 
-    // Fast interpolated scroll (~120ms ease-out)
     if (scrollAnimRef.current) cancelAnimationFrame(scrollAnimRef.current);
     const startPos = container.scrollTop;
     const distance = target - startPos;
@@ -147,7 +157,7 @@ export default function Partiture() {
     };
     scrollAnimRef.current = requestAnimationFrame(animate);
     return () => { if (scrollAnimRef.current) cancelAnimationFrame(scrollAnimRef.current); };
-  }, [remoteHighlightLine, isSongbookLive]);
+  }, [remoteHighlightLine, isSongbookLive, followMode, highlightLinesCount]);
 
   // Waiting state
   if (!isSongbookLive || !file) {
@@ -223,6 +233,11 @@ export default function Partiture() {
                 {remoteTranspose > 0 ? '+' : ''}{remoteTranspose}
               </Badge>
             )}
+            {isDualBroadcast && (
+              <Badge variant="outline" className="text-xs border-primary/50 text-primary">
+                Duale
+              </Badge>
+            )}
             {pedalActive && (
               <Badge variant="outline" className="text-xs text-primary border-primary/50">
                 <Footprints className="w-3 h-3 mr-1" />
@@ -233,6 +248,22 @@ export default function Partiture() {
               <Wifi className="w-3 h-3 mr-1" />
               LIVE
             </Badge>
+          </div>
+        </div>
+        {/* Controls row: Segui toggle + text scale */}
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
+          {/* Segui toggle */}
+          <div className="flex items-center gap-2">
+            <Switch
+              id="follow-mode"
+              checked={followMode}
+              onCheckedChange={handleFollowToggle}
+              className="data-[state=checked]:bg-primary"
+            />
+            <Label htmlFor="follow-mode" className="text-xs font-medium cursor-pointer flex items-center gap-1">
+              {followMode ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              Segui
+            </Label>
           </div>
           {/* Text scale controls */}
           <div className="flex items-center gap-1.5">
@@ -265,7 +296,7 @@ export default function Partiture() {
         </div>
       </header>
 
-      {/* Song content - synced scroll */}
+      {/* Song content - synced scroll with highlight */}
       <div
         ref={scrollRef}
         className="flex-1 overflow-auto px-4 py-6"
@@ -275,11 +306,63 @@ export default function Partiture() {
             className="font-mono whitespace-pre-wrap leading-relaxed text-foreground"
             style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px` }}
           >
-            {renderResponsiveSong(parsedSong, { coloredChords: true })}
+            {parsedSong.lines.map((line, idx) => {
+              const isHighlighted = idx >= remoteHighlightLine && idx < remoteHighlightLine + highlightLinesCount;
+              
+              if (line.type === 'directive') {
+                const sectionLabel = line.directiveValue || line.directiveKey || '';
+                if (!sectionLabel) return <div key={idx} data-line={idx} />;
+                return (
+                  <div
+                    key={idx}
+                    data-line={idx}
+                    className={cn(
+                      "font-bold text-primary/80 mt-4 mb-1 transition-opacity duration-150",
+                      !isHighlighted && "opacity-40"
+                    )}
+                  >
+                    [{sectionLabel}]
+                  </div>
+                );
+              }
+              
+              if (line.type === 'empty') {
+                return <div key={idx} data-line={idx} className="h-3" />;
+              }
+
+              // chord-text or text lines
+              return (
+                <div
+                  key={idx}
+                  data-line={idx}
+                  className={cn(
+                    "transition-opacity duration-150 relative",
+                    isHighlighted 
+                      ? "opacity-100 bg-primary/10 rounded px-1 -mx-1 border-l-2 border-primary" 
+                      : "opacity-40"
+                  )}
+                >
+                  {line.chords && line.chords.length > 0 && (
+                    <div className="text-primary font-bold leading-tight">
+                      {(() => {
+                        let chordLine = '';
+                        for (const { chord, position } of line.chords) {
+                          while (chordLine.length < position) chordLine += ' ';
+                          chordLine += chord;
+                        }
+                        return chordLine;
+                      })()}
+                    </div>
+                  )}
+                  <div>{line.text || '\u00A0'}</div>
+                </div>
+              );
+            })}
+            {/* Extra space at bottom for scroll */}
+            <div className="h-[50vh]" />
           </div>
         )}
       </div>
-
     </div>
   );
 }

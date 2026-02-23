@@ -415,10 +415,25 @@ export default function SongbookLive() {
     }
   }, [showChordsOnTV]);
 
-  // Stop songbook mode on unmount
+  // Auto-select file when dual broadcast is started externally (from Catalogo ↔ SB)
+  useEffect(() => {
+    const isDual = !!(session as any)?.dual_broadcast;
+    const sbFileId = (session as any)?.songbook_file_id;
+    if (isDual && sbFileId && (!selectedFile || selectedFile.id !== sbFileId)) {
+      const match = files.find(f => f.id === sbFileId);
+      if (match) {
+        setSelectedFile(match);
+        setTranspose((match as any).last_transpose ?? 0);
+        if (scrollRef.current) scrollRef.current.scrollTop = 0;
+      }
+    }
+  }, [(session as any)?.dual_broadcast, (session as any)?.songbook_file_id, files]);
+
+  // Stop songbook mode on unmount — but NOT if dual broadcast is active (managed elsewhere)
   useEffect(() => {
     return () => {
-      if (session?.songbook_mode) {
+      const isDual = !!(session as any)?.dual_broadcast;
+      if (session?.songbook_mode && !isDual) {
         updateSession({
           songbook_mode: false,
           songbook_file_id: null,
