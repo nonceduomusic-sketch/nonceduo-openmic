@@ -42,6 +42,7 @@ export interface BroadcastSession {
   songbook_view_mode: 'compact' | 'karaoke' | 'spotify' | 'chordpro';
   broadcast_to_tv: boolean;
   broadcast_to_partiture: boolean;
+  dual_broadcast: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -120,6 +121,7 @@ export function useBroadcast(salaCode: string = 'main') {
     songbook_view_mode: 'chordpro',
     broadcast_to_tv: true,
     broadcast_to_partiture: true,
+    dual_broadcast: false,
     created_at: '',
     updated_at: '',
   } as BroadcastSession);
@@ -298,6 +300,25 @@ export function useBroadcast(salaCode: string = 'main') {
       is_broadcasting: true,
       songbook_mode: false,
       songbook_file_id: null,
+      dual_broadcast: false,
+    } as any);
+  }, [updateSession]);
+
+  // Dual broadcast: catalog text on /trasmetti + .cho on /partiture
+  const broadcastDual = useCallback(async (catalogSongId: string, songbookFileId: string) => {
+    return updateSession({
+      current_song_id: catalogSongId,
+      current_reservation_id: null,
+      songbook_file_id: songbookFileId,
+      songbook_mode: true,
+      dual_broadcast: true,
+      display_mode: 'lyrics',
+      scroll_position: 0,
+      highlight_line: 0,
+      is_active: true,
+      is_broadcasting: true,
+      broadcast_to_tv: true,
+      broadcast_to_partiture: true,
     } as any);
   }, [updateSession]);
 
@@ -313,6 +334,7 @@ export function useBroadcast(salaCode: string = 'main') {
       is_broadcasting: false,
       songbook_mode: false,
       songbook_file_id: null,
+      dual_broadcast: false,
     } as any);
   }, [updateSession]);
 
@@ -326,6 +348,7 @@ export function useBroadcast(salaCode: string = 'main') {
     loading,
     updateSession,
     broadcastSong,
+    broadcastDual,
     stopBroadcast,
     toggleActive,
     refetch: fetchSession,

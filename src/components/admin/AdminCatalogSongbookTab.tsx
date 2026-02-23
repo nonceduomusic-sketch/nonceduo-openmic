@@ -8,6 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useHybridBroadcast } from "@/hooks/useHybridBroadcast";
 import {
   Link2,
   Link2Off,
@@ -23,6 +24,10 @@ import {
   Filter,
   ChevronDown,
   ChevronUp,
+  Play,
+  Square,
+  Tv,
+  Radio,
 } from "lucide-react";
 import {
   Select,
@@ -83,10 +88,15 @@ export function AdminCatalogSongbookTab() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
+  const { session, broadcastDual, stopBroadcast } = useHybridBroadcast('main');
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [expandedSongId, setExpandedSongId] = useState<string | null>(null);
   const [autoMatchRunning, setAutoMatchRunning] = useState(false);
+
+  // Broadcast state
+  const isDualBroadcasting = !!(session as any)?.dual_broadcast && (session as any)?.is_broadcasting;
+  const currentBroadcastSongId = isDualBroadcasting ? (session as any)?.current_song_id : null;
 
   // ── Fetch songs ──
   const { data: songs = [], isLoading: songsLoading } = useQuery({
@@ -271,6 +281,26 @@ export function AdminCatalogSongbookTab() {
 
   return (
     <div className="space-y-4 max-w-4xl mx-auto">
+      {/* Dual broadcast active banner */}
+      {isDualBroadcasting && (
+        <Card className="p-3 border-primary/40 bg-primary/5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded-full bg-destructive animate-pulse" />
+              <Radio className="w-4 h-4 text-primary" />
+              <span className="text-sm font-medium">Trasmissione Duale attiva</span>
+            </div>
+            <Button variant="destructive" size="sm" className="h-7 gap-1" onClick={async () => {
+              await stopBroadcast();
+              toast({ title: "Trasmissione fermata" });
+            }}>
+              <Square className="w-3 h-3" />
+              Ferma
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {/* Header */}
       <div className="space-y-2">
         <h2 className="text-lg font-bold flex items-center gap-2">
@@ -405,14 +435,33 @@ export function AdminCatalogSongbookTab() {
                                   {file.artist || "—"} · {file.filename}
                                 </div>
                               </div>
-                              {link.match_confidence != null && (
-                                <Badge variant="outline" className="text-[10px] shrink-0">
-                                  {Math.round(link.match_confidence * 100)}%
-                                </Badge>
+                              {currentBroadcastSongId === song.id ? (
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="h-7 gap-1 shrink-0"
+                                  onClick={async () => {
+                                    await stopBroadcast();
+                                    toast({ title: "Trasmissione fermata" });
+                                  }}
+                                >
+                                  <Square className="w-3 h-3" />
+                                  <span className="hidden sm:inline">Ferma</span>
+                                </Button>
+                              ) : (
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  className="h-7 gap-1 shrink-0"
+                                  onClick={async () => {
+                                    await broadcastDual(song.id, file.id);
+                                    toast({ title: "Trasmissione Duale avviata", description: `TV: ${song.titolo} · Partiture: ${file.title}` });
+                                  }}
+                                >
+                                  <Play className="w-3 h-3" />
+                                  <span className="hidden sm:inline">Trasmetti</span>
+                                </Button>
                               )}
-                              <Badge variant="outline" className="text-[10px] shrink-0 capitalize">
-                                {link.linked_by}
-                              </Badge>
                               <Button
                                 variant="ghost"
                                 size="icon"

@@ -136,6 +136,29 @@ export function useHybridBroadcast(salaCode: string = 'main') {
     return cloud.broadcastSong(songId, reservationId);
   }, [isLocalMode, localSendUpdate, cloud.broadcastSong]);
 
+  // Local-aware broadcastDual: catalog text on TV, .cho on partiture
+  const broadcastDual = useCallback(async (catalogSongId: string, songbookFileId: string) => {
+    const updates = {
+      current_song_id: catalogSongId,
+      current_reservation_id: null,
+      songbook_file_id: songbookFileId,
+      songbook_mode: true,
+      dual_broadcast: true,
+      display_mode: 'lyrics',
+      scroll_position: 0,
+      highlight_line: 0,
+      is_active: true,
+      is_broadcasting: true,
+      broadcast_to_tv: true,
+      broadcast_to_partiture: true,
+    };
+    if (isLocalMode) {
+      localSendUpdate(updates);
+      setLocalOverrides(prev => ({ ...prev, ...updates }));
+    }
+    return cloud.broadcastDual(catalogSongId, songbookFileId);
+  }, [isLocalMode, localSendUpdate, cloud.broadcastDual]);
+
   // Local-aware stopBroadcast
   const stopBroadcast = useCallback(async () => {
     const updates = {
@@ -147,6 +170,7 @@ export function useHybridBroadcast(salaCode: string = 'main') {
       is_broadcasting: false,
       songbook_mode: false,
       songbook_file_id: null,
+      dual_broadcast: false,
     };
     if (isLocalMode) {
       localSendUpdate(updates);
@@ -161,6 +185,7 @@ export function useHybridBroadcast(salaCode: string = 'main') {
     syncUpdate,
     updateSession: cloud.updateSession,
     broadcastSong,
+    broadcastDual,
     stopBroadcast,
     toggleActive: cloud.toggleActive,
     refetch: cloud.refetch,
