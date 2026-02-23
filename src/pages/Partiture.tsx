@@ -111,7 +111,8 @@ export default function Partiture() {
     return transposeSong(parseChordPro(file.content), remoteTranspose);
   }, [file, remoteTranspose]);
 
-  // Sync scroll from broadcast session using highlight_line — mirrors Trasmetti's center-group logic
+  // Sync scroll from broadcast session using highlight_line — fast interpolated scroll
+  const scrollAnimRef = useRef<number | null>(null);
   useEffect(() => {
     if (!scrollRef.current || !isSongbookLive) return;
     const container = scrollRef.current;
@@ -120,7 +121,6 @@ export default function Partiture() {
     const firstEl = container.querySelector(`[data-line="${remoteHighlightLine}"]`) as HTMLElement;
     if (!firstEl) return;
 
-    // Find the last highlighted line to center the whole group (mirrors Trasmetti)
     const lastHighlightIdx = remoteHighlightLine + highlightLinesCount - 1;
     const lastEl = container.querySelector(`[data-line="${lastHighlightIdx}"]`) as HTMLElement;
 
@@ -129,9 +129,24 @@ export default function Partiture() {
       ? lastEl.offsetTop + lastEl.offsetHeight 
       : firstEl.offsetTop + firstEl.offsetHeight;
     const groupCenter = (groupTop + groupBottom) / 2;
-    const scrollTarget = groupCenter - container.clientHeight / 2;
+    const target = Math.max(0, groupCenter - container.clientHeight / 2);
 
-    container.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
+    // Fast interpolated scroll (~120ms ease-out)
+    if (scrollAnimRef.current) cancelAnimationFrame(scrollAnimRef.current);
+    const startPos = container.scrollTop;
+    const distance = target - startPos;
+    if (Math.abs(distance) < 2) { container.scrollTop = target; return; }
+    const duration = Math.min(120, Math.abs(distance) * 0.5);
+    const startTime = performance.now();
+    const animate = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      container.scrollTop = startPos + distance * eased;
+      if (progress < 1) scrollAnimRef.current = requestAnimationFrame(animate);
+    };
+    scrollAnimRef.current = requestAnimationFrame(animate);
+    return () => { if (scrollAnimRef.current) cancelAnimationFrame(scrollAnimRef.current); };
   }, [remoteHighlightLine, isSongbookLive]);
 
   // Waiting state

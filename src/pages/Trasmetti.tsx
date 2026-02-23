@@ -347,6 +347,10 @@ export default function Trasmetti() {
   // Scroll highlighted line(s) into view — center the GROUP of highlighted lines
   // In songbook mode: always follow highlight_line for cross-view text alignment
   // In normal mode: only follow when highlight is enabled
+  // Track last scroll target for smooth interpolation
+  const scrollTargetRef = useRef<number | null>(null);
+  const scrollAnimFrameRef = useRef<number | null>(null);
+  
   useEffect(() => {
     if (!lyricsRef.current || !isBroadcasting) return;
     const shouldFollow = isSongbookMode || (highlightEnabled && lines.length > 0);
@@ -366,9 +370,29 @@ export default function Trasmetti() {
       ? lastEl.offsetTop + lastEl.offsetHeight 
       : firstEl.offsetTop + firstEl.offsetHeight;
     const groupCenter = (groupTop + groupBottom) / 2;
-    const scrollTarget = groupCenter - container.clientHeight / 2;
+    const target = Math.max(0, groupCenter - container.clientHeight / 2);
 
-    container.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
+    // Fast interpolated scroll (~120ms) instead of browser 'smooth' (~300ms)
+    if (scrollAnimFrameRef.current) cancelAnimationFrame(scrollAnimFrameRef.current);
+    const startPos = container.scrollTop;
+    const distance = target - startPos;
+    if (Math.abs(distance) < 2) { container.scrollTop = target; return; }
+    const duration = Math.min(120, Math.abs(distance) * 0.5); // faster for small jumps
+    const startTime = performance.now();
+    
+    const animate = (now: number) => {
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      // ease-out cubic for snappy feel
+      const eased = 1 - Math.pow(1 - progress, 3);
+      container.scrollTop = startPos + distance * eased;
+      if (progress < 1) {
+        scrollAnimFrameRef.current = requestAnimationFrame(animate);
+      }
+    };
+    scrollAnimFrameRef.current = requestAnimationFrame(animate);
+    
+    return () => { if (scrollAnimFrameRef.current) cancelAnimationFrame(scrollAnimFrameRef.current); };
   }, [highlightLine, highlightLinesCount, lines.length, highlightEnabled, isSongbookMode, isBroadcasting]);
 
   // Follow scroll_position (0-1000) — always for songbook, only when highlight OFF for normal
