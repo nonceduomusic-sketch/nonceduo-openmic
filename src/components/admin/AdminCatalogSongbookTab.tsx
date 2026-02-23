@@ -6,9 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useHybridBroadcast } from "@/hooks/useHybridBroadcast";
+import { useReservations } from "@/hooks/useReservations";
 import {
   Link2,
   Link2Off,
@@ -28,6 +30,10 @@ import {
   Square,
   Tv,
   Radio,
+  Eye,
+  EyeOff,
+  ListMusic,
+  Mic2,
 } from "lucide-react";
 import {
   Select,
@@ -43,10 +49,10 @@ function normalize(s: string): string {
   return s
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // accenti
-    .replace(/[''`]/g, "'")          // apostrofi
-    .replace(/_/g, " ")              // underscore → spazio
-    .replace(/[^a-z0-9' ]/g, "")    // rimuovi simboli
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[''`]/g, "'")
+    .replace(/_/g, " ")
+    .replace(/[^a-z0-9' ]/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -55,16 +61,12 @@ function matchScore(a: string, b: string): number {
   const na = normalize(a);
   const nb = normalize(b);
   if (na === nb) return 1;
-  // Penalizza titoli troppo corti (< 3 char) — troppi falsi positivi
   if (na.length < 3 || nb.length < 3) {
     return na === nb ? 1 : 0;
   }
-  // Penalizza differenze di lunghezza eccessive
   const lenRatio = Math.min(na.length, nb.length) / Math.max(na.length, nb.length);
   if (lenRatio < 0.4) return 0;
-  // Uno contiene l'altro (solo se il contenuto è significativo)
   if (na.includes(nb) || nb.includes(na)) return 0.85 * lenRatio;
-  // Dice coefficient
   const bigrams = (s: string) => {
     const set: string[] = [];
     for (let i = 0; i < s.length - 1; i++) set.push(s.slice(i, i + 2));
@@ -80,6 +82,7 @@ function matchScore(a: string, b: string): number {
 
 type Song = { id: string; titolo: string; artista: string };
 type SongbookFile = { id: string; title: string; artist: string | null; filename: string };
+type SongbookFileWithContent = SongbookFile & { content?: string };
 type LinkRow = { id: string; song_id: string; songbook_file_id: string; is_primary: boolean; match_confidence: number | null; linked_by: string };
 
 type FilterMode = "all" | "linked" | "unlinked";
@@ -89,10 +92,12 @@ export function AdminCatalogSongbookTab() {
   const isMobile = useIsMobile();
   const queryClient = useQueryClient();
   const { session, broadcastDual, stopBroadcast } = useHybridBroadcast('main');
+  const { activeReservations } = useReservations();
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [expandedSongId, setExpandedSongId] = useState<string | null>(null);
   const [autoMatchRunning, setAutoMatchRunning] = useState(false);
+  const [showLiveQueue, setShowLiveQueue] = useState(true);
 
   // Broadcast state
   const isDualBroadcasting = !!(session as any)?.dual_broadcast && (session as any)?.is_broadcasting;
@@ -166,6 +171,15 @@ export function AdminCatalogSongbookTab() {
   }, [links]);
 
   const songbookMap = useMemo(() => new Map(songbookFiles.map((f) => [f.id, f])), [songbookFiles]);
+
+  // Map catalog songs by normalized title+artist for queue matching
+  const songsByNormalized = useMemo(() => {
+    const map = new Map<string, Song>();
+    songs.forEach((s) => {
+      map.set(`${normalize(s.titolo)}|||${normalize(s.artista)}`, s);
+    });
+    return map;
+  }, [songs]);
 
   // ── Filtered songs ──
   const filteredSongs = useMemo(() => {
@@ -271,6 +285,20 @@ export function AdminCatalogSongbookTab() {
   const linkedCount = songs.filter((s) => linksBySongId.has(s.id)).length;
   const unlinkedCount = songs.length - linkedCount;
 
+  // ── Live queue items with link info ──
+  const liveQueueItems = useMemo(() => {
+    return activeReservations.map((res) => {
+      const key = `${normalize(res.song_title)}|||${normalize(res.song_artist)}`;
+      const catalogSong = songsByNormalized.get(key);
+      const songLinks = catalogSong ? linksBySongId.get(catalogSong.id) || [] : [];
+      const primaryLink = songLinks.find((l) => l.is_primary) || songLinks[0];
+      const linkedFile = primaryLink ? songbookMap.get(primaryLink.songbook_file_id) : undefined;
+      // Find suggestions if no link
+      const suggestions = catalogSong && !primaryLink ? getSuggestions(catalogSong) : [];
+      return { reservation: res, catalogSong, primaryLink, linkedFile, suggestions };
+    });
+  }, [activeReservations, songsByNormalized, linksBySongId, songbookMap, getSuggestions]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -298,6 +326,56 @@ export function AdminCatalogSongbookTab() {
               Ferma
             </Button>
           </div>
+        </Card>
+      )}
+
+      {/* ── Live Queue Section ── */}
+      {activeReservations.length > 0 && (
+        <Card className="overflow-hidden border-orange-500/30">
+          <button
+            className="w-full flex items-center justify-between p-3 hover:bg-muted/30 transition-colors"
+            onClick={() => setShowLiveQueue(!showLiveQueue)}
+          >
+            <div className="flex items-center gap-2">
+              <ListMusic className="w-5 h-5 text-orange-500" />
+              <span className="font-medium text-sm">Scaletta Live</span>
+              <Badge variant="secondary" className="text-[10px]">
+                {activeReservations.length} in coda
+              </Badge>
+            </div>
+            {showLiveQueue ? (
+              <ChevronUp className="w-4 h-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            )}
+          </button>
+          {showLiveQueue && (
+            <div className="border-t px-3 pb-3 pt-2 space-y-1.5">
+              {liveQueueItems.map(({ reservation, catalogSong, primaryLink, linkedFile, suggestions }) => (
+                <LiveQueueItem
+                  key={reservation.id}
+                  reservation={reservation}
+                  catalogSong={catalogSong}
+                  linkedFile={linkedFile}
+                  suggestions={suggestions}
+                  isDualBroadcasting={isDualBroadcasting}
+                  currentBroadcastSongId={currentBroadcastSongId}
+                  onBroadcast={async (songId, fileId) => {
+                    await broadcastDual(songId, fileId);
+                    toast({ title: "Trasmissione Duale avviata" });
+                  }}
+                  onStop={async () => {
+                    await stopBroadcast();
+                    toast({ title: "Trasmissione fermata" });
+                  }}
+                  onLink={(songId, fileId, score) => {
+                    createLink.mutate({ songId, fileId, confidence: score, linkedBy: "manual" });
+                  }}
+                  isLinking={createLink.isPending}
+                />
+              ))}
+            </div>
+          )}
         </Card>
       )}
 
@@ -503,6 +581,251 @@ export function AdminCatalogSongbookTab() {
   );
 }
 
+// ── Live Queue Item ──
+function LiveQueueItem({
+  reservation,
+  catalogSong,
+  linkedFile,
+  suggestions,
+  isDualBroadcasting,
+  currentBroadcastSongId,
+  onBroadcast,
+  onStop,
+  onLink,
+  isLinking,
+}: {
+  reservation: { id: string; customer_name: string; song_title: string; song_artist: string };
+  catalogSong?: Song;
+  linkedFile?: SongbookFile;
+  suggestions: { file: SongbookFile; score: number }[];
+  isDualBroadcasting: boolean;
+  currentBroadcastSongId: string | null;
+  onBroadcast: (songId: string, fileId: string) => Promise<void>;
+  onStop: () => Promise<void>;
+  onLink: (songId: string, fileId: string, score: number) => void;
+  isLinking: boolean;
+}) {
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const isBroadcasting = catalogSong && currentBroadcastSongId === catalogSong.id;
+
+  return (
+    <div className={cn(
+      "p-2.5 rounded-lg border",
+      isBroadcasting ? "border-primary/40 bg-primary/5" : "border-border"
+    )}>
+      <div className="flex items-center gap-2">
+        <Mic2 className="w-4 h-4 text-orange-500 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium truncate">{reservation.song_title}</div>
+          <div className="text-xs text-muted-foreground truncate">
+            {reservation.song_artist} · <span className="text-foreground/70">{reservation.customer_name}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {linkedFile && catalogSong && (
+            isBroadcasting ? (
+              <Button variant="destructive" size="sm" className="h-7 gap-1" onClick={onStop}>
+                <Square className="w-3 h-3" />
+                Ferma
+              </Button>
+            ) : (
+              <Button variant="default" size="sm" className="h-7 gap-1" onClick={() => onBroadcast(catalogSong.id, linkedFile.id)}>
+                <Play className="w-3 h-3" />
+                Trasmetti
+              </Button>
+            )
+          )}
+          {!linkedFile && catalogSong && suggestions.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1"
+              onClick={() => setShowSuggestions(!showSuggestions)}
+            >
+              <Eye className="w-3 h-3" />
+              {suggestions.length} file
+            </Button>
+          )}
+          {linkedFile && (
+            <Badge variant="outline" className="text-[9px] text-green-600 border-green-500/30">
+              <Guitar className="w-3 h-3 mr-0.5" />SB
+            </Badge>
+          )}
+          {!linkedFile && !catalogSong && (
+            <Badge variant="outline" className="text-[9px] text-muted-foreground">
+              Non in catalogo
+            </Badge>
+          )}
+          {!linkedFile && catalogSong && suggestions.length === 0 && (
+            <Badge variant="outline" className="text-[9px] text-orange-500 border-orange-500/30">
+              No SB
+            </Badge>
+          )}
+        </div>
+      </div>
+      {/* Expandable suggestions with preview */}
+      {showSuggestions && catalogSong && suggestions.length > 0 && (
+        <div className="mt-2 pl-6 space-y-1">
+          {suggestions.slice(0, 3).map(({ file, score }) => (
+            <SuggestionWithPreview
+              key={file.id}
+              file={file}
+              score={score}
+              onLink={() => onLink(catalogSong.id, file.id, score)}
+              onBroadcast={catalogSong ? () => {
+                // Link first, then broadcast
+                onLink(catalogSong.id, file.id, score);
+                setTimeout(() => onBroadcast(catalogSong.id, file.id), 500);
+              } : undefined}
+              isLinking={isLinking}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Suggestion with ChordPro preview ──
+function SuggestionWithPreview({
+  file,
+  score,
+  onLink,
+  onBroadcast,
+  isLinking,
+}: {
+  file: SongbookFile;
+  score: number;
+  onLink: () => void;
+  onBroadcast?: () => void;
+  isLinking: boolean;
+}) {
+  const [showPreview, setShowPreview] = useState(false);
+  const [content, setContent] = useState<string | null>(null);
+  const [loadingContent, setLoadingContent] = useState(false);
+
+  const loadContent = async () => {
+    if (content !== null) {
+      setShowPreview(!showPreview);
+      return;
+    }
+    setLoadingContent(true);
+    try {
+      const { data, error } = await supabase
+        .from("songbook_files")
+        .select("content")
+        .eq("id", file.id)
+        .single();
+      if (error) throw error;
+      setContent(data?.content || "");
+      setShowPreview(true);
+    } catch {
+      setContent("Errore nel caricamento");
+      setShowPreview(true);
+    }
+    setLoadingContent(false);
+  };
+
+  // Parse first ~15 lines of ChordPro for preview
+  const previewLines = useMemo(() => {
+    if (!content) return [];
+    return content
+      .split("\n")
+      .filter((line) => {
+        const trimmed = line.trim();
+        // Skip metadata directives
+        if (/^\{(title|t|subtitle|st|artist|key|tempo|capo|comment|ci|c):/.test(trimmed)) return false;
+        if (trimmed === "" || trimmed === "{soc}" || trimmed === "{eoc}" || trimmed === "{sot}" || trimmed === "{eot}") return false;
+        return true;
+      })
+      .slice(0, 15);
+  }, [content]);
+
+  return (
+    <div className="rounded-lg bg-muted/40 overflow-hidden">
+      <div className="flex items-center gap-2 p-2">
+        <Guitar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-medium truncate">{file.title}</div>
+          <div className="text-[10px] text-muted-foreground truncate">
+            {file.artist || "—"} · {file.filename}
+          </div>
+        </div>
+        <Badge
+          variant={score >= 0.85 ? "default" : "secondary"}
+          className="text-[9px] shrink-0"
+        >
+          {Math.round(score * 100)}%
+        </Badge>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 shrink-0"
+          onClick={loadContent}
+          disabled={loadingContent}
+        >
+          {loadingContent ? (
+            <Loader2 className="w-3 h-3 animate-spin" />
+          ) : showPreview ? (
+            <EyeOff className="w-3 h-3" />
+          ) : (
+            <Eye className="w-3 h-3" />
+          )}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-6 text-[10px] gap-0.5 shrink-0"
+          onClick={onLink}
+          disabled={isLinking}
+        >
+          <Link2 className="w-3 h-3" />
+          Collega
+        </Button>
+        {onBroadcast && (
+          <Button
+            variant="default"
+            size="sm"
+            className="h-6 text-[10px] gap-0.5 shrink-0"
+            onClick={onBroadcast}
+            disabled={isLinking}
+          >
+            <Play className="w-3 h-3" />
+          </Button>
+        )}
+      </div>
+      {showPreview && content !== null && (
+        <div className="border-t px-3 py-2 bg-background/50">
+          <ScrollArea className="max-h-[200px]">
+            <pre className="text-[11px] font-mono leading-relaxed whitespace-pre-wrap text-muted-foreground">
+              {previewLines.map((line, i) => {
+                // Highlight chords in brackets
+                const parts = line.split(/(\[[^\]]+\])/g);
+                return (
+                  <div key={i}>
+                    {parts.map((part, j) =>
+                      part.startsWith("[") && part.endsWith("]") ? (
+                        <span key={j} className="text-primary font-semibold">{part}</span>
+                      ) : (
+                        <span key={j}>{part}</span>
+                      )
+                    )}
+                  </div>
+                );
+              })}
+              {content.split("\n").length > 15 && (
+                <div className="text-[10px] text-muted-foreground/50 mt-1">
+                  ... altre {content.split("\n").length - 15} righe
+                </div>
+              )}
+            </pre>
+          </ScrollArea>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Suggestions sub-component ──
 function SuggestionsList({
   song,
@@ -526,34 +849,13 @@ function SuggestionsList({
   return (
     <div className="space-y-1">
       {suggestions.map(({ file, score }) => (
-        <div
+        <SuggestionWithPreview
           key={file.id}
-          className="flex items-center gap-2 p-2 rounded-lg bg-muted/40 hover:bg-muted/60 transition-colors"
-        >
-          <Guitar className="w-4 h-4 text-muted-foreground shrink-0" />
-          <div className="min-w-0 flex-1">
-            <div className="text-sm truncate">{file.title}</div>
-            <div className="text-xs text-muted-foreground truncate">
-              {file.artist || "—"} · {file.filename}
-            </div>
-          </div>
-          <Badge
-            variant={score >= 0.85 ? "default" : "secondary"}
-            className="text-[10px] shrink-0"
-          >
-            {Math.round(score * 100)}%
-          </Badge>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 gap-1 shrink-0"
-            onClick={() => onLink(file.id, score)}
-            disabled={isLinking}
-          >
-            <Link2 className="w-3 h-3" />
-            <span className="hidden sm:inline">Collega</span>
-          </Button>
-        </div>
+          file={file}
+          score={score}
+          onLink={() => onLink(file.id, score)}
+          isLinking={isLinking}
+        />
       ))}
     </div>
   );
