@@ -85,16 +85,24 @@ export default function SongbookLive() {
   const [coloredChords, setColoredChords] = useState(true);
   const [autoScroll, setAutoScroll] = useState(false);
   const [scrollSpeed, setScrollSpeed] = useState(50);
+  // Track whether highlight was toggled locally to avoid useEffect overriding it
+  const highlightLocalToggleRef = useRef(false);
   const [highlightLines, setHighlightLines] = useState(() => {
+    // Default OFF in Songbook Live
     const fromSession = (session as any)?.highlight_lines_count;
-    const enabled = (session as any)?.highlight_enabled ?? true;
+    const enabled = (session as any)?.highlight_enabled ?? false;
     if (!enabled) return 0;
     return fromSession ?? 2;
   });
   
   // Keep highlightLines in sync with session changes (e.g. toggled from admin)
+  // BUT skip if the change originated from this component (local toggle)
   useEffect(() => {
-    const enabled = (session as any)?.highlight_enabled ?? true;
+    if (highlightLocalToggleRef.current) {
+      highlightLocalToggleRef.current = false;
+      return;
+    }
+    const enabled = (session as any)?.highlight_enabled ?? false;
     const count = (session as any)?.highlight_lines_count ?? 2;
     setHighlightLines(enabled ? count : 0);
   }, [(session as any)?.highlight_enabled, (session as any)?.highlight_lines_count]);
@@ -602,6 +610,7 @@ export default function SongbookLive() {
                 checked={highlightLines > 0}
                 onChange={(checked) => {
                   const val = checked ? 2 : 0;
+                  highlightLocalToggleRef.current = true;
                   setHighlightLines(val);
                   syncUpdate({ highlight_lines_count: val, highlight_enabled: checked });
                 }}
