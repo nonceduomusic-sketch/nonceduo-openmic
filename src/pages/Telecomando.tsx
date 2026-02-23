@@ -165,7 +165,7 @@ interface RemoteControlInterfaceProps {
 }
 
 function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChange }: RemoteControlInterfaceProps) {
-  const { session, syncUpdate, updateSession, mode, setMode, localIP, setLocalIP, localConnected, localLatency, isLocalMode, localRequestSong } = useHybridBroadcast(salaCode);
+  const { session, syncUpdate, mode, setMode, localIP, setLocalIP, localConnected, localLatency, isLocalMode, localRequestSong } = useHybridBroadcast(salaCode);
   const { updateScrollPosition } = useRemoteControl(sessionId, salaCode);
 
   // Optimistic ref to prevent stale reads during rapid button presses

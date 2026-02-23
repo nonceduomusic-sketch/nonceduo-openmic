@@ -75,7 +75,7 @@ interface SongbookTabProps {
 
 export function SongbookTab({ canManage = true, canFull = true }: SongbookTabProps) {
   const { files, loading, uploadFiles, updateFile, deleteFile, deleteAllFiles } = useSongbookFiles();
-  const { updateSession } = useHybridBroadcast('main');
+  const { syncUpdate } = useHybridBroadcast('main');
   
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<SortMode>('title-asc');
@@ -155,7 +155,7 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
 
   // Broadcast a file directly from catalog to TV
   const handleBroadcastFile = (file: SongbookFile) => {
-    updateSession({
+    syncUpdate({
       songbook_mode: true,
       songbook_file_id: file.id,
       songbook_show_chords_on_tv: false,

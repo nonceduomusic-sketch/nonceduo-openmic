@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useBroadcast } from '@/hooks/useBroadcast';
+import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +13,7 @@ interface AdminRemotePreviewProps {
 }
 
 export function AdminRemotePreview({ salaCode = 'main' }: AdminRemotePreviewProps) {
-  const { session, updateSession } = useBroadcast(salaCode);
+  const { session, syncUpdate } = useHybridBroadcast(salaCode);
   const [currentSong, setCurrentSong] = useState<{ titolo: string; artista: string; testo: string | null } | null>(null);
   const [showPreview, setShowPreview] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -76,16 +76,16 @@ export function AdminRemotePreview({ salaCode = 'main' }: AdminRemotePreviewProp
    // Controlli scroll (admin ha permessi diretti)
    const scrollUp = async () => {
      const newLine = Math.max(0, highlightLine - 1);
-     await updateSession({ highlight_line: newLine });
+     syncUpdate({ highlight_line: newLine });
    };
  
    const scrollDown = async () => {
      const newLine = Math.min(lines.length - 1, highlightLine + 1);
-     await updateSession({ highlight_line: newLine });
+     syncUpdate({ highlight_line: newLine });
    };
  
    const scrollToLine = async (lineIndex: number) => {
-     await updateSession({ highlight_line: lineIndex });
+     syncUpdate({ highlight_line: lineIndex });
    };
  
    return (

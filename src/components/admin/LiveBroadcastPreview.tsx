@@ -57,7 +57,7 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
  };
  
  export function LiveBroadcastPreview({ canManage = true }: LiveBroadcastPreviewProps) {
-   const { session, updateSession, syncUpdate } = useHybridBroadcast('main');
+   const { session, syncUpdate } = useHybridBroadcast('main');
    const { files: songbookFiles } = useSongbookFiles();
    const [currentSong, setCurrentSong] = useState<Song | null>(null);
    const [currentSongbookFile, setCurrentSongbookFile] = useState<SongbookFile | null>(null);
@@ -150,7 +150,7 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
 
   const { onScroll: onAdminLyricsScroll } = useScrollPositionPublisher({
     enabled: !!canManage && remoteScrollEnabled,
-    publish: (ratio) => updateSession({ scroll_position: ratio } as any),
+    publish: (ratio) => syncUpdate({ scroll_position: ratio }),
   });
 
   const handleLyricsScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
@@ -307,16 +307,16 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
    useEffect(() => {
      if (!autoScroll || !lineMapping.length) return;
      const interval = setInterval(async () => {
-       setLocalHighlightLine(prev => {
-         const currentVisual = lineMapping.findIndex(l => l.rawIndex === prev);
-         const nextVisual = Math.min(lineMapping.length - 1, currentVisual + 1);
-         const nextRaw = lineMapping[nextVisual]?.rawIndex ?? prev;
-         updateSession({ highlight_line: nextRaw, auto_scroll: true } as any);
-         return nextRaw;
-       });
-     }, (6 - scrollSpeed) * 1500);
-     return () => clearInterval(interval);
-   }, [autoScroll, lineMapping, scrollSpeed, updateSession]);
+        setLocalHighlightLine(prev => {
+          const currentVisual = lineMapping.findIndex(l => l.rawIndex === prev);
+          const nextVisual = Math.min(lineMapping.length - 1, currentVisual + 1);
+          const nextRaw = lineMapping[nextVisual]?.rawIndex ?? prev;
+          syncUpdate({ highlight_line: nextRaw, auto_scroll: true });
+          return nextRaw;
+        });
+      }, (6 - scrollSpeed) * 1500);
+      return () => clearInterval(interval);
+    }, [autoScroll, lineMapping, scrollSpeed, syncUpdate]);
  
   // Scroll within container — center the GROUP of highlighted lines
   useEffect(() => {
@@ -345,79 +345,79 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
      if (!canManage) return;
      const currentVisual = lineMapping.findIndex(l => l.rawIndex === localHighlightLine);
      const newVisual = direction === 'up' ? Math.max(0, currentVisual - 1) : Math.min(lineMapping.length - 1, currentVisual + 1);
-     const newRaw = lineMapping[newVisual]?.rawIndex ?? 0;
-     setLocalHighlightLine(newRaw);
-     setAutoScroll(false);
-     await updateSession({ highlight_line: newRaw, auto_scroll: false } as any);
-   }, [canManage, localHighlightLine, lineMapping, updateSession]);
+    const newRaw = lineMapping[newVisual]?.rawIndex ?? 0;
+      setLocalHighlightLine(newRaw);
+      setAutoScroll(false);
+      syncUpdate({ highlight_line: newRaw, auto_scroll: false });
+    }, [canManage, localHighlightLine, lineMapping, syncUpdate]);
  
    const handleLineClick = useCallback(async (visualIndex: number) => {
      if (!canManage) return;
-     const rawIndex = lineMapping[visualIndex]?.rawIndex ?? visualIndex;
-     setLocalHighlightLine(rawIndex);
-     setAutoScroll(false);
-     await updateSession({ highlight_line: rawIndex, auto_scroll: false } as any);
-   }, [canManage, lineMapping, updateSession]);
+      const rawIndex = lineMapping[visualIndex]?.rawIndex ?? visualIndex;
+      setLocalHighlightLine(rawIndex);
+      setAutoScroll(false);
+      syncUpdate({ highlight_line: rawIndex, auto_scroll: false });
+    }, [canManage, lineMapping, syncUpdate]);
  
    const handleReset = useCallback(async () => {
      if (!canManage) return;
-     const firstRaw = lineMapping[0]?.rawIndex ?? 0;
-     setLocalHighlightLine(firstRaw);
-     setAutoScroll(false);
-     await updateSession({ highlight_line: firstRaw, auto_scroll: false } as any);
-   }, [canManage, lineMapping, updateSession]);
+      const firstRaw = lineMapping[0]?.rawIndex ?? 0;
+      setLocalHighlightLine(firstRaw);
+      setAutoScroll(false);
+      syncUpdate({ highlight_line: firstRaw, auto_scroll: false });
+    }, [canManage, lineMapping, syncUpdate]);
  
    const handleStopBroadcast = useCallback(async () => {
      if (!canManage) return;
-     await updateSession({ 
-       is_broadcasting: false, 
-       display_mode: 'waiting', 
-       current_song_id: null, 
-       current_reservation_id: null, 
-       songbook_mode: false,
-       songbook_file_id: null,
-       highlight_line: 0, 
-       auto_scroll: false 
-     } as any);
-     setAutoScroll(false);
-     setCurrentSongbookFile(null);
-     toast.success('Trasmissione interrotta - TV in attesa');
-   }, [canManage, updateSession]);
+      syncUpdate({ 
+        is_broadcasting: false, 
+        display_mode: 'waiting', 
+        current_song_id: null, 
+        current_reservation_id: null, 
+        songbook_mode: false,
+        songbook_file_id: null,
+        highlight_line: 0, 
+        auto_scroll: false 
+      });
+      setAutoScroll(false);
+      setCurrentSongbookFile(null);
+      toast.success('Trasmissione interrotta - TV in attesa');
+    }, [canManage, syncUpdate]);
  
    const handleStartBroadcast = useCallback(async () => {
      if (!canManage || !hasContent) return;
      
      if (isSongbookMode && currentSongbookFile) {
        // Already in SongBook mode - just ensure broadcasting
-       await updateSession({ 
-         is_broadcasting: true, 
-         display_mode: 'lyrics',
-         songbook_mode: true,
-         songbook_file_id: currentSongbookFile.id,
-       } as any);
-       toast.success('Trasmissione SongBook avviata!');
-     } else if (currentSong) {
-       // Normal lyrics mode
-       await updateSession({ is_broadcasting: true, display_mode: 'lyrics', tv_view_mode: viewMode } as any);
-       toast.success(`Trasmissione avviata! Stile: ${viewMode === 'spotify' ? 'Spotify' : viewMode === 'karaoke' ? 'Karaoke' : 'Compatta'}`);
-     }
-   }, [canManage, hasContent, isSongbookMode, currentSongbookFile, currentSong, viewMode, updateSession]);
+        syncUpdate({ 
+          is_broadcasting: true, 
+          display_mode: 'lyrics',
+          songbook_mode: true,
+          songbook_file_id: currentSongbookFile.id,
+        });
+        toast.success('Trasmissione SongBook avviata!');
+      } else if (currentSong) {
+        // Normal lyrics mode
+        syncUpdate({ is_broadcasting: true, display_mode: 'lyrics', tv_view_mode: viewMode });
+        toast.success(`Trasmissione avviata! Stile: ${viewMode === 'spotify' ? 'Spotify' : viewMode === 'karaoke' ? 'Karaoke' : 'Compatta'}`);
+      }
+    }, [canManage, hasContent, isSongbookMode, currentSongbookFile, currentSong, viewMode, syncUpdate]);
  
    const handleToggleAutoScroll = useCallback(async () => {
      const newAutoScroll = !autoScroll;
-     setAutoScroll(newAutoScroll);
-     await updateSession({ auto_scroll_active: newAutoScroll, auto_scroll_bpm: autoScrollBpm } as any);
-     if (newAutoScroll) toast.success(`Auto-scroll attivato (${autoScrollBpm} BPM)`);
-     else toast.info('Auto-scroll disattivato');
-   }, [autoScroll, autoScrollBpm, updateSession]);
+      setAutoScroll(newAutoScroll);
+      syncUpdate({ auto_scroll_active: newAutoScroll, auto_scroll_bpm: autoScrollBpm });
+      if (newAutoScroll) toast.success(`Auto-scroll attivato (${autoScrollBpm} BPM)`);
+      else toast.info('Auto-scroll disattivato');
+    }, [autoScroll, autoScrollBpm, syncUpdate]);
  
    const handleAutoScrollBpmChange = useCallback(async (delta: number) => {
      const newBpm = Math.max(20, Math.min(200, autoScrollBpm + delta));
-     setAutoScrollBpm(newBpm);
-     if (autoScroll) {
-       await updateSession({ auto_scroll_bpm: newBpm } as any);
-     }
-   }, [autoScroll, autoScrollBpm, updateSession]);
+      setAutoScrollBpm(newBpm);
+      if (autoScroll) {
+        syncUpdate({ auto_scroll_bpm: newBpm });
+      }
+    }, [autoScroll, autoScrollBpm, syncUpdate]);
  
   const handleViewModeChange = useCallback(async (mode: ViewMode) => {
     lastLocalViewModeUpdate.current = Date.now();

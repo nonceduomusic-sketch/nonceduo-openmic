@@ -62,7 +62,7 @@ interface SongbookSetlistsTabProps {
 export function SongbookSetlistsTab({ canManage = true, canFull = true }: SongbookSetlistsTabProps) {
   const { files } = useSongbookFiles();
   const { setlists, createSetlist, updateSetlist, deleteSetlist } = useSongbookSetlists();
-  const { updateSession } = useHybridBroadcast('main');
+  const { syncUpdate } = useHybridBroadcast('main');
   
   const [selectedSetlistId, setSelectedSetlistId] = useState<string | null>(null);
   const { songs: setlistSongs, addSong, removeSong, reorderSongs } = useSongbookSetlistSongs(selectedSetlistId);
@@ -171,16 +171,13 @@ export function SongbookSetlistsTab({ canManage = true, canFull = true }: Songbo
       return;
     }
     
-    const success = await updateSession({
+    syncUpdate({
       songbook_mode: true,
       songbook_file_id: fileId,
       display_mode: 'lyrics',
       is_broadcasting: true,
     });
-    
-    if (success) {
-      toast.success('Brano SongBook in trasmissione!');
-    }
+    toast.success('Brano SongBook in trasmissione!');
   };
 
   return (

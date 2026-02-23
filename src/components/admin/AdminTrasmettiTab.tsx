@@ -81,7 +81,7 @@ interface AdminTrasmettiTabProps {
 }
 
 export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTrasmettiTabProps) {
-  const { session, broadcastSong, stopBroadcast, toggleActive, updateSession, syncUpdate } = useHybridBroadcast('main');
+  const { session, broadcastSong, stopBroadcast, toggleActive, syncUpdate } = useHybridBroadcast('main');
   const { activeReservations } = useReservations();
   const { songs } = useSongs();
   const { setlists, createSetlist, updateSetlist, deleteSetlist } = useBroadcastSetlists();

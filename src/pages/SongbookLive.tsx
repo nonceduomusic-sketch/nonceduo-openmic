@@ -47,8 +47,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { cn } from '@/lib/utils';
 import { SongbookFile, SongbookSetlistSong, useSongbookSetlists, useSongbookSetlistSongs } from '@/hooks/useSongbook';
 import { useCachedSongbookFiles } from '@/hooks/useCachedSongbook';
-import { useBroadcast } from '@/hooks/useBroadcast';
-import { useConnectionMode, useLocalBroadcast } from '@/hooks/useLocalBroadcast';
+import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
+import { useConnectionMode } from '@/hooks/useLocalBroadcast';
 import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/chordpro';
 import { clampScrollRatio, getScrollRatioFromElement } from '@/lib/scrollRatio';
 import { supabase } from '@/integrations/supabase/client';
@@ -69,27 +69,9 @@ interface CatalogSong {
 export default function SongbookLive() {
   const navigate = useNavigate();
   const { files, loading, isFromCache, cacheStats, preCacheFileIds } = useCachedSongbookFiles();
-  const { session, updateSession } = useBroadcast('main');
+  const { session, syncUpdate, isLocalMode, localConnected, localLatency, localCacheSong, mode, setMode, localIP, setLocalIP } = useHybridBroadcast('main');
   const { setlists } = useSongbookSetlists();
-  const { mode, setMode, localIP, setLocalIP, serverUrl } = useConnectionMode();
-  
-  const isLocalMode = mode === 'local';
-  
-  // Local broadcast connection
-  const { connected: localConnected, latency: localLatency, sendUpdate: localSendUpdate, cacheSong: localCacheSong } = useLocalBroadcast({
-    enabled: isLocalMode,
-    serverUrl,
-    onStateUpdate: (state) => {},
-  });
-
-  // Unified update: sends to cloud OR local depending on mode
-  const syncUpdate = useCallback((updates: Record<string, unknown>) => {
-    if (isLocalMode) {
-      localSendUpdate(updates);
-    } else {
-      updateSession(updates as any);
-    }
-  }, [isLocalMode, localSendUpdate, updateSession]);
+  const { serverUrl } = useConnectionMode();
   
   const [selectedFile, setSelectedFile] = useState<SongbookFile | null>(null);
   const [transpose, setTranspose] = useState(0);
@@ -481,7 +463,7 @@ export default function SongbookLive() {
       if (isActive || isDual) return;
       // If just browsing (no broadcast), clean up songbook state
       if (session?.songbook_mode) {
-        updateSession({
+        syncUpdate({
           songbook_mode: false,
           songbook_file_id: null,
           display_mode: 'waiting',
