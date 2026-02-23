@@ -28,6 +28,7 @@ import {
   Highlighter,
   Radio,
   ListPlus,
+  LayoutDashboard,
 } from 'lucide-react';
 import { SongbookLiveDrawer } from '@/components/songbook/SongbookLiveDrawer';
 import { Button } from '@/components/ui/button';
@@ -738,36 +739,54 @@ export default function SongbookLive() {
         {/* Header - App-style immersive */}
         <header className="shrink-0 z-50 bg-background/95 backdrop-blur-2xl border-b border-border/30 safe-area-top">
           <div className="px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
               <SongbookLiveDrawer
                 files={files}
                 onSelectFile={handleSelectFile}
                 onBroadcastFile={handleBroadcastFile}
                 onSetlistBroadcast={handleSetlistBroadcast}
               />
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center shrink-0 border border-primary/10">
                   <Guitar className="w-5 h-5 text-primary" />
                 </div>
-                <div>
-                  <h1 className="font-bold text-lg leading-tight">SongBook Live</h1>
+                <div className="min-w-0">
+                  <h1 className="font-bold text-lg leading-tight truncate">SongBook Live</h1>
                   <p className="text-[11px] text-muted-foreground leading-tight">
                     {filteredFiles.length} brani
                   </p>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 shrink-0">
               {isFromCache && (
-                <Badge variant="outline" className="text-xs text-amber-500 border-amber-500/30 bg-amber-500/5 rounded-lg">
+                <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/30 bg-amber-500/5 rounded-lg px-2 py-0.5">
                   <WifiOff className="w-3 h-3 mr-1" /> Offline
                 </Badge>
               )}
               {isLocalMode && localConnected && (
-                <Badge variant="outline" className="text-xs text-green-500 border-green-500/30 bg-green-500/5 rounded-lg">
+                <Badge variant="outline" className="text-[10px] text-green-500 border-green-500/30 bg-green-500/5 rounded-lg px-2 py-0.5">
                   <Server className="w-3 h-3 mr-1" /> LAN
                 </Badge>
               )}
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-10 w-10 rounded-xl text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  // If opened from admin (new tab), close tab; otherwise navigate back
+                  if (window.history.length <= 1 || document.referrer.includes('/admin')) {
+                    window.close();
+                    // Fallback if window.close() is blocked
+                    setTimeout(() => navigate('/admin'), 100);
+                  } else {
+                    navigate(-1);
+                  }
+                }}
+                title="Torna al Pannello"
+              >
+                <LayoutDashboard className="w-5 h-5" />
+              </Button>
             </div>
           </div>
         </header>
