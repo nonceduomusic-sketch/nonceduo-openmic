@@ -470,11 +470,16 @@ export default function SongbookLive() {
     safeSetItem('local', 'songbook_tv_preview', open ? 'true' : 'false');
   }, []);
 
-  // Stop songbook mode on unmount — but NOT if dual broadcast is active (managed elsewhere)
+  // Don't stop broadcast on unmount — the user controls it explicitly via the LIVE banner or stop button
+  // Only clean up non-dual broadcasts that were NOT actively broadcasting (e.g. just browsing)
   useEffect(() => {
     return () => {
       const isDual = !!(session as any)?.dual_broadcast;
-      if (session?.songbook_mode && !isDual) {
+      const isActive = !!(session as any)?.is_broadcasting;
+      // If actively broadcasting, leave it running (user can stop from LIVE banner)
+      if (isActive || isDual) return;
+      // If just browsing (no broadcast), clean up songbook state
+      if (session?.songbook_mode) {
         updateSession({
           songbook_mode: false,
           songbook_file_id: null,
@@ -621,16 +626,8 @@ export default function SongbookLive() {
 
   const handleBack = () => {
     if (selectedFile) {
-      if (isBroadcasting) {
-        syncUpdate({
-          songbook_mode: false,
-          songbook_file_id: null,
-          display_mode: 'waiting',
-          is_broadcasting: false,
-          is_active: false,
-          scroll_position: 0,
-        });
-      }
+      // Don't stop broadcasting — just go back to the file list
+      // The LIVE banner will show allowing the user to re-enter or stop
       setSelectedFile(null);
       setActiveSetlistSongs(null);
     } else {
@@ -975,25 +972,39 @@ export default function SongbookLive() {
         </div>
 
         {/* Currently broadcasting banner */}
-        {broadcastingFile && (
-          <div 
-            className="mx-4 mt-3 p-3 rounded-2xl bg-destructive/5 border border-destructive/20 cursor-pointer hover:bg-destructive/10 transition-all active:scale-[0.98]"
-            onClick={() => handleSelectFile(broadcastingFile)}
-          >
+        {broadcastingFile && !selectedFile && (
+          <div className="mx-4 mt-3 p-3 rounded-2xl bg-destructive/5 border border-destructive/20">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
-                <Tv className="w-5 h-5 text-destructive animate-pulse" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <Badge className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0 h-4 rounded-md">LIVE</Badge>
-                  <p className="font-semibold truncate text-sm">{broadcastingFile.title}</p>
+              <div 
+                className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer hover:opacity-80 transition-opacity active:scale-[0.98]"
+                onClick={() => handleSelectFile(broadcastingFile)}
+              >
+                <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center shrink-0">
+                  <Tv className="w-5 h-5 text-destructive animate-pulse" />
                 </div>
-                {broadcastingFile.artist && (
-                  <p className="text-xs text-muted-foreground truncate">{broadcastingFile.artist}</p>
-                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0 h-4 rounded-md">LIVE</Badge>
+                    <p className="font-semibold truncate text-sm">{broadcastingFile.title}</p>
+                  </div>
+                  {broadcastingFile.artist && (
+                    <p className="text-xs text-muted-foreground truncate">{broadcastingFile.artist}</p>
+                  )}
+                </div>
+                <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 -rotate-90" />
               </div>
-              <ChevronDown className="w-4 h-4 text-muted-foreground shrink-0 -rotate-90" />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 rounded-xl text-destructive hover:bg-destructive/10 shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleStopBroadcast();
+                }}
+                title="Interrompi trasmissione"
+              >
+                <Square className="w-4 h-4" />
+              </Button>
             </div>
           </div>
         )}

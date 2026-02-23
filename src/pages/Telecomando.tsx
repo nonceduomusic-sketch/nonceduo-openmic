@@ -170,17 +170,29 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
 
   // Optimistic ref to prevent stale reads during rapid button presses
   const optimisticHighlightRef = useRef(session?.highlight_line ?? 0);
+  // Ref for total lines count (used in dual mode scroll_position calc)
+  const linesRef = useRef(0);
   // Keep ref in sync with session when it updates (but never overwrite a newer optimistic value)
   useEffect(() => {
     optimisticHighlightRef.current = session?.highlight_line ?? 0;
   }, [session?.highlight_line]);
 
+  // Detect dual broadcast mode
+  const isDualBroadcast = !!(session as any)?.dual_broadcast;
+
   // Hybrid highlight update: use syncUpdate for fastest path (direct DB update or local WS)
+  // In dual mode, also send scroll_position so TV (which ignores highlight_line) stays in sync
   const updateHighlightLine = useCallback(async (line: number) => {
     optimisticHighlightRef.current = line;
-    syncUpdate({ highlight_line: line });
+    const totalLines = linesRef.current;
+    if (isDualBroadcast && totalLines > 1) {
+      const ratio = Math.round((line / (totalLines - 1)) * 1000);
+      syncUpdate({ highlight_line: line, scroll_position: Math.min(1000, ratio) });
+    } else {
+      syncUpdate({ highlight_line: line });
+    }
     return true;
-  }, [syncUpdate]);
+  }, [syncUpdate, isDualBroadcast]);
 
   const [currentSong, setCurrentSong] = useState<{
     titolo: string;
@@ -231,6 +243,9 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
     // For catalog songs: split ALL lines (including empty) to match TV indexing
     return currentSong?.testo?.split("\n").filter((line) => line.trim()) || [];
   }, [currentSong?.testo, isSongbookMode, currentSongbookFile, songbookTranspose]);
+
+  // Keep linesRef in sync for dual mode scroll_position calculation
+  linesRef.current = lines.length;
 
   // Current title/artist for display
   const displayTitle = isSongbookMode
