@@ -111,13 +111,27 @@ export default function Partiture() {
     return transposeSong(parseChordPro(file.content), remoteTranspose);
   }, [file, remoteTranspose]);
 
-  // Sync scroll from broadcast session using highlight_line for cross-view text alignment
+  // Sync scroll from broadcast session using highlight_line — mirrors Trasmetti's center-group logic
   useEffect(() => {
     if (!scrollRef.current || !isSongbookLive) return;
-    const el = scrollRef.current.querySelector(`[data-line="${remoteHighlightLine}"]`) as HTMLElement;
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
+    const container = scrollRef.current;
+    const highlightLinesCount = (session as any)?.highlight_lines_count ?? 2;
+    
+    const firstEl = container.querySelector(`[data-line="${remoteHighlightLine}"]`) as HTMLElement;
+    if (!firstEl) return;
+
+    // Find the last highlighted line to center the whole group (mirrors Trasmetti)
+    const lastHighlightIdx = remoteHighlightLine + highlightLinesCount - 1;
+    const lastEl = container.querySelector(`[data-line="${lastHighlightIdx}"]`) as HTMLElement;
+
+    const groupTop = firstEl.offsetTop;
+    const groupBottom = lastEl 
+      ? lastEl.offsetTop + lastEl.offsetHeight 
+      : firstEl.offsetTop + firstEl.offsetHeight;
+    const groupCenter = (groupTop + groupBottom) / 2;
+    const scrollTarget = groupCenter - container.clientHeight / 2;
+
+    container.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
   }, [remoteHighlightLine, isSongbookLive]);
 
   // Waiting state

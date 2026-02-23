@@ -119,7 +119,16 @@ export const AdminDashboard: React.FC = () => {
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
   const [chatNotifications, setChatNotifications] = useState<{ message: ChatMessage; conversation?: Conversation }[]>([]);
   const [assistantNotifications, setAssistantNotifications] = useState<{ id: string; userName: string; messagePreview: string; sourceSection: string }[]>([]);
-  const [mainTab, setMainTab] = useState<AdminMainTab>('notifications');
+  const [mainTab, setMainTabRaw] = useState<AdminMainTab>('notifications');
+  
+  // Intercept special tabs that open external pages
+  const setMainTab = useCallback((tab: AdminMainTab) => {
+    if (tab === 'songbook-live') {
+      window.open('/songbook-live', '_blank');
+      return;
+    }
+    setMainTabRaw(tab);
+  }, []);
   const [communitySubTab, setCommunitySubTab] = useState<"groups" | "invites" | "users" | "feed" | "blocked">("groups");
   const [didInitTabFromAccess, setDidInitTabFromAccess] = useState(false);
   
