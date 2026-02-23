@@ -386,6 +386,7 @@ export type Database = {
           partiture_dim_inactive: boolean | null
           partiture_follow: boolean | null
           partiture_highlight: boolean | null
+          remote_dual_scroll: boolean | null
           remote_scroll_enabled: boolean | null
           sala_code: string
           sala_name: string
@@ -444,6 +445,7 @@ export type Database = {
           partiture_dim_inactive?: boolean | null
           partiture_follow?: boolean | null
           partiture_highlight?: boolean | null
+          remote_dual_scroll?: boolean | null
           remote_scroll_enabled?: boolean | null
           sala_code?: string
           sala_name?: string
@@ -502,6 +504,7 @@ export type Database = {
           partiture_dim_inactive?: boolean | null
           partiture_follow?: boolean | null
           partiture_highlight?: boolean | null
+          remote_dual_scroll?: boolean | null
           remote_scroll_enabled?: boolean | null
           sala_code?: string
           sala_name?: string
