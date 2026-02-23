@@ -27,7 +27,7 @@ export default function Partiture() {
   const [localTextScale, setLocalTextScale] = useState<number>(() => {
     const saved = safeGetItem('local', 'partiture_text_scale');
     const val = saved ? parseInt(saved, 10) : 100;
-    return val >= 50 && val <= 200 ? val : 100;
+    return val >= 50 && val <= 300 ? val : 100;
   });
 
   // "Segui" toggle — default from session, local override persisted
