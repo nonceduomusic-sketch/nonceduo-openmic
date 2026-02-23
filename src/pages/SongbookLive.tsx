@@ -716,6 +716,29 @@ export default function SongbookLive() {
               />
             </div>
 
+            {/* Partiture controls */}
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Partiture</p>
+              <SettingRow
+                icon={<Eye className="w-4 h-4" />}
+                label="Segui (auto-scroll)"
+                description="I musicisti seguono automaticamente"
+                checked={(session as any)?.partiture_follow ?? true}
+                onChange={(checked) => {
+                  syncUpdate({ partiture_follow: checked });
+                }}
+              />
+              <SettingRow
+                icon={<EyeOff className="w-4 h-4" />}
+                label="Oscura righe inattive"
+                description="Riduce opacità righe non evidenziate"
+                checked={(session as any)?.partiture_dim_inactive ?? false}
+                onChange={(checked) => {
+                  syncUpdate({ partiture_dim_inactive: checked });
+                }}
+              />
+            </div>
+
             {/* Swipe */}
             {activeSetlistSongs && activeSetlistSongs.length > 1 && (
               <div className="space-y-1">

@@ -383,6 +383,8 @@ export type Database = {
           id: string
           is_active: boolean
           is_broadcasting: boolean | null
+          partiture_dim_inactive: boolean | null
+          partiture_follow: boolean | null
           remote_scroll_enabled: boolean | null
           sala_code: string
           sala_name: string
@@ -438,6 +440,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_broadcasting?: boolean | null
+          partiture_dim_inactive?: boolean | null
+          partiture_follow?: boolean | null
           remote_scroll_enabled?: boolean | null
           sala_code?: string
           sala_name?: string
@@ -493,6 +497,8 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_broadcasting?: boolean | null
+          partiture_dim_inactive?: boolean | null
+          partiture_follow?: boolean | null
           remote_scroll_enabled?: boolean | null
           sala_code?: string
           sala_name?: string

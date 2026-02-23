@@ -30,15 +30,30 @@ export default function Partiture() {
     return val >= 50 && val <= 200 ? val : 100;
   });
 
-  // "Segui" toggle — persisted locally, default ON
-  const [followMode, setFollowMode] = useState<boolean>(() => {
-    const saved = safeGetItem('local', 'partiture_follow_mode');
-    return saved !== 'false'; // default ON
+  // "Segui" toggle — default from session, local override persisted
+  const remoteFollow = (session as any)?.partiture_follow ?? true;
+  const [localFollowOverride, setLocalFollowOverride] = useState<boolean | null>(() => {
+    const saved = safeGetItem('local', 'partiture_follow_override');
+    return saved !== null ? saved === 'true' : null;
   });
+  const followMode = localFollowOverride !== null ? localFollowOverride : remoteFollow;
 
   const handleFollowToggle = useCallback((enabled: boolean) => {
-    setFollowMode(enabled);
-    safeSetItem('local', 'partiture_follow_mode', enabled ? 'true' : 'false');
+    setLocalFollowOverride(enabled);
+    safeSetItem('local', 'partiture_follow_override', enabled ? 'true' : 'false');
+  }, []);
+
+  // "Dim inactive lines" — default from session, local override persisted
+  const remoteDimInactive = (session as any)?.partiture_dim_inactive ?? false;
+  const [localDimOverride, setLocalDimOverride] = useState<boolean | null>(() => {
+    const saved = safeGetItem('local', 'partiture_dim_override');
+    return saved !== null ? saved === 'true' : null;
+  });
+  const dimInactive = localDimOverride !== null ? localDimOverride : remoteDimInactive;
+
+  const handleDimToggle = useCallback((enabled: boolean) => {
+    setLocalDimOverride(enabled);
+    safeSetItem('local', 'partiture_dim_override', enabled ? 'true' : 'false');
   }, []);
 
   const broadcastToPartiture = (session as any)?.broadcast_to_partiture ?? true;
@@ -250,20 +265,33 @@ export default function Partiture() {
             </Badge>
           </div>
         </div>
-        {/* Controls row: Segui toggle + text scale */}
-        <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50">
+        {/* Controls row: Segui + Oscura + text scale */}
+        <div className="flex items-center justify-between mt-2 pt-2 border-t border-border/50 flex-wrap gap-2">
           {/* Segui toggle */}
-          <div className="flex items-center gap-2">
-            <Switch
-              id="follow-mode"
-              checked={followMode}
-              onCheckedChange={handleFollowToggle}
-              className="data-[state=checked]:bg-primary"
-            />
-            <Label htmlFor="follow-mode" className="text-xs font-medium cursor-pointer flex items-center gap-1">
-              {followMode ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-              Segui
-            </Label>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <Switch
+                id="follow-mode"
+                checked={followMode}
+                onCheckedChange={handleFollowToggle}
+                className="data-[state=checked]:bg-primary"
+              />
+              <Label htmlFor="follow-mode" className="text-xs font-medium cursor-pointer flex items-center gap-1">
+                {followMode ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+                Segui
+              </Label>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Switch
+                id="dim-mode"
+                checked={dimInactive}
+                onCheckedChange={handleDimToggle}
+                className="data-[state=checked]:bg-primary"
+              />
+              <Label htmlFor="dim-mode" className="text-xs font-medium cursor-pointer">
+                Oscura
+              </Label>
+            </div>
           </div>
           {/* Text scale controls */}
           <div className="flex items-center gap-1.5">
@@ -318,7 +346,7 @@ export default function Partiture() {
                     data-line={idx}
                     className={cn(
                       "font-bold text-primary/80 mt-4 mb-1 transition-opacity duration-150",
-                      !isHighlighted && "opacity-40"
+                      !isHighlighted && dimInactive && "opacity-40"
                     )}
                   >
                     [{sectionLabel}]
@@ -339,7 +367,7 @@ export default function Partiture() {
                     "transition-opacity duration-150 relative",
                     isHighlighted 
                       ? "opacity-100 bg-primary/10 rounded px-1 -mx-1 border-l-2 border-primary" 
-                      : "opacity-40"
+                      : dimInactive ? "opacity-40" : "opacity-100"
                   )}
                 >
                   {line.chords && line.chords.length > 0 && (
