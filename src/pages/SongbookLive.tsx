@@ -229,38 +229,49 @@ export default function SongbookLive() {
     return { file: nextFile, parsed: transposeSong(parseChordPro(nextFile.content), 0) };
   }, [activeSetlistSongs, currentSetlistIndex, files]);
 
-  // Sync scroll to TV - throttled at ~16ms (~60fps), includes highlight_line for cross-view text alignment
+  // Pre-built line index cache: avoids querySelectorAll on every scroll frame
+  const lineIndexCacheRef = useRef<Map<number, HTMLElement>>(new Map());
+  const rebuildLineCache = useCallback(() => {
+    if (!scrollRef.current) return;
+    const map = new Map<number, HTMLElement>();
+    const els = scrollRef.current.querySelectorAll('[data-line]');
+    for (let i = 0; i < els.length; i++) {
+      const el = els[i] as HTMLElement;
+      const idx = parseInt(el.dataset.line || '0', 10);
+      map.set(idx, el);
+    }
+    lineIndexCacheRef.current = map;
+  }, []);
+
+  // Sync scroll to TV via rAF - ~60fps, uses cached line index
   const lastHighlightLineRef = useRef(0);
+  const rafSyncRef = useRef<number | null>(null);
   const syncScrollToTV = useCallback(() => {
     if (!scrollRef.current) return;
     const now = Date.now();
-    if (now - lastSyncRef.current < 16) return; // ~60fps max
+    if (now - lastSyncRef.current < 16) return;
     lastSyncRef.current = now;
     
     const container = scrollRef.current;
     const ratio = getScrollRatioFromElement(container);
-    
-    // Find centered text line for cross-view sync
     const centerY = container.scrollTop + container.clientHeight / 2;
-    const lineElements = container.querySelectorAll('[data-line]');
+    
+    // Use cached map for O(n) scan of visible lines only
+    const cache = lineIndexCacheRef.current;
     let closestLine = 0;
     let closestDist = Infinity;
     
-    for (let i = 0; i < lineElements.length; i++) {
-      const htmlEl = lineElements[i] as HTMLElement;
-      const top = htmlEl.offsetTop;
-      if (top + htmlEl.offsetHeight < container.scrollTop - 200) continue;
-      if (top > container.scrollTop + container.clientHeight + 200) break;
-      
-      const lineCenter = top + htmlEl.offsetHeight / 2;
-      const dist = Math.abs(lineCenter - centerY);
+    cache.forEach((el, idx) => {
+      const top = el.offsetTop;
+      if (top + el.offsetHeight < container.scrollTop - 200) return;
+      if (top > container.scrollTop + container.clientHeight + 200) return;
+      const dist = Math.abs(top + el.offsetHeight / 2 - centerY);
       if (dist < closestDist) {
         closestDist = dist;
-        closestLine = parseInt(htmlEl.dataset.line || '0', 10);
+        closestLine = idx;
       }
-    }
+    });
     
-    // Only send highlight_line if it actually changed (reduces network traffic)
     if (closestLine !== lastHighlightLineRef.current) {
       lastHighlightLineRef.current = closestLine;
       syncUpdate({ scroll_position: ratio, highlight_line: closestLine });
@@ -342,12 +353,24 @@ export default function SongbookLive() {
     toast.success('Trasmissione interrotta');
   }, [syncUpdate]);
 
-  // Handle scroll event - sync whenever songbook_mode is active (not just full broadcast)
-  const handleScroll = useCallback(() => {
-    if (!scrollRef.current) return;
-    if (!(session as any)?.songbook_mode) return;
-    syncScrollToTV();
+  // Passive scroll listener for maximum performance on mobile
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      if (!(session as any)?.songbook_mode) return;
+      syncScrollToTV();
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
   }, [syncScrollToTV, session]);
+
+  // Rebuild line index cache when song content changes
+  useEffect(() => {
+    // Small delay to let DOM render
+    const timer = setTimeout(rebuildLineCache, 50);
+    return () => clearTimeout(timer);
+  }, [selectedFile?.id, transpose, coloredChords, rebuildLineCache]);
 
   // Auto scroll effect
   useEffect(() => {
@@ -1003,7 +1026,7 @@ export default function SongbookLive() {
       <div 
         ref={scrollRef}
         className="flex-1 min-h-0 overflow-auto px-4 py-6"
-        onScroll={handleScroll}
+        
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
