@@ -177,22 +177,23 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
     optimisticHighlightRef.current = session?.highlight_line ?? 0;
   }, [session?.highlight_line]);
 
-  // Detect dual broadcast mode
+  // Detect dual broadcast mode and remote dual scroll setting
   const isDualBroadcast = !!(session as any)?.dual_broadcast;
+  const remoteDualScroll = (session as any)?.remote_dual_scroll ?? true;
 
   // Hybrid highlight update: use syncUpdate for fastest path (direct DB update or local WS)
-  // In dual mode, also send scroll_position so TV (which ignores highlight_line) stays in sync
+  // In dual mode with remote_dual_scroll enabled, also send scroll_position so TV stays in sync
   const updateHighlightLine = useCallback(async (line: number) => {
     optimisticHighlightRef.current = line;
     const totalLines = linesRef.current;
-    if (isDualBroadcast && totalLines > 1) {
+    if (isDualBroadcast && remoteDualScroll && totalLines > 1) {
       const ratio = Math.round((line / (totalLines - 1)) * 1000);
       syncUpdate({ highlight_line: line, scroll_position: Math.min(1000, ratio) });
     } else {
       syncUpdate({ highlight_line: line });
     }
     return true;
-  }, [syncUpdate, isDualBroadcast]);
+  }, [syncUpdate, isDualBroadcast, remoteDualScroll]);
 
   const [currentSong, setCurrentSong] = useState<{
     titolo: string;

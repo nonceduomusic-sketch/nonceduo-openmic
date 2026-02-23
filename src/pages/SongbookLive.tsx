@@ -32,6 +32,7 @@ import {
   Monitor,
   PanelBottomClose,
   PanelBottomOpen,
+  Smartphone,
 } from 'lucide-react';
 import { SongbookLiveDrawer } from '@/components/songbook/SongbookLiveDrawer';
 import { Button } from '@/components/ui/button';
@@ -759,6 +760,20 @@ export default function SongbookLive() {
                 checked={(session as any)?.broadcast_to_partiture ?? true}
                 onChange={(checked) => {
                   syncUpdate({ broadcast_to_partiture: checked });
+                }}
+              />
+            </div>
+
+            {/* Telecomando */}
+            <div className="space-y-1">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Telecomando</p>
+              <SettingRow
+                icon={<Smartphone className="w-4 h-4" />}
+                label="Controllo TV in Duale"
+                description="Il telecomando muove anche la TV in dual mode"
+                checked={(session as any)?.remote_dual_scroll ?? true}
+                onChange={(checked) => {
+                  syncUpdate({ remote_dual_scroll: checked });
                 }}
               />
             </div>
