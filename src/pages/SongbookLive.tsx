@@ -85,7 +85,19 @@ export default function SongbookLive() {
   const [coloredChords, setColoredChords] = useState(true);
   const [autoScroll, setAutoScroll] = useState(false);
   const [scrollSpeed, setScrollSpeed] = useState(50);
-  const [highlightLines, setHighlightLines] = useState(2);
+  const [highlightLines, setHighlightLines] = useState(() => {
+    const fromSession = (session as any)?.highlight_lines_count;
+    const enabled = (session as any)?.highlight_enabled ?? true;
+    if (!enabled) return 0;
+    return fromSession ?? 2;
+  });
+  
+  // Keep highlightLines in sync with session changes (e.g. toggled from admin)
+  useEffect(() => {
+    const enabled = (session as any)?.highlight_enabled ?? true;
+    const count = (session as any)?.highlight_lines_count ?? 2;
+    setHighlightLines(enabled ? count : 0);
+  }, [(session as any)?.highlight_enabled, (session as any)?.highlight_lines_count]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<'title' | 'artist' | 'recent'>('title');
   const [swipeEnabled, setSwipeEnabled] = useState(() => safeGetItem('local', 'songbook_swipe_enabled') === 'true');
