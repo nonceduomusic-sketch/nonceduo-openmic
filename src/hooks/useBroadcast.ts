@@ -82,8 +82,10 @@ export function useBroadcast(salaCode: string = 'main') {
   // Keep ref in sync for use in callbacks
   useEffect(() => { sessionRef.current = session; }, [session]);
 
-  // Track last broadcast update timestamp to prevent DB overwriting faster broadcast updates
+  // Track last broadcast update timestamp AND pending keys to prevent DB overwriting faster broadcast updates
   const lastBroadcastUpdateRef = useRef<number>(0);
+  const pendingKeysRef = useRef<Set<string>>(new Set());
+  const pendingKeysTimerRef = useRef<number | null>(null);
 
   // Default session skeleton for offline bootstrapping
   const defaultSessionRef = useRef<BroadcastSession>({
@@ -135,7 +137,13 @@ export function useBroadcast(salaCode: string = 'main') {
       lastBroadcastUpdateRef.current = Date.now();
       setSession(prev => {
         const base = prev || defaultSessionRef.current;
-        return { ...base, ...payload } as BroadcastSession;
+        // Skip keys that we ourselves changed recently (pending)
+        const pendingKeys = pendingKeysRef.current;
+        const filtered = pendingKeys.size > 0
+          ? Object.fromEntries(Object.entries(payload).filter(([k]) => !pendingKeys.has(k)))
+          : payload;
+        if (Object.keys(filtered).length === 0) return prev || base;
+        return { ...base, ...filtered } as BroadcastSession;
       });
     }, []),
   });
@@ -186,14 +194,30 @@ export function useBroadcast(salaCode: string = 'main') {
             const now = Date.now();
             const timeSinceLastBroadcast = now - lastBroadcastUpdateRef.current;
             
-            // If a broadcast channel update happened very recently (<500ms ago),
+            // If a broadcast channel update happened very recently (<800ms ago),
             // skip this postgres_changes update to avoid stutter/flicker.
-            // The broadcast channel already applied the latest state.
-            if (timeSinceLastBroadcast < 500) {
+            if (timeSinceLastBroadcast < 800) {
               return;
             }
             
-            setSession(payload.new as BroadcastSession);
+            // Filter out keys that are still pending (recently changed locally)
+            const incoming = payload.new as unknown as BroadcastSession;
+            const pendingKeys = pendingKeysRef.current;
+            if (pendingKeys.size > 0) {
+              // Merge: use incoming for non-pending keys, keep local for pending keys
+              setSession(prev => {
+                if (!prev) return incoming;
+                const merged = { ...prev };
+                for (const [key, value] of Object.entries(incoming as any)) {
+                  if (!pendingKeys.has(key)) {
+                    (merged as any)[key] = value;
+                  }
+                }
+                return merged as BroadcastSession;
+              });
+            } else {
+              setSession(incoming);
+            }
           }
         }
       )
@@ -227,6 +251,7 @@ export function useBroadcast(salaCode: string = 'main') {
   useEffect(() => {
     return () => {
       if (dbPersistTimerRef.current) window.clearTimeout(dbPersistTimerRef.current);
+      if (pendingKeysTimerRef.current) window.clearTimeout(pendingKeysTimerRef.current);
       // Flush any pending updates
       const pending = pendingDbUpdatesRef.current;
       if (Object.keys(pending).length > 0) {
@@ -240,7 +265,18 @@ export function useBroadcast(salaCode: string = 'main') {
 
   // Update session: broadcast instantly to peers, then persist to DB in background
   const updateSession = useCallback(async (updates: Partial<BroadcastSession>) => {
+    // 0. Track pending keys to prevent realtime overwrite
+    const updateKeys = Object.keys(updates);
+    updateKeys.forEach(k => pendingKeysRef.current.add(k));
+    // Clear pending keys after 2s (enough for DB round-trip)
+    if (pendingKeysTimerRef.current) window.clearTimeout(pendingKeysTimerRef.current);
+    pendingKeysTimerRef.current = window.setTimeout(() => {
+      pendingKeysRef.current.clear();
+      pendingKeysTimerRef.current = null;
+    }, 2000);
+
     // 1. Apply locally immediately (bootstrap from default if null)
+    lastBroadcastUpdateRef.current = Date.now();
     setSession(prev => {
       const base = prev || defaultSessionRef.current;
       return { ...base, ...updates } as BroadcastSession;

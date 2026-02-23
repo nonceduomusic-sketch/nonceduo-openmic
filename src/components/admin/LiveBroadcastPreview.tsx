@@ -76,6 +76,11 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
     // Guard refs to prevent session sync from reverting local changes
     const lastLocalLinesCountUpdate = useRef(0);
     const lastLocalStyleUpdate = useRef(0);
+    const lastLocalFontSizeUpdate = useRef(0);
+    const lastLocalTextAlignUpdate = useRef(0);
+    const lastLocalHighlightEnabledUpdate = useRef(0);
+    const lastLocalRemoteScrollUpdate = useRef(0);
+    const lastLocalViewModeUpdate = useRef(0);
     const [textAlign, setTextAlign] = useState<'left' | 'center' | 'right'>('center');
    const [remoteScrollEnabled, setRemoteScrollEnabled] = useState(true);
    const lyricsRef = useRef<HTMLDivElement>(null);
@@ -191,8 +196,9 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
      if (isBroadcasting && hasContent) setActiveTab('content');
    }, [isBroadcasting, hasContent]);
  
-    // Sync viewMode from session (songbook uses songbook_view_mode, normal uses tv_view_mode)
+    // Sync viewMode from session (skip if locally changed recently)
     useEffect(() => {
+      if (Date.now() - lastLocalViewModeUpdate.current < 2000) return;
       const sessionViewMode = isSongbookMode 
         ? (session as any)?.songbook_view_mode 
         : (session as any)?.tv_view_mode;
@@ -201,8 +207,9 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
       }
     }, [(session as any)?.tv_view_mode, (session as any)?.songbook_view_mode, isSongbookMode]);
 
-  // Sync highlightEnabled from session
+  // Sync highlightEnabled from session (skip if locally changed recently)
   useEffect(() => {
+    if (Date.now() - lastLocalHighlightEnabledUpdate.current < 2000) return;
     const sessionHighlight = (session as any)?.highlight_enabled;
     if (sessionHighlight !== undefined) {
       setHighlightEnabled(sessionHighlight);
@@ -227,24 +234,27 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
     }
   }, [(session as any)?.highlight_style]);
 
-  // Sync fontSize from session
+  // Sync fontSize from session (skip if locally changed recently)
   useEffect(() => {
+    if (Date.now() - lastLocalFontSizeUpdate.current < 2000) return;
     const sessionFontSize = (session as any)?.font_size;
     if (sessionFontSize !== undefined && sessionFontSize !== null) {
       setFontSize(sessionFontSize);
     }
   }, [(session as any)?.font_size]);
 
-  // Sync textAlign from session
+  // Sync textAlign from session (skip if locally changed recently)
   useEffect(() => {
+    if (Date.now() - lastLocalTextAlignUpdate.current < 2000) return;
     const sessionTextAlign = (session as any)?.text_align;
     if (sessionTextAlign && ['left', 'center', 'right'].includes(sessionTextAlign)) {
       setTextAlign(sessionTextAlign);
     }
   }, [(session as any)?.text_align]);
 
-  // Sync remoteScrollEnabled from session
+  // Sync remoteScrollEnabled from session (skip if locally changed recently)
   useEffect(() => {
+    if (Date.now() - lastLocalRemoteScrollUpdate.current < 2000) return;
     const sessionRemoteScroll = (session as any)?.remote_scroll_enabled;
     if (sessionRemoteScroll !== undefined) {
       setRemoteScrollEnabled(sessionRemoteScroll);
@@ -410,6 +420,7 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
    }, [autoScroll, autoScrollBpm, updateSession]);
  
   const handleViewModeChange = useCallback(async (mode: ViewMode) => {
+    lastLocalViewModeUpdate.current = Date.now();
     setViewMode(mode);
     const updates: any = { tv_view_mode: mode };
     if (isSongbookMode) {
@@ -419,6 +430,7 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
   }, [syncUpdate, isSongbookMode]);
 
   const handleToggleHighlight = useCallback(async () => {
+    lastLocalHighlightEnabledUpdate.current = Date.now();
     const newValue = !highlightEnabled;
     setHighlightEnabled(newValue);
     syncUpdate({ highlight_enabled: newValue });
@@ -447,6 +459,7 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
 
   // Font size change synced to DB
   const handleFontSizeChange = useCallback(async (delta: number) => {
+    lastLocalFontSizeUpdate.current = Date.now();
     const newSize = Math.max(50, Math.min(300, fontSize + delta));
     setFontSize(newSize);
     syncUpdate({ font_size: newSize });
@@ -454,12 +467,14 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
 
   // Text align change synced to DB
   const handleTextAlignChange = useCallback(async (align: 'left' | 'center' | 'right') => {
+    lastLocalTextAlignUpdate.current = Date.now();
     setTextAlign(align);
     syncUpdate({ text_align: align });
   }, [syncUpdate]);
 
   // Remote scroll toggle synced to DB
   const handleToggleRemoteScroll = useCallback(async (enabled: boolean) => {
+    lastLocalRemoteScrollUpdate.current = Date.now();
     setRemoteScrollEnabled(enabled);
     syncUpdate({ remote_scroll_enabled: enabled });
     toast.success(enabled ? 'Scroll da telecomando abilitato' : 'Scroll da telecomando disabilitato');
