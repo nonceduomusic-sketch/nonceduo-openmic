@@ -229,29 +229,27 @@ export default function SongbookLive() {
     return { file: nextFile, parsed: transposeSong(parseChordPro(nextFile.content), 0) };
   }, [activeSetlistSongs, currentSetlistIndex, files]);
 
-  // Sync scroll to TV - throttled at ~33ms (~30fps), includes highlight_line for cross-view text alignment
+  // Sync scroll to TV - throttled at ~16ms (~60fps), includes highlight_line for cross-view text alignment
+  const lastHighlightLineRef = useRef(0);
   const syncScrollToTV = useCallback(() => {
     if (!scrollRef.current) return;
     const now = Date.now();
-    if (now - lastSyncRef.current < 33) return; // ~30fps max
+    if (now - lastSyncRef.current < 16) return; // ~60fps max
     lastSyncRef.current = now;
     
     const container = scrollRef.current;
     const ratio = getScrollRatioFromElement(container);
     
-    // Find centered text line for cross-view sync using binary-search-like approach
+    // Find centered text line for cross-view sync
     const centerY = container.scrollTop + container.clientHeight / 2;
     const lineElements = container.querySelectorAll('[data-line]');
     let closestLine = 0;
     let closestDist = Infinity;
     
-    // Iterate only visible range for performance
     for (let i = 0; i < lineElements.length; i++) {
       const htmlEl = lineElements[i] as HTMLElement;
       const top = htmlEl.offsetTop;
-      // Skip elements far above viewport
       if (top + htmlEl.offsetHeight < container.scrollTop - 200) continue;
-      // Stop if well below viewport
       if (top > container.scrollTop + container.clientHeight + 200) break;
       
       const lineCenter = top + htmlEl.offsetHeight / 2;
@@ -262,7 +260,13 @@ export default function SongbookLive() {
       }
     }
     
-    syncUpdate({ scroll_position: ratio, highlight_line: closestLine });
+    // Only send highlight_line if it actually changed (reduces network traffic)
+    if (closestLine !== lastHighlightLineRef.current) {
+      lastHighlightLineRef.current = closestLine;
+      syncUpdate({ scroll_position: ratio, highlight_line: closestLine });
+    } else {
+      syncUpdate({ scroll_position: ratio });
+    }
   }, [syncUpdate]);
 
   // Manual scroll with instant TV sync
