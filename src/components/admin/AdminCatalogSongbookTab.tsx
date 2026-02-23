@@ -524,50 +524,22 @@ export function AdminCatalogSongbookTab() {
                           const file = songbookMap.get(link.songbook_file_id);
                           if (!file) return null;
                           return (
-                            <div key={link.id} className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10">
-                              <Guitar className="w-4 h-4 text-green-600 shrink-0" />
-                              <div className="min-w-0 flex-1">
-                                <div className="text-sm font-medium truncate">{file.title}</div>
-                                <div className="text-xs text-muted-foreground truncate">
-                                  {file.artist || "—"} · {file.filename}
-                                </div>
-                              </div>
-                              {currentBroadcastSongId === song.id ? (
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  className="h-7 gap-1 shrink-0"
-                                  onClick={async () => {
-                                    await stopBroadcast();
-                                    toast({ title: "Trasmissione fermata" });
-                                  }}
-                                >
-                                  <Square className="w-3 h-3" />
-                                  <span className="hidden sm:inline">Ferma</span>
-                                </Button>
-                              ) : (
-                                <Button
-                                  variant="default"
-                                  size="sm"
-                                  className="h-7 gap-1 shrink-0"
-                                  onClick={async () => {
-                                    await broadcastDual(song.id, file.id);
-                                    toast({ title: "Trasmissione Duale avviata", description: `TV: ${song.titolo} · Partiture: ${file.title}` });
-                                  }}
-                                >
-                                  <Play className="w-3 h-3" />
-                                  <span className="hidden sm:inline">Trasmetti</span>
-                                </Button>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 shrink-0 text-destructive hover:bg-destructive/10"
-                                onClick={() => removeLink.mutate(link.id)}
-                              >
-                                <Link2Off className="w-3.5 h-3.5" />
-                              </Button>
-                            </div>
+                            <LinkedFileWithPreview
+                              key={link.id}
+                              file={file}
+                              linkId={link.id}
+                              songId={song.id}
+                              isBroadcasting={currentBroadcastSongId === song.id}
+                              onBroadcast={async () => {
+                                await broadcastDual(song.id, file.id);
+                                toast({ title: "Trasmissione Duale avviata", description: `TV: ${song.titolo} · Partiture: ${file.title}` });
+                              }}
+                              onStop={async () => {
+                                await stopBroadcast();
+                                toast({ title: "Trasmissione fermata" });
+                              }}
+                              onUnlink={() => removeLink.mutate(link.id)}
+                            />
                           );
                         })}
                       </div>
@@ -855,6 +827,139 @@ function SuggestionWithPreview({
             <pre className="text-[11px] font-mono leading-relaxed whitespace-pre-wrap text-muted-foreground">
               {previewLines.map((line, i) => {
                 // Highlight chords in brackets
+                const parts = line.split(/(\[[^\]]+\])/g);
+                return (
+                  <div key={i}>
+                    {parts.map((part, j) =>
+                      part.startsWith("[") && part.endsWith("]") ? (
+                        <span key={j} className="text-primary font-semibold">{part}</span>
+                      ) : (
+                        <span key={j}>{part}</span>
+                      )
+                    )}
+                  </div>
+                );
+              })}
+              {content.split("\n").length > 15 && (
+                <div className="text-[10px] text-muted-foreground/50 mt-1">
+                  ... altre {content.split("\n").length - 15} righe
+                </div>
+              )}
+            </pre>
+          </ScrollArea>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Linked file with preview (reuses the ChordPro preview logic) ──
+function LinkedFileWithPreview({
+  file,
+  linkId,
+  songId,
+  isBroadcasting,
+  onBroadcast,
+  onStop,
+  onUnlink,
+}: {
+  file: SongbookFile;
+  linkId: string;
+  songId: string;
+  isBroadcasting: boolean;
+  onBroadcast: () => Promise<void>;
+  onStop: () => Promise<void>;
+  onUnlink: () => void;
+}) {
+  const [showPreview, setShowPreview] = useState(false);
+  const [content, setContent] = useState<string | null>(null);
+  const [loadingContent, setLoadingContent] = useState(false);
+
+  const loadContent = async () => {
+    if (content !== null) {
+      setShowPreview(!showPreview);
+      return;
+    }
+    setLoadingContent(true);
+    try {
+      const { data, error } = await supabase
+        .from("songbook_files")
+        .select("content")
+        .eq("id", file.id)
+        .single();
+      if (error) throw error;
+      setContent(data?.content || "");
+      setShowPreview(true);
+    } catch {
+      setContent("Errore nel caricamento");
+      setShowPreview(true);
+    }
+    setLoadingContent(false);
+  };
+
+  const previewLines = useMemo(() => {
+    if (!content) return [];
+    return content
+      .split("\n")
+      .filter((line) => {
+        const trimmed = line.trim();
+        if (/^\{(title|t|subtitle|st|artist|key|tempo|capo|comment|ci|c):/.test(trimmed)) return false;
+        if (trimmed === "" || trimmed === "{soc}" || trimmed === "{eoc}" || trimmed === "{sot}" || trimmed === "{eot}") return false;
+        return true;
+      })
+      .slice(0, 15);
+  }, [content]);
+
+  return (
+    <div className="rounded-lg bg-green-500/10 overflow-hidden">
+      <div className="flex items-center gap-2 p-2">
+        <Guitar className="w-4 h-4 text-green-600 shrink-0" />
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium truncate">{file.title}</div>
+          <div className="text-xs text-muted-foreground truncate">
+            {file.artist || "—"} · {file.filename}
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={loadContent}
+          disabled={loadingContent}
+        >
+          {loadingContent ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+          ) : showPreview ? (
+            <EyeOff className="w-3.5 h-3.5" />
+          ) : (
+            <Eye className="w-3.5 h-3.5" />
+          )}
+        </Button>
+        {isBroadcasting ? (
+          <Button variant="destructive" size="sm" className="h-7 gap-1 shrink-0" onClick={onStop}>
+            <Square className="w-3 h-3" />
+            <span className="hidden sm:inline">Ferma</span>
+          </Button>
+        ) : (
+          <Button variant="default" size="sm" className="h-7 gap-1 shrink-0" onClick={onBroadcast}>
+            <Play className="w-3 h-3" />
+            <span className="hidden sm:inline">Trasmetti</span>
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0 text-destructive hover:bg-destructive/10"
+          onClick={onUnlink}
+        >
+          <Link2Off className="w-3.5 h-3.5" />
+        </Button>
+      </div>
+      {showPreview && content !== null && (
+        <div className="border-t px-3 py-2 bg-background/50">
+          <ScrollArea className="max-h-[200px]">
+            <pre className="text-[11px] font-mono leading-relaxed whitespace-pre-wrap text-muted-foreground">
+              {previewLines.map((line, i) => {
                 const parts = line.split(/(\[[^\]]+\])/g);
                 return (
                   <div key={i}>
