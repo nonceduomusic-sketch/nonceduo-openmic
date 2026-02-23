@@ -309,7 +309,7 @@ export function TVPreviewDialog({ open, onOpenChange, previewSongId }: TVPreview
                   <Button
                     variant="outline"
                     size={isMobile ? "default" : "icon"}
-                    onClick={() => setFontSize(prev => Math.min(200, prev + 10))}
+                    onClick={() => setFontSize(prev => Math.min(300, prev + 10))}
                     className={cn(
                       "border-white/20 text-white hover:bg-white/10",
                       isMobile && "h-12 w-12"

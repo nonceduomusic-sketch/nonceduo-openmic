@@ -1167,7 +1167,7 @@ export default function SongbookLive() {
         {parsedSong && (
           <div 
             className="font-mono whitespace-pre-wrap leading-relaxed text-foreground space-y-0.5"
-            style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px` }}
+            style={{ fontSize: `${Math.max(12, 14 * fontSize / 100)}px`, overflowWrap: 'break-word', wordBreak: 'keep-all' as const }}
           >
             {parsedSong.lines.map((line, index) => {
               const hlLine = highlightLineFromSession;
@@ -1263,7 +1263,7 @@ export default function SongbookLive() {
           </button>
           {tvPreviewOpen && (
             <div className="max-h-[30vh] overflow-auto px-4 pb-3">
-              <div className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/80">
+              <div className="text-sm whitespace-pre-wrap leading-relaxed text-foreground/80" style={{ overflowWrap: 'break-word', wordBreak: 'keep-all' }}>
                 {catalogSong.testo?.split('\n').map((line, idx) => {
                   const hlLine = highlightLineFromSession;
                   const hlCount = highlightLines;
