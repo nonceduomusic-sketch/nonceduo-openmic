@@ -58,6 +58,7 @@ import { toast } from 'sonner';
 import { SongbookSetlistsTab } from './SongbookSetlistsTab';
 import { CatalogSongbookCompare } from './CatalogSongbookCompare';
 import { SongbookAdvancedSearch } from './SongbookAdvancedSearch';
+import { BroadcastLinksCards } from './LocalLinksCard';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -338,7 +339,8 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
             </CardContent>
           </Card>
 
-          {/* Search and Actions */}
+          {/* Broadcast page links - always visible */}
+          <BroadcastLinksCards filter={['tv', 'partiture', 'songbook']} />
           <Card>
              <CardHeader className="pb-4">
               <div className="flex items-center justify-between gap-3 flex-wrap">
