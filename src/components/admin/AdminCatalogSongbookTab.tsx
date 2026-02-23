@@ -41,6 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { safeGetItem, safeSetItem } from "@/lib/safeStorage";
 
 // ── Normalizzazione per matching ──
 function normalize(s: string): string {
@@ -235,7 +236,10 @@ export function AdminCatalogSongbookTab() {
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [expandedSongId, setExpandedSongId] = useState<string | null>(null);
   const [autoMatchRunning, setAutoMatchRunning] = useState(false);
-  const [showLiveQueue, setShowLiveQueue] = useState(true);
+  const [showLiveQueue, setShowLiveQueue] = useState(() => {
+    const saved = safeGetItem('local', 'admin-catalog-live-queue-open');
+    return saved !== null ? saved === 'true' : true;
+  });
   const [visibleCount, setVisibleCount] = useState(50);
 
   // Broadcast state
@@ -486,7 +490,11 @@ export function AdminCatalogSongbookTab() {
         <Card className="overflow-hidden border-orange-500/30">
           <button
             className="w-full flex items-center justify-between p-3 hover:bg-muted/30 transition-colors"
-            onClick={() => setShowLiveQueue(!showLiveQueue)}
+            onClick={() => {
+              const next = !showLiveQueue;
+              setShowLiveQueue(next);
+              safeSetItem('local', 'admin-catalog-live-queue-open', String(next));
+            }}
           >
             <div className="flex items-center gap-2">
               <ListMusic className="w-5 h-5 text-orange-500" />
