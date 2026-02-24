@@ -3,30 +3,23 @@ import { useLocation } from 'react-router-dom';
 import { AssistantWidget } from './AssistantWidget';
 
 // Map routes to sections
-const getSectionFromPath = (pathname: string): 'site' | 'openmic' | 'dediche' | 'community' => {
-  // Open Mic: landing + app + legacy live
-  if (
-    pathname.startsWith('/openmic') ||
-    pathname.includes('/app/openmic') ||
-    pathname.includes('/openmic/live')
-  ) {
-    return 'openmic';
-  }
-  // Dediche: landing + app + legacy live
-  if (
-    pathname.startsWith('/messaggi') ||
-    pathname.includes('/app/dediche') ||
-    pathname.includes('/messaggi/live')
-  ) {
-    return 'dediche';
-  }
-  if (pathname.includes('/social')) {
-    return 'community';
-  }
+const getSectionFromPath = (pathname: string): 'site' | 'app' | 'openmic' | 'dediche' | 'community' | 'giochi' => {
+  // App launcher
+  if (pathname === '/app') return 'app';
+  // Giochi
+  if (pathname.startsWith('/app/giochi')) return 'giochi';
+  // Open Mic: app + legacy live
+  if (pathname.includes('/app/openmic') || pathname.includes('/openmic/live')) return 'openmic';
+  // Dediche: app + legacy live
+  if (pathname.includes('/app/dediche') || pathname.includes('/messaggi/live')) return 'dediche';
+  // Open Mic info (site)
+  if (pathname.startsWith('/openmic')) return 'site';
+  // Dediche info (site)
+  if (pathname.startsWith('/messaggi')) return 'site';
+  // Community
+  if (pathname.includes('/social')) return 'community';
   // Admin pages - don't show widget
-  if (pathname.includes('/admin')) {
-    return 'site'; // Will be handled by not rendering
-  }
+  if (pathname.includes('/admin')) return 'site';
   return 'site';
 };
 

@@ -5,7 +5,7 @@ import { AssistantBubble } from './AssistantBubble';
 import { AssistantChat } from './AssistantChat';
 
 interface AssistantWidgetProps {
-  section?: 'site' | 'openmic' | 'dediche' | 'community';
+  section?: 'site' | 'app' | 'openmic' | 'dediche' | 'community' | 'giochi';
 }
 
 export const AssistantWidget: React.FC<AssistantWidgetProps> = ({ 

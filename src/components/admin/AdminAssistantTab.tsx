@@ -523,11 +523,12 @@ const SettingsPanel: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           {[
-            { key: 'enabled_on_site', label: 'Sito Generale', desc: 'Homepage e pagine informative' },
-            { key: 'enabled_on_openmic', label: 'Open Mic', desc: 'Sezione prenotazione canzoni' },
-            { key: 'enabled_on_dediche', label: 'Dediche', desc: 'Sezione messaggi e dediche' },
-            { key: 'enabled_on_community', label: 'Community', desc: 'Gruppi e bacheca sociale' },
-            { key: 'enabled_on_giochi', label: 'Giochi', desc: 'Sezione giochi interattivi' },
+            { key: 'enabled_on_site', label: '🌐 Sito Generale', desc: 'Homepage e pagine informative' },
+            { key: 'enabled_on_app', label: '📱 App (/app)', desc: 'App Launcher e pagine app' },
+            { key: 'enabled_on_openmic', label: '🎤 Open Mic', desc: 'Sezione prenotazione canzoni' },
+            { key: 'enabled_on_dediche', label: '💌 Dediche', desc: 'Sezione messaggi e dediche' },
+            { key: 'enabled_on_community', label: '👥 Community', desc: 'Gruppi e bacheca sociale' },
+            { key: 'enabled_on_giochi', label: '🎮 Giochi', desc: 'Sezione giochi interattivi' },
           ].map((item) => (
             <div key={item.key} className="flex items-center justify-between py-2">
               <div>
