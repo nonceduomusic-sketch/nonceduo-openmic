@@ -131,6 +131,22 @@ const GameSettingsPanel: React.FC = () => {
             <div className="flex items-center gap-2"><Monitor className="w-4 h-4" /><Label>Mostra su TV</Label></div>
             <Switch checked={settings.show_on_tv} onCheckedChange={v => handleToggle('show_on_tv', v)} />
           </div>
+          {settings.show_on_tv && (
+            <div className="pl-6 space-y-2 border-l-2 border-primary/20">
+              <Label className="text-xs text-muted-foreground">Modalità display TV</Label>
+              <Select
+                value={settings.tv_display_mode || 'off'}
+                onValueChange={v => handleQuizSetting({ tv_display_mode: v })}
+              >
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="off">🚫 Nessun gioco visibile</SelectItem>
+                  <SelectItem value="banner">📢 Banner discreto (classifica)</SelectItem>
+                  <SelectItem value="fullscreen">🖥️ Gioco a schermo pieno</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <Separator />
           <div className="flex items-center justify-between">
             <div>

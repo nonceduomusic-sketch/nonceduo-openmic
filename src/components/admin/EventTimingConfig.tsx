@@ -12,6 +12,7 @@ interface EventTimingSettings {
   end_mode: 'manual' | 'scheduled' | 'duration';
   event_date: string | null;
   event_start_time: string | null;
+  event_end_date?: string | null;
   event_end_time: string | null;
   duration_minutes: number | null;
   expires_at: string | null;
@@ -41,6 +42,7 @@ export const EventTimingConfig = forwardRef<HTMLDivElement, Props>(({
   const [endMode, setEndMode] = useState<'manual' | 'scheduled' | 'duration'>(settings.end_mode || 'manual');
   const [eventDate, setEventDate] = useState(settings.event_date || '');
   const [eventStartTime, setEventStartTime] = useState(settings.event_start_time || '');
+  const [eventEndDate, setEventEndDate] = useState(settings.event_end_date || settings.event_date || '');
   const [eventEndTime, setEventEndTime] = useState(settings.event_end_time || '');
   const [durationMinutes, setDurationMinutes] = useState(settings.duration_minutes?.toString() || '120');
   const [countdownStartMinutes, setCountdownStartMinutes] = useState(
@@ -56,6 +58,7 @@ export const EventTimingConfig = forwardRef<HTMLDivElement, Props>(({
     setEndMode(settings.end_mode || 'manual');
     setEventDate(settings.event_date || '');
     setEventStartTime(settings.event_start_time || '');
+    setEventEndDate(settings.event_end_date || settings.event_date || '');
     setEventEndTime(settings.event_end_time || '');
     setDurationMinutes(settings.duration_minutes?.toString() || '120');
     setCountdownStartMinutes(settings.countdown_start_show_minutes?.toString() || '');
@@ -82,12 +85,15 @@ export const EventTimingConfig = forwardRef<HTMLDivElement, Props>(({
     // End configuration
     if (endMode === 'scheduled') {
       updates.event_end_time = eventEndTime || null;
+      updates.event_end_date = eventEndDate || null;
       updates.duration_minutes = null;
     } else if (endMode === 'duration') {
       updates.duration_minutes = parseInt(durationMinutes) || null;
       updates.event_end_time = null;
+      updates.event_end_date = null;
     } else {
       updates.event_end_time = null;
+      updates.event_end_date = null;
       updates.duration_minutes = null;
     }
 
@@ -120,6 +126,20 @@ export const EventTimingConfig = forwardRef<HTMLDivElement, Props>(({
   const getScheduledStartDisplay = () => {
     if (!eventDate || !eventStartTime) return null;
     const dateTime = new Date(`${eventDate}T${eventStartTime}`);
+    return dateTime.toLocaleString('it-IT', { 
+      weekday: 'long', 
+      day: 'numeric', 
+      month: 'long',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const getScheduledEndDisplay = () => {
+    if (!eventEndTime) return null;
+    const date = eventEndDate || eventDate;
+    if (!date) return eventEndTime;
+    const dateTime = new Date(`${date}T${eventEndTime}`);
     return dateTime.toLocaleString('it-IT', { 
       weekday: 'long', 
       day: 'numeric', 
@@ -242,22 +262,38 @@ export const EventTimingConfig = forwardRef<HTMLDivElement, Props>(({
               <div className="flex-1 space-y-3">
                 <div>
                   <Label htmlFor="end-scheduled" className="font-medium cursor-pointer">
-                    A orario specifico
+                    A data/ora specifica
                   </Label>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    L'evento termina all'ora impostata{eventDate ? ` (${eventDate})` : ''}
+                    L'evento termina alla data e ora impostata
                   </p>
                 </div>
                 
                 {endMode === 'scheduled' && (
-                  <div className="space-y-1">
-                    <Label className="text-xs">Ora fine</Label>
-                    <Input
-                      type="time"
-                      value={eventEndTime}
-                      onChange={(e) => setEventEndTime(e.target.value)}
-                      className="h-9 w-32"
-                    />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Data fine</Label>
+                      <Input
+                        type="date"
+                        value={eventEndDate}
+                        onChange={(e) => setEventEndDate(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Ora fine</Label>
+                      <Input
+                        type="time"
+                        value={eventEndTime}
+                        onChange={(e) => setEventEndTime(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                    {getScheduledEndDisplay() && (
+                      <p className="col-span-2 text-xs text-destructive font-medium">
+                        → Fine: {getScheduledEndDisplay()}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

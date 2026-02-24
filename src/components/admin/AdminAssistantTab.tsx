@@ -527,6 +527,7 @@ const SettingsPanel: React.FC = () => {
             { key: 'enabled_on_openmic', label: 'Open Mic', desc: 'Sezione prenotazione canzoni' },
             { key: 'enabled_on_dediche', label: 'Dediche', desc: 'Sezione messaggi e dediche' },
             { key: 'enabled_on_community', label: 'Community', desc: 'Gruppi e bacheca sociale' },
+            { key: 'enabled_on_giochi', label: 'Giochi', desc: 'Sezione giochi interattivi' },
           ].map((item) => (
             <div key={item.key} className="flex items-center justify-between py-2">
               <div>
