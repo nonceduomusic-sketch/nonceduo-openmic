@@ -1,5 +1,5 @@
 import React from 'react';
-import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown, Play, Calendar, Eye } from 'lucide-react';
+import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown, Play, Calendar, Eye, Gamepad2, Globe } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -51,6 +51,86 @@ export const AdminFormatsTab: React.FC = () => {
 
       {canManageActive && (
         <div className="space-y-4">
+          {/* ===== VISIBILITÀ SUL SITO ===== */}
+          <Separator className="my-2" />
+          <div className="flex items-center gap-2 mb-4">
+            <Globe className="w-4 h-4 text-muted-foreground" />
+            <h3 className="text-sm font-medium text-muted-foreground">Visibilità Sezioni sul Sito</h3>
+          </div>
+          <Alert className="bg-muted/20 border-muted-foreground/10 mb-4">
+            <Info className="h-4 w-4" />
+            <AlertDescription className="text-xs text-muted-foreground">
+              Disattivando una sezione qui, il riquadro corrispondente <strong>scomparirà</strong> dalla homepage, dall'App Launcher e dalle pagine pubbliche.
+            </AlertDescription>
+          </Alert>
+
+          {/* Giochi (Furore) */}
+          <Card className="border-emerald-500/20 bg-emerald-500/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Gamepad2 className="w-4 h-4 text-emerald-500" />
+                Non C'è Furore (Giochi)
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Mostra o nascondi la sezione Giochi dal sito, homepage e app
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="giochi-site-toggle" className="text-sm">
+                    {globalSettings.giochi ? 'Visibile sul sito' : 'Nascosto dal sito'}
+                  </Label>
+                  {globalSettings.giochi && (
+                    <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 text-xs">
+                      🎮 Pubblico
+                    </Badge>
+                  )}
+                </div>
+                <Switch
+                  id="giochi-site-toggle"
+                  checked={globalSettings.giochi}
+                  onCheckedChange={() => toggleGlobalFormat('giochi')}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Community visibility (move here for grouping) */}
+          <Card className="border-accent/20 bg-accent/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Users className="w-4 h-4 text-accent" />
+                Community
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Mostra o nascondi la sezione Community dal sito e dalle pagine pubbliche
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="community-site-toggle" className="text-sm">
+                    {globalSettings.community ? 'Visibile sul sito' : 'Nascosta dal sito'}
+                  </Label>
+                  {globalSettings.community && (
+                    <Badge variant="outline" className="text-accent border-accent/30 text-xs">
+                      👥 Pubblica
+                    </Badge>
+                  )}
+                </div>
+                <Switch
+                  id="community-site-toggle"
+                  checked={globalSettings.community}
+                  onCheckedChange={() => toggleGlobalFormat('community')}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Separator className="my-6" />
+
+          {/* ===== FUNZIONALITÀ LIVE ===== */}
           {/* Mostra Scaletta Live */}
           <Card className="border-primary/20 bg-primary/5">
             <CardHeader className="pb-3">
@@ -147,32 +227,7 @@ export const AdminFormatsTab: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Community */}
-          <Card className="border-accent/20 bg-accent/5">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Users className="w-4 h-4 text-accent" />
-                Community
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Abilita o disabilita l'accesso alla sezione Community
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="community-toggle" className="text-sm">
-                    {globalSettings.community ? 'Attiva' : 'Disattivata'}
-                  </Label>
-                </div>
-                <Switch
-                  id="community-toggle"
-                  checked={globalSettings.community}
-                  onCheckedChange={() => toggleGlobalFormat('community')}
-                />
-              </div>
-            </CardContent>
-          </Card>
+          {/* Community toggle removed from here - now in Visibilità Sezioni section above */}
 
           {/* Separator for Lyrics section */}
           <Separator className="my-6" />

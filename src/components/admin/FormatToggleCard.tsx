@@ -1,7 +1,7 @@
 import React from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings2, Music, MessageSquare, Users } from 'lucide-react';
+import { Settings2, Music, MessageSquare, Users, Gamepad2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FormatPreferences } from '@/hooks/useFormatPreferences';
 import {
@@ -18,6 +18,7 @@ interface FormatToggleCardProps {
     openmic: boolean;
     dediche: boolean;
     community: boolean;
+    giochi: boolean;
   };
 }
 
@@ -111,7 +112,7 @@ const FormatToggleItem: React.FC<FormatToggleItemProps> = ({
 export const FormatToggleCard: React.FC<FormatToggleCardProps> = ({
   preferences,
   onToggle,
-  access = { openmic: true, dediche: true, community: true },
+  access = { openmic: true, dediche: true, community: true, giochi: true },
 }) => {
   const formats = [
     {
@@ -131,6 +132,12 @@ export const FormatToggleCard: React.FC<FormatToggleCardProps> = ({
       label: 'Community',
       icon: <Users className="w-4 h-4" />,
       tooltip: 'Attiva per monitorare messaggi e richieste Community in tempo reale',
+    },
+    {
+      key: 'giochi' as const,
+      label: 'Giochi',
+      icon: <Gamepad2 className="w-4 h-4" />,
+      tooltip: 'Attiva per monitorare l\'attività dei giochi in tempo reale',
     },
   ];
 
