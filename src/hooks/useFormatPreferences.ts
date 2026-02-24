@@ -5,6 +5,7 @@ export interface FormatPreferences {
   openmic: boolean;
   dediche: boolean;
   community: boolean;
+  giochi: boolean;
 }
 
 const STORAGE_KEY = 'admin_format_preferences';
@@ -13,6 +14,7 @@ const DEFAULT_PREFERENCES: FormatPreferences = {
   openmic: true,
   dediche: true,
   community: true,
+  giochi: true,
 };
 
 export const useFormatPreferences = () => {
@@ -37,6 +39,7 @@ export const useFormatPreferences = () => {
             openmic: parsed.openmic ?? true,
             dediche: parsed.dediche ?? true,
             community: parsed.community ?? true,
+            giochi: parsed.giochi ?? true,
           });
         }
       } catch (error) {
@@ -73,15 +76,16 @@ export const useFormatPreferences = () => {
       openmic: enabled,
       dediche: enabled,
       community: enabled,
+      giochi: enabled,
     };
     savePreferences(newPrefs);
   }, [savePreferences]);
 
   // Check if at least one format is active
-  const hasActiveFormats = preferences.openmic || preferences.dediche || preferences.community;
+  const hasActiveFormats = preferences.openmic || preferences.dediche || preferences.community || preferences.giochi;
 
   // Count active formats
-  const activeCount = [preferences.openmic, preferences.dediche, preferences.community].filter(Boolean).length;
+  const activeCount = [preferences.openmic, preferences.dediche, preferences.community, preferences.giochi].filter(Boolean).length;
 
   return {
     preferences,

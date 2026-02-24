@@ -8,10 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
 import { SiteHeader } from "@/components/site/SiteHeader";
 import { useLiveEvent } from "@/hooks/useLiveEvent";
+import { useFormatActiveCheck } from "@/hooks/useGlobalFormatSettings";
 import { cn } from "@/lib/utils";
 
 const AppLauncher: React.FC = () => {
   const { eventState, liveEvent, isFreeMode, freeMode, isOpenmicVisible, isDedicheVisible, loading } = useLiveEvent();
+  const { isActive: isGiochiVisible } = useFormatActiveCheck('giochi');
 
   // Check if everything is OFF (no live event, no freemode, nothing visible)
   const isEverythingOff = !loading && eventState.type === 'none' && !isOpenmicVisible && !isDedicheVisible;
@@ -308,19 +310,21 @@ const AppLauncher: React.FC = () => {
                 </Link>
               </div>
 
-              {/* Games Banner */}
-              <Link to="/app/giochi" className="block mt-6">
-                <Card className="glass-card border-primary/20 hover:border-primary/50 transition-all">
-                  <CardContent className="p-4 flex items-center gap-4">
-                    <div className="text-3xl">🎮</div>
-                    <div className="flex-1">
-                      <h3 className="font-display font-bold text-foreground">Giochi dal Vivo</h3>
-                      <p className="text-xs text-muted-foreground">Sfida gli altri mentre aspetti!</p>
-                    </div>
-                    <ArrowRight className="w-5 h-5 text-muted-foreground" />
-                  </CardContent>
-                </Card>
-              </Link>
+              {/* Games Banner - only if giochi is enabled */}
+              {isGiochiVisible && (
+                <Link to="/app/giochi" className="block mt-6">
+                  <Card className="glass-card border-primary/20 hover:border-primary/50 transition-all">
+                    <CardContent className="p-4 flex items-center gap-4">
+                      <div className="text-3xl">🎮</div>
+                      <div className="flex-1">
+                        <h3 className="font-display font-bold text-foreground">Giochi dal Vivo</h3>
+                        <p className="text-xs text-muted-foreground">Sfida gli altri mentre aspetti!</p>
+                      </div>
+                      <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                    </CardContent>
+                  </Card>
+                </Link>
+              )}
 
               <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
                 <a

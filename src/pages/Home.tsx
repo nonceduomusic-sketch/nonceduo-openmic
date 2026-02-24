@@ -7,6 +7,7 @@ import { TestimonialsSection } from '@/components/TestimonialsSection';
 import { SEO } from '@/components/SEO';
 import { SiteHeader } from '@/components/site/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
+import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
 
 import duoPhoto1 from '@/assets/duo-photo-1.png';
 import duoPhoto2 from '@/assets/duo-photo-2.png';
@@ -14,6 +15,8 @@ import duoPhoto3 from '@/assets/duo-photo-3.png';
 import duoPhoto4 from '@/assets/duo-photo-4.png';
 
 const Home: React.FC = () => {
+  const { isActive: isGiochiVisible } = useFormatActiveCheck('giochi');
+  const { isActive: isCommunityVisible } = useFormatActiveCheck('community');
 
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -82,7 +85,7 @@ const Home: React.FC = () => {
               <p className="text-sm text-muted-foreground mb-4 uppercase tracking-wider font-medium">
                 Scopri i nostri format interattivi
               </p>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl mx-auto px-4">
+              <div className={`grid grid-cols-2 ${isGiochiVisible && isCommunityVisible ? 'sm:grid-cols-4' : isGiochiVisible || isCommunityVisible ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-3 max-w-xl mx-auto px-4`}>
                 <Link to="/openmic" className="group block touch-manipulation">
                   <Card className="bg-card/70 backdrop-blur-sm border-secondary/40 hover:border-secondary hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer">
                     <CardContent className="p-4 text-center relative">
@@ -109,31 +112,35 @@ const Home: React.FC = () => {
                   </Card>
                 </Link>
                 
-                <Link to="/app/giochi" className="group block touch-manipulation">
-                  <Card className="bg-card/70 backdrop-blur-sm border-emerald-500/40 hover:border-emerald-500 hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer">
-                    <CardContent className="p-4 text-center relative">
-                      <div className="absolute inset-0 bg-gradient-to-t from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                      <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-emerald-500/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-500/30 transition-all pointer-events-none">
-                        <Gamepad2 className="w-6 h-6 text-emerald-500 pointer-events-none" />
-                      </div>
-                      <span className="text-sm font-bold text-foreground block pointer-events-none">Furore</span>
-                      <p className="text-[10px] text-emerald-500 font-medium mt-0.5 pointer-events-none">Gioca con noi</p>
-                    </CardContent>
-                  </Card>
-                </Link>
+                {isGiochiVisible && (
+                  <Link to="/app/giochi" className="group block touch-manipulation">
+                    <Card className="bg-card/70 backdrop-blur-sm border-emerald-500/40 hover:border-emerald-500 hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer">
+                      <CardContent className="p-4 text-center relative">
+                        <div className="absolute inset-0 bg-gradient-to-t from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                        <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-emerald-500/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-500/30 transition-all pointer-events-none">
+                          <Gamepad2 className="w-6 h-6 text-emerald-500 pointer-events-none" />
+                        </div>
+                        <span className="text-sm font-bold text-foreground block pointer-events-none">Furore</span>
+                        <p className="text-[10px] text-emerald-500 font-medium mt-0.5 pointer-events-none">Gioca con noi</p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                )}
 
-                <Link to="/social" className="group block touch-manipulation">
-                  <Card className="bg-card/70 backdrop-blur-sm border-accent/40 hover:border-accent hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer">
-                    <CardContent className="p-4 text-center relative">
-                      <div className="absolute inset-0 bg-gradient-to-t from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                      <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-accent/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-accent/30 transition-all pointer-events-none">
-                        <Users className="w-6 h-6 text-accent pointer-events-none" />
-                      </div>
-                      <span className="text-sm font-bold text-foreground block pointer-events-none">Community</span>
-                      <p className="text-[10px] text-accent font-medium mt-0.5 pointer-events-none">Entra nel club</p>
-                    </CardContent>
-                  </Card>
-                </Link>
+                {isCommunityVisible && (
+                  <Link to="/social" className="group block touch-manipulation">
+                    <Card className="bg-card/70 backdrop-blur-sm border-accent/40 hover:border-accent hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer">
+                      <CardContent className="p-4 text-center relative">
+                        <div className="absolute inset-0 bg-gradient-to-t from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                        <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-accent/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-accent/30 transition-all pointer-events-none">
+                          <Users className="w-6 h-6 text-accent pointer-events-none" />
+                        </div>
+                        <span className="text-sm font-bold text-foreground block pointer-events-none">Community</span>
+                        <p className="text-[10px] text-accent font-medium mt-0.5 pointer-events-none">Entra nel club</p>
+                      </CardContent>
+                    </Card>
+                  </Link>
+                )}
               </div>
             </div>
 

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export type GlobalFormatKey = 'openmic' | 'dediche' | 'community' | 'voting' | 'show_booker_name' | 'show_live_queue' | 'lyrics_zoom' | 'lyrics_highlight_arrows' | 'lyrics_auto_scroll' | 'catalog_preview' | 'show_upcoming_events';
+export type GlobalFormatKey = 'openmic' | 'dediche' | 'community' | 'giochi' | 'voting' | 'show_booker_name' | 'show_live_queue' | 'lyrics_zoom' | 'lyrics_highlight_arrows' | 'lyrics_auto_scroll' | 'catalog_preview' | 'show_upcoming_events';
 
 export interface GlobalFormatSetting {
   format_key: GlobalFormatKey;
@@ -15,6 +15,7 @@ export const useGlobalFormatSettings = () => {
     openmic: true,
     dediche: true,
     community: true,
+    giochi: false,
     voting: true,
     show_booker_name: true,
     show_live_queue: true,
@@ -39,6 +40,7 @@ export const useGlobalFormatSettings = () => {
           openmic: true,
           dediche: true,
           community: true,
+          giochi: false,
           voting: true,
           show_booker_name: true,
           show_live_queue: true,
@@ -109,6 +111,7 @@ export const useGlobalFormatSettings = () => {
         openmic: 'Open Mic',
         dediche: 'Dediche',
         community: 'Community',
+        giochi: 'Giochi (Furore)',
         voting: 'Votazioni',
         show_booker_name: 'Nome prenotante',
         show_live_queue: 'Scaletta Live',
