@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Mic2, MessageSquareHeart, Music, Guitar, Heart } from 'lucide-react';
+import { Mic2, MessageSquareHeart, Music, Guitar, Heart, Gamepad2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -9,6 +9,7 @@ interface PromoFormatsProps {
   showOpenMic?: boolean;
   showDediche?: boolean;
   showBand?: boolean;
+  showGames?: boolean;
   variant?: 'locali' | 'eventi' | 'matrimoni' | 'piazza';
   className?: string;
 }
@@ -18,6 +19,7 @@ const formatLinks: Record<string, string> = {
   openmic: '/openmic',
   dediche: '/messaggi',
   band: '/partyband',
+  games: '/app/giochi',
 };
 
 const formats = [
@@ -54,6 +56,14 @@ const formats = [
     color: 'purple',
     highlight: 'Energia pura sul palco',
   },
+  {
+    key: 'games',
+    icon: Gamepad2,
+    title: 'Non C\'è Furore',
+    description: 'Quiz musicali e giochi interattivi dal vivo! Sfida gli altri ospiti dal tuo telefono mentre aspetti il tuo turno.',
+    color: 'green',
+    highlight: '🎮 Divertimento assicurato',
+  },
 ];
 
 const colorStyles = {
@@ -85,6 +95,13 @@ const colorStyles = {
     highlight: 'bg-accent/20 text-accent',
     glow: '',
   },
+  green: {
+    bg: 'bg-emerald-500/10',
+    border: 'border-emerald-500/30 hover:border-emerald-500/50',
+    icon: 'text-emerald-500',
+    highlight: 'bg-emerald-500/20 text-emerald-600',
+    glow: '',
+  },
 };
 
 export const PromoFormats: React.FC<PromoFormatsProps> = ({
@@ -92,6 +109,7 @@ export const PromoFormats: React.FC<PromoFormatsProps> = ({
   showOpenMic = true,
   showDediche = true,
   showBand = true,
+  showGames = true,
   variant = 'locali',
   className,
 }) => {
@@ -102,6 +120,7 @@ export const PromoFormats: React.FC<PromoFormatsProps> = ({
     if (f.key === 'openmic') return showOpenMic;
     if (f.key === 'dediche') return showDediche;
     if (f.key === 'band') return showBand;
+    if (f.key === 'games') return showGames;
     return false;
   });
 

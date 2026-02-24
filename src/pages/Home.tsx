@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Music, MapPin, PartyPopper, Heart, Users, Phone, Mail, Instagram, ChevronDown, Mic2, MessageCircle, Sparkles, Star, ArrowRight, Zap } from 'lucide-react';
+import { Music, MapPin, PartyPopper, Heart, Users, Phone, Mail, Instagram, ChevronDown, Mic2, MessageCircle, Sparkles, Star, ArrowRight, Zap, Gamepad2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { TestimonialsSection } from '@/components/TestimonialsSection';
@@ -82,7 +82,7 @@ const Home: React.FC = () => {
               <p className="text-sm text-muted-foreground mb-4 uppercase tracking-wider font-medium">
                 Scopri i nostri format interattivi
               </p>
-              <div className="grid grid-cols-3 gap-3 max-w-lg mx-auto px-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl mx-auto px-4">
                 <Link to="/openmic" className="group block touch-manipulation">
                   <Card className="bg-card/70 backdrop-blur-sm border-secondary/40 hover:border-secondary hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer">
                     <CardContent className="p-4 text-center relative">
@@ -109,6 +109,19 @@ const Home: React.FC = () => {
                   </Card>
                 </Link>
                 
+                <Link to="/app/giochi" className="group block touch-manipulation">
+                  <Card className="bg-card/70 backdrop-blur-sm border-emerald-500/40 hover:border-emerald-500 hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer">
+                    <CardContent className="p-4 text-center relative">
+                      <div className="absolute inset-0 bg-gradient-to-t from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                      <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-emerald-500/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-500/30 transition-all pointer-events-none">
+                        <Gamepad2 className="w-6 h-6 text-emerald-500 pointer-events-none" />
+                      </div>
+                      <span className="text-sm font-bold text-foreground block pointer-events-none">Furore</span>
+                      <p className="text-[10px] text-emerald-500 font-medium mt-0.5 pointer-events-none">Gioca con noi</p>
+                    </CardContent>
+                  </Card>
+                </Link>
+
                 <Link to="/social" className="group block touch-manipulation">
                   <Card className="bg-card/70 backdrop-blur-sm border-accent/40 hover:border-accent hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer">
                     <CardContent className="p-4 text-center relative">
