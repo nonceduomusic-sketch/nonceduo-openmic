@@ -39,6 +39,8 @@ import Trasmetti from "./pages/Trasmetti";
 import Telecomando from "./pages/Telecomando";
 import SongbookLive from "./pages/SongbookLive";
 import Partiture from "./pages/Partiture";
+import GamesHub from "./pages/GamesHub";
+import QuizGame from "./pages/QuizGame";
 
 const queryClient = new QueryClient();
 
@@ -72,6 +74,8 @@ const AppContent = () => (
       <Route path="/app" element={<AppLauncher />} />
       <Route path="/app/openmic" element={<AppOpenMic />} />
       <Route path="/app/dediche" element={<AppDediche />} />
+      <Route path="/app/giochi" element={<GamesHub />} />
+      <Route path="/app/giochi/quiz" element={<QuizGame />} />
       
       {/* Lyrics page - Spotify-like design */}
       <Route path="/lyrics/:id" element={<Lyrics />} />

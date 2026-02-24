@@ -15,6 +15,7 @@ import {
   Bot,
   BookOpen,
   Calendar, 
+  Gamepad2,
   Guitar,
   Link2,
   ListMusic, 
@@ -52,7 +53,8 @@ export type AdminMainTab =
   | "settings"
   | "audit"
   | "manuale"
-  | "catalog-songbook";
+  | "catalog-songbook"
+  | "games";
 
 type Item = {
   key: AdminMainTab;
@@ -85,6 +87,7 @@ const ITEMS: Item[] = [
   { key: "dediche", label: "Dediche", icon: MessageSquare, group: "Operativo", description: "Messaggi e chat" },
   { key: "community", label: "Community", icon: Newspaper, group: "Operativo", description: "Gruppi e bacheca" },
   { key: "assistant", label: "Assistente", icon: Bot, group: "Operativo", description: "Chat e lead" },
+  { key: "games", label: "Giochi", icon: Gamepad2, group: "Operativo", description: "Giochi interattivi" },
   
   // === GRUPPO GESTIONE ===
   { key: "settings", label: "Impostazioni", icon: Settings, group: "Gestione", description: "Configurazione generale" },
