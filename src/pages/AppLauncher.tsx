@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { ExternalLink, Mic2, MessageCircle, Loader2, Zap, Radio, Calendar, Instagram, ArrowRight, Sparkles, Music } from "lucide-react";
+import { ExternalLink, Mic2, MessageCircle, Loader2, Zap, Radio, Calendar, Instagram, ArrowRight, Sparkles, Music, Gamepad2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -307,6 +307,20 @@ const AppLauncher: React.FC = () => {
                   </Card>
                 </Link>
               </div>
+
+              {/* Games Banner */}
+              <Link to="/app/giochi" className="block mt-6">
+                <Card className="glass-card border-primary/20 hover:border-primary/50 transition-all">
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <div className="text-3xl">🎮</div>
+                    <div className="flex-1">
+                      <h3 className="font-display font-bold text-foreground">Giochi dal Vivo</h3>
+                      <p className="text-xs text-muted-foreground">Sfida gli altri mentre aspetti!</p>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-muted-foreground" />
+                  </CardContent>
+                </Card>
+              </Link>
 
               <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center">
                 <a

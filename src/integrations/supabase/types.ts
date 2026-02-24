@@ -1375,6 +1375,107 @@ export type Database = {
         }
         Relationships: []
       }
+      game_configs: {
+        Row: {
+          created_at: string | null
+          game_icon: string
+          game_key: string
+          game_name: string
+          id: string
+          is_enabled: boolean
+          sort_order: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          game_icon?: string
+          game_key: string
+          game_name: string
+          id?: string
+          is_enabled?: boolean
+          sort_order?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          game_icon?: string
+          game_key?: string
+          game_name?: string
+          id?: string
+          is_enabled?: boolean
+          sort_order?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      game_scores: {
+        Row: {
+          game_key: string
+          id: string
+          is_seed: boolean
+          nickname: string
+          played_at: string
+          score: number
+        }
+        Insert: {
+          game_key: string
+          id?: string
+          is_seed?: boolean
+          nickname: string
+          played_at?: string
+          score?: number
+        }
+        Update: {
+          game_key?: string
+          id?: string
+          is_seed?: boolean
+          nickname?: string
+          played_at?: string
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "game_scores_game_key_fkey"
+            columns: ["game_key"]
+            isOneToOne: false
+            referencedRelation: "game_configs"
+            referencedColumns: ["game_key"]
+          },
+        ]
+      }
+      game_settings: {
+        Row: {
+          available_in_consultable: boolean
+          available_when_closed: boolean
+          games_enabled: boolean
+          id: string
+          show_on_app: boolean
+          show_on_tv: boolean
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          available_in_consultable?: boolean
+          available_when_closed?: boolean
+          games_enabled?: boolean
+          id?: string
+          show_on_app?: boolean
+          show_on_tv?: boolean
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          available_in_consultable?: boolean
+          available_when_closed?: boolean
+          games_enabled?: boolean
+          id?: string
+          show_on_app?: boolean
+          show_on_tv?: boolean
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       global_format_settings: {
         Row: {
           format_key: string
@@ -2115,6 +2216,89 @@ export type Database = {
           user_type?: string
         }
         Relationships: []
+      }
+      quiz_question_sets: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      quiz_questions: {
+        Row: {
+          auto_generated: boolean
+          correct_option: string
+          created_at: string | null
+          difficulty: number
+          id: string
+          option_a: string
+          option_b: string
+          option_c: string | null
+          option_d: string | null
+          question_set_id: string | null
+          question_text: string
+          source_song_id: string | null
+        }
+        Insert: {
+          auto_generated?: boolean
+          correct_option?: string
+          created_at?: string | null
+          difficulty?: number
+          id?: string
+          option_a: string
+          option_b: string
+          option_c?: string | null
+          option_d?: string | null
+          question_set_id?: string | null
+          question_text: string
+          source_song_id?: string | null
+        }
+        Update: {
+          auto_generated?: boolean
+          correct_option?: string
+          created_at?: string | null
+          difficulty?: number
+          id?: string
+          option_a?: string
+          option_b?: string
+          option_c?: string | null
+          option_d?: string | null
+          question_set_id?: string | null
+          question_text?: string
+          source_song_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_questions_question_set_id_fkey"
+            columns: ["question_set_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_question_sets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reservation_statuses: {
         Row: {
