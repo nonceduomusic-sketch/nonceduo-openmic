@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -10,10 +10,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import {
   Gamepad2, Settings, Trophy, HelpCircle, Plus, Trash2, Edit, Save, Eye, EyeOff,
-  Monitor, Smartphone, Clock, List, FileText
+  Monitor, Smartphone, Clock, List, FileText, Download, Upload, Shuffle, ArrowDownNarrowWide
 } from 'lucide-react';
 import {
   useGameSettings, useUpdateGameSettings,
@@ -21,7 +22,7 @@ import {
   useGameScores, useClearGameScores,
   useQuizQuestionSets, useCreateQuestionSet, useUpdateQuestionSet, useDeleteQuestionSet,
   useQuizQuestions, useCreateQuizQuestion, useUpdateQuizQuestion, useDeleteQuizQuestion,
-  type QuizQuestion,
+  type QuizQuestion, type QuizQuestionSet,
 } from '@/hooks/useGames';
 
 export const AdminGamesTab: React.FC = () => {
@@ -36,11 +37,11 @@ export const AdminGamesTab: React.FC = () => {
       </div>
 
       <Tabs defaultValue="settings">
-        <TabsList className="grid grid-cols-4 w-full">
-          <TabsTrigger value="settings"><Settings className="w-4 h-4 mr-1" />Impostazioni</TabsTrigger>
-          <TabsTrigger value="scores"><Trophy className="w-4 h-4 mr-1" />Classifiche</TabsTrigger>
-          <TabsTrigger value="quiz-sets"><List className="w-4 h-4 mr-1" />Elenchi Quiz</TabsTrigger>
-          <TabsTrigger value="quiz-questions"><HelpCircle className="w-4 h-4 mr-1" />Domande</TabsTrigger>
+        <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full">
+          <TabsTrigger value="settings" className="text-xs sm:text-sm"><Settings className="w-4 h-4 mr-1 hidden sm:inline" />Impostazioni</TabsTrigger>
+          <TabsTrigger value="scores" className="text-xs sm:text-sm"><Trophy className="w-4 h-4 mr-1 hidden sm:inline" />Classifiche</TabsTrigger>
+          <TabsTrigger value="quiz-sets" className="text-xs sm:text-sm"><List className="w-4 h-4 mr-1 hidden sm:inline" />Elenchi</TabsTrigger>
+          <TabsTrigger value="quiz-questions" className="text-xs sm:text-sm"><HelpCircle className="w-4 h-4 mr-1 hidden sm:inline" />Domande</TabsTrigger>
         </TabsList>
 
         <TabsContent value="settings"><GameSettingsPanel /></TabsContent>
@@ -52,10 +53,48 @@ export const AdminGamesTab: React.FC = () => {
   );
 };
 
+// ─── CSV Utilities ───
+const detectSeparator = (text: string): string => {
+  const firstLine = text.split('\n')[0] || '';
+  if (firstLine.includes('\t')) return '\t';
+  const semicolons = (firstLine.match(/;/g) || []).length;
+  const commas = (firstLine.match(/,/g) || []).length;
+  return semicolons > commas ? ';' : ',';
+};
+
+const parseCSVLine = (line: string, sep: string): string[] => {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"') {
+      if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+      else inQuotes = !inQuotes;
+    } else if (c === sep && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += c;
+    }
+  }
+  result.push(current.trim());
+  return result;
+};
+
+const escapeCSV = (val: string): string => {
+  if (!val) return '';
+  if (val.includes(',') || val.includes(';') || val.includes('"') || val.includes('\n')) {
+    return `"${val.replace(/"/g, '""')}"`;
+  }
+  return val;
+};
+
 // ─── Settings Panel ───
 const GameSettingsPanel: React.FC = () => {
   const { data: settings } = useGameSettings();
   const { data: configs } = useGameConfigs();
+  const { data: questionSets } = useQuizQuestionSets();
   const updateSettings = useUpdateGameSettings();
   const toggleGame = useToggleGameConfig();
 
@@ -66,12 +105,15 @@ const GameSettingsPanel: React.FC = () => {
     toast.success('Impostazione aggiornata');
   };
 
+  const handleQuizSetting = (updates: Record<string, any>) => {
+    updateSettings.mutate(updates as any);
+    toast.success('Impostazione quiz aggiornata');
+  };
+
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Impostazioni Globali</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle className="text-base">Impostazioni Globali</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -82,17 +124,11 @@ const GameSettingsPanel: React.FC = () => {
           </div>
           <Separator />
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Smartphone className="w-4 h-4" />
-              <Label>Mostra su App</Label>
-            </div>
+            <div className="flex items-center gap-2"><Smartphone className="w-4 h-4" /><Label>Mostra su App</Label></div>
             <Switch checked={settings.show_on_app} onCheckedChange={v => handleToggle('show_on_app', v)} />
           </div>
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Monitor className="w-4 h-4" />
-              <Label>Mostra su TV</Label>
-            </div>
+            <div className="flex items-center gap-2"><Monitor className="w-4 h-4" /><Label>Mostra su TV</Label></div>
             <Switch checked={settings.show_on_tv} onCheckedChange={v => handleToggle('show_on_tv', v)} />
           </div>
           <Separator />
@@ -139,6 +175,73 @@ const GameSettingsPanel: React.FC = () => {
           ))}
         </CardContent>
       </Card>
+
+      {/* Quiz Source & Order Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">⚙️ Impostazioni Quiz</CardTitle>
+          <CardDescription>Scegli quali domande vengono utilizzate e in che ordine</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label className="font-medium">Sorgente Domande</Label>
+            <Select
+              value={settings.quiz_source_mode}
+              onValueChange={v => handleQuizSetting({ quiz_source_mode: v })}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all_catalog">📚 Tutto il catalogo</SelectItem>
+                <SelectItem value="all_sets">📋 Tutti gli elenchi (escluse domande senza elenco)</SelectItem>
+                <SelectItem value="general_only">🌐 Solo domande generali (senza elenco)</SelectItem>
+                <SelectItem value="specific_sets">🎯 Elenchi specifici</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {settings.quiz_source_mode === 'specific_sets' && questionSets && (
+            <div className="space-y-2 pl-2 border-l-2 border-primary/20">
+              <Label className="text-xs text-muted-foreground">Seleziona gli elenchi da utilizzare</Label>
+              {questionSets.map(s => (
+                <div key={s.id} className="flex items-center gap-2">
+                  <Checkbox
+                    checked={(settings.quiz_source_set_ids || []).includes(s.id)}
+                    onCheckedChange={checked => {
+                      const current = settings.quiz_source_set_ids || [];
+                      const next = checked
+                        ? [...current, s.id]
+                        : current.filter((id: string) => id !== s.id);
+                      handleQuizSetting({ quiz_source_set_ids: next });
+                    }}
+                  />
+                  <Label className="text-sm cursor-pointer">{s.name}</Label>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <Separator />
+
+          <div className="space-y-2">
+            <Label className="font-medium">Ordine Domande</Label>
+            <Select
+              value={settings.quiz_order_mode}
+              onValueChange={v => handleQuizSetting({ quiz_order_mode: v })}
+            >
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="random"><div className="flex items-center gap-2"><Shuffle className="w-4 h-4" />Casuale</div></SelectItem>
+                <SelectItem value="sequential"><div className="flex items-center gap-2"><ArrowDownNarrowWide className="w-4 h-4" />Sequenziale</div></SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {settings.quiz_order_mode === 'random'
+                ? 'Le domande vengono mescolate ad ogni partita'
+                : 'Le domande appaiono nell\'ordine in cui sono salvate'}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
@@ -148,59 +251,38 @@ const ScoresPanel: React.FC = () => {
   const { data: configs } = useGameConfigs();
   const clearScores = useClearGameScores();
   const [selectedGame, setSelectedGame] = useState('quiz');
-
   const { data: scores } = useGameScores(selectedGame, 20);
 
   return (
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <CardTitle className="text-base">Classifiche</CardTitle>
-            <div className="flex gap-2">
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  clearScores.mutate(selectedGame);
-                  toast.success('Classifica svuotata');
-                }}
-              >
+            <div className="flex flex-wrap gap-2">
+              <Button variant="destructive" size="sm" onClick={() => { clearScores.mutate(selectedGame); toast.success('Classifica svuotata'); }}>
                 <Trash2 className="w-4 h-4 mr-1" />Svuota questa
               </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  clearScores.mutate(undefined);
-                  toast.success('Tutte le classifiche svuotate');
-                }}
-              >
+              <Button variant="destructive" size="sm" onClick={() => { clearScores.mutate(undefined); toast.success('Tutte le classifiche svuotate'); }}>
                 Svuota tutte
               </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-2 mb-4">
+          <div className="flex flex-wrap gap-2 mb-4">
             {configs?.map(g => (
-              <Button
-                key={g.game_key}
-                size="sm"
-                variant={selectedGame === g.game_key ? 'default' : 'outline'}
-                onClick={() => setSelectedGame(g.game_key)}
-              >
+              <Button key={g.game_key} size="sm" variant={selectedGame === g.game_key ? 'default' : 'outline'} onClick={() => setSelectedGame(g.game_key)}>
                 {g.game_icon} {g.game_name}
               </Button>
             ))}
           </div>
-
           <div className="space-y-2">
             {scores?.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nessun punteggio</p>}
             {scores?.map((s, i) => (
               <div key={s.id} className="flex items-center gap-3 p-2 rounded border bg-card/30">
                 <span className="w-6 text-center font-bold text-sm">{i + 1}</span>
-                <span className="flex-1 text-sm font-medium">{s.nickname}</span>
+                <span className="flex-1 text-sm font-medium truncate">{s.nickname}</span>
                 <span className="font-bold text-primary">{s.score.toLocaleString()}</span>
                 {s.is_seed && <Badge variant="outline" className="text-xs">seed</Badge>}
               </div>
@@ -226,7 +308,7 @@ const QuizSetsPanel: React.FC = () => {
     <div className="space-y-4">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <div>
               <CardTitle className="text-base">Elenchi Domande</CardTitle>
               <CardDescription>Crea elenchi tematici di domande per serate diverse</CardDescription>
@@ -238,33 +320,24 @@ const QuizSetsPanel: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-3">
           {sets?.map(s => (
-            <div key={s.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card/50">
-              <FileText className="w-5 h-5 text-muted-foreground" />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm">{s.name}</p>
-                {s.description && <p className="text-xs text-muted-foreground truncate">{s.description}</p>}
+            <div key={s.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 p-3 rounded-lg border bg-card/50">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
+                <div className="min-w-0">
+                  <p className="font-medium text-sm">{s.name}</p>
+                  {s.description && <p className="text-xs text-muted-foreground truncate">{s.description}</p>}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {s.is_default && <Badge variant="secondary" className="text-xs">Default</Badge>}
-                <Button
-                  size="sm"
-                  variant={s.is_active ? 'default' : 'outline'}
-                  onClick={() => {
-                    updateSet.mutate({ id: s.id, is_active: !s.is_active });
-                    toast.success(s.is_active ? 'Elenco disattivato' : 'Elenco attivato');
-                  }}
-                >
+                <Button size="sm" variant={s.is_active ? 'default' : 'outline'} onClick={() => {
+                  updateSet.mutate({ id: s.id, is_active: !s.is_active });
+                  toast.success(s.is_active ? 'Elenco disattivato' : 'Elenco attivato');
+                }}>
                   {s.is_active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
                 </Button>
                 {!s.is_default && (
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    onClick={() => {
-                      deleteSet.mutate(s.id);
-                      toast.success('Elenco eliminato');
-                    }}
-                  >
+                  <Button size="sm" variant="destructive" onClick={() => { deleteSet.mutate(s.id); toast.success('Elenco eliminato'); }}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
                 )}
@@ -278,14 +351,8 @@ const QuizSetsPanel: React.FC = () => {
         <DialogContent>
           <DialogHeader><DialogTitle>Nuovo Elenco Domande</DialogTitle></DialogHeader>
           <div className="space-y-3">
-            <div>
-              <Label>Nome</Label>
-              <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="es. Serata Anni '80" />
-            </div>
-            <div>
-              <Label>Descrizione (opzionale)</Label>
-              <Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Tema della serata..." />
-            </div>
+            <div><Label>Nome</Label><Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="es. Serata Anni '80" /></div>
+            <div><Label>Descrizione (opzionale)</Label><Textarea value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="Tema della serata..." /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>Annulla</Button>
@@ -295,9 +362,7 @@ const QuizSetsPanel: React.FC = () => {
               setNewName(''); setNewDesc('');
               setShowCreate(false);
               toast.success('Elenco creato');
-            }}>
-              <Save className="w-4 h-4 mr-1" />Crea
-            </Button>
+            }}><Save className="w-4 h-4 mr-1" />Crea</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -305,16 +370,18 @@ const QuizSetsPanel: React.FC = () => {
   );
 };
 
-// ─── Quiz Questions Panel ───
+// ─── Quiz Questions Panel with Import/Export ───
 const QuizQuestionsPanel: React.FC = () => {
   const { data: sets } = useQuizQuestionSets();
   const [selectedSetId, setSelectedSetId] = useState<string | undefined>();
   const { data: questions } = useQuizQuestions(selectedSetId);
+  const { data: allQuestions } = useQuizQuestions(); // all questions for full export
   const createQuestion = useCreateQuizQuestion();
   const updateQuestion = useUpdateQuizQuestion();
   const deleteQuestion = useDeleteQuizQuestion();
   const [showEditor, setShowEditor] = useState(false);
   const [editingQ, setEditingQ] = useState<Partial<QuizQuestion> | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const openNew = () => {
     setEditingQ({
@@ -345,11 +412,139 @@ const QuizQuestionsPanel: React.FC = () => {
     setEditingQ(null);
   };
 
+  // ─── Export ───
+  const exportCSV = (questionsToExport: QuizQuestion[], filename: string, includeSetName: boolean) => {
+    const headers = ['domanda', 'opzione_a', 'opzione_b', 'opzione_c', 'opzione_d', 'risposta_corretta', 'difficolta'];
+    if (includeSetName) headers.push('elenco');
+
+    const rows = questionsToExport.map(q => {
+      const setName = sets?.find(s => s.id === q.question_set_id)?.name || '';
+      const row = [
+        escapeCSV(q.question_text), escapeCSV(q.option_a), escapeCSV(q.option_b),
+        escapeCSV(q.option_c || ''), escapeCSV(q.option_d || ''),
+        q.correct_option, String(q.difficulty),
+      ];
+      if (includeSetName) row.push(escapeCSV(setName));
+      return row.join(',');
+    });
+
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Esportate ${questionsToExport.length} domande`);
+  };
+
+  const handleExportCatalog = () => {
+    if (!allQuestions?.length) return toast.error('Nessuna domanda da esportare');
+    exportCSV(allQuestions, 'quiz-catalogo-completo.csv', true);
+  };
+
+  const handleExportSet = () => {
+    if (!questions?.length || !selectedSetId) return toast.error('Seleziona un elenco con domande');
+    const setName = sets?.find(s => s.id === selectedSetId)?.name || 'elenco';
+    exportCSV(questions, `quiz-${setName.replace(/\s+/g, '-').toLowerCase()}.csv`, false);
+  };
+
+  // ─── Import ───
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      if (!text) return;
+      const sep = detectSeparator(text);
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      if (lines.length < 2) return toast.error('File vuoto o senza dati');
+
+      const headerLine = lines[0].toLowerCase();
+      const hasSetColumn = headerLine.includes('elenco');
+
+      let imported = 0;
+      let errors = 0;
+
+      // Build set name → id map
+      const setMap: Record<string, string> = {};
+      sets?.forEach(s => { setMap[s.name.toLowerCase().trim()] = s.id; });
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = parseCSVLine(lines[i], sep);
+        if (cols.length < 5) { errors++; continue; }
+
+        const question_text = cols[0];
+        const option_a = cols[1];
+        const option_b = cols[2];
+        const option_c = cols[3] || null;
+        const option_d = cols[4] || null;
+        const correct_option = (cols[5] || 'a').toLowerCase().trim();
+        const difficulty = parseInt(cols[6]) || 1;
+        const setName = hasSetColumn ? (cols[7] || '').trim() : '';
+
+        if (!question_text || !option_a || !option_b) { errors++; continue; }
+
+        // Find or use selected set
+        let question_set_id = selectedSetId || sets?.[0]?.id;
+        if (setName) {
+          const matchedId = setMap[setName.toLowerCase()];
+          if (matchedId) question_set_id = matchedId;
+        }
+
+        createQuestion.mutate({
+          question_set_id: question_set_id!,
+          question_text, option_a, option_b,
+          option_c, option_d,
+          correct_option: ['a','b','c','d'].includes(correct_option) ? correct_option : 'a',
+          difficulty: Math.min(3, Math.max(1, difficulty)),
+        } as any);
+        imported++;
+      }
+
+      toast.success(`Importate ${imported} domande${errors > 0 ? `, ${errors} righe ignorate` : ''}`);
+    };
+    reader.readAsText(file);
+    // Reset input
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   return (
     <div className="space-y-4">
+      {/* Import/Export Card */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <CardTitle className="text-base">📥 Import / Export CSV</CardTitle>
+          <CardDescription>Scarica o carica domande in formato CSV (virgola, punto e virgola, tab)</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button variant="outline" size="sm" onClick={handleExportCatalog} className="flex-1">
+              <Download className="w-4 h-4 mr-1" />Scarica Catalogo Completo
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExportSet} disabled={!selectedSetId} className="flex-1">
+              <Download className="w-4 h-4 mr-1" />Scarica Elenco Selezionato
+            </Button>
+          </div>
+          <Separator />
+          <div className="space-y-2">
+            <Label className="text-xs text-muted-foreground">
+              Carica CSV: colonne = domanda, opzione_a, opzione_b, opzione_c, opzione_d, risposta_corretta, difficolta [, elenco]
+            </Label>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="flex-1">
+                <Upload className="w-4 h-4 mr-1" />Carica CSV
+              </Button>
+            </div>
+            <input ref={fileInputRef} type="file" accept=".csv,.txt" className="hidden" onChange={handleImport} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Questions List */}
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
             <CardTitle className="text-base">Domande Quiz</CardTitle>
             <Button size="sm" onClick={openNew}><Plus className="w-4 h-4 mr-1" />Nuova Domanda</Button>
           </div>
@@ -398,7 +593,7 @@ const QuizQuestionsPanel: React.FC = () => {
 
       {/* Question Editor Dialog */}
       <Dialog open={showEditor} onOpenChange={setShowEditor}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingQ?.id ? 'Modifica Domanda' : 'Nuova Domanda'}</DialogTitle>
           </DialogHeader>
@@ -406,42 +601,27 @@ const QuizQuestionsPanel: React.FC = () => {
             <div className="space-y-3">
               <div>
                 <Label>Elenco</Label>
-                <Select
-                  value={editingQ.question_set_id || ''}
-                  onValueChange={v => setEditingQ(p => ({ ...p!, question_set_id: v }))}
-                >
+                <Select value={editingQ.question_set_id || ''} onValueChange={v => setEditingQ(p => ({ ...p!, question_set_id: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {sets?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                  </SelectContent>
+                  <SelectContent>{sets?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div>
                 <Label>Domanda</Label>
-                <Textarea
-                  value={editingQ.question_text || ''}
-                  onChange={e => setEditingQ(p => ({ ...p!, question_text: e.target.value }))}
-                  placeholder="Scrivi la domanda..."
-                />
+                <Textarea value={editingQ.question_text || ''} onChange={e => setEditingQ(p => ({ ...p!, question_text: e.target.value }))} placeholder="Scrivi la domanda..." />
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {(['a', 'b', 'c', 'd'] as const).map(opt => (
                   <div key={opt}>
                     <Label>Opzione {opt.toUpperCase()}{opt === 'c' || opt === 'd' ? ' (opz.)' : ''}</Label>
-                    <Input
-                      value={(editingQ[`option_${opt}` as keyof typeof editingQ] as string) || ''}
-                      onChange={e => setEditingQ(p => ({ ...p!, [`option_${opt}`]: e.target.value }))}
-                    />
+                    <Input value={(editingQ[`option_${opt}` as keyof typeof editingQ] as string) || ''} onChange={e => setEditingQ(p => ({ ...p!, [`option_${opt}`]: e.target.value }))} />
                   </div>
                 ))}
               </div>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <Label>Risposta corretta</Label>
-                  <Select
-                    value={editingQ.correct_option || 'a'}
-                    onValueChange={v => setEditingQ(p => ({ ...p!, correct_option: v }))}
-                  >
+                  <Select value={editingQ.correct_option || 'a'} onValueChange={v => setEditingQ(p => ({ ...p!, correct_option: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="a">A</SelectItem>
@@ -453,10 +633,7 @@ const QuizQuestionsPanel: React.FC = () => {
                 </div>
                 <div>
                   <Label>Difficoltà</Label>
-                  <Select
-                    value={String(editingQ.difficulty || 1)}
-                    onValueChange={v => setEditingQ(p => ({ ...p!, difficulty: parseInt(v) }))}
-                  >
+                  <Select value={String(editingQ.difficulty || 1)} onValueChange={v => setEditingQ(p => ({ ...p!, difficulty: parseInt(v) }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="1">⭐ Facile</SelectItem>
@@ -468,7 +645,7 @@ const QuizQuestionsPanel: React.FC = () => {
               </div>
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={() => setShowEditor(false)}>Annulla</Button>
             <Button onClick={handleSave}><Save className="w-4 h-4 mr-1" />Salva</Button>
           </DialogFooter>

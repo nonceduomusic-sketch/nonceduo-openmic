@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Trophy, Gamepad2, ArrowRight } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { useGameSettings, useGameConfigs, useGameScores } from '@/hooks/useGames';
 
 const GamesHub: React.FC = () => {
@@ -13,7 +14,7 @@ const GamesHub: React.FC = () => {
   const { data: settings } = useGameSettings();
   const { data: configs } = useGameConfigs();
 
-  const enabledGames = configs?.filter(g => g.is_enabled) || [];
+  // Show all games, not just enabled ones
 
   if (settings && !settings.games_enabled) {
     return (
@@ -41,16 +42,19 @@ const GamesHub: React.FC = () => {
 
         {/* Games Grid */}
         <div className="space-y-3">
-          {enabledGames.map((game, i) => (
+            {(configs || []).map((game, i) => (
             <GameCard key={game.game_key} game={game} index={i} onClick={() => {
+              if (!game.is_enabled) {
+                navigate(`/app/giochi/${game.game_key}`);
+                return;
+              }
               if (game.game_key === 'quiz') navigate('/app/giochi/quiz');
-              // Other games will navigate to their routes when built
               else navigate(`/app/giochi/${game.game_key}`);
             }} />
           ))}
         </div>
 
-        {enabledGames.length === 0 && (
+        {(configs || []).length === 0 && (
           <div className="text-center py-12">
             <Gamepad2 className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
             <p className="text-muted-foreground text-sm">Nessun gioco disponibile al momento</p>
@@ -64,6 +68,7 @@ const GamesHub: React.FC = () => {
 const GameCard: React.FC<{ game: any; index: number; onClick: () => void }> = ({ game, index, onClick }) => {
   const { data: scores } = useGameScores(game.game_key, 3);
   const topScore = scores?.[0];
+  const isDisabled = !game.is_enabled;
 
   return (
     <motion.div
@@ -71,13 +76,16 @@ const GameCard: React.FC<{ game: any; index: number; onClick: () => void }> = ({
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.1 }}
     >
-      <Card className="cursor-pointer hover:border-primary/50 transition-all hover:shadow-lg" onClick={onClick}>
+      <Card className={cn("cursor-pointer transition-all hover:shadow-lg", isDisabled ? "opacity-60 border-dashed" : "hover:border-primary/50")} onClick={onClick}>
         <CardContent className="p-4">
           <div className="flex items-center gap-4">
             <div className="text-4xl">{game.game_icon}</div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-base">{game.game_name}</h3>
-              {topScore && (
+              <div className="flex items-center gap-2">
+                <h3 className="font-bold text-base">{game.game_name}</h3>
+                {isDisabled && <Badge variant="outline" className="text-xs">Non attivo</Badge>}
+              </div>
+              {!isDisabled && topScore && (
                 <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                   <Trophy className="w-3 h-3 text-yellow-500" />
                   <span>Record: {topScore.nickname} — {topScore.score.toLocaleString()}</span>
