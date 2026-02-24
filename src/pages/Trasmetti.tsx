@@ -16,6 +16,7 @@ import { ScreenShareViewer } from '@/components/broadcast/ScreenShareViewer';
 import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/chordpro';
 import { renderResponsiveChordLine } from '@/lib/chordproRenderer';
 import { usePedalScroll } from '@/hooks/usePedalControl';
+import { TVGameOverlay } from '@/components/broadcast/TVGameOverlay';
 
 interface Song {
   id: string;
@@ -618,10 +619,13 @@ export default function Trasmetti() {
   // SCREEN SHARE MODE - Priority display when active
   if (isScreenShareActive) {
     return (
-      <ScreenShareViewer 
-        stream={remoteStream} 
-        isConnecting={screenShareConnecting} 
-      />
+      <>
+        <ScreenShareViewer 
+          stream={remoteStream} 
+          isConnecting={screenShareConnecting} 
+        />
+        <TVGameOverlay />
+      </>
     );
   }
 
@@ -630,6 +634,7 @@ export default function Trasmetti() {
     const backgroundColor = getColorForSong(currentSongbookFile?.id || 'default');
     
     return (
+      <>
       <div className={cn(
         'h-screen relative overflow-hidden flex flex-col',
         viewMode === 'chordpro' ? 'bg-slate-900 text-white' : 
@@ -824,6 +829,8 @@ export default function Trasmetti() {
           </div>
         </div>
       </div>
+      <TVGameOverlay />
+      </>
     );
   }
 
@@ -835,6 +842,7 @@ export default function Trasmetti() {
       const backgroundColor = getColorForSong(currentSong.id);
       
       return (
+        <>
         <div className={cn('h-screen text-white relative overflow-hidden flex flex-col bg-gradient-to-b', backgroundColor)}>
           {/* Header with song info */}
           <div className="relative z-10 px-6 md:px-8 pt-6 md:pt-8 pb-4">
@@ -926,12 +934,15 @@ export default function Trasmetti() {
             </div>
           </div>
         </div>
+        <TVGameOverlay />
+        </>
       );
     }
     
     // KARAOKE MODE - Dark with ambient glow (default)
     if (viewMode === 'karaoke') {
       return (
+        <>
         <div className="h-screen bg-black text-white relative overflow-hidden flex flex-col">
           {/* Ambient background - subtle, professional */}
           <div className="absolute inset-0 pointer-events-none">
@@ -1077,11 +1088,14 @@ export default function Trasmetti() {
             </div>
           </div>
         </div>
+        <TVGameOverlay />
+        </>
       );
     }
     
     // COMPACT MODE - Clean, centered text, no line numbers, larger font
     return (
+      <>
       <div className="h-screen bg-background text-foreground relative overflow-hidden flex flex-col">
         {/* Header with song info */}
         <div className="relative z-10 px-6 md:px-8 pt-6 md:pt-8 pb-4 border-b">
@@ -1170,11 +1184,14 @@ export default function Trasmetti() {
           </div>
         </div>
       </div>
+      <TVGameOverlay />
+      </>
     );
   }
 
   // WAITING MODE - Promo screen with QR (shown when not broadcasting)
   return (
+    <>
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white relative overflow-hidden select-none">
       {/* Animated background */}
       <div className="absolute inset-0 pointer-events-none">
@@ -1292,5 +1309,7 @@ export default function Trasmetti() {
         </div>
       </div>
     </div>
+    <TVGameOverlay />
+    </>
   );
 }
