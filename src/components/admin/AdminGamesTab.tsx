@@ -27,21 +27,21 @@ import {
 
 export const AdminGamesTab: React.FC = () => {
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center gap-3">
-        <Gamepad2 className="w-6 h-6 text-primary" />
-        <div>
-          <h2 className="text-xl font-bold">Giochi Interattivi</h2>
-          <p className="text-sm text-muted-foreground">Gestisci giochi, classifiche e domande quiz</p>
+        <Gamepad2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+        <div className="min-w-0">
+          <h2 className="text-lg sm:text-xl font-bold">Giochi Interattivi</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">Gestisci giochi, classifiche e domande quiz</p>
         </div>
       </div>
 
       <Tabs defaultValue="settings">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full">
-          <TabsTrigger value="settings" className="text-xs sm:text-sm"><Settings className="w-4 h-4 mr-1 hidden sm:inline" />Impostazioni</TabsTrigger>
-          <TabsTrigger value="scores" className="text-xs sm:text-sm"><Trophy className="w-4 h-4 mr-1 hidden sm:inline" />Classifiche</TabsTrigger>
-          <TabsTrigger value="quiz-sets" className="text-xs sm:text-sm"><List className="w-4 h-4 mr-1 hidden sm:inline" />Elenchi</TabsTrigger>
-          <TabsTrigger value="quiz-questions" className="text-xs sm:text-sm"><HelpCircle className="w-4 h-4 mr-1 hidden sm:inline" />Domande</TabsTrigger>
+        <TabsList className="grid grid-cols-4 w-full h-auto p-1">
+          <TabsTrigger value="settings" className="text-[11px] sm:text-sm py-2 px-1 sm:px-3 gap-1"><Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /><span className="hidden xs:inline sm:inline">Impostazioni</span><span className="xs:hidden sm:hidden">Imp.</span></TabsTrigger>
+          <TabsTrigger value="scores" className="text-[11px] sm:text-sm py-2 px-1 sm:px-3 gap-1"><Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /><span className="hidden sm:inline">Classifiche</span><span className="sm:hidden">Class.</span></TabsTrigger>
+          <TabsTrigger value="quiz-sets" className="text-[11px] sm:text-sm py-2 px-1 sm:px-3 gap-1"><List className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />Elenchi</TabsTrigger>
+          <TabsTrigger value="quiz-questions" className="text-[11px] sm:text-sm py-2 px-1 sm:px-3 gap-1"><HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />Domande</TabsTrigger>
         </TabsList>
 
         <TabsContent value="settings"><GameSettingsPanel /></TabsContent>
@@ -111,54 +111,54 @@ const GameSettingsPanel: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <Card>
-        <CardHeader><CardTitle className="text-base">Impostazioni Globali</CardTitle></CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="font-medium">Giochi Abilitati</Label>
-              <p className="text-xs text-muted-foreground">Attiva/disattiva tutti i giochi</p>
+        <CardHeader className="px-4 py-3 sm:px-6 sm:py-4"><CardTitle className="text-sm sm:text-base">Impostazioni Globali</CardTitle></CardHeader>
+        <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <Label className="font-medium text-sm">Giochi Abilitati</Label>
+              <p className="text-[11px] sm:text-xs text-muted-foreground">Attiva/disattiva tutti i giochi</p>
             </div>
             <Switch checked={settings.games_enabled} onCheckedChange={v => handleToggle('games_enabled', v)} />
           </div>
           <Separator />
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2"><Smartphone className="w-4 h-4" /><Label>Mostra su App</Label></div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2"><Smartphone className="w-4 h-4 shrink-0" /><Label className="text-sm">Mostra su App</Label></div>
             <Switch checked={settings.show_on_app} onCheckedChange={v => handleToggle('show_on_app', v)} />
           </div>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2"><Monitor className="w-4 h-4" /><Label>Mostra su TV</Label></div>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2"><Monitor className="w-4 h-4 shrink-0" /><Label className="text-sm">Mostra su TV</Label></div>
             <Switch checked={settings.show_on_tv} onCheckedChange={v => handleToggle('show_on_tv', v)} />
           </div>
           {settings.show_on_tv && (
-            <div className="pl-6 space-y-2 border-l-2 border-primary/20">
+            <div className="pl-4 sm:pl-6 space-y-2 border-l-2 border-primary/20">
               <Label className="text-xs text-muted-foreground">Modalità display TV</Label>
               <Select
                 value={settings.tv_display_mode || 'off'}
                 onValueChange={v => handleQuizSetting({ tv_display_mode: v })}
               >
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="off">🚫 Nessun gioco visibile</SelectItem>
-                  <SelectItem value="banner">📢 Banner discreto (classifica)</SelectItem>
-                  <SelectItem value="fullscreen">🖥️ Gioco a schermo pieno</SelectItem>
+                  <SelectItem value="banner">📢 Banner discreto</SelectItem>
+                  <SelectItem value="fullscreen">🖥️ Schermo pieno</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           )}
           <Separator />
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="font-medium">Disponibile a evento chiuso</Label>
-              <p className="text-xs text-muted-foreground">Giochi accessibili anche prima dell'evento</p>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <Label className="font-medium text-sm">Disponibile a evento chiuso</Label>
+              <p className="text-[11px] sm:text-xs text-muted-foreground">Accessibili anche prima dell'evento</p>
             </div>
             <Switch checked={settings.available_when_closed} onCheckedChange={v => handleToggle('available_when_closed', v)} />
           </div>
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="font-medium">Disponibile in "Solo Consultabile"</Label>
-              <p className="text-xs text-muted-foreground">Giochi in modalità visualizza-ma-non-prenota</p>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <Label className="font-medium text-sm">In "Solo Consultabile"</Label>
+              <p className="text-[11px] sm:text-xs text-muted-foreground">Modalità visualizza-ma-non-prenota</p>
             </div>
             <Switch checked={settings.available_in_consultable} onCheckedChange={v => handleToggle('available_in_consultable', v)} />
           </div>
@@ -166,18 +166,18 @@ const GameSettingsPanel: React.FC = () => {
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Giochi Singoli</CardTitle>
-          <CardDescription>Abilita/disabilita ogni gioco individualmente</CardDescription>
+        <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+          <CardTitle className="text-sm sm:text-base">Giochi Singoli</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">Abilita/disabilita ogni gioco</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-2 sm:space-y-3 px-4 sm:px-6">
           {configs?.map(game => (
-            <div key={game.id} className="flex items-center justify-between p-3 rounded-lg border bg-card/50">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">{game.game_icon}</span>
-                <div>
-                  <p className="font-medium text-sm">{game.game_name}</p>
-                  <p className="text-xs text-muted-foreground">{game.game_key}</p>
+            <div key={game.id} className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-card/50">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <span className="text-xl sm:text-2xl shrink-0">{game.game_icon}</span>
+                <div className="min-w-0">
+                  <p className="font-medium text-sm truncate">{game.game_name}</p>
+                  <p className="text-[11px] text-muted-foreground">{game.game_key}</p>
                 </div>
               </div>
               <Switch
@@ -194,30 +194,30 @@ const GameSettingsPanel: React.FC = () => {
 
       {/* Quiz Source & Order Settings */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">⚙️ Impostazioni Quiz — Sorgente Admin</CardTitle>
-          <CardDescription>Pool di domande utilizzato dal sistema quando l'utente non sceglie</CardDescription>
+        <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+          <CardTitle className="text-sm sm:text-base">⚙️ Sorgente Admin</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">Pool domande quando l'utente non sceglie</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
           <div className="space-y-2">
-            <Label className="font-medium">Sorgente Domande (Admin)</Label>
+            <Label className="font-medium text-sm">Sorgente Domande</Label>
             <Select
               value={settings.quiz_source_mode}
               onValueChange={v => handleQuizSetting({ quiz_source_mode: v })}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all_catalog">📚 Tutto il catalogo</SelectItem>
-                <SelectItem value="all_sets">📋 Tutti gli elenchi attivi</SelectItem>
-                <SelectItem value="general_only">🌐 Solo domande generali (senza elenco)</SelectItem>
+                <SelectItem value="all_sets">📋 Elenchi attivi</SelectItem>
+                <SelectItem value="general_only">🌐 Solo generali</SelectItem>
                 <SelectItem value="specific_sets">🎯 Elenchi specifici</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {settings.quiz_source_mode === 'specific_sets' && questionSets && (
-            <div className="space-y-2 pl-2 border-l-2 border-primary/20">
-              <Label className="text-xs text-muted-foreground">Seleziona gli elenchi da utilizzare</Label>
+            <div className="space-y-2 pl-3 sm:pl-4 border-l-2 border-primary/20">
+              <Label className="text-[11px] sm:text-xs text-muted-foreground">Seleziona gli elenchi</Label>
               {questionSets.map(s => (
                 <div key={s.id} className="flex items-center gap-2">
                   <Checkbox
@@ -239,12 +239,12 @@ const GameSettingsPanel: React.FC = () => {
           <Separator />
 
           <div className="space-y-2">
-            <Label className="font-medium">Ordine Domande</Label>
+            <Label className="font-medium text-sm">Ordine Domande</Label>
             <Select
               value={settings.quiz_order_mode}
               onValueChange={v => handleQuizSetting({ quiz_order_mode: v })}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="random"><div className="flex items-center gap-2"><Shuffle className="w-4 h-4" />Casuale</div></SelectItem>
                 <SelectItem value="sequential"><div className="flex items-center gap-2"><ArrowDownNarrowWide className="w-4 h-4" />Sequenziale</div></SelectItem>
@@ -256,15 +256,15 @@ const GameSettingsPanel: React.FC = () => {
 
       {/* User-facing choice controls */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">🎮 Scelta Utente nel Quiz</CardTitle>
-          <CardDescription>Decidi se e quali opzioni l'utente può scegliere prima di giocare</CardDescription>
+        <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+          <CardTitle className="text-sm sm:text-base">🎮 Scelta Utente nel Quiz</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">Opzioni che l'utente può scegliere prima di giocare</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="font-medium">Permetti scelta all'utente</Label>
-              <p className="text-xs text-muted-foreground">Se disattivato, l'utente gioca solo con la sorgente admin</p>
+        <CardContent className="space-y-3 sm:space-y-4 px-4 sm:px-6">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <Label className="font-medium text-sm">Permetti scelta all'utente</Label>
+              <p className="text-[11px] sm:text-xs text-muted-foreground">Se disattivato, usa solo la sorgente admin</p>
             </div>
             <Switch
               checked={settings.quiz_user_can_choose}
@@ -273,26 +273,26 @@ const GameSettingsPanel: React.FC = () => {
           </div>
 
           {settings.quiz_user_can_choose && (
-            <div className="space-y-3 pl-2 border-l-2 border-primary/20">
-              <Label className="text-xs text-muted-foreground font-semibold">Opzioni visibili all'utente</Label>
+            <div className="space-y-2.5 sm:space-y-3 pl-3 sm:pl-4 border-l-2 border-primary/20">
+              <Label className="text-[11px] sm:text-xs text-muted-foreground font-semibold">Opzioni visibili</Label>
 
-              <div className="flex items-center justify-between">
-                <Label className="text-sm">🎲 Casuale (tutte le domande)</Label>
+              <div className="flex items-center justify-between gap-3">
+                <Label className="text-sm">🎲 Casuale</Label>
                 <Switch
                   checked={settings.quiz_user_show_random}
                   onCheckedChange={v => handleQuizSetting({ quiz_user_show_random: v })}
                 />
               </div>
 
-              <div className="flex items-center justify-between">
-                <Label className="text-sm">🌐 Cultura musicale (senza elenco)</Label>
+              <div className="flex items-center justify-between gap-3">
+                <Label className="text-sm">🌐 Cultura musicale</Label>
                 <Switch
                   checked={settings.quiz_user_show_general}
                   onCheckedChange={v => handleQuizSetting({ quiz_user_show_general: v })}
                 />
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <Label className="text-sm">📋 Elenchi tematici</Label>
                 <Switch
                   checked={settings.quiz_user_show_sets}
@@ -301,8 +301,8 @@ const GameSettingsPanel: React.FC = () => {
               </div>
 
               {settings.quiz_user_show_sets && questionSets && questionSets.filter(s => s.is_active).length > 0 && (
-                <div className="space-y-2 pl-2 border-l-2 border-muted">
-                  <Label className="text-xs text-muted-foreground">Quali elenchi mostrare all'utente</Label>
+                <div className="space-y-2 pl-3 sm:pl-4 border-l-2 border-muted">
+                  <Label className="text-[11px] sm:text-xs text-muted-foreground">Elenchi visibili all'utente</Label>
                   {questionSets.filter(s => s.is_active).map(s => (
                     <div key={s.id} className="flex items-center gap-2">
                       <Checkbox
@@ -324,7 +324,7 @@ const GameSettingsPanel: React.FC = () => {
                       <Label className="text-sm cursor-pointer">{s.name}</Label>
                     </div>
                   ))}
-                  <p className="text-xs text-muted-foreground">Se tutti selezionati, verranno mostrati tutti gli elenchi attivi.</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Se tutti selezionati, verranno mostrati tutti.</p>
                 </div>
               )}
             </div>
@@ -343,37 +343,39 @@ const ScoresPanel: React.FC = () => {
   const { data: scores } = useGameScores(selectedGame, 20);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <CardTitle className="text-base">Classifiche</CardTitle>
+            <CardTitle className="text-sm sm:text-base">Classifiche</CardTitle>
             <div className="flex flex-wrap gap-2">
-              <Button variant="destructive" size="sm" onClick={() => { clearScores.mutate(selectedGame); toast.success('Classifica svuotata'); }}>
-                <Trash2 className="w-4 h-4 mr-1" />Svuota questa
+              <Button variant="destructive" size="sm" className="text-xs sm:text-sm h-8 sm:h-9" onClick={() => { clearScores.mutate(selectedGame); toast.success('Classifica svuotata'); }}>
+                <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />Svuota
               </Button>
-              <Button variant="destructive" size="sm" onClick={() => { clearScores.mutate(undefined); toast.success('Tutte le classifiche svuotate'); }}>
+              <Button variant="destructive" size="sm" className="text-xs sm:text-sm h-8 sm:h-9" onClick={() => { clearScores.mutate(undefined); toast.success('Tutte le classifiche svuotate'); }}>
                 Svuota tutte
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2 mb-4">
+        <CardContent className="px-4 sm:px-6">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3 sm:mb-4">
             {configs?.map(g => (
-              <Button key={g.game_key} size="sm" variant={selectedGame === g.game_key ? 'default' : 'outline'} onClick={() => setSelectedGame(g.game_key)}>
+              <Button key={g.game_key} size="sm" className="text-xs sm:text-sm h-8 sm:h-9 px-2.5 sm:px-3" variant={selectedGame === g.game_key ? 'default' : 'outline'} onClick={() => setSelectedGame(g.game_key)}>
                 {g.game_icon} {g.game_name}
               </Button>
             ))}
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5 sm:space-y-2">
             {scores?.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nessun punteggio</p>}
             {scores?.map((s, i) => (
-              <div key={s.id} className="flex items-center gap-3 p-2 rounded border bg-card/30">
-                <span className="w-6 text-center font-bold text-sm">{i + 1}</span>
+              <div key={s.id} className="flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg border bg-card/30">
+                <span className="w-6 text-center font-bold text-xs sm:text-sm">
+                  {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
+                </span>
                 <span className="flex-1 text-sm font-medium truncate">{s.nickname}</span>
-                <span className="font-bold text-primary">{s.score.toLocaleString()}</span>
-                {s.is_seed && <Badge variant="outline" className="text-xs">seed</Badge>}
+                <span className="font-bold text-primary text-sm">{s.score.toLocaleString()}</span>
+                {s.is_seed && <Badge variant="outline" className="text-[10px] px-1.5">seed</Badge>}
               </div>
             ))}
           </div>
@@ -394,40 +396,40 @@ const QuizSetsPanel: React.FC = () => {
   const [newDesc, setNewDesc] = useState('');
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <div>
-              <CardTitle className="text-base">Elenchi Domande</CardTitle>
-              <CardDescription>Crea elenchi tematici di domande per serate diverse</CardDescription>
+            <div className="min-w-0">
+              <CardTitle className="text-sm sm:text-base">Elenchi Domande</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Crea elenchi tematici per serate diverse</CardDescription>
             </div>
-            <Button size="sm" onClick={() => setShowCreate(true)}>
-              <Plus className="w-4 h-4 mr-1" />Nuovo Elenco
+            <Button size="sm" className="h-8 sm:h-9 text-xs sm:text-sm" onClick={() => setShowCreate(true)}>
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />Nuovo Elenco
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3">
+        <CardContent className="space-y-2 sm:space-y-3 px-4 sm:px-6">
           {sets?.map(s => (
-            <div key={s.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 p-3 rounded-lg border bg-card/50">
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
+            <div key={s.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg border bg-card/50">
+              <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground shrink-0" />
                 <div className="min-w-0">
-                  <p className="font-medium text-sm">{s.name}</p>
-                  {s.description && <p className="text-xs text-muted-foreground truncate">{s.description}</p>}
+                  <p className="font-medium text-xs sm:text-sm">{s.name}</p>
+                  {s.description && <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{s.description}</p>}
                 </div>
               </div>
-              <div className="flex items-center gap-2 flex-wrap">
-                {s.is_default && <Badge variant="secondary" className="text-xs">Default</Badge>}
-                <Button size="sm" variant={s.is_active ? 'default' : 'outline'} onClick={() => {
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                {s.is_default && <Badge variant="secondary" className="text-[10px] sm:text-xs">Default</Badge>}
+                <Button size="sm" className="h-7 sm:h-8 w-7 sm:w-8 p-0" variant={s.is_active ? 'default' : 'outline'} onClick={() => {
                   updateSet.mutate({ id: s.id, is_active: !s.is_active });
-                  toast.success(s.is_active ? 'Elenco disattivato' : 'Elenco attivato');
+                  toast.success(s.is_active ? 'Disattivato' : 'Attivato');
                 }}>
-                  {s.is_active ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                  {s.is_active ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
                 </Button>
                 {!s.is_default && (
-                  <Button size="sm" variant="destructive" onClick={() => { deleteSet.mutate(s.id); toast.success('Elenco eliminato'); }}>
-                    <Trash2 className="w-4 h-4" />
+                  <Button size="sm" className="h-7 sm:h-8 w-7 sm:w-8 p-0" variant="destructive" onClick={() => { deleteSet.mutate(s.id); toast.success('Eliminato'); }}>
+                    <Trash2 className="w-3.5 h-3.5" />
                   </Button>
                 )}
               </div>
@@ -599,32 +601,30 @@ const QuizQuestionsPanel: React.FC = () => {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Import/Export Card */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">📥 Import / Export CSV</CardTitle>
-          <CardDescription>Scarica o carica domande in formato CSV (virgola, punto e virgola, tab)</CardDescription>
+        <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+          <CardTitle className="text-sm sm:text-base">📥 Import / Export CSV</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">Scarica o carica domande in formato CSV</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-col sm:flex-row gap-2">
-            <Button variant="outline" size="sm" onClick={handleExportCatalog} className="flex-1">
-              <Download className="w-4 h-4 mr-1" />Scarica Catalogo Completo
+        <CardContent className="space-y-2 sm:space-y-3 px-4 sm:px-6">
+          <div className="flex flex-col sm:flex-row gap-1.5 sm:gap-2">
+            <Button variant="outline" size="sm" className="flex-1 text-xs sm:text-sm h-8 sm:h-9" onClick={handleExportCatalog}>
+              <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />Catalogo Completo
             </Button>
-            <Button variant="outline" size="sm" onClick={handleExportSet} disabled={!selectedSetId} className="flex-1">
-              <Download className="w-4 h-4 mr-1" />Scarica Elenco Selezionato
+            <Button variant="outline" size="sm" className="flex-1 text-xs sm:text-sm h-8 sm:h-9" onClick={handleExportSet} disabled={!selectedSetId}>
+              <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />Elenco Selezionato
             </Button>
           </div>
           <Separator />
-          <div className="space-y-2">
-            <Label className="text-xs text-muted-foreground">
-              Carica CSV: colonne = domanda, opzione_a, opzione_b, opzione_c, opzione_d, risposta_corretta, difficolta [, elenco]
+          <div className="space-y-1.5">
+            <Label className="text-[10px] sm:text-xs text-muted-foreground">
+              Colonne CSV: domanda, opzione_a, opzione_b, opzione_c, opzione_d, risposta, difficolta [, elenco]
             </Label>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="flex-1">
-                <Upload className="w-4 h-4 mr-1" />Carica CSV
-              </Button>
-            </div>
+            <Button variant="outline" size="sm" className="w-full text-xs sm:text-sm h-8 sm:h-9" onClick={() => fileInputRef.current?.click()}>
+              <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />Carica CSV
+            </Button>
             <input ref={fileInputRef} type="file" accept=".csv,.txt" className="hidden" onChange={handleImport} />
           </div>
         </CardContent>
@@ -632,17 +632,17 @@ const QuizQuestionsPanel: React.FC = () => {
 
       {/* Questions List */}
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <CardTitle className="text-base">Domande Quiz</CardTitle>
-            <Button size="sm" onClick={openNew}><Plus className="w-4 h-4 mr-1" />Nuova Domanda</Button>
+            <CardTitle className="text-sm sm:text-base">Domande Quiz</CardTitle>
+            <Button size="sm" className="h-8 sm:h-9 text-xs sm:text-sm" onClick={openNew}><Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />Nuova Domanda</Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="mb-4">
-            <Label className="text-xs">Filtra per elenco</Label>
+        <CardContent className="px-4 sm:px-6">
+          <div className="mb-3 sm:mb-4">
+            <Label className="text-[11px] sm:text-xs">Filtra per elenco</Label>
             <Select value={selectedSetId || 'all'} onValueChange={v => setSelectedSetId(v === 'all' ? undefined : v)}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tutti gli elenchi</SelectItem>
                 {sets?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
@@ -650,16 +650,16 @@ const QuizQuestionsPanel: React.FC = () => {
             </Select>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-1.5 sm:space-y-2">
             {questions?.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nessuna domanda</p>}
             {questions?.map(q => (
-              <div key={q.id} className="p-3 rounded-lg border bg-card/30 space-y-1">
+              <div key={q.id} className="p-2.5 sm:p-3 rounded-lg border bg-card/30 space-y-1">
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-sm font-medium flex-1">{q.question_text}</p>
-                  <div className="flex gap-1 shrink-0">
-                    <Button size="sm" variant="ghost" onClick={() => openEdit(q)}><Edit className="w-4 h-4" /></Button>
-                    <Button size="sm" variant="ghost" onClick={() => { deleteQuestion.mutate(q.id); toast.success('Eliminata'); }}>
-                      <Trash2 className="w-4 h-4 text-destructive" />
+                  <p className="text-xs sm:text-sm font-medium flex-1 leading-snug">{q.question_text}</p>
+                  <div className="flex gap-0.5 shrink-0">
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => openEdit(q)}><Edit className="w-3.5 h-3.5" /></Button>
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => { deleteQuestion.mutate(q.id); toast.success('Eliminata'); }}>
+                      <Trash2 className="w-3.5 h-3.5 text-destructive" />
                     </Button>
                   </div>
                 </div>
@@ -668,7 +668,7 @@ const QuizQuestionsPanel: React.FC = () => {
                     const text = q[`option_${opt}` as keyof QuizQuestion] as string;
                     if (!text) return null;
                     return (
-                      <Badge key={opt} variant={q.correct_option === opt ? 'default' : 'outline'} className="text-xs">
+                      <Badge key={opt} variant={q.correct_option === opt ? 'default' : 'outline'} className="text-[10px] sm:text-xs px-1.5 py-0.5">
                         {opt.toUpperCase()}: {text}
                       </Badge>
                     );

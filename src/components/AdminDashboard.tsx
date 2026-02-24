@@ -835,7 +835,7 @@ export const AdminDashboard: React.FC = () => {
 
       {/* Content - optimized padding for mobile bottom nav */}
       <main className="flex-1 overflow-y-auto overflow-x-hidden pb-24 md:pb-6">
-        <div className="admin-container py-3">
+        <div className="admin-container py-2 sm:py-3">
         {isMainTabBlocked(mainTab) ? (
           <div className="max-w-xl mx-auto">
             <div className="rounded-xl border bg-card p-6">

@@ -59,10 +59,10 @@ export const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
   return (
     <div className={cn("rounded-xl border bg-card/50 overflow-hidden", className)}>
       {showTitle && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-primary/10 to-secondary/5 border-b border-border/50">
-          <Trophy className="w-5 h-5 text-primary" />
-          <h3 className="font-display font-bold text-sm">Top Cantanti</h3>
-          <span className="ml-auto text-xs text-muted-foreground flex items-center gap-1">
+        <div className="flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-gradient-to-r from-primary/10 to-secondary/5 border-b border-border/50">
+          <Trophy className="w-4 h-4 sm:w-5 sm:h-5 text-primary shrink-0" />
+          <h3 className="font-display font-bold text-xs sm:text-sm">Top Cantanti</h3>
+          <span className="ml-auto text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
             <TrendingUp className="w-3 h-3" />
             Live
           </span>
@@ -77,27 +77,27 @@ export const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: index * 0.05 }}
             className={cn(
-              "flex items-center gap-3 p-3 transition-colors",
+              "flex items-center gap-2 sm:gap-3 p-2.5 sm:p-3 transition-colors",
               getRankBg(index + 1),
               "border-l-2"
             )}
           >
             {/* Rank */}
-            <div className="w-8 h-8 rounded-full bg-background/50 flex items-center justify-center">
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-background/50 flex items-center justify-center shrink-0">
               {getRankIcon(index + 1)}
             </div>
 
             {/* Name & Stats */}
             <div className="flex-1 min-w-0">
               <p className={cn(
-                "font-semibold text-sm truncate",
+                "font-semibold text-xs sm:text-sm truncate",
                 index === 0 && "text-yellow-500",
                 index === 1 && "text-gray-400",
                 index === 2 && "text-amber-600"
               )}>
                 {entry.participant_name}
               </p>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground">
                 <span>{entry.total_songs} 🎤</span>
                 {entry.total_dedications > 0 && (
                   <span>{entry.total_dedications} ❤️</span>
@@ -112,19 +112,19 @@ export const LeaderboardCard: React.FC<LeaderboardCardProps> = ({
             </div>
 
             {/* Points */}
-            <div className="text-right">
-              <p className="font-bold text-sm text-primary">{entry.total_points}</p>
-              <p className="text-xs text-muted-foreground">punti</p>
+            <div className="text-right shrink-0">
+              <p className="font-bold text-xs sm:text-sm text-primary">{entry.total_points}</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground">punti</p>
             </div>
 
-            {/* Badges */}
+            {/* Badges - hide on very small screens */}
             {entry.badges_count > 0 && (
-              <div className="flex items-center gap-0.5">
+              <div className="hidden xs:flex items-center gap-0.5 shrink-0">
                 {[...Array(Math.min(entry.badges_count, 3))].map((_, i) => (
                   <Star key={i} className="w-3 h-3 text-yellow-500 fill-yellow-500" />
                 ))}
                 {entry.badges_count > 3 && (
-                  <span className="text-xs text-muted-foreground">+{entry.badges_count - 3}</span>
+                  <span className="text-[10px] text-muted-foreground">+{entry.badges_count - 3}</span>
                 )}
               </div>
             )}
