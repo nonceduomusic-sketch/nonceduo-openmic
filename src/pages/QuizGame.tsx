@@ -146,28 +146,28 @@ const QuizGame: React.FC = () => {
 
   return (
     <PageLayout variant="main" title="🎵 Quiz Musicale" showBack backPath="/app/giochi">
-      <div className="max-w-lg mx-auto px-4 py-6">
+      <div className="max-w-lg mx-auto px-3 sm:px-4 py-4 sm:py-6">
         <AnimatePresence mode="wait">
           {/* MENU */}
           {gameState === 'menu' && (
-            <motion.div key="menu" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
-              <div className="text-center space-y-3">
-                <div className="text-6xl">🎵</div>
-                <h1 className="text-2xl font-bold">Quiz Musicale</h1>
-                <p className="text-muted-foreground text-sm">10 domande, 15 secondi ciascuna. Rispondi veloce per più punti!</p>
+            <motion.div key="menu" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-4 sm:space-y-6">
+              <div className="text-center space-y-2 sm:space-y-3">
+                <div className="text-5xl sm:text-6xl">🎵</div>
+                <h1 className="text-xl sm:text-2xl font-bold">Quiz Musicale</h1>
+                <p className="text-muted-foreground text-xs sm:text-sm px-2">10 domande, 15 secondi ciascuna. Rispondi veloce per più punti!</p>
               </div>
 
               {/* User choice - only if admin enabled it and there are options */}
               {userChoices.length > 0 && (
                 <Card>
-                  <CardContent className="p-4 space-y-3">
-                    <p className="text-sm font-medium">Scegli la categoria</p>
-                    <div className="grid grid-cols-1 gap-2">
+                  <CardContent className="p-3 sm:p-4 space-y-2 sm:space-y-3">
+                    <p className="text-xs sm:text-sm font-medium">Scegli la categoria</p>
+                    <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
                       {userChoices.map(c => (
                         <Button
                           key={c.value}
                           variant={userChoice === c.value ? 'default' : 'outline'}
-                          className="justify-start h-auto py-2.5 px-4"
+                          className="justify-start h-auto py-2.5 sm:py-3 px-3 sm:px-4 text-sm"
                           onClick={() => setUserChoice(c.value)}
                         >
                           <span className="mr-2">{c.icon}</span>
@@ -179,7 +179,7 @@ const QuizGame: React.FC = () => {
                 </Card>
               )}
 
-              <Button className="w-full h-14 text-lg" onClick={startGame} disabled={isLoading || !availableQuestions?.length}>
+              <Button className="w-full h-12 sm:h-14 text-base sm:text-lg" onClick={startGame} disabled={isLoading || !availableQuestions?.length}>
                 <Zap className="w-5 h-5 mr-2" />
                 {isLoading ? 'Caricamento...' : !availableQuestions?.length ? 'Nessuna domanda disponibile' : 'Inizia!'}
               </Button>
@@ -187,16 +187,18 @@ const QuizGame: React.FC = () => {
               {/* Top Scores */}
               {topScores && topScores.length > 0 && (
                 <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-3">
+                  <CardContent className="p-3 sm:p-4">
+                    <div className="flex items-center gap-2 mb-2 sm:mb-3">
                       <Trophy className="w-4 h-4 text-yellow-500" />
-                      <h3 className="font-bold text-sm">Classifica</h3>
+                      <h3 className="font-bold text-xs sm:text-sm">Classifica</h3>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-1.5 sm:space-y-2">
                       {topScores.map((s, i) => (
-                        <div key={s.id} className="flex items-center gap-2 text-sm">
-                          <span className="w-5 text-center font-bold">{i + 1}</span>
-                          <span className="flex-1">{s.nickname}</span>
+                        <div key={s.id} className="flex items-center gap-2 text-xs sm:text-sm">
+                          <span className="w-5 text-center font-bold">
+                            {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
+                          </span>
+                          <span className="flex-1 truncate">{s.nickname}</span>
                           <span className="font-bold text-primary">{s.score}</span>
                         </div>
                       ))}
@@ -209,17 +211,17 @@ const QuizGame: React.FC = () => {
 
           {/* PLAYING */}
           {(gameState === 'playing' || gameState === 'result') && currentQ && (
-            <motion.div key={`q-${currentIdx}`} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-4">
-              <div className="flex items-center justify-between text-sm">
-                <Badge variant="outline">{currentIdx + 1}/{totalQuestions}</Badge>
-                <div className="flex items-center gap-2">
-                  {streak >= 3 && <Badge className="bg-orange-500">🔥 x{streak}</Badge>}
-                  <Badge variant="secondary"><Star className="w-3 h-3 mr-1" />{score}</Badge>
+            <motion.div key={`q-${currentIdx}`} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-3 sm:space-y-4">
+              <div className="flex items-center justify-between text-xs sm:text-sm">
+                <Badge variant="outline" className="text-[10px] sm:text-xs">{currentIdx + 1}/{totalQuestions}</Badge>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  {streak >= 3 && <Badge className="bg-orange-500 text-[10px] sm:text-xs">🔥 x{streak}</Badge>}
+                  <Badge variant="secondary" className="text-[10px] sm:text-xs"><Star className="w-3 h-3 mr-0.5 sm:mr-1" />{score}</Badge>
                 </div>
               </div>
 
               <div className="space-y-1">
-                <div className="flex items-center justify-between text-xs">
+                <div className="flex items-center justify-between text-[10px] sm:text-xs">
                   <span className="flex items-center gap-1"><Timer className="w-3 h-3" />Tempo</span>
                   <span className={cn("font-bold", timeLeft <= 5 && "text-destructive")}>{timeLeft}s</span>
                 </div>
@@ -227,12 +229,12 @@ const QuizGame: React.FC = () => {
               </div>
 
               <Card className="border-2">
-                <CardContent className="p-5">
-                  <p className="font-bold text-lg leading-snug">{currentQ.question_text}</p>
+                <CardContent className="p-3 sm:p-5">
+                  <p className="font-bold text-base sm:text-lg leading-snug">{currentQ.question_text}</p>
                 </CardContent>
               </Card>
 
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-1 gap-1.5 sm:gap-2">
                 {options.map(opt => {
                   const isSelected = selectedOption === opt.key;
                   const isCorrect = opt.key === currentQ.correct_option;
@@ -242,19 +244,19 @@ const QuizGame: React.FC = () => {
                       <Button
                         variant="outline"
                         className={cn(
-                          "w-full h-auto py-3 px-4 text-left justify-start text-sm font-medium",
+                          "w-full h-auto min-h-[44px] py-2.5 sm:py-3 px-3 sm:px-4 text-left justify-start text-xs sm:text-sm font-medium",
                           showResult && isCorrect && "border-green-500 bg-green-500/10 text-green-400",
                           showResult && isSelected && !isCorrect && "border-destructive bg-destructive/10 text-destructive",
                         )}
                         onClick={() => gameState === 'playing' && handleAnswer(opt.key)}
                         disabled={showResult}
                       >
-                        <span className="w-6 h-6 rounded-full border flex items-center justify-center text-xs font-bold mr-3 shrink-0">
-                          {showResult && isCorrect ? <Check className="w-4 h-4" /> :
-                           showResult && isSelected && !isCorrect ? <X className="w-4 h-4" /> :
+                        <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border flex items-center justify-center text-[10px] sm:text-xs font-bold mr-2 sm:mr-3 shrink-0">
+                          {showResult && isCorrect ? <Check className="w-3 h-3 sm:w-4 sm:h-4" /> :
+                           showResult && isSelected && !isCorrect ? <X className="w-3 h-3 sm:w-4 sm:h-4" /> :
                            opt.key.toUpperCase()}
                         </span>
-                        {opt.text}
+                        <span className="flex-1 min-w-0">{opt.text}</span>
                       </Button>
                     </motion.div>
                   );
@@ -263,7 +265,7 @@ const QuizGame: React.FC = () => {
 
               {gameState === 'result' && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                  <Button className="w-full" onClick={nextQuestion}>
+                  <Button className="w-full h-11 sm:h-12" onClick={nextQuestion}>
                     {currentIdx + 1 >= totalQuestions ? 'Vedi Risultato' : 'Prossima Domanda →'}
                   </Button>
                 </motion.div>
@@ -273,24 +275,24 @@ const QuizGame: React.FC = () => {
 
           {/* GAME OVER */}
           {gameState === 'gameover' && (
-            <motion.div key="gameover" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="space-y-6 text-center">
-              <div className="text-6xl">{score >= 700 ? '🏆' : score >= 400 ? '⭐' : '🎵'}</div>
+            <motion.div key="gameover" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="space-y-4 sm:space-y-6 text-center">
+              <div className="text-5xl sm:text-6xl">{score >= 700 ? '🏆' : score >= 400 ? '⭐' : '🎵'}</div>
               <div>
-                <h2 className="text-3xl font-bold">{score} punti</h2>
-                <p className="text-muted-foreground mt-1">
+                <h2 className="text-2xl sm:text-3xl font-bold">{score} punti</h2>
+                <p className="text-muted-foreground mt-1 text-sm">
                   {score >= 700 ? 'Fenomeno! Sei un esperto!' :
                    score >= 400 ? 'Ottimo lavoro!' : 'Buon inizio, riprova!'}
                 </p>
               </div>
 
-              <div className="flex gap-3">
-                <Button className="flex-1" onClick={() => {
+              <div className="flex gap-2 sm:gap-3">
+                <Button className="flex-1 h-11 sm:h-12 text-sm" onClick={() => {
                   if (!nickname) setShowNameDialog(true);
                   else handleSubmitScore(nickname);
                 }}>
-                  <Trophy className="w-4 h-4 mr-1" />Salva Punteggio
+                  <Trophy className="w-4 h-4 mr-1" />Salva
                 </Button>
-                <Button variant="outline" className="flex-1" onClick={startGame}>
+                <Button variant="outline" className="flex-1 h-11 sm:h-12 text-sm" onClick={startGame}>
                   <RotateCcw className="w-4 h-4 mr-1" />Rigioca
                 </Button>
               </div>

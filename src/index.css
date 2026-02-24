@@ -547,3 +547,60 @@ html, body, #root {
   padding-top: env(safe-area-inset-top, 0px);
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* ── Responsive table wrapper ── */
+.responsive-table-wrap {
+  @apply w-full overflow-x-auto -mx-3 px-3;
+  -webkit-overflow-scrolling: touch;
+}
+
+.responsive-table-wrap table {
+  @apply min-w-[480px];
+}
+
+/* ── Responsive card grid ── */
+.responsive-card-grid {
+  @apply grid gap-3;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .responsive-card-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .responsive-card-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* ── Touch-friendly button spacing ── */
+@media (hover: none) and (pointer: coarse) {
+  .touch-spacing > * + * {
+    margin-top: 0.5rem;
+  }
+  
+  .touch-spacing-x > * + * {
+    margin-left: 0.5rem;
+  }
+}
+
+/* ── Responsive text utilities ── */
+.text-responsive-sm {
+  @apply text-xs sm:text-sm;
+}
+
+.text-responsive-base {
+  @apply text-sm sm:text-base;
+}
+
+.text-responsive-lg {
+  @apply text-base sm:text-lg md:text-xl;
+}
+
+.text-responsive-xl {
+  @apply text-lg sm:text-xl md:text-2xl;
+}

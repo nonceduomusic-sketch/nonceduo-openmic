@@ -29,19 +29,19 @@ const GamesHub: React.FC = () => {
 
   return (
     <PageLayout variant="main" title="🎮 Giochi" showBack backPath="/app">
-      <div className="max-w-lg mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-lg mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center"
         >
-          <h1 className="text-2xl font-bold mb-1">Giochi dal Vivo</h1>
-          <p className="text-sm text-muted-foreground">Sfida gli altri mentre aspetti il tuo turno!</p>
+          <h1 className="text-xl sm:text-2xl font-bold mb-1">Giochi dal Vivo</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Sfida gli altri mentre aspetti il tuo turno!</p>
         </motion.div>
 
         {/* Games Grid */}
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
             {(configs || []).map((game, i) => (
             <GameCard key={game.game_key} game={game} index={i} onClick={() => {
               if (!game.is_enabled) {
@@ -76,23 +76,23 @@ const GameCard: React.FC<{ game: any; index: number; onClick: () => void }> = ({
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.1 }}
     >
-      <Card className={cn("cursor-pointer transition-all hover:shadow-lg", isDisabled ? "opacity-60 border-dashed" : "hover:border-primary/50")} onClick={onClick}>
-        <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            <div className="text-4xl">{game.game_icon}</div>
+      <Card className={cn("cursor-pointer transition-all hover:shadow-lg active:scale-[0.98]", isDisabled ? "opacity-60 border-dashed" : "hover:border-primary/50")} onClick={onClick}>
+        <CardContent className="p-3 sm:p-4">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="text-3xl sm:text-4xl shrink-0">{game.game_icon}</div>
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <h3 className="font-bold text-base">{game.game_name}</h3>
-                {isDisabled && <Badge variant="outline" className="text-xs">Non attivo</Badge>}
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-bold text-sm sm:text-base">{game.game_name}</h3>
+                {isDisabled && <Badge variant="outline" className="text-[10px] sm:text-xs">Non attivo</Badge>}
               </div>
               {!isDisabled && topScore && (
-                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                  <Trophy className="w-3 h-3 text-yellow-500" />
-                  <span>Record: {topScore.nickname} — {topScore.score.toLocaleString()}</span>
+                <div className="flex items-center gap-1 text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">
+                  <Trophy className="w-3 h-3 text-yellow-500 shrink-0" />
+                  <span className="truncate">Record: {topScore.nickname} — {topScore.score.toLocaleString()}</span>
                 </div>
               )}
             </div>
-            <ArrowRight className="w-5 h-5 text-muted-foreground" />
+            <ArrowRight className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground shrink-0" />
           </div>
         </CardContent>
       </Card>
