@@ -14,6 +14,60 @@ import duoPhoto2 from '@/assets/duo-photo-2.png';
 import duoPhoto3 from '@/assets/duo-photo-3.png';
 import duoPhoto4 from '@/assets/duo-photo-4.png';
 
+const FormatGrid: React.FC<{ isOpenmicVisible: boolean; isDedicheVisible: boolean; isGiochiVisible: boolean; isCommunityVisible: boolean }> = ({ isOpenmicVisible, isDedicheVisible, isGiochiVisible, isCommunityVisible }) => {
+  const formats = [
+    isOpenmicVisible && { key: 'openmic', to: '/openmic', icon: Mic2, label: 'Open Mic', sub: 'Canta con noi', colorClass: 'secondary' },
+    isDedicheVisible && { key: 'dediche', to: '/messaggi', icon: MessageCircle, label: 'Dediche', sub: 'Invia messaggi', colorClass: 'primary' },
+    isGiochiVisible && { key: 'giochi', to: '/app/giochi', icon: Gamepad2, label: "Non C'è Furore", sub: 'Gioca con noi', colorClass: 'emerald-500' },
+    isCommunityVisible && { key: 'community', to: '/social', icon: Users, label: 'Community', sub: 'Entra nel club', colorClass: 'accent' },
+  ].filter(Boolean) as { key: string; to: string; icon: React.ElementType; label: string; sub: string; colorClass: string }[];
+
+  if (formats.length === 0) return null;
+
+  if (formats.length === 1) {
+    const f = formats[0];
+    return (
+      <div className="flex justify-center px-4">
+        <Link to={f.to} className="group block touch-manipulation w-full max-w-[200px]">
+          <Card className={`bg-card/70 backdrop-blur-sm border-${f.colorClass}/40 hover:border-${f.colorClass} hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer`}>
+            <CardContent className="p-4 text-center relative">
+              <div className={`w-12 h-12 mx-auto mb-2 rounded-xl bg-${f.colorClass}/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-${f.colorClass}/30 transition-all pointer-events-none`}>
+                <f.icon className={`w-6 h-6 text-${f.colorClass} pointer-events-none`} />
+              </div>
+              <span className="text-sm font-bold text-foreground block pointer-events-none">{f.label}</span>
+              <p className={`text-[10px] text-${f.colorClass} font-medium mt-0.5 pointer-events-none`}>{f.sub}</p>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
+    );
+  }
+
+  const isOddOnMobile = formats.length % 2 !== 0;
+
+  return (
+    <div className={`grid grid-cols-2 ${formats.length >= 3 ? 'sm:grid-cols-3' : ''} ${formats.length >= 4 ? 'sm:grid-cols-4' : ''} gap-3 max-w-xl mx-auto px-4`}>
+      {formats.map((f, i) => {
+        const isLastOdd = isOddOnMobile && i === formats.length - 1;
+        return (
+          <Link key={f.key} to={f.to} className={`group block touch-manipulation ${isLastOdd ? 'col-span-2 sm:col-span-1 max-w-[200px] mx-auto sm:max-w-none' : ''}`}>
+            <Card className={`bg-card/70 backdrop-blur-sm border-${f.colorClass}/40 hover:border-${f.colorClass} hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer`}>
+              <CardContent className="p-4 text-center relative">
+                <div className={`absolute inset-0 bg-gradient-to-t from-${f.colorClass}/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none`} />
+                <div className={`w-12 h-12 mx-auto mb-2 rounded-xl bg-${f.colorClass}/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-${f.colorClass}/30 transition-all pointer-events-none`}>
+                  <f.icon className={`w-6 h-6 text-${f.colorClass} pointer-events-none`} />
+                </div>
+                <span className="text-sm font-bold text-foreground block pointer-events-none">{f.label}</span>
+                <p className={`text-[10px] text-${f.colorClass} font-medium mt-0.5 pointer-events-none`}>{f.sub}</p>
+              </CardContent>
+            </Card>
+          </Link>
+        );
+      })}
+    </div>
+  );
+};
+
 const Home: React.FC = () => {
   const { isActive: isGiochiVisible } = useFormatActiveCheck('giochi');
   const { isActive: isCommunityVisible } = useFormatActiveCheck('community');
@@ -87,71 +141,12 @@ const Home: React.FC = () => {
               <p className="text-sm text-muted-foreground mb-4 uppercase tracking-wider font-medium">
                 Scopri i nostri format interattivi
               </p>
-              <div className={`grid grid-cols-2 ${
-                [isOpenmicVisible, isDedicheVisible, isGiochiVisible, isCommunityVisible].filter(Boolean).length > 2 
-                  ? `sm:grid-cols-${Math.min([isOpenmicVisible, isDedicheVisible, isGiochiVisible, isCommunityVisible].filter(Boolean).length, 4)}` 
-                  : 'sm:grid-cols-2'
-              } gap-3 max-w-xl mx-auto px-4`}>
-                {isOpenmicVisible && (
-                <Link to="/openmic" className="group block touch-manipulation">
-                  <Card className="bg-card/70 backdrop-blur-sm border-secondary/40 hover:border-secondary hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer">
-                    <CardContent className="p-4 text-center relative">
-                      <div className="absolute inset-0 bg-gradient-to-t from-secondary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                      <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-secondary/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-secondary/30 transition-all pointer-events-none">
-                        <Mic2 className="w-6 h-6 text-secondary pointer-events-none" />
-                      </div>
-                      <span className="text-sm font-bold text-foreground block pointer-events-none">Open Mic</span>
-                      <p className="text-[10px] text-secondary font-medium mt-0.5 pointer-events-none">Canta con noi</p>
-                    </CardContent>
-                  </Card>
-                </Link>
-                )}
-                
-                {isDedicheVisible && (
-                <Link to="/messaggi" className="group block touch-manipulation">
-                  <Card className="bg-card/70 backdrop-blur-sm border-primary/40 hover:border-primary hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer">
-                    <CardContent className="p-4 text-center relative">
-                      <div className="absolute inset-0 bg-gradient-to-t from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                      <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-primary/30 transition-all pointer-events-none">
-                        <MessageCircle className="w-6 h-6 text-primary pointer-events-none" />
-                      </div>
-                      <span className="text-sm font-bold text-foreground block pointer-events-none">Dediche</span>
-                      <p className="text-[10px] text-primary font-medium mt-0.5 pointer-events-none">Invia messaggi</p>
-                    </CardContent>
-                  </Card>
-                </Link>
-                )}
-                
-                {isGiochiVisible && (
-                  <Link to="/app/giochi" className="group block touch-manipulation">
-                    <Card className="bg-card/70 backdrop-blur-sm border-emerald-500/40 hover:border-emerald-500 hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer">
-                      <CardContent className="p-4 text-center relative">
-                        <div className="absolute inset-0 bg-gradient-to-t from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                        <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-emerald-500/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-500/30 transition-all pointer-events-none">
-                          <Gamepad2 className="w-6 h-6 text-emerald-500 pointer-events-none" />
-                        </div>
-                        <span className="text-sm font-bold text-foreground block pointer-events-none">Non C'è Furore</span>
-                        <p className="text-[10px] text-emerald-500 font-medium mt-0.5 pointer-events-none">Gioca con noi</p>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                )}
-
-                {isCommunityVisible && (
-                  <Link to="/social" className="group block touch-manipulation">
-                    <Card className="bg-card/70 backdrop-blur-sm border-accent/40 hover:border-accent hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer">
-                      <CardContent className="p-4 text-center relative">
-                        <div className="absolute inset-0 bg-gradient-to-t from-accent/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
-                        <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-accent/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-accent/30 transition-all pointer-events-none">
-                          <Users className="w-6 h-6 text-accent pointer-events-none" />
-                        </div>
-                        <span className="text-sm font-bold text-foreground block pointer-events-none">Community</span>
-                        <p className="text-[10px] text-accent font-medium mt-0.5 pointer-events-none">Entra nel club</p>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                )}
-              </div>
+              <FormatGrid 
+                isOpenmicVisible={isOpenmicVisible} 
+                isDedicheVisible={isDedicheVisible} 
+                isGiochiVisible={isGiochiVisible} 
+                isCommunityVisible={isCommunityVisible} 
+              />
             </div>
 
             <button 

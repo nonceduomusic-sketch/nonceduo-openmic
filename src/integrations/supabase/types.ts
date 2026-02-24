@@ -1522,6 +1522,7 @@ export type Database = {
           updated_at: string | null
           updated_by: string | null
           visible_on_app: boolean
+          visible_on_menu: boolean
         }
         Insert: {
           format_key: string
@@ -1529,6 +1530,7 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           visible_on_app?: boolean
+          visible_on_menu?: boolean
         }
         Update: {
           format_key?: string
@@ -1536,6 +1538,7 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           visible_on_app?: boolean
+          visible_on_menu?: boolean
         }
         Relationships: []
       }

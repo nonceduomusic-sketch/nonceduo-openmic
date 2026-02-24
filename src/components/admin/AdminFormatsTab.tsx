@@ -1,5 +1,5 @@
 import React from 'react';
-import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown, Play, Calendar, Eye, Gamepad2, Globe, Mic2, MessageCircle, Smartphone } from 'lucide-react';
+import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown, Play, Calendar, Eye, Gamepad2, Globe, Mic2, MessageCircle, Smartphone, Menu } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -23,7 +23,7 @@ import { useGameConfigs, useToggleGameConfig } from '@/hooks/useGames';
  */
 export const AdminFormatsTab: React.FC = () => {
   const { permissions, isOwner: hookIsOwner, loading: permsLoading } = useCentroPermissions();
-  const { settings: globalSettings, appSettings, toggleFormat: toggleGlobalFormat, loading: globalLoading } = useGlobalFormatSettings();
+  const { settings: globalSettings, appSettings, menuSettings, toggleFormat: toggleGlobalFormat, loading: globalLoading } = useGlobalFormatSettings();
   const { data: gameConfigs, isLoading: gamesLoading } = useGameConfigs();
   const toggleGameConfig = useToggleGameConfig();
   
@@ -63,7 +63,7 @@ export const AdminFormatsTab: React.FC = () => {
           <Alert className="bg-muted/20 border-muted-foreground/10 mb-4">
             <Info className="h-4 w-4" />
             <AlertDescription className="text-xs text-muted-foreground">
-              Controlla dove mostrare ogni sezione: sul <strong>Sito</strong> (homepage e pagine informative) e/o sull'<strong>App</strong> (nonceduo.com/app).
+              Controlla dove mostrare ogni sezione: sul <strong>Sito</strong> (homepage), sull'<strong>App</strong> (nonceduo.com/app) e nel <strong>Menu</strong> (hamburger del sito).
             </AlertDescription>
           </Alert>
 
@@ -94,6 +94,14 @@ export const AdminFormatsTab: React.FC = () => {
                   {appSettings.openmic && <Badge variant="outline" className="text-secondary border-secondary/30 text-[10px]">Visibile</Badge>}
                 </div>
                 <Switch checked={appSettings.openmic} onCheckedChange={() => toggleGlobalFormat('openmic', 'app')} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Menu className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Menu</Label>
+                  {menuSettings.openmic && <Badge variant="outline" className="text-secondary border-secondary/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={menuSettings.openmic} onCheckedChange={() => toggleGlobalFormat('openmic', 'menu')} />
               </div>
             </CardContent>
           </Card>
@@ -126,6 +134,14 @@ export const AdminFormatsTab: React.FC = () => {
                 </div>
                 <Switch checked={appSettings.dediche} onCheckedChange={() => toggleGlobalFormat('dediche', 'app')} />
               </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Menu className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Menu</Label>
+                  {menuSettings.dediche && <Badge variant="outline" className="text-primary border-primary/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={menuSettings.dediche} onCheckedChange={() => toggleGlobalFormat('dediche', 'menu')} />
+              </div>
             </CardContent>
           </Card>
 
@@ -156,6 +172,14 @@ export const AdminFormatsTab: React.FC = () => {
                   {appSettings.giochi && <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 text-[10px]">Visibile</Badge>}
                 </div>
                 <Switch checked={appSettings.giochi} onCheckedChange={() => toggleGlobalFormat('giochi', 'app')} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Menu className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Menu</Label>
+                  {menuSettings.giochi && <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={menuSettings.giochi} onCheckedChange={() => toggleGlobalFormat('giochi', 'menu')} />
               </div>
 
               {/* Per-game toggles */}
@@ -209,6 +233,14 @@ export const AdminFormatsTab: React.FC = () => {
                   {appSettings.community && <Badge variant="outline" className="text-accent border-accent/30 text-[10px]">Visibile</Badge>}
                 </div>
                 <Switch checked={appSettings.community} onCheckedChange={() => toggleGlobalFormat('community', 'app')} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Menu className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Menu</Label>
+                  {menuSettings.community && <Badge variant="outline" className="text-accent border-accent/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={menuSettings.community} onCheckedChange={() => toggleGlobalFormat('community', 'menu')} />
               </div>
             </CardContent>
           </Card>

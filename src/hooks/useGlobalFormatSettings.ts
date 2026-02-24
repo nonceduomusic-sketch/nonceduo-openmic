@@ -8,6 +8,7 @@ export interface GlobalFormatSetting {
   format_key: GlobalFormatKey;
   is_active: boolean;
   visible_on_app: boolean;
+  visible_on_menu: boolean;
   updated_at: string;
 }
 
@@ -40,6 +41,20 @@ export const useGlobalFormatSettings = () => {
     catalog_preview: false,
     show_upcoming_events: false,
   });
+  const [menuSettings, setMenuSettings] = useState<Record<GlobalFormatKey, boolean>>({
+    openmic: true,
+    dediche: true,
+    community: true,
+    giochi: false,
+    voting: true,
+    show_booker_name: true,
+    show_live_queue: true,
+    lyrics_zoom: true,
+    lyrics_highlight_arrows: true,
+    lyrics_auto_scroll: true,
+    catalog_preview: false,
+    show_upcoming_events: false,
+  });
   const [loading, setLoading] = useState(true);
 
   const fetchSettings = useCallback(async () => {
@@ -58,15 +73,18 @@ export const useGlobalFormatSettings = () => {
           catalog_preview: false, show_upcoming_events: false,
         };
         const newAppSettings: Record<GlobalFormatKey, boolean> = { ...newSettings };
+        const newMenuSettings: Record<GlobalFormatKey, boolean> = { ...newSettings };
         data.forEach((item) => {
           const key = item.format_key as GlobalFormatKey;
           if (key in newSettings) {
             newSettings[key] = item.is_active;
             newAppSettings[key] = item.visible_on_app ?? true;
+            newMenuSettings[key] = (item as any).visible_on_menu ?? true;
           }
         });
         setSettings(newSettings);
         setAppSettings(newAppSettings);
+        setMenuSettings(newMenuSettings);
       }
     } catch (error) {
       console.error('Error fetching global format settings:', error);
@@ -99,10 +117,10 @@ export const useGlobalFormatSettings = () => {
     };
   }, [fetchSettings]);
 
-  const toggleFormat = async (format: GlobalFormatKey, target: 'site' | 'app' = 'site'): Promise<boolean> => {
-    const currentValue = target === 'app' ? appSettings[format] : settings[format];
+  const toggleFormat = async (format: GlobalFormatKey, target: 'site' | 'app' | 'menu' = 'site'): Promise<boolean> => {
+    const currentValue = target === 'app' ? appSettings[format] : target === 'menu' ? menuSettings[format] : settings[format];
     const newValue = !currentValue;
-    const column = target === 'app' ? 'visible_on_app' : 'is_active';
+    const column = target === 'app' ? 'visible_on_app' : target === 'menu' ? 'visible_on_menu' : 'is_active';
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -120,6 +138,8 @@ export const useGlobalFormatSettings = () => {
 
       if (target === 'app') {
         setAppSettings(prev => ({ ...prev, [format]: newValue }));
+      } else if (target === 'menu') {
+        setMenuSettings(prev => ({ ...prev, [format]: newValue }));
       } else {
         setSettings(prev => ({ ...prev, [format]: newValue }));
       }
@@ -130,7 +150,7 @@ export const useGlobalFormatSettings = () => {
         lyrics_highlight_arrows: 'Evidenziatore Testi', lyrics_auto_scroll: 'Auto-scroll Testi',
         catalog_preview: 'Anteprima Catalogo', show_upcoming_events: 'Mostra Eventi in Programma',
       };
-      const targetLabel = target === 'app' ? ' (App)' : ' (Sito)';
+      const targetLabel = target === 'app' ? ' (App)' : target === 'menu' ? ' (Menu)' : ' (Sito)';
       toast.success(`${formatNames[format]}${targetLabel} ${newValue ? 'attivato' : 'disattivato'}`);
       return true;
     } catch (error) {
@@ -147,6 +167,7 @@ export const useGlobalFormatSettings = () => {
   return {
     settings,
     appSettings,
+    menuSettings,
     loading,
     toggleFormat,
     isFormatActive,
@@ -155,12 +176,12 @@ export const useGlobalFormatSettings = () => {
 };
 
 // Hook for public pages to check if a format is active (with real-time updates)
-// target: 'site' checks is_active, 'app' checks visible_on_app
-export const useFormatActiveCheck = (format: GlobalFormatKey, target: 'site' | 'app' = 'site') => {
+// target: 'site' checks is_active, 'app' checks visible_on_app, 'menu' checks visible_on_menu
+export const useFormatActiveCheck = (format: GlobalFormatKey, target: 'site' | 'app' | 'menu' = 'site') => {
   const [isActive, setIsActive] = useState<boolean | null>(null); // null = loading
   const [loading, setLoading] = useState(true);
   const mountedRef = useRef(true);
-  const column = target === 'app' ? 'visible_on_app' : 'is_active';
+  const column = target === 'app' ? 'visible_on_app' : target === 'menu' ? 'visible_on_menu' : 'is_active';
 
   // Stable fetch function
   const fetchFormatStatus = useCallback(async () => {
