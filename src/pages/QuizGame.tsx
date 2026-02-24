@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trophy, Timer, Zap, RotateCcw, Star, Check, X } from 'lucide-react';
-import { useActiveQuizQuestions, useGameScores, useSubmitScore, type QuizQuestion } from '@/hooks/useGames';
+import { useActiveQuizQuestions, useQuizQuestions, useQuizQuestionSets, useGameScores, useSubmitScore, type QuizQuestion } from '@/hooks/useGames';
 import { NamePromptDialog } from '@/components/NamePromptDialog';
 import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
 import { cn } from '@/lib/utils';
@@ -18,7 +19,10 @@ const POINTS_BASE = 100;
 const POINTS_TIME_BONUS = 50; // max bonus for fast answers
 
 const QuizGame: React.FC = () => {
+  const { data: questionSets } = useQuizQuestionSets();
   const { data: allQuestions, isLoading } = useActiveQuizQuestions();
+  const [selectedSourceId, setSelectedSourceId] = useState<string>('random');
+  const { data: specificSetQuestions } = useQuizQuestions(selectedSourceId !== 'random' ? selectedSourceId : undefined);
   const { data: topScores } = useGameScores('quiz', 5);
   const submitScore = useSubmitScore();
 
@@ -36,10 +40,13 @@ const QuizGame: React.FC = () => {
   const currentQ = questions[currentIdx];
   const totalQuestions = questions.length;
 
+  // Pick questions based on source selection
+  const availableQuestions = selectedSourceId === 'random' ? allQuestions : specificSetQuestions;
+
   // Shuffle and pick 10 questions
   const startGame = useCallback(() => {
-    if (!allQuestions?.length) return;
-    const shuffled = [...allQuestions].sort(() => Math.random() - 0.5).slice(0, 10);
+    if (!availableQuestions?.length) return;
+    const shuffled = [...availableQuestions].sort(() => Math.random() - 0.5).slice(0, 10);
     setQuestions(shuffled);
     setCurrentIdx(0);
     setScore(0);
@@ -47,7 +54,7 @@ const QuizGame: React.FC = () => {
     setSelectedOption(null);
     setTimeLeft(QUESTION_TIME);
     setGameState('playing');
-  }, [allQuestions]);
+  }, [availableQuestions]);
 
   // Timer
   useEffect(() => {
@@ -123,9 +130,25 @@ const QuizGame: React.FC = () => {
                 <p className="text-muted-foreground text-sm">10 domande, 15 secondi ciascuna. Rispondi veloce per più punti!</p>
               </div>
 
-              <Button className="w-full h-14 text-lg" onClick={startGame} disabled={isLoading || !allQuestions?.length}>
+              {/* Source selector */}
+              {questionSets && questionSets.length > 0 && (
+                <div className="text-left space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">Sorgente domande</label>
+                  <Select value={selectedSourceId} onValueChange={setSelectedSourceId}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="random">🎲 Casuali (tutti gli elenchi attivi)</SelectItem>
+                      {questionSets.filter(s => s.is_active).map(s => (
+                        <SelectItem key={s.id} value={s.id}>📋 {s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <Button className="w-full h-14 text-lg" onClick={startGame} disabled={isLoading || !availableQuestions?.length}>
                 <Zap className="w-5 h-5 mr-2" />
-                {isLoading ? 'Caricamento...' : !allQuestions?.length ? 'Nessuna domanda disponibile' : 'Inizia!'}
+                {isLoading ? 'Caricamento...' : !availableQuestions?.length ? 'Nessuna domanda disponibile' : 'Inizia!'}
               </Button>
 
               {/* Top Scores */}
