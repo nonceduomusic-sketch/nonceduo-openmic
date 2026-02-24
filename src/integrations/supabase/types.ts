@@ -188,6 +188,7 @@ export type Database = {
         Row: {
           enabled_on_community: boolean
           enabled_on_dediche: boolean
+          enabled_on_giochi: boolean
           enabled_on_openmic: boolean
           enabled_on_site: boolean
           id: string
@@ -210,6 +211,7 @@ export type Database = {
         Insert: {
           enabled_on_community?: boolean
           enabled_on_dediche?: boolean
+          enabled_on_giochi?: boolean
           enabled_on_openmic?: boolean
           enabled_on_site?: boolean
           id?: string
@@ -232,6 +234,7 @@ export type Database = {
         Update: {
           enabled_on_community?: boolean
           enabled_on_dediche?: boolean
+          enabled_on_giochi?: boolean
           enabled_on_openmic?: boolean
           enabled_on_site?: boolean
           id?: string
@@ -935,6 +938,7 @@ export type Database = {
           dediche_final_limit_total: number | null
           dediche_max_total: number | null
           event_date: string | null
+          event_end_date: string | null
           event_end_time: string | null
           event_name: string | null
           event_start_time: string | null
@@ -998,6 +1002,7 @@ export type Database = {
           dediche_final_limit_total?: number | null
           dediche_max_total?: number | null
           event_date?: string | null
+          event_end_date?: string | null
           event_end_time?: string | null
           event_name?: string | null
           event_start_time?: string | null
@@ -1061,6 +1066,7 @@ export type Database = {
           dediche_final_limit_total?: number | null
           dediche_max_total?: number | null
           event_date?: string | null
+          event_end_date?: string | null
           event_end_time?: string | null
           event_name?: string | null
           event_start_time?: string | null
@@ -1170,6 +1176,7 @@ export type Database = {
           duration_minutes: number | null
           end_mode: string | null
           event_date: string | null
+          event_end_date: string | null
           event_end_time: string | null
           event_name: string | null
           event_start_time: string | null
@@ -1237,6 +1244,7 @@ export type Database = {
           duration_minutes?: number | null
           end_mode?: string | null
           event_date?: string | null
+          event_end_date?: string | null
           event_end_time?: string | null
           event_name?: string | null
           event_start_time?: string | null
@@ -1304,6 +1312,7 @@ export type Database = {
           duration_minutes?: number | null
           end_mode?: string | null
           event_date?: string | null
+          event_end_date?: string | null
           event_end_time?: string | null
           event_name?: string | null
           event_start_time?: string | null
@@ -1454,6 +1463,7 @@ export type Database = {
           quiz_source_set_ids: string[] | null
           show_on_app: boolean
           show_on_tv: boolean
+          tv_display_mode: string
           updated_at: string | null
           updated_by: string | null
         }
@@ -1467,6 +1477,7 @@ export type Database = {
           quiz_source_set_ids?: string[] | null
           show_on_app?: boolean
           show_on_tv?: boolean
+          tv_display_mode?: string
           updated_at?: string | null
           updated_by?: string | null
         }
@@ -1480,6 +1491,7 @@ export type Database = {
           quiz_source_set_ids?: string[] | null
           show_on_app?: boolean
           show_on_tv?: boolean
+          tv_display_mode?: string
           updated_at?: string | null
           updated_by?: string | null
         }

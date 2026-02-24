@@ -1,0 +1,3 @@
+
+ALTER TABLE public.assistant_settings
+ADD COLUMN IF NOT EXISTS enabled_on_giochi boolean NOT NULL DEFAULT false;

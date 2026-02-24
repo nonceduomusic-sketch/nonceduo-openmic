@@ -20,6 +20,7 @@ export interface GameSettings {
   quiz_source_mode: 'all_catalog' | 'all_sets' | 'general_only' | 'specific_sets';
   quiz_source_set_ids: string[];
   quiz_order_mode: 'random' | 'sequential';
+  tv_display_mode: 'off' | 'banner' | 'fullscreen';
 }
 
 export interface GameScore {
