@@ -25,6 +25,7 @@ import NotFound from "./pages/NotFound";
 import AppLauncher from "./pages/AppLauncher";
 import AppOpenMic from "./pages/AppOpenMic";
 import AppDediche from "./pages/AppDediche";
+import { AppLayout } from "./components/app/AppLayout";
 import OpenMicInfo from "./pages/OpenMicInfo";
 import DedicheInfo from "./pages/DedicheInfo";
 import EventoLive from "./pages/EventoLive";
@@ -71,13 +72,15 @@ const AppContent = () => (
       <Route path="/promo/feste-piazza" element={<PromoFestePiazza />} />
       <Route path="/promo/matrimoni" element={<PromoMatrimoni />} />
 
-      {/* APP (launcher + live) */}
-      <Route path="/app" element={<AppLauncher />} />
-      <Route path="/app/openmic" element={<AppOpenMic />} />
-      <Route path="/app/dediche" element={<AppDediche />} />
-      <Route path="/app/giochi" element={<GamesHub />} />
-      <Route path="/app/giochi/quiz" element={<QuizGame />} />
-      <Route path="/app/giochi/:gameKey" element={<GameNotAvailable />} />
+      {/* APP (launcher + live) — wrapped in AppLayout for consistent nav */}
+      <Route path="/app" element={<AppLayout />}>
+        <Route index element={<AppLauncher />} />
+        <Route path="openmic" element={<AppOpenMic />} />
+        <Route path="dediche" element={<AppDediche />} />
+        <Route path="giochi" element={<GamesHub />} />
+        <Route path="giochi/quiz" element={<QuizGame />} />
+        <Route path="giochi/:gameKey" element={<GameNotAvailable />} />
+      </Route>
       
       {/* Lyrics page - Spotify-like design */}
       <Route path="/lyrics/:id" element={<Lyrics />} />

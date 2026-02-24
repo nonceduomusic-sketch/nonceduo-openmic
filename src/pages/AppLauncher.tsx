@@ -21,13 +21,12 @@ const AppLauncher: React.FC = () => {
   const isEverythingOff = !loading && eventState.type === 'none' && !isOpenmicVisible && !isDedicheVisible;
 
   return (
-    <div className="min-h-screen bg-background">
+    <>
+      <SiteHeader />
       <SEO
         title="App | Non C'è Duo"
         description="Apri l'app e scegli il format della serata: Open Mic o Dediche."
       />
-
-      <SiteHeader />
 
       <main className="container py-10">
         <div className="max-w-xl mx-auto">
@@ -226,7 +225,12 @@ const AppLauncher: React.FC = () => {
               )}
 
               {/* Format Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className={cn(
+                "grid gap-4",
+                [isOpenmicAppVisible, isDedicheAppVisible].filter(Boolean).length === 1
+                  ? "grid-cols-1 max-w-sm mx-auto"
+                  : "grid-cols-1 sm:grid-cols-2"
+              )}>
                 {/* Open Mic - only if visible on site */}
                 {isOpenmicAppVisible && (
                 <Link 
@@ -353,7 +357,7 @@ const AppLauncher: React.FC = () => {
           )}
         </div>
       </main>
-    </div>
+    </>
   );
 };
 
