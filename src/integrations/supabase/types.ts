@@ -1464,6 +1464,11 @@ export type Database = {
           quiz_order_mode: string
           quiz_source_mode: string
           quiz_source_set_ids: string[] | null
+          quiz_user_allowed_set_ids: string[] | null
+          quiz_user_can_choose: boolean
+          quiz_user_show_general: boolean
+          quiz_user_show_random: boolean
+          quiz_user_show_sets: boolean
           show_on_app: boolean
           show_on_tv: boolean
           tv_display_mode: string
@@ -1478,6 +1483,11 @@ export type Database = {
           quiz_order_mode?: string
           quiz_source_mode?: string
           quiz_source_set_ids?: string[] | null
+          quiz_user_allowed_set_ids?: string[] | null
+          quiz_user_can_choose?: boolean
+          quiz_user_show_general?: boolean
+          quiz_user_show_random?: boolean
+          quiz_user_show_sets?: boolean
           show_on_app?: boolean
           show_on_tv?: boolean
           tv_display_mode?: string
@@ -1492,6 +1502,11 @@ export type Database = {
           quiz_order_mode?: string
           quiz_source_mode?: string
           quiz_source_set_ids?: string[] | null
+          quiz_user_allowed_set_ids?: string[] | null
+          quiz_user_can_choose?: boolean
+          quiz_user_show_general?: boolean
+          quiz_user_show_random?: boolean
+          quiz_user_show_sets?: boolean
           show_on_app?: boolean
           show_on_tv?: boolean
           tv_display_mode?: string

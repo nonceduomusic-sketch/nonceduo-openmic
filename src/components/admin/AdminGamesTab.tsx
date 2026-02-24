@@ -195,12 +195,12 @@ const GameSettingsPanel: React.FC = () => {
       {/* Quiz Source & Order Settings */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">⚙️ Impostazioni Quiz</CardTitle>
-          <CardDescription>Scegli quali domande vengono utilizzate e in che ordine</CardDescription>
+          <CardTitle className="text-base">⚙️ Impostazioni Quiz — Sorgente Admin</CardTitle>
+          <CardDescription>Pool di domande utilizzato dal sistema quando l'utente non sceglie</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label className="font-medium">Sorgente Domande</Label>
+            <Label className="font-medium">Sorgente Domande (Admin)</Label>
             <Select
               value={settings.quiz_source_mode}
               onValueChange={v => handleQuizSetting({ quiz_source_mode: v })}
@@ -208,7 +208,7 @@ const GameSettingsPanel: React.FC = () => {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all_catalog">📚 Tutto il catalogo</SelectItem>
-                <SelectItem value="all_sets">📋 Tutti gli elenchi (escluse domande senza elenco)</SelectItem>
+                <SelectItem value="all_sets">📋 Tutti gli elenchi attivi</SelectItem>
                 <SelectItem value="general_only">🌐 Solo domande generali (senza elenco)</SelectItem>
                 <SelectItem value="specific_sets">🎯 Elenchi specifici</SelectItem>
               </SelectContent>
@@ -250,12 +250,85 @@ const GameSettingsPanel: React.FC = () => {
                 <SelectItem value="sequential"><div className="flex items-center gap-2"><ArrowDownNarrowWide className="w-4 h-4" />Sequenziale</div></SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              {settings.quiz_order_mode === 'random'
-                ? 'Le domande vengono mescolate ad ogni partita'
-                : 'Le domande appaiono nell\'ordine in cui sono salvate'}
-            </p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* User-facing choice controls */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">🎮 Scelta Utente nel Quiz</CardTitle>
+          <CardDescription>Decidi se e quali opzioni l'utente può scegliere prima di giocare</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label className="font-medium">Permetti scelta all'utente</Label>
+              <p className="text-xs text-muted-foreground">Se disattivato, l'utente gioca solo con la sorgente admin</p>
+            </div>
+            <Switch
+              checked={settings.quiz_user_can_choose}
+              onCheckedChange={v => handleQuizSetting({ quiz_user_can_choose: v })}
+            />
+          </div>
+
+          {settings.quiz_user_can_choose && (
+            <div className="space-y-3 pl-2 border-l-2 border-primary/20">
+              <Label className="text-xs text-muted-foreground font-semibold">Opzioni visibili all'utente</Label>
+
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">🎲 Casuale (tutte le domande)</Label>
+                <Switch
+                  checked={settings.quiz_user_show_random}
+                  onCheckedChange={v => handleQuizSetting({ quiz_user_show_random: v })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">🌐 Cultura musicale (senza elenco)</Label>
+                <Switch
+                  checked={settings.quiz_user_show_general}
+                  onCheckedChange={v => handleQuizSetting({ quiz_user_show_general: v })}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <Label className="text-sm">📋 Elenchi tematici</Label>
+                <Switch
+                  checked={settings.quiz_user_show_sets}
+                  onCheckedChange={v => handleQuizSetting({ quiz_user_show_sets: v })}
+                />
+              </div>
+
+              {settings.quiz_user_show_sets && questionSets && questionSets.filter(s => s.is_active).length > 0 && (
+                <div className="space-y-2 pl-2 border-l-2 border-muted">
+                  <Label className="text-xs text-muted-foreground">Quali elenchi mostrare all'utente</Label>
+                  {questionSets.filter(s => s.is_active).map(s => (
+                    <div key={s.id} className="flex items-center gap-2">
+                      <Checkbox
+                        checked={
+                          !(settings.quiz_user_allowed_set_ids?.length) || 
+                          (settings.quiz_user_allowed_set_ids || []).includes(s.id)
+                        }
+                        onCheckedChange={checked => {
+                          const allIds = questionSets.filter(x => x.is_active).map(x => x.id);
+                          const current = settings.quiz_user_allowed_set_ids?.length
+                            ? settings.quiz_user_allowed_set_ids
+                            : allIds;
+                          const next = checked
+                            ? [...current.filter((id: string) => id !== s.id), s.id]
+                            : current.filter((id: string) => id !== s.id);
+                          handleQuizSetting({ quiz_user_allowed_set_ids: next.length === allIds.length ? [] : next });
+                        }}
+                      />
+                      <Label className="text-sm cursor-pointer">{s.name}</Label>
+                    </div>
+                  ))}
+                  <p className="text-xs text-muted-foreground">Se tutti selezionati, verranno mostrati tutti gli elenchi attivi.</p>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

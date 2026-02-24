@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trophy, Timer, Zap, RotateCcw, Star, Check, X } from 'lucide-react';
 import { useActiveQuizQuestions, useQuizQuestions, useQuizQuestionSets, useGameScores, useSubmitScore, useGameSettings, type QuizQuestion } from '@/hooks/useGames';
 import { NamePromptDialog } from '@/components/NamePromptDialog';
@@ -13,20 +12,23 @@ import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
 import { cn } from '@/lib/utils';
 
 type GameState = 'menu' | 'playing' | 'result' | 'gameover';
+type UserChoice = 'default' | 'random' | 'general' | string; // string = set id
 
-const QUESTION_TIME = 15; // seconds per question
+const QUESTION_TIME = 15;
 const POINTS_BASE = 100;
-const POINTS_TIME_BONUS = 50; // max bonus for fast answers
+const POINTS_TIME_BONUS = 50;
 
 const QuizGame: React.FC = () => {
   const { data: settings } = useGameSettings();
   const { data: questionSets } = useQuizQuestionSets();
   const { data: allQuestions, isLoading } = useActiveQuizQuestions();
-  // For user-override source on the menu (optional, only if admin allows)
-  const [userSourceOverride, setUserSourceOverride] = useState<string | null>(null);
-  const { data: specificSetQuestions } = useQuizQuestions(userSourceOverride || undefined);
   const { data: topScores } = useGameScores('quiz', 5);
   const submitScore = useSubmitScore();
+
+  const [userChoice, setUserChoice] = useState<UserChoice>('default');
+  const { data: choiceSetQuestions } = useQuizQuestions(
+    userChoice !== 'default' && userChoice !== 'random' && userChoice !== 'general' ? userChoice : undefined
+  );
 
   const [gameState, setGameState] = useState<GameState>('menu');
   const [questions, setQuestions] = useState<QuizQuestion[]>([]);
@@ -42,17 +44,38 @@ const QuizGame: React.FC = () => {
   const currentQ = questions[currentIdx];
   const totalQuestions = questions.length;
 
-  // Pick questions based on admin settings (or user override)
-  const availableQuestions = userSourceOverride ? specificSetQuestions : allQuestions;
+  // Build user-visible choices from admin flags
+  const userChoices = useMemo(() => {
+    if (!settings?.quiz_user_can_choose) return [];
+    const choices: { value: UserChoice; label: string; icon: string }[] = [];
+    if (settings.quiz_user_show_random) choices.push({ value: 'random', label: 'Casuale', icon: '🎲' });
+    if (settings.quiz_user_show_general) choices.push({ value: 'general', label: 'Cultura musicale', icon: '🌐' });
+    if (settings.quiz_user_show_sets && questionSets) {
+      const allowedIds = settings.quiz_user_allowed_set_ids?.length
+        ? settings.quiz_user_allowed_set_ids
+        : null;
+      questionSets
+        .filter(s => s.is_active && (!allowedIds || allowedIds.includes(s.id)))
+        .forEach(s => choices.push({ value: s.id, label: s.name, icon: '📋' }));
+    }
+    return choices;
+  }, [settings, questionSets]);
+
+  // Resolve the question pool based on user choice
+  const availableQuestions = useMemo(() => {
+    if (userChoice === 'default' || !settings?.quiz_user_can_choose) return allQuestions;
+    if (userChoice === 'random') return allQuestions;
+    if (userChoice === 'general') return allQuestions?.filter(q => !q.question_set_id);
+    // specific set
+    return choiceSetQuestions;
+  }, [userChoice, allQuestions, choiceSetQuestions, settings]);
+
   const orderMode = settings?.quiz_order_mode || 'random';
 
-  // Shuffle and pick 10 questions
   const startGame = useCallback(() => {
     if (!availableQuestions?.length) return;
     let pool = [...availableQuestions];
-    if (orderMode === 'random') {
-      pool = pool.sort(() => Math.random() - 0.5);
-    }
+    if (orderMode === 'random') pool = pool.sort(() => Math.random() - 0.5);
     pool = pool.slice(0, 10);
     setQuestions(pool);
     setCurrentIdx(0);
@@ -63,7 +86,6 @@ const QuizGame: React.FC = () => {
     setGameState('playing');
   }, [availableQuestions, orderMode]);
 
-  // Timer
   useEffect(() => {
     if (gameState !== 'playing' || selectedOption !== null) return;
     timerRef.current = setInterval(() => {
@@ -83,7 +105,6 @@ const QuizGame: React.FC = () => {
     if (selectedOption !== null) return;
     clearInterval(timerRef.current);
     setSelectedOption(option);
-
     const isCorrect = option === currentQ?.correct_option;
     if (isCorrect) {
       const timeBonus = Math.round((timeLeft / QUESTION_TIME) * POINTS_TIME_BONUS);
@@ -93,7 +114,6 @@ const QuizGame: React.FC = () => {
     } else {
       setStreak(0);
     }
-
     setGameState('result');
   }, [selectedOption, currentQ, timeLeft, streak]);
 
@@ -137,20 +157,26 @@ const QuizGame: React.FC = () => {
                 <p className="text-muted-foreground text-sm">10 domande, 15 secondi ciascuna. Rispondi veloce per più punti!</p>
               </div>
 
-              {/* Source selector - user can override to pick a specific set */}
-              {questionSets && questionSets.filter(s => s.is_active).length > 0 && (
-                <div className="text-left space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Sorgente domande</label>
-                  <Select value={userSourceOverride || 'default'} onValueChange={v => setUserSourceOverride(v === 'default' ? null : v)}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="default">🎲 Predefinito (impostazione admin)</SelectItem>
-                      {questionSets.filter(s => s.is_active).map(s => (
-                        <SelectItem key={s.id} value={s.id}>📋 {s.name}</SelectItem>
+              {/* User choice - only if admin enabled it and there are options */}
+              {userChoices.length > 0 && (
+                <Card>
+                  <CardContent className="p-4 space-y-3">
+                    <p className="text-sm font-medium">Scegli la categoria</p>
+                    <div className="grid grid-cols-1 gap-2">
+                      {userChoices.map(c => (
+                        <Button
+                          key={c.value}
+                          variant={userChoice === c.value ? 'default' : 'outline'}
+                          className="justify-start h-auto py-2.5 px-4"
+                          onClick={() => setUserChoice(c.value)}
+                        >
+                          <span className="mr-2">{c.icon}</span>
+                          {c.label}
+                        </Button>
                       ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
 
               <Button className="w-full h-14 text-lg" onClick={startGame} disabled={isLoading || !availableQuestions?.length}>
@@ -184,7 +210,6 @@ const QuizGame: React.FC = () => {
           {/* PLAYING */}
           {(gameState === 'playing' || gameState === 'result') && currentQ && (
             <motion.div key={`q-${currentIdx}`} initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-4">
-              {/* Header Stats */}
               <div className="flex items-center justify-between text-sm">
                 <Badge variant="outline">{currentIdx + 1}/{totalQuestions}</Badge>
                 <div className="flex items-center gap-2">
@@ -193,7 +218,6 @@ const QuizGame: React.FC = () => {
                 </div>
               </div>
 
-              {/* Timer */}
               <div className="space-y-1">
                 <div className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1"><Timer className="w-3 h-3" />Tempo</span>
@@ -202,20 +226,17 @@ const QuizGame: React.FC = () => {
                 <Progress value={(timeLeft / QUESTION_TIME) * 100} className="h-2" />
               </div>
 
-              {/* Question */}
               <Card className="border-2">
                 <CardContent className="p-5">
                   <p className="font-bold text-lg leading-snug">{currentQ.question_text}</p>
                 </CardContent>
               </Card>
 
-              {/* Options */}
               <div className="grid grid-cols-1 gap-2">
                 {options.map(opt => {
                   const isSelected = selectedOption === opt.key;
                   const isCorrect = opt.key === currentQ.correct_option;
                   const showResult = gameState === 'result';
-
                   return (
                     <motion.div key={opt.key} whileTap={!showResult ? { scale: 0.97 } : undefined}>
                       <Button
@@ -240,7 +261,6 @@ const QuizGame: React.FC = () => {
                 })}
               </div>
 
-              {/* Result feedback + Next */}
               {gameState === 'result' && (
                 <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                   <Button className="w-full" onClick={nextQuestion}>
