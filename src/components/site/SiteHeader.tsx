@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Menu, Mic2, ExternalLink, Phone, Instagram, Mail, Shield, Download } from "lucide-react";
+import { Menu, Mic2, ExternalLink, Phone, Instagram, Mail, Shield, Download, MessageCircle, Gamepad2, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -11,20 +11,21 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
-
-interface NavItem {
-  label: string;
-  to: string;
-}
-
-const NAV_ITEMS: NavItem[] = [
-  { label: "Home", to: "/" },
-  { label: "Open Mic", to: "/openmic" },
-  { label: "Dediche", to: "/messaggi" },
-  { label: "Party Band", to: "/partyband" },
-];
+import { useFormatActiveCheck } from "@/hooks/useGlobalFormatSettings";
 
 export const SiteHeader: React.FC<{ className?: string }> = ({ className }) => {
+  const { isActive: isOpenmicMenu } = useFormatActiveCheck('openmic', 'menu');
+  const { isActive: isDedicheMenu } = useFormatActiveCheck('dediche', 'menu');
+  const { isActive: isGiochiMenu } = useFormatActiveCheck('giochi', 'menu');
+  const { isActive: isCommunityMenu } = useFormatActiveCheck('community', 'menu');
+
+  const menuFormats = [
+    isOpenmicMenu && { label: "Open Mic", to: "/openmic", icon: Mic2 },
+    isDedicheMenu && { label: "Dediche", to: "/messaggi", icon: MessageCircle },
+    isGiochiMenu && { label: "Non C'è Furore", to: "/app/giochi", icon: Gamepad2 },
+    isCommunityMenu && { label: "Community", to: "/social", icon: Users },
+  ].filter(Boolean) as { label: string; to: string; icon: React.ElementType }[];
+
   return (
     <header
       className={cn(
@@ -67,13 +68,26 @@ export const SiteHeader: React.FC<{ className?: string }> = ({ className }) => {
               </SheetHeader>
 
               <nav className="mt-6 space-y-2">
-                {NAV_ITEMS.map((item) => (
+                <Link to="/">
+                  <Button variant="ghost" className="w-full justify-start">
+                    Home
+                  </Button>
+                </Link>
+
+                {menuFormats.map((item) => (
                   <Link key={item.to} to={item.to}>
-                    <Button variant="ghost" className="w-full justify-start">
+                    <Button variant="ghost" className="w-full justify-start gap-2">
+                      <item.icon className="w-4 h-4" />
                       {item.label}
                     </Button>
                   </Link>
                 ))}
+
+                <Link to="/partyband">
+                  <Button variant="ghost" className="w-full justify-start">
+                    Party Band
+                  </Button>
+                </Link>
 
                 <div className="pt-3 mt-3 border-t border-border/60" />
 
@@ -90,20 +104,12 @@ export const SiteHeader: React.FC<{ className?: string }> = ({ className }) => {
                   Per info e date eventi:
                 </p>
                 <div className="grid grid-cols-3 gap-2">
-                  <a
-                    href="https://wa.me/393807911941"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
+                  <a href="https://wa.me/393807911941" target="_blank" rel="noopener noreferrer">
                     <Button variant="outline" size="icon" className="w-full">
                       <Phone className="w-4 h-4" />
                     </Button>
                   </a>
-                  <a
-                    href="https://www.instagram.com/nonceduo.music/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
+                  <a href="https://www.instagram.com/nonceduo.music/" target="_blank" rel="noopener noreferrer">
                     <Button variant="outline" size="icon" className="w-full">
                       <Instagram className="w-4 h-4" />
                     </Button>

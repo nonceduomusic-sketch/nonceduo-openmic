@@ -16,6 +16,8 @@ const AppLauncher: React.FC = () => {
   const { isActive: isGiochiVisible } = useFormatActiveCheck('giochi', 'app');
   const { isActive: isOpenmicAppVisible } = useFormatActiveCheck('openmic', 'app');
   const { isActive: isDedicheAppVisible } = useFormatActiveCheck('dediche', 'app');
+  
+  const visibleFormatCount = [isOpenmicAppVisible, isDedicheAppVisible].filter(Boolean).length;
 
   // Check if everything is OFF (no live event, no freemode, nothing visible)
   const isEverythingOff = !loading && eventState.type === 'none' && !isOpenmicVisible && !isDedicheVisible;
@@ -227,9 +229,11 @@ const AppLauncher: React.FC = () => {
               {/* Format Cards */}
               <div className={cn(
                 "grid gap-4",
-                [isOpenmicAppVisible, isDedicheAppVisible].filter(Boolean).length === 1
+                visibleFormatCount === 1
                   ? "grid-cols-1 max-w-sm mx-auto"
-                  : "grid-cols-1 sm:grid-cols-2"
+                  : visibleFormatCount === 3
+                    ? "grid-cols-1 sm:grid-cols-3"
+                    : "grid-cols-1 sm:grid-cols-2"
               )}>
                 {/* Open Mic - only if visible on site */}
                 {isOpenmicAppVisible && (
