@@ -57,26 +57,26 @@ export const TVGameOverlay: React.FC = () => {
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ type: 'spring', damping: 20 }}
-          className="fixed bottom-0 left-0 right-0 z-[60] pointer-events-none"
+          className="fixed bottom-6 left-6 right-6 z-[60] pointer-events-none"
         >
-          <div className="bg-gradient-to-t from-black/90 via-black/70 to-transparent pt-12 pb-4 px-6">
+          <div className="bg-black/80 backdrop-blur-md rounded-2xl border border-white/10 shadow-2xl px-6 py-4">
             <div className="max-w-6xl mx-auto flex items-center gap-6">
               {/* Game icon & title */}
               <div className="flex items-center gap-3 flex-shrink-0">
-                <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
-                  <Gamepad2 className="w-6 h-6 text-primary" />
+                <div className="w-11 h-11 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center">
+                  <Gamepad2 className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-white font-bold text-lg">🔥 Non C'è Furore</p>
-                  <p className="text-white/50 text-sm">Gioca ora dal tuo telefono!</p>
+                  <p className="text-white font-bold text-base">🔥 Non C'è Furore</p>
+                  <p className="text-white/40 text-xs">Gioca ora dal tuo telefono!</p>
                 </div>
               </div>
 
               {/* Mini leaderboard */}
               {topScores.length > 0 && (
                 <div className="flex items-center gap-4 flex-1 overflow-hidden">
-                  <div className="h-8 w-px bg-white/20 flex-shrink-0" />
-                  <Trophy className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+                  <div className="h-8 w-px bg-white/15 flex-shrink-0" />
+                  <Trophy className="w-4 h-4 text-yellow-400 flex-shrink-0" />
                   {topScores.slice(0, 3).map((s, i) => (
                     <div key={s.id} className="flex items-center gap-2 flex-shrink-0">
                       <span className={cn(
@@ -85,7 +85,7 @@ export const TVGameOverlay: React.FC = () => {
                       )}>
                         {i + 1}.
                       </span>
-                      <span className="text-white/90 text-sm font-medium truncate max-w-[100px]">
+                      <span className="text-white/80 text-sm font-medium truncate max-w-[100px]">
                         {s.nickname}
                       </span>
                       <span className="text-primary text-sm font-bold">{s.score}</span>
@@ -95,8 +95,8 @@ export const TVGameOverlay: React.FC = () => {
               )}
 
               {/* Available games count */}
-              <div className="flex-shrink-0 text-white/40 text-sm">
-                {enabledGames.length} giochi disponibili
+              <div className="flex-shrink-0 text-white/30 text-xs">
+                {enabledGames.length} giochi
               </div>
             </div>
           </div>
@@ -116,12 +116,12 @@ export const TVGameOverlay: React.FC = () => {
       >
         {/* Animated background */}
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-primary/15 rounded-full blur-[200px] animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/3 w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '1.5s' }} />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] bg-yellow-500/10 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '0.5s' }} />
+          <div className="absolute top-1/4 left-1/3 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[200px] animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/3 w-[400px] h-[400px] bg-purple-500/8 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '1.5s' }} />
         </div>
 
-        <div className="relative z-10 flex flex-col items-center gap-8 max-w-3xl px-8">
+        {/* Safe area container with padding */}
+        <div className="relative z-10 flex flex-col items-center gap-6 max-w-2xl w-full px-12 py-10">
           {/* Main title */}
           <motion.div
             initial={{ scale: 0.8, y: 20 }}
@@ -129,13 +129,13 @@ export const TVGameOverlay: React.FC = () => {
             transition={{ type: 'spring', damping: 15, delay: 0.2 }}
             className="text-center"
           >
-            <div className="text-6xl md:text-8xl mb-4">🔥</div>
-            <h1 className="text-5xl md:text-7xl font-black tracking-tight">
+            <div className="text-5xl md:text-6xl mb-3">🔥</div>
+            <h1 className="text-4xl md:text-6xl font-black tracking-tight">
               <span className="bg-gradient-to-r from-primary via-yellow-400 to-primary bg-clip-text text-transparent">
                 Non C'è Furore
               </span>
             </h1>
-            <p className="text-xl md:text-2xl text-white/60 mt-4 font-light">
+            <p className="text-lg md:text-xl text-white/50 mt-3 font-light">
               Sfida i tuoi amici al Quiz Musicale!
             </p>
           </motion.div>
@@ -148,12 +148,12 @@ export const TVGameOverlay: React.FC = () => {
               transition={{ delay: 0.5 }}
               className="w-full max-w-md"
             >
-              <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
-                <div className="flex items-center gap-2 mb-4">
+              <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-5">
+                <div className="flex items-center gap-2 mb-3">
                   <Trophy className="w-5 h-5 text-yellow-400" />
-                  <h2 className="text-lg font-bold text-white/90">Classifica</h2>
+                  <h2 className="text-base font-bold text-white/90">Classifica</h2>
                 </div>
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {topScores.map((s, i) => {
                     const MedalIcon = i === 0 ? Crown : Medal;
                     return (
@@ -182,7 +182,7 @@ export const TVGameOverlay: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
-            className="text-white/40 text-lg text-center"
+            className="text-white/35 text-base text-center"
           >
             Apri l'app dal tuo telefono per giocare 🎮
           </motion.p>
@@ -193,12 +193,12 @@ export const TVGameOverlay: React.FC = () => {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 1 }}
-              className="flex items-center gap-4"
+              className="flex items-center gap-3 flex-wrap justify-center"
             >
               {enabledGames.map(g => (
                 <div key={g.id} className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full border border-white/10">
-                  <span className="text-xl">{g.game_icon}</span>
-                  <span className="text-white/70 text-sm font-medium">{g.game_name}</span>
+                  <span className="text-lg">{g.game_icon}</span>
+                  <span className="text-white/60 text-sm font-medium">{g.game_name}</span>
                 </div>
               ))}
             </motion.div>
