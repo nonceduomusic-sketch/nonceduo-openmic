@@ -17,6 +17,8 @@ import duoPhoto4 from '@/assets/duo-photo-4.png';
 const Home: React.FC = () => {
   const { isActive: isGiochiVisible } = useFormatActiveCheck('giochi');
   const { isActive: isCommunityVisible } = useFormatActiveCheck('community');
+  const { isActive: isOpenmicVisible } = useFormatActiveCheck('openmic');
+  const { isActive: isDedicheVisible } = useFormatActiveCheck('dediche');
 
   const scrollToSection = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
@@ -85,7 +87,12 @@ const Home: React.FC = () => {
               <p className="text-sm text-muted-foreground mb-4 uppercase tracking-wider font-medium">
                 Scopri i nostri format interattivi
               </p>
-              <div className={`grid grid-cols-2 ${isGiochiVisible && isCommunityVisible ? 'sm:grid-cols-4' : isGiochiVisible || isCommunityVisible ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-3 max-w-xl mx-auto px-4`}>
+              <div className={`grid grid-cols-2 ${
+                [isOpenmicVisible, isDedicheVisible, isGiochiVisible, isCommunityVisible].filter(Boolean).length > 2 
+                  ? `sm:grid-cols-${Math.min([isOpenmicVisible, isDedicheVisible, isGiochiVisible, isCommunityVisible].filter(Boolean).length, 4)}` 
+                  : 'sm:grid-cols-2'
+              } gap-3 max-w-xl mx-auto px-4`}>
+                {isOpenmicVisible && (
                 <Link to="/openmic" className="group block touch-manipulation">
                   <Card className="bg-card/70 backdrop-blur-sm border-secondary/40 hover:border-secondary hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer">
                     <CardContent className="p-4 text-center relative">
@@ -98,7 +105,9 @@ const Home: React.FC = () => {
                     </CardContent>
                   </Card>
                 </Link>
+                )}
                 
+                {isDedicheVisible && (
                 <Link to="/messaggi" className="group block touch-manipulation">
                   <Card className="bg-card/70 backdrop-blur-sm border-primary/40 hover:border-primary hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer">
                     <CardContent className="p-4 text-center relative">
@@ -111,6 +120,7 @@ const Home: React.FC = () => {
                     </CardContent>
                   </Card>
                 </Link>
+                )}
                 
                 {isGiochiVisible && (
                   <Link to="/app/giochi" className="group block touch-manipulation">
@@ -120,7 +130,7 @@ const Home: React.FC = () => {
                         <div className="w-12 h-12 mx-auto mb-2 rounded-xl bg-emerald-500/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-emerald-500/30 transition-all pointer-events-none">
                           <Gamepad2 className="w-6 h-6 text-emerald-500 pointer-events-none" />
                         </div>
-                        <span className="text-sm font-bold text-foreground block pointer-events-none">Furore</span>
+                        <span className="text-sm font-bold text-foreground block pointer-events-none">Non C'è Furore</span>
                         <p className="text-[10px] text-emerald-500 font-medium mt-0.5 pointer-events-none">Gioca con noi</p>
                       </CardContent>
                     </Card>

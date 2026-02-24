@@ -1,5 +1,5 @@
 import React from 'react';
-import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown, Play, Calendar, Eye, Gamepad2, Globe } from 'lucide-react';
+import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown, Play, Calendar, Eye, Gamepad2, Globe, Mic2, MessageCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { AdminNotificationsCard } from '@/components/admin/AdminNotificationsCard';
 import { useCentroPermissions } from '@/hooks/useCentroPermissions';
 import { useGlobalFormatSettings } from '@/hooks/useGlobalFormatSettings';
+import { useGameConfigs, useToggleGameConfig } from '@/hooks/useGames';
 
 /**
  * Tab Formati Semplificato (senza conflitto con Eventi):
@@ -23,10 +24,12 @@ import { useGlobalFormatSettings } from '@/hooks/useGlobalFormatSettings';
 export const AdminFormatsTab: React.FC = () => {
   const { permissions, isOwner: hookIsOwner, loading: permsLoading } = useCentroPermissions();
   const { settings: globalSettings, toggleFormat: toggleGlobalFormat, loading: globalLoading } = useGlobalFormatSettings();
+  const { data: gameConfigs, isLoading: gamesLoading } = useGameConfigs();
+  const toggleGameConfig = useToggleGameConfig();
   
   const canManageActive = hookIsOwner || permissions.activeFormats;
 
-  if (permsLoading || globalLoading) {
+  if (permsLoading || globalLoading || gamesLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
@@ -64,6 +67,70 @@ export const AdminFormatsTab: React.FC = () => {
             </AlertDescription>
           </Alert>
 
+          {/* Open Mic */}
+          <Card className="border-secondary/20 bg-secondary/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Mic2 className="w-4 h-4 text-secondary" />
+                Open Mic
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Mostra o nascondi la sezione Open Mic dal sito e dalle pagine pubbliche
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="openmic-site-toggle" className="text-sm">
+                    {globalSettings.openmic ? 'Visibile sul sito' : 'Nascosto dal sito'}
+                  </Label>
+                  {globalSettings.openmic && (
+                    <Badge variant="outline" className="text-secondary border-secondary/30 text-xs">
+                      🎤 Pubblico
+                    </Badge>
+                  )}
+                </div>
+                <Switch
+                  id="openmic-site-toggle"
+                  checked={globalSettings.openmic}
+                  onCheckedChange={() => toggleGlobalFormat('openmic')}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Dediche */}
+          <Card className="border-primary/20 bg-primary/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <MessageCircle className="w-4 h-4 text-primary" />
+                Dediche
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Mostra o nascondi la sezione Dediche dal sito e dalle pagine pubbliche
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="dediche-site-toggle" className="text-sm">
+                    {globalSettings.dediche ? 'Visibile sul sito' : 'Nascoste dal sito'}
+                  </Label>
+                  {globalSettings.dediche && (
+                    <Badge variant="outline" className="text-primary border-primary/30 text-xs">
+                      💌 Pubblico
+                    </Badge>
+                  )}
+                </div>
+                <Switch
+                  id="dediche-site-toggle"
+                  checked={globalSettings.dediche}
+                  onCheckedChange={() => toggleGlobalFormat('dediche')}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Giochi (Furore) */}
           <Card className="border-emerald-500/20 bg-emerald-500/5">
             <CardHeader className="pb-3">
@@ -75,7 +142,7 @@ export const AdminFormatsTab: React.FC = () => {
                 Mostra o nascondi la sezione Giochi dal sito, homepage e app
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Label htmlFor="giochi-site-toggle" className="text-sm">
@@ -93,10 +160,32 @@ export const AdminFormatsTab: React.FC = () => {
                   onCheckedChange={() => toggleGlobalFormat('giochi')}
                 />
               </div>
+
+              {/* Per-game toggles */}
+              {globalSettings.giochi && gameConfigs && gameConfigs.length > 0 && (
+                <div className="border-t border-emerald-500/10 pt-3 space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium mb-2">
+                    Giochi visibili agli utenti:
+                  </p>
+                  {gameConfigs.map((game) => (
+                    <div key={game.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-muted/20">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{game.game_icon}</span>
+                        <span className="text-sm font-medium">{game.game_name}</span>
+                      </div>
+                      <Switch
+                        checked={game.is_enabled}
+                        onCheckedChange={() => toggleGameConfig.mutate({ id: game.id, is_enabled: !game.is_enabled })}
+                        className="scale-90"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Community visibility (move here for grouping) */}
+          {/* Community */}
           <Card className="border-accent/20 bg-accent/5">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
