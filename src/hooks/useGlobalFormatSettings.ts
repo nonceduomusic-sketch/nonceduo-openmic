@@ -7,11 +7,26 @@ export type GlobalFormatKey = 'openmic' | 'dediche' | 'community' | 'giochi' | '
 export interface GlobalFormatSetting {
   format_key: GlobalFormatKey;
   is_active: boolean;
+  visible_on_app: boolean;
   updated_at: string;
 }
 
 export const useGlobalFormatSettings = () => {
   const [settings, setSettings] = useState<Record<GlobalFormatKey, boolean>>({
+    openmic: true,
+    dediche: true,
+    community: true,
+    giochi: false,
+    voting: true,
+    show_booker_name: true,
+    show_live_queue: true,
+    lyrics_zoom: true,
+    lyrics_highlight_arrows: true,
+    lyrics_auto_scroll: true,
+    catalog_preview: false,
+    show_upcoming_events: false,
+  });
+  const [appSettings, setAppSettings] = useState<Record<GlobalFormatKey, boolean>>({
     openmic: true,
     dediche: true,
     community: true,
@@ -37,26 +52,21 @@ export const useGlobalFormatSettings = () => {
 
       if (data) {
         const newSettings: Record<GlobalFormatKey, boolean> = {
-          openmic: true,
-          dediche: true,
-          community: true,
-          giochi: false,
-          voting: true,
-          show_booker_name: true,
-          show_live_queue: true,
-          lyrics_zoom: true,
-          lyrics_highlight_arrows: true,
-          lyrics_auto_scroll: true,
-          catalog_preview: false,
-          show_upcoming_events: false,
+          openmic: true, dediche: true, community: true, giochi: false,
+          voting: true, show_booker_name: true, show_live_queue: true,
+          lyrics_zoom: true, lyrics_highlight_arrows: true, lyrics_auto_scroll: true,
+          catalog_preview: false, show_upcoming_events: false,
         };
+        const newAppSettings: Record<GlobalFormatKey, boolean> = { ...newSettings };
         data.forEach((item) => {
           const key = item.format_key as GlobalFormatKey;
           if (key in newSettings) {
             newSettings[key] = item.is_active;
+            newAppSettings[key] = item.visible_on_app ?? true;
           }
         });
         setSettings(newSettings);
+        setAppSettings(newAppSettings);
       }
     } catch (error) {
       console.error('Error fetching global format settings:', error);
@@ -89,8 +99,10 @@ export const useGlobalFormatSettings = () => {
     };
   }, [fetchSettings]);
 
-  const toggleFormat = async (format: GlobalFormatKey): Promise<boolean> => {
-    const newValue = !settings[format];
+  const toggleFormat = async (format: GlobalFormatKey, target: 'site' | 'app' = 'site'): Promise<boolean> => {
+    const currentValue = target === 'app' ? appSettings[format] : settings[format];
+    const newValue = !currentValue;
+    const column = target === 'app' ? 'visible_on_app' : 'is_active';
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -98,7 +110,7 @@ export const useGlobalFormatSettings = () => {
       const { error } = await supabase
         .from('global_format_settings')
         .update({ 
-          is_active: newValue, 
+          [column]: newValue, 
           updated_at: new Date().toISOString(),
           updated_by: user?.id 
         })
@@ -106,22 +118,20 @@ export const useGlobalFormatSettings = () => {
 
       if (error) throw error;
 
-      setSettings(prev => ({ ...prev, [format]: newValue }));
+      if (target === 'app') {
+        setAppSettings(prev => ({ ...prev, [format]: newValue }));
+      } else {
+        setSettings(prev => ({ ...prev, [format]: newValue }));
+      }
       const formatNames: Record<GlobalFormatKey, string> = {
-        openmic: 'Open Mic',
-        dediche: 'Dediche',
-        community: 'Community',
-        giochi: 'Giochi (Furore)',
-        voting: 'Votazioni',
-        show_booker_name: 'Nome prenotante',
-        show_live_queue: 'Scaletta Live',
-        lyrics_zoom: 'Zoom Testi',
-        lyrics_highlight_arrows: 'Evidenziatore Testi',
-        lyrics_auto_scroll: 'Auto-scroll Testi',
-        catalog_preview: 'Anteprima Catalogo',
-        show_upcoming_events: 'Mostra Eventi in Programma',
+        openmic: 'Open Mic', dediche: 'Dediche', community: 'Community',
+        giochi: 'Giochi (Furore)', voting: 'Votazioni', show_booker_name: 'Nome prenotante',
+        show_live_queue: 'Scaletta Live', lyrics_zoom: 'Zoom Testi',
+        lyrics_highlight_arrows: 'Evidenziatore Testi', lyrics_auto_scroll: 'Auto-scroll Testi',
+        catalog_preview: 'Anteprima Catalogo', show_upcoming_events: 'Mostra Eventi in Programma',
       };
-      toast.success(`${formatNames[format]} ${newValue ? 'attivato' : 'disattivato'}`);
+      const targetLabel = target === 'app' ? ' (App)' : ' (Sito)';
+      toast.success(`${formatNames[format]}${targetLabel} ${newValue ? 'attivato' : 'disattivato'}`);
       return true;
     } catch (error) {
       console.error('Error toggling format:', error);
@@ -136,6 +146,7 @@ export const useGlobalFormatSettings = () => {
 
   return {
     settings,
+    appSettings,
     loading,
     toggleFormat,
     isFormatActive,
@@ -144,17 +155,19 @@ export const useGlobalFormatSettings = () => {
 };
 
 // Hook for public pages to check if a format is active (with real-time updates)
-export const useFormatActiveCheck = (format: GlobalFormatKey) => {
+// target: 'site' checks is_active, 'app' checks visible_on_app
+export const useFormatActiveCheck = (format: GlobalFormatKey, target: 'site' | 'app' = 'site') => {
   const [isActive, setIsActive] = useState<boolean | null>(null); // null = loading
   const [loading, setLoading] = useState(true);
   const mountedRef = useRef(true);
+  const column = target === 'app' ? 'visible_on_app' : 'is_active';
 
   // Stable fetch function
   const fetchFormatStatus = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('global_format_settings')
-        .select('is_active')
+        .select(`${column}`)
         .eq('format_key', format)
         .maybeSingle();
 
@@ -162,10 +175,9 @@ export const useFormatActiveCheck = (format: GlobalFormatKey) => {
 
       if (error) {
         console.error(`[useFormatActiveCheck] Error fetching ${format}:`, error);
-        setIsActive(true); // Default to true on error
+        setIsActive(true);
       } else {
-        const newValue = data?.is_active ?? true;
-        console.log(`[useFormatActiveCheck] ${format} = ${newValue}`);
+        const newValue = (data as any)?.[column] ?? true;
         setIsActive(newValue);
       }
     } catch (error) {
@@ -178,50 +190,33 @@ export const useFormatActiveCheck = (format: GlobalFormatKey) => {
         setLoading(false);
       }
     }
-  }, [format]);
+  }, [format, column]);
 
   useEffect(() => {
     mountedRef.current = true;
-    
-    // Initial fetch
     fetchFormatStatus();
 
-    // Subscribe to ALL changes on global_format_settings table
-    const channelName = `format-check-${format}-${Date.now()}`;
+    const channelName = `format-check-${format}-${target}-${Date.now()}`;
     const channel = supabase
       .channel(channelName)
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'global_format_settings',
-        },
+        { event: '*', schema: 'public', table: 'global_format_settings' },
         (payload) => {
-          // Check if this update is for our format
           const newData = payload.new as (GlobalFormatSetting | undefined | null);
           const oldData = payload.old as (Partial<GlobalFormatSetting> | undefined | null);
           const affectedKey = newData?.format_key ?? oldData?.format_key;
-          
-          console.log(`[Realtime] Received update for ${affectedKey}, we're watching ${format}`);
-          
           if (affectedKey !== format) return;
-
-          // Refetch to get the canonical value
-          console.log(`[Realtime] Refetching ${format} due to realtime update`);
           fetchFormatStatus();
         }
       )
-      .subscribe((status) => {
-        console.log(`[Realtime] Subscription status for ${format}:`, status);
-      });
+      .subscribe();
 
     return () => {
       mountedRef.current = false;
       supabase.removeChannel(channel);
     };
-  }, [format, fetchFormatStatus]);
+  }, [format, target, fetchFormatStatus]);
 
-  // Return true as default while loading to avoid flash
   return { isActive: isActive ?? true, loading };
 };

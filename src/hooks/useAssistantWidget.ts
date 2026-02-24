@@ -31,7 +31,7 @@ export interface AssistantMessage {
   delivery_status: 'sent' | 'delivered' | 'read';
 }
 
-type Section = 'site' | 'openmic' | 'dediche' | 'community';
+type Section = 'site' | 'app' | 'openmic' | 'dediche' | 'community' | 'giochi';
 
 const STORAGE_KEY = 'assistant_conversation_id';
 const SESSION_KEY = 'assistant_session_id';
@@ -201,12 +201,16 @@ export function useAssistantWidget(currentSection: Section = 'site') {
     switch (currentSection) {
       case 'site':
         return settings.enabled_on_site;
+      case 'app':
+        return (settings as any).enabled_on_app ?? true;
       case 'openmic':
         return settings.enabled_on_openmic;
       case 'dediche':
         return settings.enabled_on_dediche;
       case 'community':
         return settings.enabled_on_community;
+      case 'giochi':
+        return (settings as any).enabled_on_giochi ?? true;
       default:
         return false;
     }

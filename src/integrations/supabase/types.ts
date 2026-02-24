@@ -186,6 +186,7 @@ export type Database = {
       }
       assistant_settings: {
         Row: {
+          enabled_on_app: boolean
           enabled_on_community: boolean
           enabled_on_dediche: boolean
           enabled_on_giochi: boolean
@@ -209,6 +210,7 @@ export type Database = {
           welcome_on_site: boolean | null
         }
         Insert: {
+          enabled_on_app?: boolean
           enabled_on_community?: boolean
           enabled_on_dediche?: boolean
           enabled_on_giochi?: boolean
@@ -232,6 +234,7 @@ export type Database = {
           welcome_on_site?: boolean | null
         }
         Update: {
+          enabled_on_app?: boolean
           enabled_on_community?: boolean
           enabled_on_dediche?: boolean
           enabled_on_giochi?: boolean
@@ -1503,18 +1506,21 @@ export type Database = {
           is_active: boolean
           updated_at: string | null
           updated_by: string | null
+          visible_on_app: boolean
         }
         Insert: {
           format_key: string
           is_active?: boolean
           updated_at?: string | null
           updated_by?: string | null
+          visible_on_app?: boolean
         }
         Update: {
           format_key?: string
           is_active?: boolean
           updated_at?: string | null
           updated_by?: string | null
+          visible_on_app?: boolean
         }
         Relationships: []
       }

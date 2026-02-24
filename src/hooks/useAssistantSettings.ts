@@ -6,9 +6,11 @@ export interface AssistantSettings {
   id: string;
   is_enabled: boolean;
   enabled_on_site: boolean;
+  enabled_on_app: boolean;
   enabled_on_openmic: boolean;
   enabled_on_dediche: boolean;
   enabled_on_community: boolean;
+  enabled_on_giochi: boolean;
   proactive_delay_seconds: number;
   welcome_message: string;
   updated_at: string;

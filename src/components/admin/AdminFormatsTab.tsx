@@ -1,5 +1,5 @@
 import React from 'react';
-import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown, Play, Calendar, Eye, Gamepad2, Globe, Mic2, MessageCircle } from 'lucide-react';
+import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown, Play, Calendar, Eye, Gamepad2, Globe, Mic2, MessageCircle, Smartphone } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -23,7 +23,7 @@ import { useGameConfigs, useToggleGameConfig } from '@/hooks/useGames';
  */
 export const AdminFormatsTab: React.FC = () => {
   const { permissions, isOwner: hookIsOwner, loading: permsLoading } = useCentroPermissions();
-  const { settings: globalSettings, toggleFormat: toggleGlobalFormat, loading: globalLoading } = useGlobalFormatSettings();
+  const { settings: globalSettings, appSettings, toggleFormat: toggleGlobalFormat, loading: globalLoading } = useGlobalFormatSettings();
   const { data: gameConfigs, isLoading: gamesLoading } = useGameConfigs();
   const toggleGameConfig = useToggleGameConfig();
   
@@ -54,16 +54,16 @@ export const AdminFormatsTab: React.FC = () => {
 
       {canManageActive && (
         <div className="space-y-4">
-          {/* ===== VISIBILITÀ SUL SITO ===== */}
+          {/* ===== VISIBILITÀ SUL SITO E APP ===== */}
           <Separator className="my-2" />
           <div className="flex items-center gap-2 mb-4">
             <Globe className="w-4 h-4 text-muted-foreground" />
-            <h3 className="text-sm font-medium text-muted-foreground">Visibilità Sezioni sul Sito</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Visibilità Sezioni</h3>
           </div>
           <Alert className="bg-muted/20 border-muted-foreground/10 mb-4">
             <Info className="h-4 w-4" />
             <AlertDescription className="text-xs text-muted-foreground">
-              Disattivando una sezione qui, il riquadro corrispondente <strong>scomparirà</strong> dalla homepage, dall'App Launcher e dalle pagine pubbliche.
+              Controlla dove mostrare ogni sezione: sul <strong>Sito</strong> (homepage e pagine informative) e/o sull'<strong>App</strong> (nonceduo.com/app).
             </AlertDescription>
           </Alert>
 
@@ -75,26 +75,25 @@ export const AdminFormatsTab: React.FC = () => {
                 Open Mic
               </CardTitle>
               <CardDescription className="text-xs">
-                Mostra o nascondi la sezione Open Mic dal sito e dalle pagine pubbliche
+                Visibilità della sezione Open Mic
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="openmic-site-toggle" className="text-sm">
-                    {globalSettings.openmic ? 'Visibile sul sito' : 'Nascosto dal sito'}
-                  </Label>
-                  {globalSettings.openmic && (
-                    <Badge variant="outline" className="text-secondary border-secondary/30 text-xs">
-                      🎤 Pubblico
-                    </Badge>
-                  )}
+                  <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Sito</Label>
+                  {globalSettings.openmic && <Badge variant="outline" className="text-secondary border-secondary/30 text-[10px]">Visibile</Badge>}
                 </div>
-                <Switch
-                  id="openmic-site-toggle"
-                  checked={globalSettings.openmic}
-                  onCheckedChange={() => toggleGlobalFormat('openmic')}
-                />
+                <Switch checked={globalSettings.openmic} onCheckedChange={() => toggleGlobalFormat('openmic', 'site')} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">App</Label>
+                  {appSettings.openmic && <Badge variant="outline" className="text-secondary border-secondary/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={appSettings.openmic} onCheckedChange={() => toggleGlobalFormat('openmic', 'app')} />
               </div>
             </CardContent>
           </Card>
@@ -107,26 +106,25 @@ export const AdminFormatsTab: React.FC = () => {
                 Dediche
               </CardTitle>
               <CardDescription className="text-xs">
-                Mostra o nascondi la sezione Dediche dal sito e dalle pagine pubbliche
+                Visibilità della sezione Dediche
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="dediche-site-toggle" className="text-sm">
-                    {globalSettings.dediche ? 'Visibile sul sito' : 'Nascoste dal sito'}
-                  </Label>
-                  {globalSettings.dediche && (
-                    <Badge variant="outline" className="text-primary border-primary/30 text-xs">
-                      💌 Pubblico
-                    </Badge>
-                  )}
+                  <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Sito</Label>
+                  {globalSettings.dediche && <Badge variant="outline" className="text-primary border-primary/30 text-[10px]">Visibile</Badge>}
                 </div>
-                <Switch
-                  id="dediche-site-toggle"
-                  checked={globalSettings.dediche}
-                  onCheckedChange={() => toggleGlobalFormat('dediche')}
-                />
+                <Switch checked={globalSettings.dediche} onCheckedChange={() => toggleGlobalFormat('dediche', 'site')} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">App</Label>
+                  {appSettings.dediche && <Badge variant="outline" className="text-primary border-primary/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={appSettings.dediche} onCheckedChange={() => toggleGlobalFormat('dediche', 'app')} />
               </div>
             </CardContent>
           </Card>
@@ -139,30 +137,29 @@ export const AdminFormatsTab: React.FC = () => {
                 Non C'è Furore (Giochi)
               </CardTitle>
               <CardDescription className="text-xs">
-                Mostra o nascondi la sezione Giochi dal sito, homepage e app
+                Visibilità della sezione Giochi
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-0 space-y-4">
+            <CardContent className="pt-0 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="giochi-site-toggle" className="text-sm">
-                    {globalSettings.giochi ? 'Visibile sul sito' : 'Nascosto dal sito'}
-                  </Label>
-                  {globalSettings.giochi && (
-                    <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 text-xs">
-                      🎮 Pubblico
-                    </Badge>
-                  )}
+                  <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Sito</Label>
+                  {globalSettings.giochi && <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 text-[10px]">Visibile</Badge>}
                 </div>
-                <Switch
-                  id="giochi-site-toggle"
-                  checked={globalSettings.giochi}
-                  onCheckedChange={() => toggleGlobalFormat('giochi')}
-                />
+                <Switch checked={globalSettings.giochi} onCheckedChange={() => toggleGlobalFormat('giochi', 'site')} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">App</Label>
+                  {appSettings.giochi && <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={appSettings.giochi} onCheckedChange={() => toggleGlobalFormat('giochi', 'app')} />
               </div>
 
               {/* Per-game toggles */}
-              {globalSettings.giochi && gameConfigs && gameConfigs.length > 0 && (
+              {(globalSettings.giochi || appSettings.giochi) && gameConfigs && gameConfigs.length > 0 && (
                 <div className="border-t border-emerald-500/10 pt-3 space-y-2">
                   <p className="text-xs text-muted-foreground font-medium mb-2">
                     Giochi visibili agli utenti:
@@ -193,26 +190,25 @@ export const AdminFormatsTab: React.FC = () => {
                 Community
               </CardTitle>
               <CardDescription className="text-xs">
-                Mostra o nascondi la sezione Community dal sito e dalle pagine pubbliche
+                Visibilità della sezione Community
               </CardDescription>
             </CardHeader>
-            <CardContent className="pt-0">
+            <CardContent className="pt-0 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="community-site-toggle" className="text-sm">
-                    {globalSettings.community ? 'Visibile sul sito' : 'Nascosta dal sito'}
-                  </Label>
-                  {globalSettings.community && (
-                    <Badge variant="outline" className="text-accent border-accent/30 text-xs">
-                      👥 Pubblica
-                    </Badge>
-                  )}
+                  <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Sito</Label>
+                  {globalSettings.community && <Badge variant="outline" className="text-accent border-accent/30 text-[10px]">Visibile</Badge>}
                 </div>
-                <Switch
-                  id="community-site-toggle"
-                  checked={globalSettings.community}
-                  onCheckedChange={() => toggleGlobalFormat('community')}
-                />
+                <Switch checked={globalSettings.community} onCheckedChange={() => toggleGlobalFormat('community', 'site')} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">App</Label>
+                  {appSettings.community && <Badge variant="outline" className="text-accent border-accent/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={appSettings.community} onCheckedChange={() => toggleGlobalFormat('community', 'app')} />
               </div>
             </CardContent>
           </Card>

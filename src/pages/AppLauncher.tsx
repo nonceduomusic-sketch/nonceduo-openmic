@@ -13,9 +13,9 @@ import { cn } from "@/lib/utils";
 
 const AppLauncher: React.FC = () => {
   const { eventState, liveEvent, isFreeMode, freeMode, isOpenmicVisible, isDedicheVisible, loading } = useLiveEvent();
-  const { isActive: isGiochiVisible } = useFormatActiveCheck('giochi');
-  const { isActive: isOpenmicSiteVisible } = useFormatActiveCheck('openmic');
-  const { isActive: isDedicheSiteVisible } = useFormatActiveCheck('dediche');
+  const { isActive: isGiochiVisible } = useFormatActiveCheck('giochi', 'app');
+  const { isActive: isOpenmicAppVisible } = useFormatActiveCheck('openmic', 'app');
+  const { isActive: isDedicheAppVisible } = useFormatActiveCheck('dediche', 'app');
 
   // Check if everything is OFF (no live event, no freemode, nothing visible)
   const isEverythingOff = !loading && eventState.type === 'none' && !isOpenmicVisible && !isDedicheVisible;
@@ -228,7 +228,7 @@ const AppLauncher: React.FC = () => {
               {/* Format Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Open Mic - only if visible on site */}
-                {isOpenmicSiteVisible && (
+                {isOpenmicAppVisible && (
                 <Link 
                   to={isOpenmicVisible ? "/app/openmic" : "/openmic"} 
                   className="group"
@@ -272,7 +272,7 @@ const AppLauncher: React.FC = () => {
                 )}
 
                 {/* Dediche - only if visible on site */}
-                {isDedicheSiteVisible && (
+                {isDedicheAppVisible && (
                 <Link 
                   to={isDedicheVisible ? "/app/dediche" : "/messaggi"} 
                   className="group"
