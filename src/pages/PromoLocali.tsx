@@ -115,7 +115,7 @@ const PromoLocali: React.FC = () => {
         <PromoGallery variant="locali" />
 
         {/* Formats */}
-        <PromoFormats variant="locali" showDuo={true} showBand={true} showOpenMic={true} showDediche={true} />
+        <PromoFormats variant="locali" showDuo={true} showBand={true} showOpenMic={true} showDediche={true} showGames={true} />
 
         {/* Features */}
         <PromoFeatures

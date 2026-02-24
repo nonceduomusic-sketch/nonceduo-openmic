@@ -249,7 +249,7 @@ const PromoFestePiazza: React.FC = () => {
         </section>
 
         {/* Formats */}
-        <PromoFormats variant="piazza" showDuo={true} showBand={true} showOpenMic={true} showDediche={true} />
+        <PromoFormats variant="piazza" showDuo={true} showBand={true} showOpenMic={true} showDediche={true} showGames={true} />
 
         {/* Features */}
         <PromoFeatures
