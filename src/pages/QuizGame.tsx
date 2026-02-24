@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Trophy, Timer, Zap, RotateCcw, Star, Check, X } from 'lucide-react';
-import { useActiveQuizQuestions, useQuizQuestions, useQuizQuestionSets, useGameScores, useSubmitScore, type QuizQuestion } from '@/hooks/useGames';
+import { useActiveQuizQuestions, useQuizQuestions, useQuizQuestionSets, useGameScores, useSubmitScore, useGameSettings, type QuizQuestion } from '@/hooks/useGames';
 import { NamePromptDialog } from '@/components/NamePromptDialog';
 import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
 import { cn } from '@/lib/utils';
@@ -19,10 +19,12 @@ const POINTS_BASE = 100;
 const POINTS_TIME_BONUS = 50; // max bonus for fast answers
 
 const QuizGame: React.FC = () => {
+  const { data: settings } = useGameSettings();
   const { data: questionSets } = useQuizQuestionSets();
   const { data: allQuestions, isLoading } = useActiveQuizQuestions();
-  const [selectedSourceId, setSelectedSourceId] = useState<string>('random');
-  const { data: specificSetQuestions } = useQuizQuestions(selectedSourceId !== 'random' ? selectedSourceId : undefined);
+  // For user-override source on the menu (optional, only if admin allows)
+  const [userSourceOverride, setUserSourceOverride] = useState<string | null>(null);
+  const { data: specificSetQuestions } = useQuizQuestions(userSourceOverride || undefined);
   const { data: topScores } = useGameScores('quiz', 5);
   const submitScore = useSubmitScore();
 
@@ -40,21 +42,26 @@ const QuizGame: React.FC = () => {
   const currentQ = questions[currentIdx];
   const totalQuestions = questions.length;
 
-  // Pick questions based on source selection
-  const availableQuestions = selectedSourceId === 'random' ? allQuestions : specificSetQuestions;
+  // Pick questions based on admin settings (or user override)
+  const availableQuestions = userSourceOverride ? specificSetQuestions : allQuestions;
+  const orderMode = settings?.quiz_order_mode || 'random';
 
   // Shuffle and pick 10 questions
   const startGame = useCallback(() => {
     if (!availableQuestions?.length) return;
-    const shuffled = [...availableQuestions].sort(() => Math.random() - 0.5).slice(0, 10);
-    setQuestions(shuffled);
+    let pool = [...availableQuestions];
+    if (orderMode === 'random') {
+      pool = pool.sort(() => Math.random() - 0.5);
+    }
+    pool = pool.slice(0, 10);
+    setQuestions(pool);
     setCurrentIdx(0);
     setScore(0);
     setStreak(0);
     setSelectedOption(null);
     setTimeLeft(QUESTION_TIME);
     setGameState('playing');
-  }, [availableQuestions]);
+  }, [availableQuestions, orderMode]);
 
   // Timer
   useEffect(() => {
@@ -130,14 +137,14 @@ const QuizGame: React.FC = () => {
                 <p className="text-muted-foreground text-sm">10 domande, 15 secondi ciascuna. Rispondi veloce per più punti!</p>
               </div>
 
-              {/* Source selector */}
-              {questionSets && questionSets.length > 0 && (
+              {/* Source selector - user can override to pick a specific set */}
+              {questionSets && questionSets.filter(s => s.is_active).length > 0 && (
                 <div className="text-left space-y-1">
                   <label className="text-xs font-medium text-muted-foreground">Sorgente domande</label>
-                  <Select value={selectedSourceId} onValueChange={setSelectedSourceId}>
+                  <Select value={userSourceOverride || 'default'} onValueChange={v => setUserSourceOverride(v === 'default' ? null : v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="random">🎲 Casuali (tutti gli elenchi attivi)</SelectItem>
+                      <SelectItem value="default">🎲 Predefinito (impostazione admin)</SelectItem>
                       {questionSets.filter(s => s.is_active).map(s => (
                         <SelectItem key={s.id} value={s.id}>📋 {s.name}</SelectItem>
                       ))}

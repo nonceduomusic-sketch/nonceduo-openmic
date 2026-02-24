@@ -1449,6 +1449,9 @@ export type Database = {
           available_when_closed: boolean
           games_enabled: boolean
           id: string
+          quiz_order_mode: string
+          quiz_source_mode: string
+          quiz_source_set_ids: string[] | null
           show_on_app: boolean
           show_on_tv: boolean
           updated_at: string | null
@@ -1459,6 +1462,9 @@ export type Database = {
           available_when_closed?: boolean
           games_enabled?: boolean
           id?: string
+          quiz_order_mode?: string
+          quiz_source_mode?: string
+          quiz_source_set_ids?: string[] | null
           show_on_app?: boolean
           show_on_tv?: boolean
           updated_at?: string | null
@@ -1469,6 +1475,9 @@ export type Database = {
           available_when_closed?: boolean
           games_enabled?: boolean
           id?: string
+          quiz_order_mode?: string
+          quiz_source_mode?: string
+          quiz_source_set_ids?: string[] | null
           show_on_app?: boolean
           show_on_tv?: boolean
           updated_at?: string | null

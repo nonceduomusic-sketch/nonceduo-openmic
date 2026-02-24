@@ -17,6 +17,9 @@ export interface GameSettings {
   show_on_tv: boolean;
   available_when_closed: boolean;
   available_in_consultable: boolean;
+  quiz_source_mode: 'all_catalog' | 'all_sets' | 'general_only' | 'specific_sets';
+  quiz_source_set_ids: string[];
+  quiz_order_mode: 'random' | 'sequential';
 }
 
 export interface GameScore {
@@ -272,19 +275,54 @@ export const useActiveQuizQuestions = () =>
   useQuery({
     queryKey: ['active-quiz-questions'],
     queryFn: async () => {
-      // Get active sets
-      const { data: sets } = await supabase
+      // Get settings to know the source mode
+      const { data: settings } = await supabase
+        .from('game_settings')
+        .select('quiz_source_mode, quiz_source_set_ids')
+        .limit(1)
+        .single();
+
+      const mode = (settings as any)?.quiz_source_mode || 'all_catalog';
+      const specificIds: string[] = (settings as any)?.quiz_source_set_ids || [];
+
+      if (mode === 'all_catalog') {
+        // All questions regardless of set
+        const { data, error } = await supabase.from('quiz_questions').select('*').order('created_at');
+        if (error) throw error;
+        return (data || []) as QuizQuestion[];
+      }
+
+      if (mode === 'general_only') {
+        // Questions without a set (question_set_id is null)
+        const { data, error } = await supabase.from('quiz_questions').select('*').is('question_set_id', null).order('created_at');
+        if (error) throw error;
+        return (data || []) as QuizQuestion[];
+      }
+
+      if (mode === 'specific_sets' && specificIds.length > 0) {
+        const { data, error } = await supabase
+          .from('quiz_questions')
+          .select('*')
+          .in('question_set_id', specificIds)
+          .order('created_at');
+        if (error) throw error;
+        return (data || []) as QuizQuestion[];
+      }
+
+      // mode === 'all_sets' or fallback: all questions that have a set, but only from active sets
+      const { data: activeSets } = await supabase
         .from('quiz_question_sets')
         .select('id')
         .eq('is_active', true);
 
-      if (!sets || sets.length === 0) return [];
+      if (!activeSets || activeSets.length === 0) return [];
 
-      const setIds = sets.map(s => s.id);
+      const setIds = activeSets.map(s => s.id);
       const { data, error } = await supabase
         .from('quiz_questions')
         .select('*')
-        .in('question_set_id', setIds);
+        .in('question_set_id', setIds)
+        .order('created_at');
 
       if (error) throw error;
       return (data || []) as QuizQuestion[];

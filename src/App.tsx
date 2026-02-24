@@ -41,6 +41,7 @@ import SongbookLive from "./pages/SongbookLive";
 import Partiture from "./pages/Partiture";
 import GamesHub from "./pages/GamesHub";
 import QuizGame from "./pages/QuizGame";
+import GameNotAvailable from "./pages/GameNotAvailable";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,7 @@ const AppContent = () => (
       <Route path="/app/dediche" element={<AppDediche />} />
       <Route path="/app/giochi" element={<GamesHub />} />
       <Route path="/app/giochi/quiz" element={<QuizGame />} />
+      <Route path="/app/giochi/:gameKey" element={<GameNotAvailable />} />
       
       {/* Lyrics page - Spotify-like design */}
       <Route path="/lyrics/:id" element={<Lyrics />} />
