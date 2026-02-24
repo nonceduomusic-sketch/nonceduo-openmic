@@ -21,6 +21,11 @@ export interface GameSettings {
   quiz_source_set_ids: string[];
   quiz_order_mode: 'random' | 'sequential';
   tv_display_mode: 'off' | 'banner' | 'fullscreen';
+  quiz_user_can_choose: boolean;
+  quiz_user_show_random: boolean;
+  quiz_user_show_general: boolean;
+  quiz_user_show_sets: boolean;
+  quiz_user_allowed_set_ids: string[];
 }
 
 export interface GameScore {
