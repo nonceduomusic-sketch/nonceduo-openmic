@@ -5,8 +5,6 @@ import {
   useFuroreSession,
   useFurorePlayers,
   useFuroreBookings,
-  type FurorePlayer,
-  type FuroreBooking,
 } from '@/hooks/useFurore';
 import brandLogo from '@/assets/brand-logo-splash.png';
 
@@ -128,13 +126,21 @@ export const TVFuroreOverlay: React.FC = () => {
 
   const maxSlots = session.max_players;
 
-  // Build slot grid
-  const slots: Array<{ booking?: FuroreBooking; player?: FurorePlayer }> = [];
-  for (let i = 0; i < maxSlots; i++) {
-    const booking = bookings.find(b => b.position === i + 1);
-    const player = booking ? players.find(p => p.id === booking.player_id) : undefined;
-    slots.push({ booking, player });
-  }
+  // Build list of booked players only (no empty slots)
+  const bookedSlots = bookings
+    .sort((a, b) => a.position - b.position)
+    .map(booking => ({
+      booking,
+      player: players.find(p => p.id === booking.player_id),
+    }))
+    .filter(s => s.player);
+
+  // Determine grid cols based on booked count
+  const count = bookedSlots.length;
+  const gridCols = count <= 4 ? "grid-cols-2 md:grid-cols-4" :
+    count <= 6 ? "grid-cols-3" :
+    count <= 8 ? "grid-cols-4" :
+    "grid-cols-4 md:grid-cols-5";
 
   return (
     <div className="fixed inset-0 z-[55] bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex flex-col overflow-hidden">
@@ -182,52 +188,44 @@ export const TVFuroreOverlay: React.FC = () => {
         </AnimatePresence>
       </div>
 
-      {/* Player Slots Grid */}
+      {/* Booked Players Grid — only shows who booked, in order */}
       <div className="relative z-10 flex-1 flex items-center justify-center px-8 pb-8">
-        <div className={cn(
-          "grid gap-4 w-full max-w-5xl",
-          maxSlots <= 4 ? "grid-cols-2 md:grid-cols-4" :
-          maxSlots <= 6 ? "grid-cols-3" :
-          maxSlots <= 8 ? "grid-cols-4" :
-          "grid-cols-4 md:grid-cols-5"
-        )}>
-          {slots.map((slot, i) => (
-            <motion.div
-              key={i}
-              initial={slot.booking ? { scale: 0.5, opacity: 0 } : false}
-              animate={slot.booking ? { scale: 1, opacity: 1 } : { scale: 1, opacity: 1 }}
-              transition={{ type: 'spring', damping: 12, stiffness: 200 }}
-              className={cn(
-                "relative aspect-square rounded-2xl border-2 flex flex-col items-center justify-center gap-2 transition-all",
-                slot.booking && slot.player
-                  ? "border-white/30 shadow-lg"
-                  : "border-white/10 bg-white/5"
-              )}
-              style={slot.player ? {
-                backgroundColor: `${slot.player.color}20`,
-                borderColor: `${slot.player.color}60`,
-                boxShadow: slot.booking ? `0 0 30px ${slot.player.color}30` : undefined,
-              } : undefined}
-            >
-              {slot.booking && slot.player ? (
-                <>
-                  <span className="absolute top-2 left-3 text-sm font-bold text-white/50">
-                    {slot.booking.position}°
-                  </span>
-                  <span className="text-4xl md:text-5xl">{slot.player.symbol}</span>
-                  <span className="text-sm md:text-base font-bold text-white truncate max-w-full px-2">
-                    {slot.player.nickname}
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="text-3xl text-white/10">{i + 1}</span>
-                  <span className="text-xs text-white/20">Libero</span>
-                </>
-              )}
-            </motion.div>
-          ))}
-        </div>
+        {bookedSlots.length === 0 ? (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center"
+          >
+            <p className="text-2xl md:text-3xl text-white/30 font-medium">
+              {isOpen ? 'In attesa delle prenotazioni...' : 'Nessuna prenotazione'}
+            </p>
+          </motion.div>
+        ) : (
+          <div className={cn("grid gap-4 w-full max-w-5xl", gridCols)}>
+            {bookedSlots.map(({ booking, player }) => (
+              <motion.div
+                key={booking.id}
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', damping: 12, stiffness: 200 }}
+                className="relative aspect-square rounded-2xl border-2 flex flex-col items-center justify-center gap-2 border-white/30 shadow-lg"
+                style={{
+                  backgroundColor: `${player!.color}20`,
+                  borderColor: `${player!.color}60`,
+                  boxShadow: `0 0 30px ${player!.color}30`,
+                }}
+              >
+                <span className="absolute top-2 left-3 text-sm font-bold text-white/50">
+                  {booking.position}°
+                </span>
+                <span className="text-4xl md:text-5xl">{player!.symbol}</span>
+                <span className="text-sm md:text-base font-bold text-white truncate max-w-full px-2">
+                  {player!.nickname}
+                </span>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Footer */}
