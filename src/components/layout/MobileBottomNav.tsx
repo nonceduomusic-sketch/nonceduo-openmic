@@ -47,19 +47,19 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       matchPaths: ['/openmic'],
       activeClass: 'text-secondary'
     }] : []),
-    ...(isDedicheSite ? [{ 
-      path: '/messaggi', 
-      icon: <MessageCircle className="w-5 h-5" />, 
-      label: 'Dediche', 
-      matchPaths: ['/messaggi'],
-      activeClass: 'text-primary'
-    }] : []),
     ...(isFuroreActive ? [{
       path: '/app/furore',
       icon: <Zap className="w-5 h-5" />,
       label: 'Furore',
       matchPaths: ['/app/furore'],
       activeClass: 'text-destructive'
+    }] : []),
+    ...(isDedicheSite ? [{ 
+      path: '/messaggi', 
+      icon: <MessageCircle className="w-5 h-5" />, 
+      label: 'Dediche', 
+      matchPaths: ['/messaggi'],
+      activeClass: 'text-primary'
     }] : []),
     ...(isGiochiActive ? [{
       path: '/app/giochi',
@@ -108,6 +108,7 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       matchPaths: ['/openmic'],
       activeClass: 'text-secondary'
     },
+    ...dynamicFormats,
     ...(isDedicheSite ? [{ 
       path: '/messaggi', 
       icon: <MessageCircle className="w-5 h-5" />, 
@@ -115,7 +116,6 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       matchPaths: ['/messaggi'],
       activeClass: 'text-primary'
     }] : []),
-    ...dynamicFormats,
     { 
       path: '/admin', 
       icon: <Settings className="w-5 h-5" />, 
@@ -132,13 +132,6 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       label: 'Sito',
       activeClass: 'text-primary'
     },
-    { 
-      path: '/social/dashboard', 
-      icon: <Users className="w-5 h-5" />, 
-      label: 'Community', 
-      matchPaths: ['/social/dashboard'],
-      activeClass: 'text-accent'
-    },
     ...(isOpenmicSite ? [{ 
       path: '/openmic', 
       icon: <Mic2 className="w-5 h-5" />, 
@@ -147,6 +140,13 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       activeClass: 'text-secondary'
     }] : []),
     ...dynamicFormats,
+    { 
+      path: '/social/dashboard', 
+      icon: <Users className="w-5 h-5" />, 
+      label: 'Community', 
+      matchPaths: ['/social/dashboard'],
+      activeClass: 'text-accent'
+    },
   ];
 
   const adminNavItems: NavItem[] = [

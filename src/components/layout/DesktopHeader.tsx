@@ -64,12 +64,6 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
         label="Open Mic"
         activeClass="neon-button-cyan"
       />
-      <NavButton 
-        to="/messaggi" 
-        matchPaths={['/messaggi']} 
-        icon={<MessageCircle className="w-4 h-4" />} 
-        label="Dediche"
-      />
       {isFuroreActive && (
         <NavButton 
           to="/app/furore" 
@@ -79,6 +73,12 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           activeClass="bg-destructive text-destructive-foreground hover:bg-destructive/90"
         />
       )}
+      <NavButton 
+        to="/messaggi" 
+        matchPaths={['/messaggi']} 
+        icon={<MessageCircle className="w-4 h-4" />} 
+        label="Dediche"
+      />
       {isGiochiActive && (
         <NavButton 
           to="/app/giochi" 
@@ -129,26 +129,19 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
         label="Canzoni"
         activeClass="neon-button-cyan"
       />
+      {dynamicFormatButtons()}
       <NavButton 
         to="/messaggi" 
         matchPaths={['/messaggi']} 
         icon={<MessageCircle className="w-4 h-4" />} 
         label="Dediche"
       />
-      {dynamicFormatButtons()}
     </div>
   );
 
   const renderCommunityNav = () => (
     <div className="flex items-center gap-1">
       <NavButton to="/" icon={<Home className="w-4 h-4" />} label="Sito" />
-      <NavButton 
-        to="/social/dashboard" 
-        matchPaths={['/social/dashboard']} 
-        icon={<Users className="w-4 h-4" />} 
-        label="Community"
-        activeClass="bg-accent text-accent-foreground hover:bg-accent/90"
-      />
       <NavButton 
         to="/openmic" 
         matchPaths={['/openmic']} 
@@ -157,6 +150,13 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
         activeClass="neon-button-cyan"
       />
       {dynamicFormatButtons()}
+      <NavButton 
+        to="/social/dashboard" 
+        matchPaths={['/social/dashboard']} 
+        icon={<Users className="w-4 h-4" />} 
+        label="Community"
+        activeClass="bg-accent text-accent-foreground hover:bg-accent/90"
+      />
     </div>
   );
 
