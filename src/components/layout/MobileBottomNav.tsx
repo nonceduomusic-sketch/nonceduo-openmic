@@ -20,22 +20,39 @@ interface MobileBottomNavProps {
 export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ variant = 'main' }, ref) => {
   const location = useLocation();
   const { isStaff } = useStaffRole();
+  // Master switches (Sito)
   const { isActive: isFuroreSite } = useFormatActiveCheck('furore', 'site');
-  const { isActive: isFuroreApp } = useFormatActiveCheck('furore', 'app');
   const { isActive: isGiochiSite } = useFormatActiveCheck('giochi', 'site');
-  const { isActive: isGiochiApp } = useFormatActiveCheck('giochi', 'app');
   const { isActive: isCommunitySite } = useFormatActiveCheck('community', 'site');
-  const { isActive: isCommunityApp } = useFormatActiveCheck('community', 'app');
   const { isActive: isOpenmicSite } = useFormatActiveCheck('openmic', 'site');
-  const { isActive: isOpenmicMenu } = useFormatActiveCheck('openmic', 'menu');
   const { isActive: isDedicheSite } = useFormatActiveCheck('dediche', 'site');
+  // Menu toggles (for site navigation)
+  const { isActive: isFuroreMenu } = useFormatActiveCheck('furore', 'menu');
+  const { isActive: isGiochiMenu } = useFormatActiveCheck('giochi', 'menu');
+  const { isActive: isCommunityMenu } = useFormatActiveCheck('community', 'menu');
+  const { isActive: isOpenmicMenu } = useFormatActiveCheck('openmic', 'menu');
   const { isActive: isDedicheMenu } = useFormatActiveCheck('dediche', 'menu');
-  const isFuroreActive = isFuroreSite && isFuroreApp;
-  const isGiochiActive = isGiochiSite && isGiochiApp;
-  const isCommunityActive = isCommunitySite && isCommunityApp;
-  const isOpenmicActive = isOpenmicSite && isOpenmicMenu;
-  const isDedicheActive = isDedicheSite && isDedicheMenu;
+  // App toggles (for app navigation)
+  const { isActive: isFuroreApp } = useFormatActiveCheck('furore', 'app');
+  const { isActive: isGiochiApp } = useFormatActiveCheck('giochi', 'app');
+  const { isActive: isCommunityApp } = useFormatActiveCheck('community', 'app');
+  const { isActive: isOpenmicApp } = useFormatActiveCheck('openmic', 'app');
+  const { isActive: isDedicheApp } = useFormatActiveCheck('dediche', 'app');
 
+  // Site menu: site + menu
+  const isFuroreOnMenu = isFuroreSite && isFuroreMenu;
+  const isGiochiOnMenu = isGiochiSite && isGiochiMenu;
+  const isCommunityOnMenu = isCommunitySite && isCommunityMenu;
+  const isOpenmicOnMenu = isOpenmicSite && isOpenmicMenu;
+  const isDedicheOnMenu = isDedicheSite && isDedicheMenu;
+  // App: site + app
+  const isFuroreOnApp = isFuroreSite && isFuroreApp;
+  const isGiochiOnApp = isGiochiSite && isGiochiApp;
+  const isCommunityOnApp = isCommunitySite && isCommunityApp;
+  const isOpenmicOnApp = isOpenmicSite && isOpenmicApp;
+  const isDedicheOnApp = isDedicheSite && isDedicheApp;
+
+  // Main site nav uses menu toggles
   const mainNavItems: NavItem[] = [
     { 
       path: '/', 
@@ -44,35 +61,35 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       matchPaths: ['/', '/partyband'],
       activeClass: 'text-primary'
     },
-    ...(isOpenmicActive ? [{ 
+    ...(isOpenmicOnMenu ? [{ 
       path: '/openmic', 
       icon: <Mic2 className="w-5 h-5" />, 
       label: 'Open Mic', 
       matchPaths: ['/openmic'],
       activeClass: 'text-secondary'
     }] : []),
-    ...(isFuroreActive ? [{
+    ...(isFuroreOnMenu ? [{
       path: '/furore',
       icon: <Zap className="w-5 h-5" />,
       label: 'Furore',
       matchPaths: ['/furore'],
       activeClass: 'text-destructive'
     }] : []),
-    ...(isDedicheActive ? [{ 
+    ...(isDedicheOnMenu ? [{ 
       path: '/messaggi', 
       icon: <MessageCircle className="w-5 h-5" />, 
       label: 'Dediche', 
       matchPaths: ['/messaggi'],
       activeClass: 'text-primary'
     }] : []),
-    ...(isGiochiActive ? [{
+    ...(isGiochiOnMenu ? [{
       path: '/giochi',
       icon: <Gamepad2 className="w-5 h-5" />,
       label: 'Giochi',
       matchPaths: ['/giochi'],
       activeClass: 'text-primary'
     }] : []),
-    ...(isCommunityActive ? [{ 
+    ...(isCommunityOnMenu ? [{ 
       path: '/social', 
       icon: <Users className="w-5 h-5" />, 
       label: 'Community', 
@@ -81,29 +98,30 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
     }] : []),
   ];
 
+  // Dynamic formats in app context use app toggles
   const dynamicFormats: NavItem[] = [
-    ...(isFuroreActive ? [{
+    ...(isFuroreOnApp ? [{
       path: '/app/furore',
       icon: <Zap className="w-5 h-5" />,
       label: 'Furore',
       matchPaths: ['/app/furore'],
       activeClass: 'text-destructive'
     }] : []),
-    ...(isDedicheActive ? [{
-      path: '/messaggi',
+    ...(isDedicheOnApp ? [{
+      path: '/app/dediche',
       icon: <MessageCircle className="w-5 h-5" />,
       label: 'Dediche',
-      matchPaths: ['/messaggi'],
+      matchPaths: ['/app/dediche', '/messaggi'],
       activeClass: 'text-primary'
     }] : []),
-    ...(isGiochiActive ? [{
+    ...(isGiochiOnApp ? [{
       path: '/app/giochi',
       icon: <Gamepad2 className="w-5 h-5" />,
       label: 'Giochi',
       matchPaths: ['/app/giochi'],
       activeClass: 'text-primary'
     }] : []),
-    ...(isCommunityActive ? [{
+    ...(isCommunityOnApp ? [{
       path: '/social',
       icon: <Users className="w-5 h-5" />,
       label: 'Community',
@@ -143,7 +161,7 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       label: 'Sito',
       activeClass: 'text-primary'
     },
-    ...(isOpenmicActive ? [{ 
+    ...(isOpenmicOnApp ? [{ 
       path: '/openmic', 
       icon: <Mic2 className="w-5 h-5" />, 
       label: 'Open Mic', 
@@ -160,7 +178,7 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       label: 'Sito',
       activeClass: 'text-primary'
     },
-    ...(isOpenmicActive ? [{ 
+    ...(isOpenmicOnApp ? [{ 
       path: '/openmic', 
       icon: <Mic2 className="w-5 h-5" />, 
       label: 'Open Mic',
