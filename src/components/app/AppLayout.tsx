@@ -1,16 +1,11 @@
 import React from "react";
 import { Outlet } from "react-router-dom";
-import { AppFormatNav } from "@/components/app/AppFormatNav";
 
 /**
  * Layout wrapper for all /app/* routes.
- * Provides consistent format navigation bar.
+ * Navigation is handled by PageLayout (DesktopHeader + MobileBottomNav)
+ * inside each page — no extra nav bar needed here.
  */
 export const AppLayout: React.FC = () => {
-  return (
-    <div className="min-h-screen bg-background">
-      <AppFormatNav />
-      <Outlet />
-    </div>
-  );
+  return <Outlet />;
 };
