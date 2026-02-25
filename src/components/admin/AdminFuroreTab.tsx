@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Zap, Play, Pause, RotateCcw, Users, Volume2, Eye, EyeOff, Crown, ExternalLink, QrCode, Tv, Gamepad2 } from 'lucide-react';
+import { Zap, Play, Pause, RotateCcw, Users, Volume2, Eye, EyeOff, Crown, ExternalLink, QrCode, Tv, Gamepad2, Pencil, Trash2, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   useFuroreSession,
@@ -216,7 +216,7 @@ export const AdminFuroreTab: React.FC = () => {
   const { session, loading } = useFuroreSession();
   const { players } = useFurorePlayers(session?.id);
   const { bookings } = useFuroreBookings(session?.id);
-  const { createSession, openBookings, closeBookings, resetSession, setMaxPlayers, setShowOrder, setSoundKey } = useFuroreAdmin();
+  const { createSession, openBookings, closeBookings, resetSession, setMaxPlayers, setShowOrder, setSoundKey, deletePlayer, updatePlayer } = useFuroreAdmin();
 
   const handleCreateSession = async () => {
     const s = await createSession();
@@ -394,46 +394,150 @@ export const AdminFuroreTab: React.FC = () => {
           </Card>
 
           {/* Live Players & Bookings */}
-          <Card>
-            <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm sm:text-base flex items-center gap-2">
-                  <Users className="w-4 h-4" />
-                  Giocatori ({players.length}) — Prenotati ({bookings.length}/{session.max_players})
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="px-4 sm:px-6">
-              {bookings.length === 0 && players.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Nessun giocatore collegato</p>
-              ) : (
-                <div className="space-y-2">
-                  {bookings.map(b => {
-                    const player = players.find(p => p.id === b.player_id);
-                    if (!player) return null;
-                    return (
-                      <div key={b.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card/50">
-                        <span className="text-lg font-bold w-8 text-center">{b.position}°</span>
-                        <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center text-xl"
-                          style={{ backgroundColor: player.color }}
-                        >
-                          {player.symbol}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{player.nickname}</p>
-                        </div>
-                        {b.position === 1 && <Crown className="w-4 h-4 text-yellow-500" />}
-                      </div>
-                    );
-                  })}
+          <PlayersManagementCard
+            players={players}
+            bookings={bookings}
+            session={session}
+            onDeletePlayer={async (playerId) => {
+              await deletePlayer(playerId, session.id);
+              toast.success('Giocatore eliminato');
+            }}
+            onUpdatePlayer={async (playerId, updates) => {
+              const ok = await updatePlayer(playerId, updates);
+              if (ok) toast.success('Giocatore aggiornato');
+              else toast.error('Errore aggiornamento');
+            }}
+          />
+        </>
+      )}
+    </div>
+  );
+};
 
-                  {/* Show unbooked players */}
-                  {players.filter(p => !bookings.find(b => b.player_id === p.id)).map(player => (
-                    <div key={player.id} className="flex items-center gap-3 p-3 rounded-lg border border-dashed opacity-50">
-                      <span className="text-lg font-bold w-8 text-center">—</span>
+// ─── Players Management Card with Edit/Delete ───
+const PlayersManagementCard: React.FC<{
+  players: any[];
+  bookings: any[];
+  session: any;
+  onDeletePlayer: (playerId: string) => Promise<void>;
+  onUpdatePlayer: (playerId: string, updates: { nickname?: string; symbol?: string }) => Promise<void>;
+}> = ({ players, bookings, session, onDeletePlayer, onUpdatePlayer }) => {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editNickname, setEditNickname] = useState('');
+  const [editSymbol, setEditSymbol] = useState('');
+
+  const startEdit = (player: any) => {
+    setEditingId(player.id);
+    setEditNickname(player.nickname);
+    setEditSymbol(player.symbol);
+  };
+
+  const saveEdit = async () => {
+    if (!editingId) return;
+    await onUpdatePlayer(editingId, { nickname: editNickname.trim(), symbol: editSymbol });
+    setEditingId(null);
+  };
+
+  const cancelEdit = () => setEditingId(null);
+
+  return (
+    <Card>
+      <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+            <Users className="w-4 h-4" />
+            Giocatori ({players.length}) — Prenotati ({bookings.length}/{session.max_players})
+          </CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="px-4 sm:px-6">
+        {bookings.length === 0 && players.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-4">Nessun giocatore collegato</p>
+        ) : (
+          <div className="space-y-2">
+            {bookings.map(b => {
+              const player = players.find(p => p.id === b.player_id);
+              if (!player) return null;
+              const isEditing = editingId === player.id;
+              return (
+                <div key={b.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card/50">
+                  <span className="text-lg font-bold w-8 text-center">{b.position}°</span>
+                  {isEditing ? (
+                    <>
+                      <Input
+                        value={editSymbol}
+                        onChange={e => setEditSymbol(e.target.value)}
+                        className="w-14 h-10 text-center text-xl p-0"
+                        maxLength={2}
+                      />
+                      <Input
+                        value={editNickname}
+                        onChange={e => setEditNickname(e.target.value)}
+                        className="flex-1 h-10"
+                        maxLength={50}
+                      />
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={saveEdit}>
+                        <Check className="w-4 h-4 text-green-500" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={cancelEdit}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
                       <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-xl"
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-xl shrink-0"
+                        style={{ backgroundColor: player.color }}
+                      >
+                        {player.symbol}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{player.nickname}</p>
+                      </div>
+                      {b.position === 1 && <Crown className="w-4 h-4 text-yellow-500 shrink-0" />}
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => startEdit(player)}>
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive" onClick={() => onDeletePlayer(player.id)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Show unbooked players */}
+            {players.filter(p => !bookings.find(b => b.player_id === p.id)).map(player => {
+              const isEditing = editingId === player.id;
+              return (
+                <div key={player.id} className="flex items-center gap-3 p-3 rounded-lg border border-dashed opacity-70">
+                  <span className="text-lg font-bold w-8 text-center">—</span>
+                  {isEditing ? (
+                    <>
+                      <Input
+                        value={editSymbol}
+                        onChange={e => setEditSymbol(e.target.value)}
+                        className="w-14 h-10 text-center text-xl p-0"
+                        maxLength={2}
+                      />
+                      <Input
+                        value={editNickname}
+                        onChange={e => setEditNickname(e.target.value)}
+                        className="flex-1 h-10"
+                        maxLength={50}
+                      />
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={saveEdit}>
+                        <Check className="w-4 h-4 text-green-500" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={cancelEdit}>
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <div
+                        className="w-10 h-10 rounded-full flex items-center justify-center text-xl shrink-0"
                         style={{ backgroundColor: player.color }}
                       >
                         {player.symbol}
@@ -442,14 +546,20 @@ export const AdminFuroreTab: React.FC = () => {
                         <p className="font-medium text-sm truncate">{player.nickname}</p>
                         <p className="text-[11px] text-muted-foreground">In attesa</p>
                       </div>
-                    </div>
-                  ))}
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => startEdit(player)}>
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive" onClick={() => onDeletePlayer(player.id)}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </>
+                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </>
-      )}
-    </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };

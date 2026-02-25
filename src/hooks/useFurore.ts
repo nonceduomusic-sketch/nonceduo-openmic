@@ -163,7 +163,17 @@ export const useFuroreAdmin = () => {
   const setShowOrder = async (id: string, show: boolean) => updateSession(id, { show_order_to_players: show } as any);
   const setSoundKey = async (id: string, key: string) => updateSession(id, { sound_key: key } as any);
 
-  return { createSession, updateSession, openBookings, closeBookings, resetSession, setMaxPlayers, setShowOrder, setSoundKey };
+  const deletePlayer = async (playerId: string, sessionId: string) => {
+    await supabase.from('furore_bookings').delete().eq('player_id', playerId).eq('session_id', sessionId);
+    await supabase.from('furore_players').delete().eq('id', playerId);
+  };
+
+  const updatePlayer = async (playerId: string, updates: { nickname?: string; symbol?: string; color?: string }) => {
+    const { error } = await supabase.from('furore_players').update(updates).eq('id', playerId);
+    return !error;
+  };
+
+  return { createSession, updateSession, openBookings, closeBookings, resetSession, setMaxPlayers, setShowOrder, setSoundKey, deletePlayer, updatePlayer };
 };
 
 // ─── Player Actions ───

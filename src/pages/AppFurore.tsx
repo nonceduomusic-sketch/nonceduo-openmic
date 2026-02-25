@@ -6,12 +6,13 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Zap, Users, Clock, Trophy, ArrowLeft, Check } from 'lucide-react';
+import { Zap, Users, Clock, Trophy, ArrowLeft, Check, LogOut } from 'lucide-react';
 import {
   useFuroreSession,
   useFurorePlayers,
   useFuroreBookings,
   useFurorePlayerActions,
+  useFuroreAdmin,
   FURORE_SYMBOLS,
   FURORE_COLORS,
   type FurorePlayer,
@@ -25,6 +26,7 @@ const AppFurore: React.FC = () => {
   const { players } = useFurorePlayers(session?.id);
   const { bookings } = useFuroreBookings(session?.id);
   const { joinSession, pressButton } = useFurorePlayerActions();
+  const { deletePlayer } = useFuroreAdmin();
 
   const [phase, setPhase] = useState<Phase>('landing');
   const [myPlayer, setMyPlayer] = useState<FurorePlayer | null>(null);
@@ -76,6 +78,15 @@ const AppFurore: React.FC = () => {
       setMyPosition(pos);
     }
     setPressing(false);
+  };
+
+  const handleExit = async () => {
+    if (!session?.id || !myPlayer) return;
+    await deletePlayer(myPlayer.id, session.id);
+    localStorage.removeItem('furore_device_fp');
+    setMyPlayer(null);
+    setMyPosition(null);
+    setPhase('landing');
   };
 
   const isBookingOpen = session?.status === 'open';
@@ -243,12 +254,16 @@ const AppFurore: React.FC = () => {
           >
             {myPlayer?.symbol}
           </div>
-          <div>
+          <div className="flex-1 min-w-0">
             <p className="font-bold">{myPlayer?.nickname}</p>
             <p className="text-xs text-muted-foreground">
               {players.length} giocatori collegati
             </p>
           </div>
+          <Button variant="ghost" size="sm" onClick={handleExit} className="gap-1.5 text-muted-foreground hover:text-destructive">
+            <LogOut className="w-4 h-4" />
+            Esci
+          </Button>
         </div>
 
         {/* Status Banner */}
