@@ -27,10 +27,14 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
   const { isActive: isCommunitySite } = useFormatActiveCheck('community', 'site');
   const { isActive: isCommunityApp } = useFormatActiveCheck('community', 'app');
   const { isActive: isOpenmicSite } = useFormatActiveCheck('openmic', 'site');
+  const { isActive: isOpenmicMenu } = useFormatActiveCheck('openmic', 'menu');
   const { isActive: isDedicheSite } = useFormatActiveCheck('dediche', 'site');
+  const { isActive: isDedicheMenu } = useFormatActiveCheck('dediche', 'menu');
   const isFuroreActive = isFuroreSite && isFuroreApp;
   const isGiochiActive = isGiochiSite && isGiochiApp;
   const isCommunityActive = isCommunitySite && isCommunityApp;
+  const isOpenmicActive = isOpenmicSite && isOpenmicMenu;
+  const isDedicheActive = isDedicheSite && isDedicheMenu;
 
   const mainNavItems: NavItem[] = [
     { 
@@ -40,7 +44,7 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       matchPaths: ['/', '/partyband'],
       activeClass: 'text-primary'
     },
-    ...(isOpenmicSite ? [{ 
+    ...(isOpenmicActive ? [{ 
       path: '/openmic', 
       icon: <Mic2 className="w-5 h-5" />, 
       label: 'Open Mic', 
@@ -54,7 +58,7 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       matchPaths: ['/furore'],
       activeClass: 'text-destructive'
     }] : []),
-    ...(isDedicheSite ? [{ 
+    ...(isDedicheActive ? [{ 
       path: '/messaggi', 
       icon: <MessageCircle className="w-5 h-5" />, 
       label: 'Dediche', 
@@ -85,12 +89,26 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       matchPaths: ['/app/furore'],
       activeClass: 'text-destructive'
     }] : []),
+    ...(isDedicheActive ? [{
+      path: '/messaggi',
+      icon: <MessageCircle className="w-5 h-5" />,
+      label: 'Dediche',
+      matchPaths: ['/messaggi'],
+      activeClass: 'text-primary'
+    }] : []),
     ...(isGiochiActive ? [{
       path: '/app/giochi',
       icon: <Gamepad2 className="w-5 h-5" />,
       label: 'Giochi',
       matchPaths: ['/app/giochi'],
       activeClass: 'text-primary'
+    }] : []),
+    ...(isCommunityActive ? [{
+      path: '/social',
+      icon: <Users className="w-5 h-5" />,
+      label: 'Community',
+      matchPaths: ['/social', '/social/auth', '/social/dashboard'],
+      activeClass: 'text-accent'
     }] : []),
   ];
 
@@ -109,13 +127,6 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       activeClass: 'text-secondary'
     },
     ...dynamicFormats,
-    ...(isDedicheSite ? [{ 
-      path: '/messaggi', 
-      icon: <MessageCircle className="w-5 h-5" />, 
-      label: 'Dediche', 
-      matchPaths: ['/messaggi'],
-      activeClass: 'text-primary'
-    }] : []),
     { 
       path: '/admin', 
       icon: <Settings className="w-5 h-5" />, 
@@ -132,7 +143,7 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       label: 'Sito',
       activeClass: 'text-primary'
     },
-    ...(isOpenmicSite ? [{ 
+    ...(isOpenmicActive ? [{ 
       path: '/openmic', 
       icon: <Mic2 className="w-5 h-5" />, 
       label: 'Open Mic', 
@@ -140,13 +151,6 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       activeClass: 'text-secondary'
     }] : []),
     ...dynamicFormats,
-    { 
-      path: '/social/dashboard', 
-      icon: <Users className="w-5 h-5" />, 
-      label: 'Community', 
-      matchPaths: ['/social/dashboard'],
-      activeClass: 'text-accent'
-    },
   ];
 
   const adminNavItems: NavItem[] = [
@@ -156,7 +160,7 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       label: 'Sito',
       activeClass: 'text-primary'
     },
-    ...(isOpenmicSite ? [{ 
+    ...(isOpenmicActive ? [{ 
       path: '/openmic', 
       icon: <Mic2 className="w-5 h-5" />, 
       label: 'Open Mic',
@@ -170,12 +174,6 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       matchPaths: ['/admin'],
       activeClass: 'text-accent'
     },
-    ...(isCommunityActive ? [{ 
-      path: '/social/dashboard', 
-      icon: <Users className="w-5 h-5" />, 
-      label: 'Community',
-      activeClass: 'text-accent'
-    }] : []),
   ];
 
   const getNavItems = () => {
