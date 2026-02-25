@@ -1387,6 +1387,119 @@ export type Database = {
         }
         Relationships: []
       }
+      furore_bookings: {
+        Row: {
+          created_at: string
+          id: string
+          player_id: string
+          position: number
+          session_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          player_id: string
+          position: number
+          session_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          player_id?: string
+          position?: number
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "furore_bookings_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "furore_players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "furore_bookings_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "furore_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      furore_players: {
+        Row: {
+          color: string
+          created_at: string
+          device_fingerprint: string | null
+          id: string
+          nickname: string
+          photo_url: string | null
+          session_id: string
+          symbol: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          device_fingerprint?: string | null
+          id?: string
+          nickname: string
+          photo_url?: string | null
+          session_id: string
+          symbol?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          device_fingerprint?: string | null
+          id?: string
+          nickname?: string
+          photo_url?: string | null
+          session_id?: string
+          symbol?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "furore_players_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "furore_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      furore_sessions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          max_players: number
+          show_order_to_players: boolean
+          sound_key: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          max_players?: number
+          show_order_to_players?: boolean
+          sound_key?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          max_players?: number
+          show_order_to_players?: boolean
+          sound_key?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       game_configs: {
         Row: {
           created_at: string | null

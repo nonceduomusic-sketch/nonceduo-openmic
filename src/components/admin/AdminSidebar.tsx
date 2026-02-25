@@ -26,6 +26,7 @@ import {
   Shield, 
   Users, 
   Database,
+  Zap,
   SlidersHorizontal,
   Image,
   Tv,
@@ -54,7 +55,8 @@ export type AdminMainTab =
   | "audit"
   | "manuale"
   | "catalog-songbook"
-  | "games";
+  | "games"
+  | "furore";
 
 type Item = {
   key: AdminMainTab;
@@ -88,6 +90,7 @@ const ITEMS: Item[] = [
   { key: "community", label: "Community", icon: Newspaper, group: "Operativo", description: "Gruppi e bacheca" },
   { key: "assistant", label: "Assistente", icon: Bot, group: "Operativo", description: "Chat e lead" },
   { key: "games", label: "Giochi", icon: Gamepad2, group: "Operativo", description: "Giochi interattivi" },
+  { key: "furore", label: "Furore", icon: Zap, group: "Operativo", description: "Pulsantiera live" },
   
   // === GRUPPO GESTIONE ===
   { key: "settings", label: "Impostazioni", icon: Settings, group: "Gestione", description: "Configurazione generale" },

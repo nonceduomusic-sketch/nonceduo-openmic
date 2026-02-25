@@ -324,15 +324,29 @@ const AppLauncher: React.FC = () => {
                 )}
               </div>
 
+              {/* Non C'è Furore Banner */}
+              <Link to="/app/furore" className="block mt-6">
+                <Card className="glass-card border-red-500/20 hover:border-red-500/50 transition-all group">
+                  <CardContent className="p-4 flex items-center gap-4">
+                    <div className="text-3xl">🔥</div>
+                    <div className="flex-1">
+                      <h3 className="font-display font-bold text-foreground">Non C'è Furore</h3>
+                      <p className="text-xs text-muted-foreground">Giochi musicali live — Pulsantiera</p>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  </CardContent>
+                </Card>
+              </Link>
+
               {/* Games Banner - only if giochi is enabled */}
               {isGiochiVisible && (
-                <Link to="/app/giochi" className="block mt-6">
+                <Link to="/app/giochi" className="block mt-3">
                   <Card className="glass-card border-primary/20 hover:border-primary/50 transition-all">
                     <CardContent className="p-4 flex items-center gap-4">
                       <div className="text-3xl">🎮</div>
                       <div className="flex-1">
-                        <h3 className="font-display font-bold text-foreground">Giochi dal Vivo</h3>
-                        <p className="text-xs text-muted-foreground">Sfida gli altri mentre aspetti!</p>
+                        <h3 className="font-display font-bold text-foreground">Giochi Passatempo</h3>
+                        <p className="text-xs text-muted-foreground">Quiz musicale e altri giochi</p>
                       </div>
                       <ArrowRight className="w-5 h-5 text-muted-foreground" />
                     </CardContent>
