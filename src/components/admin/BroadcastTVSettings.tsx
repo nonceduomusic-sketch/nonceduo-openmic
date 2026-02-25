@@ -465,17 +465,10 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                       return (
                         <button
                           key={opt.value}
-                          onClick={async () => {
+                          onClick={() => {
                             if (!canManage) return;
-                            try {
-                              await supabase
-                                .from('broadcast_sessions')
-                                .update({ tv_standby_mode: opt.value })
-                                .eq('sala_code', (session as any)?.sala_code || 'main');
-                              toast.success(`Standby: ${opt.label}`);
-                            } catch {
-                              toast.error('Errore nel salvataggio');
-                            }
+                            syncUpdate({ tv_standby_mode: opt.value } as any);
+                            toast.success(`Standby: ${opt.label}`);
                           }}
                           disabled={!canManage}
                           className={cn(
