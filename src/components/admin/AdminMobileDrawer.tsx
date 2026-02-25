@@ -4,7 +4,6 @@ import {
   Book,
   Bot,
   Calendar,
-  Crown,
   Database,
   Gamepad2,
   Guitar,
@@ -24,6 +23,7 @@ import {
   Tv,
   Users,
   Zap,
+  ChevronDown,
 } from "lucide-react";
 import {
   Sheet,
@@ -33,7 +33,6 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { AdminMainTab } from "@/components/admin/AdminSidebar";
@@ -54,9 +53,9 @@ const MENU_ITEMS: MenuItem[] = [
   { key: "event", label: "Eventi", icon: Calendar, group: "Live" },
   { key: "formats", label: "Formati", icon: SlidersHorizontal, group: "Live" },
   { key: "trasmetti", label: "Trasmetti", icon: Tv, group: "Live" },
-  { key: "songbook-live" as AdminMainTab, label: "SongBook Live", icon: Guitar, group: "Live" },
-  { key: "catalog-songbook" as AdminMainTab, label: "Catalogo ↔ SB", icon: Link2, group: "Live" },
-  { key: "notifiche-live", label: "Notifiche Live", icon: Send, group: "Live" },
+  { key: "songbook-live" as AdminMainTab, label: "SongBook", icon: Guitar, group: "Live" },
+  { key: "catalog-songbook" as AdminMainTab, label: "Cat↔SB", icon: Link2, group: "Live" },
+  { key: "notifiche-live", label: "Notifiche", icon: Send, group: "Live" },
   { key: "grafiche", label: "Grafiche", icon: Image, group: "Live" },
 
   // === GRUPPO OPERATIVO ===
@@ -66,7 +65,7 @@ const MENU_ITEMS: MenuItem[] = [
   { key: "community", label: "Community", icon: Newspaper, group: "Operativo", gatedBy: "community" },
   { key: "assistant", label: "Assistente", icon: Bot, group: "Operativo", ownerOnly: true },
   { key: "games" as AdminMainTab, label: "Giochi", icon: Gamepad2, group: "Operativo" },
-  { key: "furore" as AdminMainTab, label: "Non C'è Furore", icon: Zap, group: "Operativo" },
+  { key: "furore" as AdminMainTab, label: "Furore", icon: Zap, group: "Operativo" },
 
   // === GRUPPO GESTIONE ===
   { key: "settings", label: "Impostazioni", icon: Settings, group: "Gestione" },
@@ -116,16 +115,15 @@ export function AdminMobileDrawer({
   onLogout,
 }: AdminMobileDrawerProps) {
   const [open, setOpen] = React.useState(false);
+  const [expandedGroup, setExpandedGroup] = React.useState<string | null>(null);
 
   const isBlocked = (item: MenuItem) => {
-    // Operators have special restricted view
     if (isOperator && operatorAccess) {
       if (item.key === "notifications") return !operatorAccess.canViewCentro;
       if (item.key === "openmic") return !operatorAccess.canViewOpenmic;
       if (item.key === "dediche") return !operatorAccess.canViewDediche;
-      return true; // Block everything else for operators
+      return true;
     }
-    
     if (item.ownerOnly && !isOwner) return true;
     if (item.gatedBy && !access[item.gatedBy]) return true;
     return false;
@@ -149,25 +147,55 @@ export function AdminMobileDrawer({
   };
 
   const visibleItems = MENU_ITEMS.filter((item) => {
-    // Operators only see Centro, Open Mic, Dediche
     if (isOperator) {
       return ["notifications", "openmic", "dediche"].includes(item.key);
     }
-    // Hide owner-only items from non-owners
     if (item.ownerOnly && !isOwner) return false;
     return true;
   });
 
-  const renderGroup = (groupName: "Live" | "Operativo" | "Gestione", groupLabel: string, emoji: string) => {
+  // Find the group of the active tab to auto-expand it
+  const activeGroup = MENU_ITEMS.find(i => i.key === activeTab)?.group || null;
+
+  const toggleGroup = (group: string) => {
+    setExpandedGroup(prev => prev === group ? null : group);
+  };
+
+  /**
+   * Compact icon grid for a group — shows items in a 4-column grid
+   * with icons and short labels. Active item is highlighted.
+   */
+  const renderIconGrid = (groupName: "Live" | "Operativo" | "Gestione", groupLabel: string, emoji: string) => {
     const items = visibleItems.filter((i) => i.group === groupName);
     if (items.length === 0) return null;
 
+    const isExpanded = expandedGroup === groupName || activeGroup === groupName;
+    const hasActiveItem = items.some(i => activeTab === i.key);
+
     return (
-      <div key={groupName} className="mb-4">
-        <p className="text-xs uppercase tracking-wider text-muted-foreground/70 font-medium mb-2 px-2">
-          {emoji} {groupLabel}
-        </p>
-        <div className="space-y-1">
+      <div key={groupName}>
+        {/* Group header - clickable to toggle */}
+        <button
+          onClick={() => toggleGroup(groupName)}
+          className="w-full flex items-center justify-between px-3 py-2 text-xs uppercase tracking-wider text-muted-foreground/70 font-semibold hover:text-muted-foreground transition-colors"
+        >
+          <span className="flex items-center gap-1.5">
+            {emoji} {groupLabel}
+            {hasActiveItem && !isExpanded && (
+              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+            )}
+          </span>
+          <ChevronDown className={cn(
+            "w-3.5 h-3.5 transition-transform duration-200",
+            isExpanded && "rotate-180"
+          )} />
+        </button>
+
+        {/* Grid of items */}
+        <div className={cn(
+          "grid grid-cols-4 gap-1 px-2 overflow-hidden transition-all duration-200",
+          isExpanded ? "max-h-[500px] opacity-100 pb-2" : "max-h-0 opacity-0"
+        )}>
           {items.map((item) => {
             const Icon = item.icon;
             const blocked = isBlocked(item);
@@ -179,23 +207,28 @@ export function AdminMobileDrawer({
                 key={item.key}
                 onClick={() => handleSelect(item)}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all",
-                  active && "bg-primary/10 text-primary font-medium",
+                  "relative flex flex-col items-center justify-center gap-1 py-2.5 px-1 rounded-xl transition-all",
+                  "active:scale-95",
+                  active && "bg-primary/15 text-primary ring-1 ring-primary/30",
                   !active && !blocked && "hover:bg-muted/50 text-foreground",
-                  blocked && "opacity-40 cursor-not-allowed"
+                  blocked && "opacity-30 cursor-not-allowed"
                 )}
                 disabled={blocked}
               >
-                <Icon className={cn("w-5 h-5 shrink-0", active && "text-primary")} />
-                <span className="flex-1 text-sm">{item.label}</span>
-                {badge > 0 && (
-                  <Badge
-                    variant="destructive"
-                    className="h-5 min-w-[20px] px-1.5 text-[10px] font-bold"
-                  >
-                    {badge > 99 ? "99+" : badge}
-                  </Badge>
-                )}
+                <div className="relative">
+                  <Icon className={cn("w-5 h-5", active && "text-primary")} />
+                  {badge > 0 && (
+                    <span className="absolute -top-1.5 -right-2.5 min-w-[16px] h-[16px] px-1 flex items-center justify-center text-[9px] font-bold rounded-full bg-destructive text-destructive-foreground">
+                      {badge > 99 ? "99+" : badge}
+                    </span>
+                  )}
+                </div>
+                <span className={cn(
+                  "text-[10px] leading-tight text-center font-medium",
+                  active ? "text-primary" : "text-muted-foreground"
+                )}>
+                  {item.label}
+                </span>
               </button>
             );
           })}
@@ -212,73 +245,58 @@ export function AdminMobileDrawer({
         </Button>
       </SheetTrigger>
       <SheetContent side="left" className="w-[280px] p-0 flex flex-col">
-        <SheetHeader className="p-4 pb-2 border-b">
-          <SheetTitle className="text-left font-display text-lg">Menu Admin</SheetTitle>
+        <SheetHeader className="px-4 pt-4 pb-2 border-b border-border/50">
+          <SheetTitle className="text-left font-display text-base">Menu Admin</SheetTitle>
         </SheetHeader>
 
-        {/* Navigation */}
-        <div className="flex-1 overflow-y-auto p-3">
-          {!isOperator && renderGroup("Live", "Live", "🔴")}
-          {!isOperator && <Separator className="my-3" />}
-          {renderGroup("Operativo", "Operativo", "📋")}
-          {!isOperator && <Separator className="my-3" />}
-          {!isOperator && renderGroup("Gestione", "Gestione", "⚙️")}
+        {/* Navigation - compact grid layout */}
+        <div className="flex-1 overflow-y-auto py-2">
+          {!isOperator && renderIconGrid("Live", "Live", "🔴")}
+          {renderIconGrid("Operativo", "Operativo", "📋")}
+          {!isOperator && renderIconGrid("Gestione", "Gestione", "⚙️")}
         </div>
 
-        {/* Footer Actions */}
-        <div className="border-t p-3 space-y-1">
-
-          {/* Reset Options */}
+        {/* Footer - compact */}
+        <div className="border-t border-border/50 p-2 space-y-0.5">
           {onResetOpenMic && (
             <button
-              onClick={() => {
-                onResetOpenMic();
-                setOpen(false);
-              }}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:bg-muted/50 transition-all"
+              onClick={() => { onResetOpenMic(); setOpen(false); }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:bg-muted/50 transition-all"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset Open Mic</span>
             </button>
           )}
           {onResetDediche && (
             <button
-              onClick={() => {
-                onResetDediche();
-                setOpen(false);
-              }}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-muted-foreground hover:bg-muted/50 transition-all"
+              onClick={() => { onResetDediche(); setOpen(false); }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:bg-muted/50 transition-all"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset Dediche</span>
             </button>
           )}
           {onResetAll && (
             <button
-              onClick={() => {
-                onResetAll();
-                setOpen(false);
-              }}
-              className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-sm text-destructive hover:bg-destructive/10 transition-all"
+              onClick={() => { onResetAll(); setOpen(false); }}
+              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-destructive hover:bg-destructive/10 transition-all"
             >
-              <Database className="w-4 h-4" />
+              <Database className="w-3.5 h-3.5" />
               <span>Reset Totale</span>
             </button>
           )}
 
-          <Separator className="my-2" />
-
           {onLogout && (
-            <button
-              onClick={() => {
-                onLogout();
-                setOpen(false);
-              }}
-              className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-all"
-            >
-              <LogOut className="w-5 h-5" />
-              <span>Esci</span>
-            </button>
+            <>
+              <div className="border-t border-border/30 my-1" />
+              <button
+                onClick={() => { onLogout(); setOpen(false); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-muted-foreground hover:bg-muted/50 transition-all"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Esci</span>
+              </button>
+            </>
           )}
         </div>
       </SheetContent>
