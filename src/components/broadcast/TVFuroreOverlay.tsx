@@ -19,13 +19,13 @@ export const TVFuroreOverlay: React.FC = () => {
   const lastBookingCountRef = useRef(0);
   const audioCtxRef = useRef<AudioContext | null>(null);
 
-  // Force refetch when session status changes (reset, standby, open)
+  // Force refetch when session changes (status or updated_at)
   useEffect(() => {
-    if (session?.status) {
+    if (session?.id) {
       refetchBookings();
       refetchPlayers();
     }
-  }, [session?.status, refetchBookings, refetchPlayers]);
+  }, [session?.status, session?.updated_at, refetchBookings, refetchPlayers]);
 
   // Play sound when a new booking arrives
   const playBuzzerSound = useCallback((soundKey: string) => {
