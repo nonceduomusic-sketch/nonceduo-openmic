@@ -166,9 +166,13 @@ export const useFuroreAdmin = () => {
   const closeBookings = async (id: string) => updateSession(id, { status: 'closed' } as any);
 
   const resetSession = async (id: string) => {
-    // Delete all bookings and players
-    await supabase.from('furore_bookings').delete().eq('session_id', id);
-    await supabase.from('furore_players').delete().eq('session_id', id);
+    // Delete all bookings first (FK constraint), then players
+    const { error: bookingsErr } = await supabase.from('furore_bookings').delete().eq('session_id', id);
+    if (bookingsErr) console.error('Failed to delete furore bookings:', bookingsErr);
+    
+    const { error: playersErr } = await supabase.from('furore_players').delete().eq('session_id', id);
+    if (playersErr) console.error('Failed to delete furore players:', playersErr);
+    
     return updateSession(id, { status: 'closed' } as any);
   };
 

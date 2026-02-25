@@ -216,7 +216,7 @@ const QuickLinksSection: React.FC = () => {
 
 export const AdminFuroreTab: React.FC = () => {
   const { session, loading } = useFuroreSession();
-  const { players } = useFurorePlayers(session?.id);
+  const { players, refetch: refetchPlayers } = useFurorePlayers(session?.id);
   const { bookings } = useFuroreBookings(session?.id);
   const { createSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, updatePlayer, resetScores, setScoringRules, setPlayerScore } = useFuroreAdmin();
 
@@ -247,6 +247,8 @@ export const AdminFuroreTab: React.FC = () => {
   const handleReset = async () => {
     if (!session) return;
     await resetSession(session.id);
+    // Force refetch to ensure UI updates immediately
+    await refetchPlayers();
     toast.success('Partita resettata completamente');
   };
 
