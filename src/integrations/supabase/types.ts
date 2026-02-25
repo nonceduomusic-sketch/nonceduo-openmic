@@ -3129,6 +3129,7 @@ export type Database = {
         Args: { p_session_id: string }
         Returns: number
       }
+      furore_full_reset: { Args: { p_session_id: string }; Returns: boolean }
       furore_player_exit: {
         Args: {
           p_device_fingerprint: string

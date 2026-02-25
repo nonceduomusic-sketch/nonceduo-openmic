@@ -404,9 +404,18 @@ export const AdminFuroreTab: React.FC = () => {
 
   const handleResetBookings = async () => {
     if (!session) return;
-    console.log('[Furore Admin] Reset & Apri - session:', session.id, 'bookings count:', bookings.length);
+    // First verify bookings exist in DB before calling award
+    const { data: dbBookings, error: checkErr } = await supabase
+      .from('furore_bookings')
+      .select('id, player_id, position')
+      .eq('session_id', session.id);
+    console.log('[Furore Admin] Reset & Apri - session:', session.id, 'local bookings:', bookings.length, 'DB bookings:', dbBookings?.length, checkErr);
+    
     const result = await resetBookingsOnly(session.id);
     console.log('[Furore Admin] Reset & Apri result:', result);
+    
+    // Force immediate refetch of players to show updated scores
+    await refetchPlayers();
     toast.success('Prenotazioni resettate e riaperte!');
   };
 

@@ -166,14 +166,17 @@ export const useFuroreAdmin = () => {
   const closeBookings = async (id: string) => updateSession(id, { status: 'closed' } as any);
 
   const resetSession = async (id: string) => {
-    // Delete all bookings first (FK constraint), then players
-    const { error: bookingsErr } = await supabase.from('furore_bookings').delete().eq('session_id', id);
-    if (bookingsErr) console.error('Failed to delete furore bookings:', bookingsErr);
-    
-    const { error: playersErr } = await supabase.from('furore_players').delete().eq('session_id', id);
-    if (playersErr) console.error('Failed to delete furore players:', playersErr);
-    
-    return updateSession(id, { status: 'closed' } as any);
+    // Use atomic server-side function to ensure all deletes happen
+    console.log('[Furore] Calling furore_full_reset for session:', id);
+    const { data, error } = await supabase.rpc('furore_full_reset', {
+      p_session_id: id,
+    });
+    if (error) {
+      console.error('[Furore] Error in furore_full_reset:', error);
+      return false;
+    }
+    console.log('[Furore] furore_full_reset completed successfully');
+    return data === true;
   };
 
   const resetBookingsOnly = async (id: string) => {
