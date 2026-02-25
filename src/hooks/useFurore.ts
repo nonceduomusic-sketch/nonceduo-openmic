@@ -298,34 +298,17 @@ export const useFurorePlayerActions = () => {
   };
 
   const pressButton = async (sessionId: string, playerId: string): Promise<number | null> => {
-    // Get current max position
-    const { data: existing } = await supabase
-      .from('furore_bookings')
-      .select('position')
-      .eq('session_id', sessionId)
-      .order('position', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    const nextPosition = (existing?.position ?? 0) + 1;
-
-    const { data, error } = await supabase
-      .from('furore_bookings')
-      .insert({
-        session_id: sessionId,
-        player_id: playerId,
-        position: nextPosition,
-      })
-      .select()
-      .single();
+    // Use atomic server-side function to prevent race conditions
+    const { data, error } = await supabase.rpc('furore_atomic_book', {
+      p_session_id: sessionId,
+      p_player_id: playerId,
+    });
 
     if (error) {
-      // Duplicate? Player already booked
-      if (error.code === '23505') return -1;
       console.error('Error booking:', error);
       return null;
     }
-    return (data as any).position;
+    return data as number; // returns position or -1 if already booked
   };
 
   return { joinSession, exitSession, pressButton };

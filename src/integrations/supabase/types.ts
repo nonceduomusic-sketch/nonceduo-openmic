@@ -3082,6 +3082,10 @@ export type Database = {
         }
         Returns: string
       }
+      furore_atomic_book: {
+        Args: { p_player_id: string; p_session_id: string }
+        Returns: number
+      }
       furore_player_exit: {
         Args: {
           p_device_fingerprint: string
