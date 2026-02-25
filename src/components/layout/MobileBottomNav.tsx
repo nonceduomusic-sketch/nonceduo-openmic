@@ -1,8 +1,9 @@
 import React, { forwardRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Mic2, MessageCircle, Users, Settings, Shield } from 'lucide-react';
+import { Home, Mic2, MessageCircle, Users, Settings, Shield, Zap, Gamepad2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useStaffRole } from '@/hooks/useStaffRole';
+import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
 
 interface NavItem {
   path: string;
@@ -19,6 +20,8 @@ interface MobileBottomNavProps {
 export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ variant = 'main' }, ref) => {
   const location = useLocation();
   const { isStaff } = useStaffRole();
+  const { isActive: isFuroreActive } = useFormatActiveCheck('furore', 'menu');
+  const { isActive: isGiochiActive } = useFormatActiveCheck('giochi', 'menu');
 
   const mainNavItems: NavItem[] = [
     { 
@@ -42,6 +45,20 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       matchPaths: ['/messaggi'],
       activeClass: 'text-primary'
     },
+    ...(isFuroreActive ? [{
+      path: '/app/furore',
+      icon: <Zap className="w-5 h-5" />,
+      label: 'Furore',
+      matchPaths: ['/app/furore'],
+      activeClass: 'text-destructive'
+    }] : []),
+    ...(isGiochiActive ? [{
+      path: '/app/giochi',
+      icon: <Gamepad2 className="w-5 h-5" />,
+      label: 'Giochi',
+      matchPaths: ['/app/giochi'],
+      activeClass: 'text-primary'
+    }] : []),
     { 
       path: '/social', 
       icon: <Users className="w-5 h-5" />, 

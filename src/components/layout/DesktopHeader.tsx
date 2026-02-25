@@ -1,8 +1,9 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Mic2, Music, Users, Settings, Home, PartyPopper, MessageCircle, Shield } from 'lucide-react';
+import { Mic2, Music, Users, Settings, Home, PartyPopper, MessageCircle, Shield, Zap, Gamepad2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
 import { UserLoginIndicator } from '@/components/UserLoginIndicator';
 
 interface DesktopHeaderProps {
@@ -14,6 +15,8 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   variant = 'main',
   showAdmin = false 
 }) => {
+  const { isActive: isFuroreActive } = useFormatActiveCheck('furore', 'menu');
+  const { isActive: isGiochiActive } = useFormatActiveCheck('giochi', 'menu');
   const location = useLocation();
 
   const isActive = (path: string, matchPaths?: string[]) => {
@@ -63,6 +66,23 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
         icon={<MessageCircle className="w-4 h-4" />} 
         label="Dediche"
       />
+      {isFuroreActive && (
+        <NavButton 
+          to="/app/furore" 
+          matchPaths={['/app/furore']} 
+          icon={<Zap className="w-4 h-4" />} 
+          label="Furore"
+          activeClass="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+        />
+      )}
+      {isGiochiActive && (
+        <NavButton 
+          to="/app/giochi" 
+          matchPaths={['/app/giochi']} 
+          icon={<Gamepad2 className="w-4 h-4" />} 
+          label="Giochi"
+        />
+      )}
       <NavButton 
         to="/social" 
         matchPaths={['/social', '/social/auth', '/social/dashboard']} 
