@@ -1,6 +1,6 @@
 import React from "react";
-import { Link } from "react-router-dom";
-import { ExternalLink, Mic2, Phone, Instagram, Calendar, Clock, Music, Users } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { ExternalLink, Mic2, Phone, Instagram, Calendar, Clock, Music, Users, ArrowLeft } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,11 +10,9 @@ import { SiteHeader } from "@/components/site/SiteHeader";
 import { useLiveEvent } from "@/hooks/useLiveEvent";
 
 const OpenMicInfo: React.FC = () => {
+  const navigate = useNavigate();
   const { isOpenmicVisible, loading, liveEvent, isFreeMode } = useLiveEvent();
 
-  // "Evento Live in corso" quando:
-  // 1. C'è un evento LIVE con openmic visibile, OPPURE
-  // 2. Siamo in Free Mode con openmic attivo
   const isActuallyLive = isOpenmicVisible && (Boolean(liveEvent) || isFreeMode);
 
   return (
@@ -28,7 +26,21 @@ const OpenMicInfo: React.FC = () => {
 
       <SiteHeader />
 
-      <main className="container py-8 md:py-12">
+      {/* Navigation bar */}
+      <div className="container py-3 flex items-center justify-between">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5">
+          <ArrowLeft className="w-4 h-4" />
+          Indietro
+        </Button>
+        <Link to="/app/openmic">
+          <Button size="sm" className="neon-button-cyan gap-1.5">
+            Vai all'App
+            <ExternalLink className="w-3.5 h-3.5" />
+          </Button>
+        </Link>
+      </div>
+
+      <main className="container py-4 md:py-8">
         <div className="max-w-2xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex items-center gap-4 mb-8">
