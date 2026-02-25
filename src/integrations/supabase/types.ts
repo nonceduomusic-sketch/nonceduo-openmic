@@ -3086,6 +3086,10 @@ export type Database = {
         Args: { p_player_id: string; p_session_id: string }
         Returns: number
       }
+      furore_award_and_reset: {
+        Args: { p_session_id: string }
+        Returns: number
+      }
       furore_player_exit: {
         Args: {
           p_device_fingerprint: string
