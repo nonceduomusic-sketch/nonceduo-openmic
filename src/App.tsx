@@ -28,6 +28,8 @@ import AppDediche from "./pages/AppDediche";
 import { AppLayout } from "./components/app/AppLayout";
 import OpenMicInfo from "./pages/OpenMicInfo";
 import DedicheInfo from "./pages/DedicheInfo";
+import FuroreInfo from "./pages/FuroreInfo";
+import GiochiInfo from "./pages/GiochiInfo";
 import EventoLive from "./pages/EventoLive";
 import Installa from "./pages/Installa";
 import PromoLocali from "./pages/PromoLocali";
@@ -57,7 +59,9 @@ const AppContent = () => (
       <Route path="/partyband" element={<PartyBand />} />
       {/* SITO (vetrina) */}
       <Route path="/openmic" element={<OpenMicInfo />} />
+      <Route path="/furore" element={<FuroreInfo />} />
       <Route path="/messaggi" element={<DedicheInfo />} />
+      <Route path="/giochi" element={<GiochiInfo />} />
       
       {/* Privacy Policy - GDPR */}
       <Route path="/privacy" element={<Privacy />} />

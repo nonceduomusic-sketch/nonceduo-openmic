@@ -66,8 +66,8 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
       />
       {isFuroreActive && (
         <NavButton 
-          to="/app/furore" 
-          matchPaths={['/app/furore']} 
+          to="/furore" 
+          matchPaths={['/furore']} 
           icon={<Zap className="w-4 h-4" />} 
           label="Furore"
           activeClass="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -81,8 +81,8 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
       />
       {isGiochiActive && (
         <NavButton 
-          to="/app/giochi" 
-          matchPaths={['/app/giochi']} 
+          to="/giochi" 
+          matchPaths={['/giochi']} 
           icon={<Gamepad2 className="w-4 h-4" />} 
           label="Giochi"
         />
@@ -101,8 +101,8 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
     <>
       {isFuroreActive && (
         <NavButton 
-          to="/app/furore" 
-          matchPaths={['/app/furore']} 
+          to="/furore" 
+          matchPaths={['/furore']} 
           icon={<Zap className="w-4 h-4" />} 
           label="Furore"
           activeClass="bg-destructive text-destructive-foreground hover:bg-destructive/90"
@@ -110,8 +110,8 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
       )}
       {isGiochiActive && (
         <NavButton 
-          to="/app/giochi" 
-          matchPaths={['/app/giochi']} 
+          to="/giochi" 
+          matchPaths={['/giochi']} 
           icon={<Gamepad2 className="w-4 h-4" />} 
           label="Giochi"
         />
