@@ -445,6 +445,59 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
           <TabsContent value="settings">
             <ScrollArea className="h-[400px] pr-4">
               <div className="space-y-6">
+                {/* Schermata di Attesa (Standby) */}
+                <div className="space-y-3">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Tv className="w-4 h-4" />
+                    Schermata di Attesa (Standby)
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Scegli cosa mostrare sulla TV quando non stai trasmettendo testi
+                  </p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {[
+                      { value: 'openmic', label: '🎤 Open Mic', desc: 'Schermata classica con QR code e info evento' },
+                      { value: 'furore', label: '🔥 Non C\'è Furore', desc: 'Mostra la pulsantiera e la griglia giocatori' },
+                      { value: 'logo', label: '🎵 Solo Logo', desc: 'Logo grande centrato su sfondo scuro (ideale per LED wall)' },
+                    ].map((opt) => {
+                      const currentStandby = (session as any)?.tv_standby_mode || 'openmic';
+                      const isSelected = currentStandby === opt.value;
+                      return (
+                        <button
+                          key={opt.value}
+                          onClick={async () => {
+                            if (!canManage) return;
+                            try {
+                              await supabase
+                                .from('broadcast_sessions')
+                                .update({ tv_standby_mode: opt.value })
+                                .eq('sala_code', (session as any)?.sala_code || 'main');
+                              toast.success(`Standby: ${opt.label}`);
+                            } catch {
+                              toast.error('Errore nel salvataggio');
+                            }
+                          }}
+                          disabled={!canManage}
+                          className={cn(
+                            "flex items-start gap-3 p-3 rounded-lg border text-left transition-all",
+                            isSelected
+                              ? "border-primary bg-primary/10 ring-1 ring-primary/30"
+                              : "border-border hover:border-primary/40 hover:bg-muted/50"
+                          )}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium text-sm">{opt.label}</div>
+                            <div className="text-xs text-muted-foreground mt-0.5">{opt.desc}</div>
+                          </div>
+                          {isSelected && (
+                            <div className="w-2 h-2 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* Testi */}
                 <div className="space-y-4">
                   <h4 className="font-medium flex items-center gap-2">
