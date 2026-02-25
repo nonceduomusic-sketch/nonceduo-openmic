@@ -216,7 +216,7 @@ export const AdminFuroreTab: React.FC = () => {
   const { session, loading } = useFuroreSession();
   const { players } = useFurorePlayers(session?.id);
   const { bookings } = useFuroreBookings(session?.id);
-  const { createSession, openBookings, closeBookings, resetSession, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setSoundKey, deletePlayer, updatePlayer } = useFuroreAdmin();
+  const { createSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setSoundKey, deletePlayer, updatePlayer } = useFuroreAdmin();
 
   const handleCreateSession = async () => {
     const s = await createSession();
@@ -236,10 +236,16 @@ export const AdminFuroreTab: React.FC = () => {
     toast.success('Prenotazioni chiuse');
   };
 
+  const handleResetBookings = async () => {
+    if (!session) return;
+    await resetBookingsOnly(session.id);
+    toast.success('Prenotazioni resettate — giocatori ancora collegati');
+  };
+
   const handleReset = async () => {
     if (!session) return;
     await resetSession(session.id);
-    toast.success('Partita resettata');
+    toast.success('Partita resettata completamente');
   };
 
   if (loading) {
@@ -289,7 +295,7 @@ export const AdminFuroreTab: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent className="px-4 sm:px-6 space-y-3">
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <Button
                   onClick={handleOpen}
                   disabled={session.status === 'open'}
@@ -308,15 +314,30 @@ export const AdminFuroreTab: React.FC = () => {
                   <Pause className="w-4 h-4" />
                   <span className="text-sm">Chiudi</span>
                 </Button>
+              </div>
+              <Separator />
+              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                <Button
+                  onClick={handleResetBookings}
+                  variant="outline"
+                  className="gap-2 h-12 sm:h-10 border-orange-500/50 text-orange-600 hover:bg-orange-500/10"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  <span className="text-sm">Reset Prenotazioni</span>
+                </Button>
                 <Button
                   onClick={handleReset}
                   variant="destructive"
-                  className="gap-2 h-12 sm:h-10 col-span-2 sm:col-span-1"
+                  className="gap-2 h-12 sm:h-10"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  <span className="text-sm">Reset</span>
+                  <span className="text-sm">Reset Completo</span>
                 </Button>
               </div>
+              <p className="text-[11px] text-muted-foreground">
+                <strong>Reset Prenotazioni</strong>: cancella solo le prenotazioni, i giocatori restano collegati. 
+                <strong> Reset Completo</strong>: cancella tutto, giocatori devono rientrare.
+              </p>
             </CardContent>
           </Card>
 

@@ -161,6 +161,12 @@ export const useFuroreAdmin = () => {
     return updateSession(id, { status: 'closed' } as any);
   };
 
+  const resetBookingsOnly = async (id: string) => {
+    // Delete only bookings, keep players connected
+    await supabase.from('furore_bookings').delete().eq('session_id', id);
+    return updateSession(id, { status: 'closed' } as any);
+  };
+
   const setMaxPlayers = async (id: string, max: number) => updateSession(id, { max_players: max } as any);
   const setShowOrder = async (id: string, show: boolean) => updateSession(id, { show_order_to_players: show } as any);
   const setSoundKey = async (id: string, key: string) => updateSession(id, { sound_key: key } as any);
@@ -177,7 +183,7 @@ export const useFuroreAdmin = () => {
     return !error;
   };
 
-  return { createSession, updateSession, openBookings, closeBookings, resetSession, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setSoundKey, deletePlayer, updatePlayer };
+  return { createSession, updateSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setSoundKey, deletePlayer, updatePlayer };
 };
 
 // ─── Player Actions ───
