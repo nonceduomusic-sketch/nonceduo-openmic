@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Zap, Play, Pause, RotateCcw, Users, Volume2, Eye, EyeOff, Crown, ExternalLink, QrCode, Tv, Gamepad2, Pencil, Trash2, Check, X } from 'lucide-react';
+import { Zap, Play, Pause, RotateCcw, Users, Volume2, Eye, EyeOff, Crown, ExternalLink, QrCode, Tv, Gamepad2, Pencil, Trash2, Check, X, Trophy, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   useFuroreSession,
@@ -216,7 +216,7 @@ export const AdminFuroreTab: React.FC = () => {
   const { session, loading } = useFuroreSession();
   const { players } = useFurorePlayers(session?.id);
   const { bookings } = useFuroreBookings(session?.id);
-  const { createSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setSoundKey, deletePlayer, updatePlayer } = useFuroreAdmin();
+  const { createSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, updatePlayer, resetScores } = useFuroreAdmin();
 
   const handleCreateSession = async () => {
     const s = await createSession();
@@ -337,11 +337,27 @@ export const AdminFuroreTab: React.FC = () => {
                   <span className="text-sm">Reset Completo (cancella tutto)</span>
                 </Button>
               </div>
+              <Separator />
+              <div className="space-y-2">
+                <Label className="font-medium text-sm">Mostra su TV</Label>
+                <Button
+                  onClick={() => {
+                    const newVal = !(session as any).show_leaderboard;
+                    setShowLeaderboard(session.id, newVal);
+                    toast.success(newVal ? 'Classifica visibile su TV' : 'Classifica nascosta da TV');
+                  }}
+                  variant={(session as any).show_leaderboard ? 'default' : 'outline'}
+                  className="gap-2 w-full h-12 sm:h-10"
+                >
+                  <Trophy className="w-4 h-4" />
+                  <span className="text-sm">{(session as any).show_leaderboard ? '🏆 Classifica su TV — ATTIVA' : 'Mostra Classifica su TV'}</span>
+                </Button>
+              </div>
               <p className="text-[11px] text-muted-foreground">
                 <strong>Standby</strong>: prenotazioni bloccate, in attesa. 
                 <strong> Apri</strong>: i giocatori possono prenotarsi. 
-                <strong> Reset & Apri</strong>: cancella prenotazioni e riapre subito. 
-                <strong> Reset Completo</strong>: cancella tutto, giocatori devono rientrare.
+                <strong> Reset & Apri</strong>: assegna punti e riapre. 
+                <strong> Reset Completo</strong>: cancella tutto.
               </p>
             </CardContent>
           </Card>
@@ -440,8 +456,8 @@ export const AdminFuroreTab: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Live Players & Bookings */}
-          <PlayersManagementCard
+          {/* Live Players, Bookings & Leaderboard — Tabbed */}
+          <FurorePlayersAndLeaderboard
             players={players}
             bookings={bookings}
             session={session}
@@ -454,6 +470,10 @@ export const AdminFuroreTab: React.FC = () => {
               if (ok) toast.success('Giocatore aggiornato');
               else toast.error('Errore aggiornamento');
             }}
+            onResetScores={async () => {
+              await resetScores(session.id);
+              toast.success('Punteggi azzerati');
+            }}
           />
         </>
       )}
@@ -461,14 +481,16 @@ export const AdminFuroreTab: React.FC = () => {
   );
 };
 
-// ─── Players Management Card with Edit/Delete ───
-const PlayersManagementCard: React.FC<{
+// ─── Players & Leaderboard Tabbed Card ───
+const FurorePlayersAndLeaderboard: React.FC<{
   players: any[];
   bookings: any[];
   session: any;
   onDeletePlayer: (playerId: string) => Promise<void>;
   onUpdatePlayer: (playerId: string, updates: { nickname?: string; symbol?: string }) => Promise<void>;
-}> = ({ players, bookings, session, onDeletePlayer, onUpdatePlayer }) => {
+  onResetScores: () => Promise<void>;
+}> = ({ players, bookings, session, onDeletePlayer, onUpdatePlayer, onResetScores }) => {
+  const [activeTab, setActiveTab] = useState<'players' | 'leaderboard'>('players');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNickname, setEditNickname] = useState('');
   const [editSymbol, setEditSymbol] = useState('');
@@ -487,123 +509,131 @@ const PlayersManagementCard: React.FC<{
 
   const cancelEdit = () => setEditingId(null);
 
+  // Sorted leaderboard by score descending
+  const leaderboard = [...players].sort((a, b) => (b.score || 0) - (a.score || 0));
+
   return (
     <Card>
       <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm sm:text-base flex items-center gap-2">
-            <Users className="w-4 h-4" />
-            Giocatori ({players.length}) — Prenotati ({bookings.length}/{session.max_players})
+            {activeTab === 'players' ? <Users className="w-4 h-4" /> : <Trophy className="w-4 h-4" />}
+            {activeTab === 'players'
+              ? `Giocatori (${players.length}) — Prenotati (${bookings.length}/${session.max_players})`
+              : `Classifica (${players.length} giocatori)`
+            }
           </CardTitle>
+        </div>
+        <div className="flex gap-2 mt-2">
+          <Button
+            variant={activeTab === 'players' ? 'default' : 'outline'}
+            size="sm"
+            className="gap-1.5 h-8"
+            onClick={() => setActiveTab('players')}
+          >
+            <Users className="w-3.5 h-3.5" /> Prenotati
+          </Button>
+          <Button
+            variant={activeTab === 'leaderboard' ? 'default' : 'outline'}
+            size="sm"
+            className="gap-1.5 h-8"
+            onClick={() => setActiveTab('leaderboard')}
+          >
+            <Trophy className="w-3.5 h-3.5" /> Classifica
+          </Button>
         </div>
       </CardHeader>
       <CardContent className="px-4 sm:px-6">
-        {bookings.length === 0 && players.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-4">Nessun giocatore collegato</p>
-        ) : (
-          <div className="space-y-2">
-            {bookings.map(b => {
-              const player = players.find(p => p.id === b.player_id);
-              if (!player) return null;
-              const isEditing = editingId === player.id;
-              return (
-                <div key={b.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card/50">
-                  <span className="text-lg font-bold w-8 text-center">{b.position}°</span>
-                  {isEditing ? (
-                    <>
-                      <Input
-                        value={editSymbol}
-                        onChange={e => setEditSymbol(e.target.value)}
-                        className="w-14 h-10 text-center text-xl p-0"
-                        maxLength={2}
-                      />
-                      <Input
-                        value={editNickname}
-                        onChange={e => setEditNickname(e.target.value)}
-                        className="flex-1 h-10"
-                        maxLength={50}
-                      />
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={saveEdit}>
-                        <Check className="w-4 h-4 text-green-500" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={cancelEdit}>
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-xl shrink-0"
-                        style={{ backgroundColor: player.color }}
-                      >
-                        {player.symbol}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{player.nickname}</p>
-                      </div>
-                      {b.position === 1 && <Crown className="w-4 h-4 text-yellow-500 shrink-0" />}
-                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => startEdit(player)}>
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive" onClick={() => onDeletePlayer(player.id)}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* Show unbooked players */}
-            {players.filter(p => !bookings.find(b => b.player_id === p.id)).map(player => {
-              const isEditing = editingId === player.id;
-              return (
+        {activeTab === 'players' ? (
+          /* ─── PLAYERS TAB ─── */
+          bookings.length === 0 && players.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nessun giocatore collegato</p>
+          ) : (
+            <div className="space-y-2">
+              {bookings.map(b => {
+                const player = players.find((p: any) => p.id === b.player_id);
+                if (!player) return null;
+                const isEditing = editingId === player.id;
+                return (
+                  <div key={b.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card/50">
+                    <span className="text-lg font-bold w-8 text-center">{b.position}°</span>
+                    {isEditing ? (
+                      <>
+                        <Input value={editSymbol} onChange={e => setEditSymbol(e.target.value)} className="w-14 h-10 text-center text-xl p-0" maxLength={2} />
+                        <Input value={editNickname} onChange={e => setEditNickname(e.target.value)} className="flex-1 h-10" maxLength={50} />
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={saveEdit}><Check className="w-4 h-4 text-green-500" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={cancelEdit}><X className="w-4 h-4" /></Button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl shrink-0" style={{ backgroundColor: player.color }}>{player.symbol}</div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{player.nickname}</p>
+                        </div>
+                        {b.position === 1 && <Crown className="w-4 h-4 text-yellow-500 shrink-0" />}
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => startEdit(player)}><Pencil className="w-3.5 h-3.5" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive" onClick={() => onDeletePlayer(player.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+              {/* Unbooked players */}
+              {players.filter((p: any) => !bookings.find((b: any) => b.player_id === p.id)).map((player: any) => (
                 <div key={player.id} className="flex items-center gap-3 p-3 rounded-lg border border-dashed opacity-70">
                   <span className="text-lg font-bold w-8 text-center">—</span>
-                  {isEditing ? (
-                    <>
-                      <Input
-                        value={editSymbol}
-                        onChange={e => setEditSymbol(e.target.value)}
-                        className="w-14 h-10 text-center text-xl p-0"
-                        maxLength={2}
-                      />
-                      <Input
-                        value={editNickname}
-                        onChange={e => setEditNickname(e.target.value)}
-                        className="flex-1 h-10"
-                        maxLength={50}
-                      />
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={saveEdit}>
-                        <Check className="w-4 h-4 text-green-500" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={cancelEdit}>
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <div
-                        className="w-10 h-10 rounded-full flex items-center justify-center text-xl shrink-0"
-                        style={{ backgroundColor: player.color }}
-                      >
-                        {player.symbol}
-                      </div>
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl shrink-0" style={{ backgroundColor: player.color }}>{player.symbol}</div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium text-sm truncate">{player.nickname}</p>
+                    <p className="text-[11px] text-muted-foreground">In attesa</p>
+                  </div>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => startEdit(player)}><Pencil className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive" onClick={() => onDeletePlayer(player.id)}><Trash2 className="w-3.5 h-3.5" /></Button>
+                </div>
+              ))}
+            </div>
+          )
+        ) : (
+          /* ─── LEADERBOARD TAB ─── */
+          <div className="space-y-3">
+            {leaderboard.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">Nessun giocatore</p>
+            ) : (
+              <>
+                {leaderboard.map((player: any, index: number) => {
+                  const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}°`;
+                  return (
+                    <div key={player.id} className={cn(
+                      "flex items-center gap-3 p-3 rounded-lg border",
+                      index === 0 && "bg-yellow-500/10 border-yellow-500/30",
+                      index === 1 && "bg-gray-300/10 border-gray-400/30",
+                      index === 2 && "bg-orange-500/10 border-orange-500/30",
+                      index > 2 && "bg-card/50"
+                    )}>
+                      <span className="text-lg font-bold w-8 text-center">{medal}</span>
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center text-xl shrink-0" style={{ backgroundColor: player.color }}>{player.symbol}</div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{player.nickname}</p>
-                        <p className="text-[11px] text-muted-foreground">In attesa</p>
                       </div>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => startEdit(player)}>
-                        <Pencil className="w-3.5 h-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-destructive" onClick={() => onDeletePlayer(player.id)}>
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </>
-                  )}
-                </div>
-              );
-            })}
+                      <Badge variant="secondary" className="text-sm font-bold gap-1">
+                        <BarChart3 className="w-3 h-3" />
+                        {player.score || 0} pt
+                      </Badge>
+                    </div>
+                  );
+                })}
+                <Separator />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-2 text-destructive hover:bg-destructive/10"
+                  onClick={onResetScores}
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  Azzera tutti i punteggi
+                </Button>
+              </>
+            )}
           </div>
         )}
       </CardContent>
