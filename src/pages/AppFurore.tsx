@@ -84,17 +84,38 @@ const AppFurore: React.FC = () => {
     }
   }, [session?.status, session?.updated_at, refetchBookings]);
 
-  // If admin deletes the player (or resets all), kick back to landing
-  // Use a debounced DB check instead of relying on potentially stale local array
+  // If admin resets session to 'closed', immediately check if player was deleted
+  useEffect(() => {
+    if (!myPlayer || !session?.id) return;
+    if (session.status === 'closed') {
+      // Session went to closed — check if player still exists
+      const checkPlayer = async () => {
+        const { data } = await supabase
+          .from('furore_players')
+          .select('id')
+          .eq('id', myPlayer.id)
+          .maybeSingle();
+        if (!data) {
+          console.log('[Furore] Player kicked — session closed and player deleted');
+          setMyPlayer(null);
+          setMyPosition(null);
+          setPhase('landing');
+          localStorage.removeItem('furore_device_fp');
+        }
+      };
+      checkPlayer();
+    }
+  }, [session?.status, session?.updated_at, myPlayer]);
+
+  // If admin deletes the player individually, kick back to landing
   const kickCheckTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!myPlayer || !session?.id) return;
     // Grace period: skip kick checks for 10 seconds after registration
     if (Date.now() - registeredAtRef.current < 10000) return;
 
-    // Player not found in the list (including when list is empty after reset)
+    // Player not found in the list
     if (!players.find(p => p.id === myPlayer.id)) {
-      // Debounce: wait 2s and verify directly from DB before kicking
       if (kickCheckTimerRef.current) clearTimeout(kickCheckTimerRef.current);
       kickCheckTimerRef.current = setTimeout(async () => {
         const { data } = await supabase
@@ -111,7 +132,6 @@ const AppFurore: React.FC = () => {
         }
       }, 2000);
     } else {
-      // Player found — clear any pending kick timer
       if (kickCheckTimerRef.current) {
         clearTimeout(kickCheckTimerRef.current);
         kickCheckTimerRef.current = null;
