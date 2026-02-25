@@ -124,10 +124,6 @@ const GameSettingsPanel: React.FC = () => {
           </div>
           <Separator />
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2"><Smartphone className="w-4 h-4 shrink-0" /><Label className="text-sm">Mostra su App</Label></div>
-            <Switch checked={settings.show_on_app} onCheckedChange={v => handleToggle('show_on_app', v)} />
-          </div>
-          <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2"><Monitor className="w-4 h-4 shrink-0" /><Label className="text-sm">Mostra su TV</Label></div>
             <Switch checked={settings.show_on_tv} onCheckedChange={v => handleToggle('show_on_tv', v)} />
           </div>
