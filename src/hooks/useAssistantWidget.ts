@@ -31,7 +31,7 @@ export interface AssistantMessage {
   delivery_status: 'sent' | 'delivered' | 'read';
 }
 
-type Section = 'site' | 'app' | 'openmic' | 'dediche' | 'community' | 'giochi';
+type Section = 'site' | 'app' | 'openmic' | 'dediche' | 'community' | 'giochi' | 'furore';
 
 const STORAGE_KEY = 'assistant_conversation_id';
 const SESSION_KEY = 'assistant_session_id';
@@ -211,6 +211,8 @@ export function useAssistantWidget(currentSection: Section = 'site') {
         return settings.enabled_on_community;
       case 'giochi':
         return (settings as any).enabled_on_giochi ?? true;
+      case 'furore':
+        return (settings as any).enabled_on_furore ?? true;
       default:
         return false;
     }

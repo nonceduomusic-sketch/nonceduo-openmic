@@ -189,6 +189,7 @@ export type Database = {
           enabled_on_app: boolean
           enabled_on_community: boolean
           enabled_on_dediche: boolean
+          enabled_on_furore: boolean
           enabled_on_giochi: boolean
           enabled_on_openmic: boolean
           enabled_on_site: boolean
@@ -213,6 +214,7 @@ export type Database = {
           enabled_on_app?: boolean
           enabled_on_community?: boolean
           enabled_on_dediche?: boolean
+          enabled_on_furore?: boolean
           enabled_on_giochi?: boolean
           enabled_on_openmic?: boolean
           enabled_on_site?: boolean
@@ -237,6 +239,7 @@ export type Database = {
           enabled_on_app?: boolean
           enabled_on_community?: boolean
           enabled_on_dediche?: boolean
+          enabled_on_furore?: boolean
           enabled_on_giochi?: boolean
           enabled_on_openmic?: boolean
           enabled_on_site?: boolean
