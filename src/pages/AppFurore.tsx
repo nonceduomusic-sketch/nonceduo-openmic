@@ -22,7 +22,7 @@ type Phase = 'landing' | 'register' | 'buzzer';
 const AppFurore: React.FC = () => {
   const { session, loading } = useFuroreSession();
   const { players } = useFurorePlayers(session?.id);
-  const { bookings } = useFuroreBookings(session?.id);
+  const { bookings, refetch: refetchBookings } = useFuroreBookings(session?.id);
   const { joinSession, exitSession, pressButton } = useFurorePlayerActions();
 
   const [phase, setPhase] = useState<Phase>('landing');
@@ -61,6 +61,13 @@ const AppFurore: React.FC = () => {
       setMyPosition(null);
     }
   }, [bookings, myPlayer]);
+
+  // Force refetch bookings when session status changes (e.g. reset & open)
+  useEffect(() => {
+    if (session?.status) {
+      refetchBookings();
+    }
+  }, [session?.status, refetchBookings]);
 
   // If admin deletes the player, kick back to landing
   useEffect(() => {
