@@ -7,8 +7,18 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Zap, Users, Clock, Trophy, ArrowLeft, Check, LogOut, Flame, Music, Sparkles, Instagram } from 'lucide-react';
+import { Zap, Users, Clock, Trophy, ArrowLeft, Check, LogOut, Flame, Music, Sparkles, Instagram, AlertTriangle } from 'lucide-react';
 import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import {
   useFuroreSession,
   useFurorePlayers,
@@ -36,6 +46,7 @@ const AppFurore: React.FC = () => {
   const [joining, setJoining] = useState(false);
   const [pressing, setPressing] = useState(false);
   const [myPosition, setMyPosition] = useState<number | null>(null);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const registeredAtRef = React.useRef<number>(0);
 
   // Reconnect player on page load via device fingerprint
@@ -138,8 +149,11 @@ const AppFurore: React.FC = () => {
       setMyPlayer(null);
       setMyPosition(null);
       setPhase('landing');
+      setShowExitConfirm(false);
     }
   };
+
+  const showLeaderboardToUsers = session?.show_leaderboard ?? false;
 
   const isPlayersFull = players.length >= (session?.max_players ?? 10);
   const isBookingOpen = session?.status === 'open';
@@ -473,7 +487,7 @@ const AppFurore: React.FC = () => {
               <p className="text-xs text-muted-foreground">In gioco</p>
             )}
           </div>
-          <Button variant="ghost" size="sm" onClick={handleExit} className="gap-1.5 text-muted-foreground hover:text-destructive">
+          <Button variant="ghost" size="sm" onClick={() => setShowExitConfirm(true)} className="gap-1.5 text-muted-foreground hover:text-destructive">
             <LogOut className="w-4 h-4" />
             Esci
           </Button>
@@ -492,6 +506,28 @@ const AppFurore: React.FC = () => {
               <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
               <h2 className="text-lg font-bold">Prenotazioni chiuse</h2>
               <p className="text-sm text-muted-foreground">Attendi il via dal presentatore</p>
+            </motion.div>
+          )}
+
+          {!isBookingOpen && hasBooked && (
+            <motion.div
+              key="booked-closed"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="text-center space-y-4"
+            >
+              <div className="p-6 rounded-2xl bg-muted/30 border border-border">
+                <Clock className="w-10 h-10 text-muted-foreground mx-auto mb-2" />
+                <h2 className="text-lg font-bold">Prenotazioni chiuse</h2>
+                {showOrder && myPosition && (
+                  <div className="mt-2">
+                    <span className="text-3xl font-black text-primary">{myPosition}°</span>
+                    <p className="text-xs text-muted-foreground mt-1">La tua posizione</p>
+                  </div>
+                )}
+                <p className="text-sm text-muted-foreground mt-2">Attendi il via dal presentatore</p>
+              </div>
             </motion.div>
           )}
 
@@ -537,7 +573,7 @@ const AppFurore: React.FC = () => {
             </motion.div>
           )}
 
-          {hasBooked && (
+          {isBookingOpen && hasBooked && (
             <motion.div
               key="booked"
               initial={{ opacity: 0, scale: 0.8 }}
@@ -592,7 +628,73 @@ const AppFurore: React.FC = () => {
             })}
           </div>
         )}
+
+        {/* Leaderboard (if admin enables it) */}
+        {showLeaderboardToUsers && players.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+              <Flame className="w-4 h-4" /> Classifica
+            </h3>
+            {[...players]
+              .sort((a, b) => (b.score || 0) - (a.score || 0))
+              .map((player, idx) => {
+                const isMe = player.id === myPlayer?.id;
+                const medal = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : null;
+                return (
+                  <motion.div
+                    key={player.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className={cn(
+                      "flex items-center gap-3 p-3 rounded-xl",
+                      isMe ? "bg-primary/10 border border-primary/30" : "bg-muted/30"
+                    )}
+                  >
+                    <span className="text-lg font-bold w-8 text-center">
+                      {medal || `${idx + 1}°`}
+                    </span>
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center text-lg"
+                      style={{ backgroundColor: player.color }}
+                    >
+                      {player.symbol}
+                    </div>
+                    <span className={cn("font-medium flex-1", isMe && "text-primary")}>{player.nickname}</span>
+                    <span className="font-bold text-sm">{player.score || 0} pt</span>
+                    {isMe && <Badge variant="secondary" className="text-xs">Tu</Badge>}
+                  </motion.div>
+                );
+              })}
+          </div>
+        )}
       </div>
+
+      {/* Exit Confirmation Dialog */}
+      <AlertDialog open={showExitConfirm} onOpenChange={setShowExitConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Vuoi davvero abbandonare?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>Se esci dalla partita:</p>
+              <ul className="list-disc list-inside text-sm space-y-1">
+                <li>Perderai il punteggio accumulato ({myPlayer?.score || 0} punti)</li>
+                <li>Non potrai più rientrare con questo personaggio</li>
+                <li>Dovrai creare un nuovo giocatore per ripartecipare</li>
+              </ul>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Resta in gioco</AlertDialogCancel>
+            <AlertDialogAction onClick={handleExit} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Abbandona partita
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </PageLayout>
   );
 };
