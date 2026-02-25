@@ -14,10 +14,18 @@ import brandLogo from '@/assets/brand-logo-splash.png';
  */
 export const TVFuroreOverlay: React.FC = () => {
   const { session, loading } = useFuroreSession();
-  const { players } = useFurorePlayers(session?.id);
-  const { bookings } = useFuroreBookings(session?.id);
+  const { players, refetch: refetchPlayers } = useFurorePlayers(session?.id);
+  const { bookings, refetch: refetchBookings } = useFuroreBookings(session?.id);
   const lastBookingCountRef = useRef(0);
   const audioCtxRef = useRef<AudioContext | null>(null);
+
+  // Force refetch when session status changes (reset, standby, open)
+  useEffect(() => {
+    if (session?.status) {
+      refetchBookings();
+      refetchPlayers();
+    }
+  }, [session?.status, refetchBookings, refetchPlayers]);
 
   // Play sound when a new booking arrives
   const playBuzzerSound = useCallback((soundKey: string) => {
