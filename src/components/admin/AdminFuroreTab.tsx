@@ -188,6 +188,8 @@ const QuickLinksSection: React.FC = () => {
   const [remoteId, setRemoteId] = useState<string | null>(null);
   const [loadingRemote, setLoadingRemote] = useState(true);
   const [showQR, setShowQR] = useState<string | null>(null);
+  const [editingPin, setEditingPin] = useState(false);
+  const [editPinValue, setEditPinValue] = useState('');
 
   // Load or create remote access
   useEffect(() => {
@@ -230,6 +232,23 @@ const QuickLinksSection: React.FC = () => {
     await supabase.from('furore_remote_access').update({ pin_required: newVal }).eq('id', remoteId);
     setRemotePinRequired(newVal);
     toast.success(newVal ? 'PIN richiesto per il telecomando' : 'PIN disattivato — accesso diretto');
+  };
+
+  const savePin = async () => {
+    if (!remoteId || !editPinValue.trim()) return;
+    const newPin = editPinValue.trim().toUpperCase();
+    if (newPin.length < 2 || newPin.length > 12) {
+      toast.error('Il PIN deve essere tra 2 e 12 caratteri');
+      return;
+    }
+    const { error } = await supabase.from('furore_remote_access').update({ pin_code: newPin }).eq('id', remoteId);
+    if (error) {
+      toast.error('Errore nel salvare il PIN');
+      return;
+    }
+    setRemotePin(newPin);
+    setEditingPin(false);
+    toast.success('PIN aggiornato!');
   };
 
   const regenerateToken = async () => {
@@ -316,8 +335,28 @@ const QuickLinksSection: React.FC = () => {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold">🎮 Telecomando Furore</p>
                 <p className="text-[11px] text-muted-foreground truncate">{remoteUrl}</p>
-                {remotePinRequired && (
-                  <p className="text-[11px] font-mono text-primary mt-0.5">PIN: {remotePin}</p>
+                {remotePinRequired && !editingPin && (
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <p className="text-[11px] font-mono text-primary">PIN: {remotePin}</p>
+                    <button onClick={() => { setEditPinValue(remotePin); setEditingPin(true); }} className="text-muted-foreground hover:text-primary">
+                      <Pencil className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+                {remotePinRequired && editingPin && (
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Input
+                      value={editPinValue}
+                      onChange={e => setEditPinValue(e.target.value.toUpperCase())}
+                      placeholder="Nuovo PIN"
+                      maxLength={12}
+                      className="h-6 text-xs font-mono w-24 px-1.5"
+                      autoFocus
+                      onKeyDown={e => { if (e.key === 'Enter') savePin(); if (e.key === 'Escape') setEditingPin(false); }}
+                    />
+                    <button onClick={savePin} className="text-green-600 hover:text-green-500"><Check className="w-3.5 h-3.5" /></button>
+                    <button onClick={() => setEditingPin(false)} className="text-muted-foreground hover:text-destructive"><X className="w-3.5 h-3.5" /></button>
+                  </div>
                 )}
               </div>
               <div className="flex gap-1.5 shrink-0">
