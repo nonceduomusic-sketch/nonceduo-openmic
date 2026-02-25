@@ -36,6 +36,7 @@ const AppFurore: React.FC = () => {
   const [pressing, setPressing] = useState(false);
   const [myPosition, setMyPosition] = useState<number | null>(null);
   const hasLoadedPlayersRef = React.useRef(false);
+  const justRegisteredRef = React.useRef(false);
 
   // Track when players have been loaded at least once with data
   useEffect(() => {
@@ -80,9 +81,15 @@ const AppFurore: React.FC = () => {
   // If admin deletes the player (or resets all), kick back to landing
   useEffect(() => {
     if (!myPlayer || !session?.id) return;
-    if (!hasLoadedPlayersRef.current) return; // Don't kick before first load
+    if (!hasLoadedPlayersRef.current) return;
+    // Skip kick check right after registration — wait for realtime to catch up
+    if (justRegisteredRef.current) {
+      if (players.find(p => p.id === myPlayer.id)) {
+        justRegisteredRef.current = false; // Realtime caught up
+      }
+      return;
+    }
     if (!players.find(p => p.id === myPlayer.id)) {
-      // Player was removed by admin (single delete or full reset)
       setMyPlayer(null);
       setMyPosition(null);
       setPhase('landing');
@@ -93,10 +100,13 @@ const AppFurore: React.FC = () => {
   const handleRegister = async () => {
     if (!session?.id || !nickname.trim()) return;
     setJoining(true);
+    justRegisteredRef.current = true;
     const player = await joinSession(session.id, nickname, selectedSymbol, selectedColor);
     if (player) {
       setMyPlayer(player);
       setPhase('buzzer');
+    } else {
+      justRegisteredRef.current = false;
     }
     setJoining(false);
   };
