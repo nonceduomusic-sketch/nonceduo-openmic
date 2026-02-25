@@ -86,7 +86,7 @@ export const MobileHeader: React.FC<MobileHeaderProps> = ({
   };
 
   return (
-    <header className="sticky top-0 z-40 md:hidden bg-card/98 backdrop-blur-xl border-b border-border/50 safe-area-top shadow-sm">
+    <header className="sticky top-0 z-40 bg-card/98 backdrop-blur-xl border-b border-border/50 safe-area-top shadow-sm">
       <div className="flex items-center justify-between h-14 px-3">
         {/* Left side */}
         <div className="flex items-center gap-2.5">

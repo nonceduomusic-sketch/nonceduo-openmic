@@ -15,7 +15,7 @@ const GameNotAvailable: React.FC = () => {
   const game = configs?.find(g => g.game_key === gameKey);
 
   return (
-    <PageLayout variant="main" title="Gioco" showBack backPath="/app/giochi">
+    <PageLayout variant="main" title="Gioco" showBack backPath="/app/giochi" hideDesktopHeader>
       <div className="max-w-md mx-auto px-4 py-12 flex flex-col items-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
