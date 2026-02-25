@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import {
   DndContext,
   closestCenter,
@@ -86,6 +87,21 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
   const { songs } = useSongs();
   const { setlists, createSetlist, updateSetlist, deleteSetlist } = useBroadcastSetlists();
   const { accesses: remoteAccesses } = useBroadcastRemoteAdmin();
+  const [furoreRemoteToken, setFuroreRemoteToken] = useState<string | null>(null);
+
+  // Fetch furore remote token
+  useEffect(() => {
+    supabase
+      .from('furore_remote_access')
+      .select('access_token')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) setFuroreRemoteToken(data.access_token);
+      });
+  }, []);
   
   const [selectedSetlistId, setSelectedSetlistId] = useState<string | null>(null);
   const { songs: setlistSongs, addSong: addToSetlist, removeSong: removeFromSetlist, reorderSongs } = useBroadcastSetlistSongs(selectedSetlistId);
@@ -287,6 +303,7 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
       {/* Broadcast Links: Online + Local - ALL links centralized here */}
       <BroadcastLinksCards 
         telecomandoTokens={remoteAccesses.filter(a => a.is_active).map(a => ({ name: a.name, token: a.access_token }))}
+        furoreRemoteToken={furoreRemoteToken || undefined}
       />
 
       {/* Main content tabs */}

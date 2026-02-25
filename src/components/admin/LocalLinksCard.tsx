@@ -3,7 +3,7 @@
  * Two variants: LocalLinksCard and OnlineLinksCard, plus a combined BroadcastLinksCards.
  */
 import React from 'react';
-import { Server, ExternalLink, Tv, Guitar, Music, Smartphone, Copy, Wifi, Globe } from 'lucide-react';
+import { Server, ExternalLink, Tv, Guitar, Music, Smartphone, Copy, Wifi, Globe, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,17 +21,21 @@ interface LinkItem {
 interface BroadcastLinksCardsProps {
   /** Remote tokens for telecomando links (one per remote access) */
   telecomandoTokens?: { name: string; token: string }[];
+  /** Furore remote token */
+  furoreRemoteToken?: string;
   /** Which links to show. Defaults to all. */
-  filter?: ('tv' | 'partiture' | 'songbook' | 'telecomando')[];
+  filter?: ('tv' | 'partiture' | 'songbook' | 'telecomando' | 'furore-remote')[];
 }
 
 interface LocalLinksCardProps {
   /** Which links to show. Defaults to all. */
-  filter?: ('tv' | 'partiture' | 'songbook' | 'telecomando')[];
+  filter?: ('tv' | 'partiture' | 'songbook' | 'telecomando' | 'furore-remote')[];
   /** Remote tokens for telecomando links */
   telecomandoTokens?: { name: string; token: string }[];
   /** Single token (legacy) */
   telecomandoToken?: string;
+  /** Furore remote token */
+  furoreRemoteToken?: string;
   /** Compact inline variant (no card wrapper) */
   inline?: boolean;
 }
@@ -46,7 +50,7 @@ function getLocalIP(): string {
   return safeGetItem('local', 'broadcast_local_ip') || '192.168.1.100';
 }
 
-function buildLinks(telecomandoTokens?: { name: string; token: string }[], singleToken?: string): LinkItem[] {
+function buildLinks(telecomandoTokens?: { name: string; token: string }[], singleToken?: string, furoreRemoteToken?: string): LinkItem[] {
   const base: LinkItem[] = [
     { key: 'tv', label: 'TV', path: '/trasmetti', icon: <Tv className="w-4 h-4" /> },
     { key: 'partiture', label: 'Partiture', path: '/partiture', icon: <Guitar className="w-4 h-4" /> },
@@ -69,6 +73,16 @@ function buildLinks(telecomandoTokens?: { name: string; token: string }[], singl
       label: 'Telecomando',
       path: `/telecomando/${singleToken}`,
       icon: <Smartphone className="w-4 h-4" />,
+    });
+  }
+
+  // Add furore remote link
+  if (furoreRemoteToken) {
+    base.push({
+      key: 'furore-remote',
+      label: 'Tel. Furore',
+      path: `/furore-remote/${furoreRemoteToken}`,
+      icon: <Zap className="w-4 h-4" />,
     });
   }
 
@@ -123,10 +137,10 @@ function LinkButtons({ links, baseUrl, variant }: { links: LinkItem[]; baseUrl: 
 }
 
 /* ─── LOCAL LINKS CARD ─── */
-export function LocalLinksCard({ filter, telecomandoTokens, telecomandoToken, inline }: LocalLinksCardProps) {
+export function LocalLinksCard({ filter, telecomandoTokens, telecomandoToken, furoreRemoteToken, inline }: LocalLinksCardProps) {
   const localIP = getLocalIP();
   const baseUrl = `http://${localIP}:${PORT}`;
-  const links = filterLinks(buildLinks(telecomandoTokens, telecomandoToken), filter);
+  const links = filterLinks(buildLinks(telecomandoTokens, telecomandoToken, furoreRemoteToken), filter);
 
   const content = (
     <div className="space-y-2">
@@ -156,9 +170,9 @@ export function LocalLinksCard({ filter, telecomandoTokens, telecomandoToken, in
 }
 
 /* ─── ONLINE LINKS CARD ─── */
-export function OnlineLinksCard({ filter, telecomandoTokens, telecomandoToken }: { filter?: string[]; telecomandoTokens?: { name: string; token: string }[]; telecomandoToken?: string }) {
+export function OnlineLinksCard({ filter, telecomandoTokens, telecomandoToken, furoreRemoteToken }: { filter?: string[]; telecomandoTokens?: { name: string; token: string }[]; telecomandoToken?: string; furoreRemoteToken?: string }) {
   const baseUrl = getProductionBaseUrl();
-  const links = filterLinks(buildLinks(telecomandoTokens, telecomandoToken), filter);
+  const links = filterLinks(buildLinks(telecomandoTokens, telecomandoToken, furoreRemoteToken), filter);
 
   return (
     <Card className="border-blue-500/30 bg-blue-500/5">
@@ -179,11 +193,11 @@ export function OnlineLinksCard({ filter, telecomandoTokens, telecomandoToken }:
 }
 
 /* ─── COMBINED: Both cards together ─── */
-export function BroadcastLinksCards({ telecomandoTokens, filter }: BroadcastLinksCardsProps) {
+export function BroadcastLinksCards({ telecomandoTokens, furoreRemoteToken, filter }: BroadcastLinksCardsProps) {
   return (
     <div className="grid gap-3 sm:grid-cols-2">
-      <OnlineLinksCard filter={filter} telecomandoTokens={telecomandoTokens} />
-      <LocalLinksCard filter={filter} telecomandoTokens={telecomandoTokens} />
+      <OnlineLinksCard filter={filter} telecomandoTokens={telecomandoTokens} furoreRemoteToken={furoreRemoteToken} />
+      <LocalLinksCard filter={filter} telecomandoTokens={telecomandoTokens} furoreRemoteToken={furoreRemoteToken} />
     </div>
   );
 }
