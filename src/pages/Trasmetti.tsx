@@ -1207,7 +1207,8 @@ export default function Trasmetti() {
           <img 
             src={tvSettings.logoUrl || brandLogoText} 
             alt="Logo" 
-            className="h-32 md:h-48 lg:h-64 w-auto object-contain drop-shadow-2xl"
+            className="w-auto object-contain drop-shadow-2xl"
+            style={{ height: `${((session as any)?.tv_logo_scale || 100) * 2.56}px` }}
             onError={(e) => {
               (e.target as HTMLImageElement).src = brandLogoText;
             }}

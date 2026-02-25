@@ -489,6 +489,37 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                       );
                     })}
                   </div>
+
+                  {/* Logo scale slider - only visible when logo mode is selected */}
+                  {((session as any)?.tv_standby_mode || 'openmic') === 'logo' && (
+                    <div className="space-y-2 pt-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm">Dimensione Logo</Label>
+                        <span className="text-sm font-mono text-muted-foreground">
+                          {(session as any)?.tv_logo_scale || 100}%
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={50}
+                        max={300}
+                        step={10}
+                        value={(session as any)?.tv_logo_scale || 100}
+                        onChange={(e) => {
+                          if (!canManage) return;
+                          syncUpdate({ tv_logo_scale: parseInt(e.target.value) } as any);
+                        }}
+                        disabled={!canManage}
+                        className="w-full accent-primary"
+                      />
+                      <div className="flex justify-between text-[10px] text-muted-foreground">
+                        <span>50%</span>
+                        <span>100%</span>
+                        <span>200%</span>
+                        <span>300%</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Testi */}
