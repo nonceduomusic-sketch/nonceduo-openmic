@@ -8,10 +8,11 @@ import {
   type FurorePlayer,
   type FuroreBooking,
 } from '@/hooks/useFurore';
+import brandLogo from '@/assets/brand-logo-splash.png';
 
 /**
  * TV overlay for /trasmetti — shows Furore buzzer board
- * Only renders when a furore_session exists
+ * Shows idle screen when no session or no activity
  */
 export const TVFuroreOverlay: React.FC = () => {
   const { session, loading } = useFuroreSession();
@@ -60,14 +61,71 @@ export const TVFuroreOverlay: React.FC = () => {
     lastBookingCountRef.current = bookings.length;
   }, [bookings.length, session?.sound_key, playBuzzerSound]);
 
-  if (loading || !session) return null;
+  if (loading) return null;
 
-  // Don't render if session is closed AND there are no players/bookings (after reset)
-  // This allows the OpenMic standby to show through
-  const hasActivity = players.length > 0 || bookings.length > 0;
-  if (session.status === 'closed' && !hasActivity) return null;
+  const hasActivity = session && (players.length > 0 || bookings.length > 0);
+  const isOpen = session?.status === 'open';
 
-  const isOpen = session.status === 'open';
+  // ─── IDLE SCREEN — no session or no activity ───
+  if (!session || (session.status === 'closed' && !hasActivity)) {
+    return (
+      <div className="fixed inset-0 z-[55] bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex flex-col items-center justify-center overflow-hidden">
+        {/* Animated background blobs */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/3 left-1/4 w-[600px] h-[600px] bg-red-500/8 rounded-full blur-[250px] animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/3 w-[500px] h-[500px] bg-orange-500/6 rounded-full blur-[200px] animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute top-1/2 right-1/4 w-[400px] h-[400px] bg-yellow-500/5 rounded-full blur-[180px] animate-pulse" style={{ animationDelay: '3.5s' }} />
+        </div>
+
+        <div className="relative z-10 flex flex-col items-center gap-8">
+          {/* Logo */}
+          <motion.img
+            src={brandLogo}
+            alt="Non C'è Duo"
+            className="w-auto h-32 md:h-48 object-contain drop-shadow-2xl"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', damping: 20, delay: 0.2 }}
+          />
+
+          {/* Title */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="text-center"
+          >
+            <h1 className="text-5xl md:text-7xl font-black tracking-tight">
+              <span className="bg-gradient-to-r from-red-500 via-yellow-400 to-orange-500 bg-clip-text text-transparent">
+                🔥 Non C'è Furore
+              </span>
+            </h1>
+            <p className="mt-4 text-lg md:text-2xl text-white/40 font-medium">
+              Giochi musicali interattivi dal vivo
+            </p>
+          </motion.div>
+
+          {/* Animated dots */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
+            className="flex items-center gap-3 mt-4"
+          >
+            {[0, 1, 2].map(i => (
+              <motion.div
+                key={i}
+                className="w-3 h-3 rounded-full bg-white/20"
+                animate={{ opacity: [0.2, 0.8, 0.2], scale: [1, 1.3, 1] }}
+                transition={{ repeat: Infinity, duration: 1.5, delay: i * 0.3 }}
+              />
+            ))}
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
   const maxSlots = session.max_players;
 
   // Build slot grid
