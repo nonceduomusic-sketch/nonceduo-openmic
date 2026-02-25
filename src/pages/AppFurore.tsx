@@ -91,9 +91,8 @@ const AppFurore: React.FC = () => {
     if (!myPlayer || !session?.id) return;
     // Grace period: skip kick checks for 10 seconds after registration
     if (Date.now() - registeredAtRef.current < 10000) return;
-    // Don't react to empty arrays (could be a transient fetch state)
-    if (players.length === 0) return;
 
+    // Player not found in the list (including when list is empty after reset)
     if (!players.find(p => p.id === myPlayer.id)) {
       // Debounce: wait 2s and verify directly from DB before kicking
       if (kickCheckTimerRef.current) clearTimeout(kickCheckTimerRef.current);
