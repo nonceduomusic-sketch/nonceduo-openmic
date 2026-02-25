@@ -216,7 +216,7 @@ export const AdminFuroreTab: React.FC = () => {
   const { session, loading } = useFuroreSession();
   const { players } = useFurorePlayers(session?.id);
   const { bookings } = useFuroreBookings(session?.id);
-  const { createSession, openBookings, closeBookings, resetSession, setMaxPlayers, setShowOrder, setSoundKey, deletePlayer, updatePlayer } = useFuroreAdmin();
+  const { createSession, openBookings, closeBookings, resetSession, setMaxPlayers, setShowOrder, setShowPlayerCount, setSoundKey, deletePlayer, updatePlayer } = useFuroreAdmin();
 
   const handleCreateSession = async () => {
     const s = await createSession();
@@ -352,6 +352,16 @@ export const AdminFuroreTab: React.FC = () => {
                 />
               </div>
               <Separator />
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <Label className="font-medium text-sm">Mostra giocatori collegati</Label>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground">I giocatori vedono quanti sono collegati</p>
+                </div>
+                <Switch
+                  checked={session.show_player_count ?? true}
+                  onCheckedChange={v => setShowPlayerCount(session.id, v)}
+                />
+              </div>
               <div className="space-y-2">
                 <Label className="font-medium text-sm flex items-center gap-2">
                   <Volume2 className="w-4 h-4" /> Suono prenotazione

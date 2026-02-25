@@ -1,0 +1,1 @@
+ALTER TABLE public.furore_sessions ADD COLUMN show_player_count boolean NOT NULL DEFAULT true;
