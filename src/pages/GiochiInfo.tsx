@@ -1,41 +1,24 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ExternalLink, Gamepad2, Phone, Instagram, Calendar, Clock, Brain, PartyPopper, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ExternalLink, Gamepad2, Phone, Instagram, Calendar, Clock, Brain, PartyPopper } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
-import { SiteHeader } from "@/components/site/SiteHeader";
+import { PageLayout } from "@/components/layout/PageLayout";
 import { useFormatActiveCheck } from "@/hooks/useGlobalFormatSettings";
 
 const GiochiInfo: React.FC = () => {
-  const navigate = useNavigate();
   const { isActive: isGiochiActive, loading } = useFormatActiveCheck('giochi');
 
   return (
-    <div className="min-h-screen bg-background">
+    <PageLayout variant="main" title="Giochi Passatempo" showBack showAdmin>
       <SEO
         title="Giochi Passatempo | Non C'è Duo"
         description="Quiz, sfide e giochi interattivi dal vivo durante le serate Non C'è Duo. Divertiti con il pubblico!"
         url="/giochi"
       />
-
-      <SiteHeader />
-
-      {/* Navigation bar */}
-      <div className="container py-3 flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5">
-          <ArrowLeft className="w-4 h-4" />
-          Indietro
-        </Button>
-        <Link to="/app/giochi">
-          <Button size="sm" className="neon-button-cyan gap-1.5">
-            Vai all'App
-            <ExternalLink className="w-3.5 h-3.5" />
-          </Button>
-        </Link>
-      </div>
 
       <main className="container py-4 md:py-8">
         <div className="max-w-2xl mx-auto space-y-6">
@@ -172,7 +155,7 @@ const GiochiInfo: React.FC = () => {
           </div>
         </div>
       </main>
-    </div>
+    </PageLayout>
   );
 };
 

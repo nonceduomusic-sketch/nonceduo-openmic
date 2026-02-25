@@ -1,41 +1,24 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ExternalLink, Zap, Phone, Instagram, Calendar, Clock, Trophy, Timer, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ExternalLink, Zap, Phone, Instagram, Calendar, Clock, Trophy, Timer } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
-import { SiteHeader } from "@/components/site/SiteHeader";
+import { PageLayout } from "@/components/layout/PageLayout";
 import { useFormatActiveCheck } from "@/hooks/useGlobalFormatSettings";
 
 const FuroreInfo: React.FC = () => {
-  const navigate = useNavigate();
   const { isActive: isFuroreActive, loading } = useFormatActiveCheck('furore');
 
   return (
-    <div className="min-h-screen bg-background">
+    <PageLayout variant="main" title="Non C'è Furore" showBack showAdmin>
       <SEO
         title="Non C'è Furore | Non C'è Duo"
         description="Il gioco dal vivo a buzzer: premi il pulsante più veloce di tutti e scala la classifica durante i nostri eventi!"
         url="/furore"
       />
-
-      <SiteHeader />
-
-      {/* Navigation bar */}
-      <div className="container py-3 flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5">
-          <ArrowLeft className="w-4 h-4" />
-          Indietro
-        </Button>
-        <Link to="/app/furore">
-          <Button size="sm" className="neon-button-cyan gap-1.5">
-            Vai all'App
-            <ExternalLink className="w-3.5 h-3.5" />
-          </Button>
-        </Link>
-      </div>
 
       <main className="container py-4 md:py-8">
         <div className="max-w-2xl mx-auto space-y-6">
@@ -90,8 +73,8 @@ const FuroreInfo: React.FC = () => {
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center shrink-0">
-                    <Trophy className="w-5 h-5 text-warning" />
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Trophy className="w-5 h-5 text-primary" />
                   </div>
                   <div>
                     <p className="font-semibold">Classifica live</p>
@@ -168,7 +151,7 @@ const FuroreInfo: React.FC = () => {
           </div>
         </div>
       </main>
-    </div>
+    </PageLayout>
   );
 };
 
