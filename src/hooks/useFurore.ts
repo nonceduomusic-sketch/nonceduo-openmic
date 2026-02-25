@@ -162,9 +162,9 @@ export const useFuroreAdmin = () => {
   };
 
   const resetBookingsOnly = async (id: string) => {
-    // Delete only bookings, keep players connected
+    // Delete only bookings, keep players, and auto-open for next round
     await supabase.from('furore_bookings').delete().eq('session_id', id);
-    return updateSession(id, { status: 'closed' } as any);
+    return updateSession(id, { status: 'open' } as any);
   };
 
   const setMaxPlayers = async (id: string, max: number) => updateSession(id, { max_players: max } as any);

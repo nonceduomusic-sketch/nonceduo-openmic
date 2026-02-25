@@ -239,7 +239,7 @@ export const AdminFuroreTab: React.FC = () => {
   const handleResetBookings = async () => {
     if (!session) return;
     await resetBookingsOnly(session.id);
-    toast.success('Prenotazioni resettate — giocatori ancora collegati');
+    toast.success('Prenotazioni resettate e riaperte!');
   };
 
   const handleReset = async () => {
@@ -295,7 +295,16 @@ export const AdminFuroreTab: React.FC = () => {
               </div>
             </CardHeader>
             <CardContent className="px-4 sm:px-6 space-y-3">
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
+                <Button
+                  onClick={handleClose}
+                  disabled={session.status === 'closed'}
+                  variant={session.status === 'closed' ? 'secondary' : 'outline'}
+                  className="gap-2 h-12 sm:h-10"
+                >
+                  <Pause className="w-4 h-4" />
+                  <span className="text-sm">Standby</span>
+                </Button>
                 <Button
                   onClick={handleOpen}
                   disabled={session.status === 'open'}
@@ -306,36 +315,29 @@ export const AdminFuroreTab: React.FC = () => {
                   <span className="text-sm">Apri</span>
                 </Button>
                 <Button
-                  onClick={handleClose}
-                  disabled={session.status === 'closed'}
-                  variant="outline"
-                  className="gap-2 h-12 sm:h-10"
-                >
-                  <Pause className="w-4 h-4" />
-                  <span className="text-sm">Chiudi</span>
-                </Button>
-              </div>
-              <Separator />
-              <div className="grid grid-cols-2 gap-2 sm:gap-3">
-                <Button
                   onClick={handleResetBookings}
                   variant="outline"
                   className="gap-2 h-12 sm:h-10 border-orange-500/50 text-orange-600 hover:bg-orange-500/10"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  <span className="text-sm">Reset Prenotazioni</span>
+                  <span className="text-sm">Reset & Apri</span>
                 </Button>
+              </div>
+              <div className="grid grid-cols-1 gap-2">
                 <Button
                   onClick={handleReset}
                   variant="destructive"
-                  className="gap-2 h-12 sm:h-10"
+                  className="gap-2 h-10"
+                  size="sm"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  <span className="text-sm">Reset Completo</span>
+                  <span className="text-sm">Reset Completo (cancella tutto)</span>
                 </Button>
               </div>
               <p className="text-[11px] text-muted-foreground">
-                <strong>Reset Prenotazioni</strong>: cancella solo le prenotazioni, i giocatori restano collegati. 
+                <strong>Standby</strong>: prenotazioni bloccate, in attesa. 
+                <strong> Apri</strong>: i giocatori possono prenotarsi. 
+                <strong> Reset & Apri</strong>: cancella prenotazioni e riapre subito. 
                 <strong> Reset Completo</strong>: cancella tutto, giocatori devono rientrare.
               </p>
             </CardContent>
