@@ -5,7 +5,7 @@ import { PageLayout } from '@/components/layout/PageLayout';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Gamepad2, ArrowRight } from 'lucide-react';
+import { Trophy, Gamepad2, ArrowRight, Clock, Instagram } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useGameSettings, useGameConfigs, useGameScores } from '@/hooks/useGames';
 import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
@@ -32,9 +32,74 @@ const GamesHub: React.FC = () => {
   if (!isGiochiVisible || (settings && !settings.games_enabled)) {
     return (
       <PageLayout variant="main" title="Giochi" showBack backPath="/app" hideDesktopHeader>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
-          <Gamepad2 className="w-16 h-16 text-muted-foreground/30 mb-4" />
-          <p className="text-muted-foreground">I giochi non sono disponibili al momento</p>
+        <div className="max-w-lg mx-auto px-4 py-8 sm:py-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center space-y-6"
+          >
+            {/* Icon */}
+            <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-accent/10 flex items-center justify-center">
+              <Gamepad2 className="w-10 h-10 text-primary" />
+            </div>
+
+            {/* Title & description */}
+            <div className="space-y-2">
+              <h1 className="text-2xl sm:text-3xl font-bold">Giochi Passatempo</h1>
+              <p className="text-muted-foreground text-sm sm:text-base leading-relaxed max-w-sm mx-auto">
+                Quiz musicali, sfide a tempo e giochi interattivi pensati per divertirti durante le nostre serate dal vivo!
+              </p>
+            </div>
+
+            {/* Status badge */}
+            <Badge variant="outline" className="text-sm px-4 py-2 gap-2 text-muted-foreground">
+              <Clock className="w-4 h-4" />
+              Non disponibile al momento
+            </Badge>
+
+            {/* Feature preview cards */}
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <Card className="border-border/50">
+                <CardContent className="p-4 text-center space-y-2">
+                  <div className="text-2xl">🧠</div>
+                  <p className="text-xs sm:text-sm font-medium">Quiz interattivi</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Sfida le tue conoscenze musicali</p>
+                </CardContent>
+              </Card>
+              <Card className="border-border/50">
+                <CardContent className="p-4 text-center space-y-2">
+                  <div className="text-2xl">🏆</div>
+                  <p className="text-xs sm:text-sm font-medium">Classifiche live</p>
+                  <p className="text-[10px] sm:text-xs text-muted-foreground">Scala la classifica della serata</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Info box */}
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="p-4 text-sm text-muted-foreground">
+                <p>I giochi si attivano durante le serate dal vivo. Seguici su Instagram per scoprire le prossime date! 🎶</p>
+              </CardContent>
+            </Card>
+
+            {/* CTA */}
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <a
+                href="https://www.instagram.com/nonceduo.music/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1"
+              >
+                <Button variant="outline" className="w-full gap-2" size="lg">
+                  <Instagram className="w-5 h-5" />
+                  Seguici su Instagram
+                </Button>
+              </a>
+              <Button variant="ghost" className="flex-1" size="lg" onClick={() => navigate('/app')}>
+                ← Torna all'app
+              </Button>
+            </div>
+          </motion.div>
         </div>
       </PageLayout>
     );
