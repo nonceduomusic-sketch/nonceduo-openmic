@@ -15,17 +15,22 @@ import { useFormatActiveCheck } from "@/hooks/useGlobalFormatSettings";
 
 export const SiteHeader: React.FC<{ className?: string }> = ({ className }) => {
   const { isActive: isOpenmicMenu } = useFormatActiveCheck('openmic', 'menu');
+  const { isActive: isOpenmicSite } = useFormatActiveCheck('openmic', 'site');
   const { isActive: isDedicheMenu } = useFormatActiveCheck('dediche', 'menu');
+  const { isActive: isDedicheSite } = useFormatActiveCheck('dediche', 'site');
   const { isActive: isGiochiMenu } = useFormatActiveCheck('giochi', 'menu');
+  const { isActive: isGiochiSite } = useFormatActiveCheck('giochi', 'site');
   const { isActive: isFuroreMenu } = useFormatActiveCheck('furore', 'menu');
+  const { isActive: isFuroreSite } = useFormatActiveCheck('furore', 'site');
   const { isActive: isCommunityMenu } = useFormatActiveCheck('community', 'menu');
+  const { isActive: isCommunitySite } = useFormatActiveCheck('community', 'site');
 
   const menuFormats = [
-    isOpenmicMenu && { label: "Open Mic", to: "/openmic", icon: Mic2 },
-    isDedicheMenu && { label: "Dediche", to: "/messaggi", icon: MessageCircle },
-    isFuroreMenu && { label: "Non C'è Furore", to: "/app/furore", icon: Zap },
-    isGiochiMenu && { label: "Giochi", to: "/app/giochi", icon: Gamepad2 },
-    isCommunityMenu && { label: "Community", to: "/social", icon: Users },
+    (isOpenmicSite && isOpenmicMenu) && { label: "Open Mic", to: "/openmic", icon: Mic2 },
+    (isDedicheSite && isDedicheMenu) && { label: "Dediche", to: "/messaggi", icon: MessageCircle },
+    (isFuroreSite && isFuroreMenu) && { label: "Non C'è Furore", to: "/app/furore", icon: Zap },
+    (isGiochiSite && isGiochiMenu) && { label: "Giochi", to: "/app/giochi", icon: Gamepad2 },
+    (isCommunitySite && isCommunityMenu) && { label: "Community", to: "/social", icon: Users },
   ].filter(Boolean) as { label: string; to: string; icon: React.ElementType }[];
 
   return (
