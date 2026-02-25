@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
@@ -73,19 +74,38 @@ const AppFurore: React.FC = () => {
   }, [session?.status, session?.updated_at, refetchBookings]);
 
   // If admin deletes the player (or resets all), kick back to landing
+  // Use a debounced DB check instead of relying on potentially stale local array
+  const kickCheckTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!myPlayer || !session?.id) return;
-    // Grace period: skip kick checks for 5 seconds after registration
-    if (Date.now() - registeredAtRef.current < 5000) return;
-    // Need at least one successful fetch with data before we can detect kicks
-    // (if players is empty and we just loaded, don't kick)
+    // Grace period: skip kick checks for 10 seconds after registration
+    if (Date.now() - registeredAtRef.current < 10000) return;
+    // Don't react to empty arrays (could be a transient fetch state)
     if (players.length === 0) return;
+
     if (!players.find(p => p.id === myPlayer.id)) {
-      console.log('[Furore] Player kicked — not found in players list');
-      setMyPlayer(null);
-      setMyPosition(null);
-      setPhase('landing');
-      localStorage.removeItem('furore_device_fp');
+      // Debounce: wait 2s and verify directly from DB before kicking
+      if (kickCheckTimerRef.current) clearTimeout(kickCheckTimerRef.current);
+      kickCheckTimerRef.current = setTimeout(async () => {
+        const { data } = await supabase
+          .from('furore_players')
+          .select('id')
+          .eq('id', myPlayer.id)
+          .maybeSingle();
+        if (!data) {
+          console.log('[Furore] Player confirmed kicked via DB check');
+          setMyPlayer(null);
+          setMyPosition(null);
+          setPhase('landing');
+          localStorage.removeItem('furore_device_fp');
+        }
+      }, 2000);
+    } else {
+      // Player found — clear any pending kick timer
+      if (kickCheckTimerRef.current) {
+        clearTimeout(kickCheckTimerRef.current);
+        kickCheckTimerRef.current = null;
+      }
     }
   }, [players, myPlayer, session?.id]);
 
