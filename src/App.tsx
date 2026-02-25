@@ -43,6 +43,7 @@ import Partiture from "./pages/Partiture";
 import GamesHub from "./pages/GamesHub";
 import QuizGame from "./pages/QuizGame";
 import GameNotAvailable from "./pages/GameNotAvailable";
+import AppFurore from "./pages/AppFurore";
 
 const queryClient = new QueryClient();
 
@@ -80,6 +81,7 @@ const AppContent = () => (
         <Route path="giochi" element={<GamesHub />} />
         <Route path="giochi/quiz" element={<QuizGame />} />
         <Route path="giochi/:gameKey" element={<GameNotAvailable />} />
+        <Route path="furore" element={<AppFurore />} />
       </Route>
       
       {/* Lyrics page - Spotify-like design */}

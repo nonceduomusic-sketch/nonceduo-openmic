@@ -17,6 +17,7 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
 import { renderResponsiveChordLine } from '@/lib/chordproRenderer';
 import { usePedalScroll } from '@/hooks/usePedalControl';
 import { TVGameOverlay } from '@/components/broadcast/TVGameOverlay';
+import { TVFuroreOverlay } from '@/components/broadcast/TVFuroreOverlay';
 
 interface Song {
   id: string;
@@ -1310,6 +1311,7 @@ export default function Trasmetti() {
       </div>
     </div>
     <TVGameOverlay />
+    <TVFuroreOverlay />
     </>
   );
 }
