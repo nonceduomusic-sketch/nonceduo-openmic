@@ -62,12 +62,12 @@ const AppFurore: React.FC = () => {
     }
   }, [bookings, myPlayer]);
 
-  // Force refetch bookings when session status changes (e.g. reset & open)
+  // Force refetch bookings when session changes (status or updated_at)
   useEffect(() => {
-    if (session?.status) {
+    if (session?.id) {
       refetchBookings();
     }
-  }, [session?.status, refetchBookings]);
+  }, [session?.status, session?.updated_at, refetchBookings]);
 
   // If admin deletes the player, kick back to landing
   useEffect(() => {
