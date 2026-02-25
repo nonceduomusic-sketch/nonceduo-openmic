@@ -35,13 +35,7 @@ const AppFurore: React.FC = () => {
   const [joining, setJoining] = useState(false);
   const [pressing, setPressing] = useState(false);
   const [myPosition, setMyPosition] = useState<number | null>(null);
-  const hasLoadedPlayersRef = React.useRef(false);
-  const justRegisteredRef = React.useRef(false);
-
-  // Track when players have been loaded at least once with data
-  useEffect(() => {
-    if (players.length > 0) hasLoadedPlayersRef.current = true;
-  }, [players]);
+  const registeredAtRef = React.useRef<number>(0);
 
   // Reconnect player on page load via device fingerprint
   useEffect(() => {
@@ -81,15 +75,13 @@ const AppFurore: React.FC = () => {
   // If admin deletes the player (or resets all), kick back to landing
   useEffect(() => {
     if (!myPlayer || !session?.id) return;
-    if (!hasLoadedPlayersRef.current) return;
-    // Skip kick check right after registration — wait for realtime to catch up
-    if (justRegisteredRef.current) {
-      if (players.find(p => p.id === myPlayer.id)) {
-        justRegisteredRef.current = false; // Realtime caught up
-      }
-      return;
-    }
+    // Grace period: skip kick checks for 5 seconds after registration
+    if (Date.now() - registeredAtRef.current < 5000) return;
+    // Need at least one successful fetch with data before we can detect kicks
+    // (if players is empty and we just loaded, don't kick)
+    if (players.length === 0) return;
     if (!players.find(p => p.id === myPlayer.id)) {
+      console.log('[Furore] Player kicked — not found in players list');
       setMyPlayer(null);
       setMyPosition(null);
       setPhase('landing');
@@ -100,13 +92,11 @@ const AppFurore: React.FC = () => {
   const handleRegister = async () => {
     if (!session?.id || !nickname.trim()) return;
     setJoining(true);
-    justRegisteredRef.current = true;
+    registeredAtRef.current = Date.now();
     const player = await joinSession(session.id, nickname, selectedSymbol, selectedColor);
     if (player) {
       setMyPlayer(player);
       setPhase('buzzer');
-    } else {
-      justRegisteredRef.current = false;
     }
     setJoining(false);
   };
