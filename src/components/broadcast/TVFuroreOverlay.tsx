@@ -69,11 +69,11 @@ export const TVFuroreOverlay: React.FC = () => {
 
   if (loading) return null;
 
-  const hasActivity = session && (players.length > 0 || bookings.length > 0);
   const isOpen = session?.status === 'open';
+  const isClosed = session?.status === 'closed';
 
   // ─── IDLE SCREEN — no session or no activity ───
-  if (!session || (session.status === 'closed' && !hasActivity)) {
+  if (!session) {
     return (
       <div className="fixed inset-0 z-[55] bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white flex flex-col items-center justify-center overflow-hidden">
         {/* Animated background blobs */}
@@ -135,8 +135,11 @@ export const TVFuroreOverlay: React.FC = () => {
   const maxSlots = session.max_players;
   const showLeaderboard = (session as any).show_leaderboard === true;
 
+  // When closed (standby), hide bookings — show waiting message
+  const visibleBookings = isClosed ? [] : bookings;
+
   // Build list of booked players only (no empty slots)
-  const bookedSlots = bookings
+  const bookedSlots = visibleBookings
     .sort((a, b) => a.position - b.position)
     .map(booking => ({
       booking,
@@ -272,7 +275,7 @@ export const TVFuroreOverlay: React.FC = () => {
               {bookedSlots.length === 0 ? (
                 <div className="text-center">
                   <p className="text-2xl md:text-3xl text-white/30 font-medium">
-                    {isOpen ? 'In attesa delle prenotazioni...' : 'Nessuna prenotazione'}
+                    {isOpen ? 'In attesa delle prenotazioni...' : 'In attesa di aprire le prenotazioni...'}
                   </p>
                 </div>
               ) : (
