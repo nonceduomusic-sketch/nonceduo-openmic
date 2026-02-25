@@ -131,6 +131,7 @@ const AppFurore: React.FC = () => {
     }
   };
 
+  const isPlayersFull = players.length >= (session?.max_players ?? 10);
   const isBookingOpen = session?.status === 'open';
   const hasBooked = myPosition !== null;
   const isFull = bookings.length >= (session?.max_players ?? 8);
@@ -328,14 +329,26 @@ const AppFurore: React.FC = () => {
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.4 }}>
-            <Button
-              size="lg"
-              className="w-full h-14 text-lg font-bold gap-3"
-              onClick={() => setPhase('register')}
-            >
-              <Zap className="w-5 h-5" />
-              Prenota e Gioca
-            </Button>
+            {isPlayersFull ? (
+              <Card className="border-destructive/30 bg-destructive/5">
+                <CardContent className="p-4 text-center space-y-1">
+                  <Users className="w-6 h-6 text-destructive mx-auto" />
+                  <p className="font-semibold text-sm">Posti esauriti!</p>
+                  <p className="text-xs text-muted-foreground">
+                    Sono già collegati {players.length}/{session?.max_players ?? 10} giocatori
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <Button
+                size="lg"
+                className="w-full h-14 text-lg font-bold gap-3"
+                onClick={() => setPhase('register')}
+              >
+                <Zap className="w-5 h-5" />
+                Prenota e Gioca
+              </Button>
+            )}
           </motion.div>
         </div>
       </PageLayout>
@@ -406,14 +419,22 @@ const AppFurore: React.FC = () => {
               </div>
             </div>
 
-            <Button
-              size="lg"
-              className="w-full h-14 text-lg font-bold"
-              disabled={!nickname.trim() || joining}
-              onClick={handleRegister}
-            >
-              {joining ? 'Entrata in corso...' : 'Entra nella partita'}
-            </Button>
+            {isPlayersFull ? (
+              <Card className="border-destructive/30 bg-destructive/5">
+                <CardContent className="p-3 text-center space-y-1">
+                  <p className="font-semibold text-sm">Posti esauriti ({players.length}/{session?.max_players ?? 10})</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <Button
+                size="lg"
+                className="w-full h-14 text-lg font-bold"
+                disabled={!nickname.trim() || joining}
+                onClick={handleRegister}
+              >
+                {joining ? 'Entrata in corso...' : 'Entra nella partita'}
+              </Button>
+            )}
           </div>
         </div>
       </PageLayout>
