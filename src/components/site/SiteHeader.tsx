@@ -27,8 +27,8 @@ export const SiteHeader: React.FC<{ className?: string }> = ({ className }) => {
 
   const menuFormats = [
     (isOpenmicSite && isOpenmicMenu) && { label: "Open Mic", to: "/openmic", icon: Mic2 },
-    (isDedicheSite && isDedicheMenu) && { label: "Dediche", to: "/messaggi", icon: MessageCircle },
     (isFuroreSite && isFuroreMenu) && { label: "Non C'è Furore", to: "/app/furore", icon: Zap },
+    (isDedicheSite && isDedicheMenu) && { label: "Dediche", to: "/messaggi", icon: MessageCircle },
     (isGiochiSite && isGiochiMenu) && { label: "Giochi", to: "/app/giochi", icon: Gamepad2 },
     (isCommunitySite && isCommunityMenu) && { label: "Community", to: "/social", icon: Users },
   ].filter(Boolean) as { label: string; to: string; icon: React.ElementType }[];
@@ -81,6 +81,12 @@ export const SiteHeader: React.FC<{ className?: string }> = ({ className }) => {
                   </Button>
                 </Link>
 
+                <Link to="/partyband">
+                  <Button variant="ghost" className="w-full justify-start">
+                    Party Band
+                  </Button>
+                </Link>
+
                 {menuFormats.map((item) => (
                   <Link key={item.to} to={item.to}>
                     <Button variant="ghost" className="w-full justify-start gap-2">
@@ -89,12 +95,6 @@ export const SiteHeader: React.FC<{ className?: string }> = ({ className }) => {
                     </Button>
                   </Link>
                 ))}
-
-                <Link to="/partyband">
-                  <Button variant="ghost" className="w-full justify-start">
-                    Party Band
-                  </Button>
-                </Link>
 
                 <div className="pt-3 mt-3 border-t border-border/60" />
 
