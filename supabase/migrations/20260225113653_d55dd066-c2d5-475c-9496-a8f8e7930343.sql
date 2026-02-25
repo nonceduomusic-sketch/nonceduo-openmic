@@ -1,0 +1,1 @@
+ALTER TABLE public.broadcast_sessions ADD COLUMN IF NOT EXISTS tv_logo_scale integer NOT NULL DEFAULT 100;

@@ -417,6 +417,7 @@ export type Database = {
           text_align: string | null
           tv_element_positions: Json | null
           tv_footer: string | null
+          tv_logo_scale: number
           tv_logo_url: string | null
           tv_qr_cta: string | null
           tv_qr_url: string | null
@@ -477,6 +478,7 @@ export type Database = {
           text_align?: string | null
           tv_element_positions?: Json | null
           tv_footer?: string | null
+          tv_logo_scale?: number
           tv_logo_url?: string | null
           tv_qr_cta?: string | null
           tv_qr_url?: string | null
@@ -537,6 +539,7 @@ export type Database = {
           text_align?: string | null
           tv_element_positions?: Json | null
           tv_footer?: string | null
+          tv_logo_scale?: number
           tv_logo_url?: string | null
           tv_qr_cta?: string | null
           tv_qr_url?: string | null
