@@ -3138,6 +3138,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      furore_update_session: {
+        Args: { p_session_id: string; p_updates: Json }
+        Returns: boolean
+      }
       get_active_session_for_format: {
         Args: { p_format: string }
         Returns: {

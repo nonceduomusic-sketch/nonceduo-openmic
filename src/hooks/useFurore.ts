@@ -154,16 +154,20 @@ export const useFuroreAdmin = () => {
     return data as unknown as FuroreSession;
   };
 
-  const updateSession = async (id: string, updates: Partial<FuroreSession>) => {
-    const { error } = await supabase
-      .from('furore_sessions')
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq('id', id);
-    return !error;
+  const updateSession = async (id: string, updates: Record<string, any>) => {
+    const { data, error } = await supabase.rpc('furore_update_session', {
+      p_session_id: id,
+      p_updates: updates,
+    });
+    if (error) {
+      console.error('[Furore] Error updating session:', error);
+      return false;
+    }
+    return data === true;
   };
 
-  const openBookings = async (id: string) => updateSession(id, { status: 'open' } as any);
-  const closeBookings = async (id: string) => updateSession(id, { status: 'closed' } as any);
+  const openBookings = async (id: string) => updateSession(id, { status: 'open' });
+  const closeBookings = async (id: string) => updateSession(id, { status: 'closed' });
 
   const resetSession = async (id: string) => {
     // Use atomic server-side function to ensure all deletes happen
@@ -193,11 +197,11 @@ export const useFuroreAdmin = () => {
     return true;
   };
 
-  const setMaxPlayers = async (id: string, max: number) => updateSession(id, { max_players: max } as any);
-  const setShowOrder = async (id: string, show: boolean) => updateSession(id, { show_order_to_players: show } as any);
-  const setSoundKey = async (id: string, key: string) => updateSession(id, { sound_key: key } as any);
-  const setShowPlayerCount = async (id: string, show: boolean) => updateSession(id, { show_player_count: show } as any);
-  const setShowBookings = async (id: string, show: boolean) => updateSession(id, { show_bookings_to_players: show } as any);
+  const setMaxPlayers = async (id: string, max: number) => updateSession(id, { max_players: max });
+  const setShowOrder = async (id: string, show: boolean) => updateSession(id, { show_order_to_players: show });
+  const setSoundKey = async (id: string, key: string) => updateSession(id, { sound_key: key });
+  const setShowPlayerCount = async (id: string, show: boolean) => updateSession(id, { show_player_count: show });
+  const setShowBookings = async (id: string, show: boolean) => updateSession(id, { show_bookings_to_players: show });
 
   const deletePlayer = async (playerId: string, sessionId: string) => {
     await supabase.from('furore_bookings').delete().eq('player_id', playerId).eq('session_id', sessionId);
@@ -216,7 +220,7 @@ export const useFuroreAdmin = () => {
     return !error;
   };
 
-  const setShowLeaderboard = async (id: string, show: boolean) => updateSession(id, { show_leaderboard: show } as any);
+  const setShowLeaderboard = async (id: string, show: boolean) => updateSession(id, { show_leaderboard: show });
 
   const resetScores = async (sessionId: string) => {
     await supabase
@@ -225,7 +229,7 @@ export const useFuroreAdmin = () => {
       .eq('session_id', sessionId);
   };
 
-  const setScoringRules = async (id: string, rules: FuroreScoringRules) => updateSession(id, { scoring_rules: rules } as any);
+  const setScoringRules = async (id: string, rules: FuroreScoringRules) => updateSession(id, { scoring_rules: rules });
 
   const setPlayerScore = async (playerId: string, score: number) => {
     const { error } = await supabase.from('furore_players').update({ score }).eq('id', playerId);
