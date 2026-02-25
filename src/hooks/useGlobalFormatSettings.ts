@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export type GlobalFormatKey = 'openmic' | 'dediche' | 'community' | 'giochi' | 'furore' | 'voting' | 'show_booker_name' | 'show_live_queue' | 'lyrics_zoom' | 'lyrics_highlight_arrows' | 'lyrics_auto_scroll' | 'catalog_preview' | 'show_upcoming_events';
+export type GlobalFormatKey = 'openmic' | 'dediche' | 'community' | 'community_registration' | 'giochi' | 'furore' | 'voting' | 'show_booker_name' | 'show_live_queue' | 'lyrics_zoom' | 'lyrics_highlight_arrows' | 'lyrics_auto_scroll' | 'catalog_preview' | 'show_upcoming_events';
 
 export interface GlobalFormatSetting {
   format_key: GlobalFormatKey;
@@ -14,7 +14,7 @@ export interface GlobalFormatSetting {
 
 export const useGlobalFormatSettings = () => {
   const defaultSettings: Record<GlobalFormatKey, boolean> = {
-    openmic: true, dediche: true, community: true, giochi: false, furore: true,
+    openmic: true, dediche: true, community: true, community_registration: true, giochi: false, furore: true,
     voting: true, show_booker_name: true, show_live_queue: true,
     lyrics_zoom: true, lyrics_highlight_arrows: true, lyrics_auto_scroll: true,
     catalog_preview: false, show_upcoming_events: false,
@@ -107,6 +107,7 @@ export const useGlobalFormatSettings = () => {
       }
       const formatNames: Record<GlobalFormatKey, string> = {
         openmic: 'Open Mic', dediche: 'Dediche', community: 'Community',
+        community_registration: 'Registrazioni Community',
         giochi: 'Giochi', furore: 'Non C\'è Furore', voting: 'Votazioni', show_booker_name: 'Nome prenotante',
         show_live_queue: 'Scaletta Live', lyrics_zoom: 'Zoom Testi',
         lyrics_highlight_arrows: 'Evidenziatore Testi', lyrics_auto_scroll: 'Auto-scroll Testi',

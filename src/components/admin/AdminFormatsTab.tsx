@@ -181,6 +181,16 @@ export const AdminFormatsTab: React.FC = () => {
                 </div>
                 <Switch checked={menuSettings.community} onCheckedChange={() => toggleGlobalFormat('community', 'menu')} />
               </div>
+              <Separator className="my-2" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <User className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Registrazioni aperte</Label>
+                  {globalSettings.community_registration && <Badge variant="outline" className="text-green-500 border-green-500/30 text-[10px]">Aperte</Badge>}
+                  {!globalSettings.community_registration && <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">Chiuse</Badge>}
+                </div>
+                <Switch checked={globalSettings.community_registration} onCheckedChange={() => toggleGlobalFormat('community_registration', 'site')} />
+              </div>
             </CardContent>
           </Card>
 

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { SEO } from '@/components/SEO';
 import { UserLoginIndicator } from '@/components/UserLoginIndicator';
+import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
 import { 
   Users, 
   MessageCircle, 
@@ -12,10 +13,12 @@ import {
   ArrowRight,
   Heart,
   Zap,
-  Crown
+  Crown,
+  Lock
 } from 'lucide-react';
 
 const Social: React.FC = () => {
+  const { isActive: registrationOpen } = useFormatActiveCheck('community_registration', 'site');
   // Always show the promotional landing page - gating happens on /social/auth
 
   const features = [
@@ -100,9 +103,19 @@ const Social: React.FC = () => {
                     size="lg" 
                     className="group bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90 text-lg px-8 py-6 rounded-2xl neon-glow-pink transition-all duration-300"
                   >
-                    <Zap className="w-5 h-5 mr-2 group-hover:animate-pulse" />
-                    Registrati Gratis
-                    <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                    {registrationOpen ? (
+                      <>
+                        <Zap className="w-5 h-5 mr-2 group-hover:animate-pulse" />
+                        Registrati Gratis
+                        <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="w-5 h-5 mr-2" />
+                        Accedi
+                        <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+                      </>
+                    )}
                   </Button>
                 </Link>
                 <Link to="/messaggi">
@@ -116,6 +129,13 @@ const Social: React.FC = () => {
                   </Button>
                 </Link>
               </div>
+              
+              {!registrationOpen && (
+                <p className="text-sm text-muted-foreground mt-4 flex items-center justify-center gap-2">
+                  <Lock className="w-3.5 h-3.5" />
+                  Le nuove registrazioni sono temporaneamente sospese
+                </p>
+              )}
             </div>
           </section>
 
@@ -151,14 +171,16 @@ const Social: React.FC = () => {
                   Pronto a far parte della famiglia?
                 </h2>
                 <p className="text-muted-foreground text-lg mb-8 max-w-xl mx-auto">
-                  La registrazione è gratuita e richiede solo pochi secondi.
+                  {registrationOpen 
+                    ? 'La registrazione è gratuita e richiede solo pochi secondi.'
+                    : 'Hai già un account? Accedi per entrare nella community.'}
                 </p>
                 <Link to="/social/auth">
                   <Button 
                     size="lg" 
                     className="bg-gradient-to-r from-secondary to-primary hover:from-secondary/90 hover:to-primary/90 text-lg px-10 py-6 rounded-2xl neon-glow-cyan"
                   >
-                    Inizia Ora
+                    {registrationOpen ? 'Inizia Ora' : 'Accedi'}
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </Button>
                 </Link>
