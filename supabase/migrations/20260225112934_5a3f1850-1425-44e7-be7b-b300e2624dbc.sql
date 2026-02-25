@@ -1,0 +1,1 @@
+ALTER TABLE public.broadcast_sessions ADD COLUMN IF NOT EXISTS tv_standby_mode text NOT NULL DEFAULT 'openmic';
