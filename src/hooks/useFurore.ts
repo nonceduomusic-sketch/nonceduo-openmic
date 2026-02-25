@@ -2,6 +2,14 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient, useQuery, useMutation } from '@tanstack/react-query';
 
+export interface FuroreScoringRules {
+  [position: string]: number;
+}
+
+export const DEFAULT_SCORING_RULES: FuroreScoringRules = {
+  '1': 10, '2': 7, '3': 5, '4': 3, '5': 1,
+};
+
 export interface FuroreSession {
   id: string;
   status: 'closed' | 'open' | 'locked';
@@ -11,6 +19,7 @@ export interface FuroreSession {
   show_bookings_to_players: boolean;
   show_leaderboard: boolean;
   sound_key: string;
+  scoring_rules: FuroreScoringRules;
   created_at: string;
   updated_at: string;
 }
@@ -172,11 +181,18 @@ export const useFuroreAdmin = () => {
       .order('position', { ascending: true });
 
     if (currentBookings && currentBookings.length > 0) {
-      const totalPlayers = currentBookings.length;
-      // Points: 1st gets totalPlayers pts, 2nd gets totalPlayers-1, etc.
+      // Get scoring rules from session
+      const { data: sessionData } = await supabase
+        .from('furore_sessions')
+        .select('scoring_rules')
+        .eq('id', id)
+        .single();
+      const rules: FuroreScoringRules = (sessionData?.scoring_rules as any) || DEFAULT_SCORING_RULES;
+
       for (const booking of currentBookings) {
-        const points = Math.max(1, totalPlayers - booking.position + 1);
-        // Increment score
+        const posKey = String(booking.position);
+        const points = rules[posKey] ?? 0; // Only award points for configured positions
+        if (points <= 0) continue;
         const { data: player } = await supabase
           .from('furore_players')
           .select('score')
@@ -221,7 +237,14 @@ export const useFuroreAdmin = () => {
       .eq('session_id', sessionId);
   };
 
-  return { createSession, updateSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, updatePlayer, resetScores };
+  const setScoringRules = async (id: string, rules: FuroreScoringRules) => updateSession(id, { scoring_rules: rules } as any);
+
+  const setPlayerScore = async (playerId: string, score: number) => {
+    const { error } = await supabase.from('furore_players').update({ score }).eq('id', playerId);
+    return !error;
+  };
+
+  return { createSession, updateSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, updatePlayer, resetScores, setScoringRules, setPlayerScore };
 };
 
 // ─── Player Actions ───

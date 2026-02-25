@@ -1485,6 +1485,7 @@ export type Database = {
           created_by: string | null
           id: string
           max_players: number
+          scoring_rules: Json
           show_bookings_to_players: boolean
           show_leaderboard: boolean
           show_order_to_players: boolean
@@ -1498,6 +1499,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           max_players?: number
+          scoring_rules?: Json
           show_bookings_to_players?: boolean
           show_leaderboard?: boolean
           show_order_to_players?: boolean
@@ -1511,6 +1513,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           max_players?: number
+          scoring_rules?: Json
           show_bookings_to_players?: boolean
           show_leaderboard?: boolean
           show_order_to_players?: boolean
