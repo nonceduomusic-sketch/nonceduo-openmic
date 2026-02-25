@@ -218,7 +218,7 @@ const AppFurore: React.FC = () => {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
             <Card className="border-primary/30">
               <CardContent className="p-6 space-y-4">
-                {(session as any)?.show_player_count !== false && (
+                {(session as any)?.show_player_count !== false && players.length > 0 && (
                   <div className="flex items-center gap-3">
                     <Users className="w-5 h-5 text-primary" />
                     <span className="text-sm">{players.length} giocatori collegati</span>
@@ -341,7 +341,7 @@ const AppFurore: React.FC = () => {
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-bold">{myPlayer?.nickname}</p>
-            {(session as any)?.show_player_count !== false ? (
+            {(session as any)?.show_player_count !== false && players.length > 0 ? (
               <p className="text-xs text-muted-foreground">
                 {players.length} giocatori collegati
               </p>
