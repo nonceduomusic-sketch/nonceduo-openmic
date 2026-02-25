@@ -18,7 +18,7 @@ const FormatGrid: React.FC<{ isOpenmicVisible: boolean; isDedicheVisible: boolea
   const formats = [
     isOpenmicVisible && { key: 'openmic', to: '/openmic', icon: Mic2, label: 'Open Mic', sub: 'Canta con noi', colorClass: 'secondary' },
     isDedicheVisible && { key: 'dediche', to: '/messaggi', icon: MessageCircle, label: 'Dediche', sub: 'Invia messaggi', colorClass: 'primary' },
-    isGiochiVisible && { key: 'giochi', to: '/app/giochi', icon: Gamepad2, label: "Non C'è Furore", sub: 'Gioca con noi', colorClass: 'emerald-500' },
+    isGiochiVisible && { key: 'giochi', to: '/app/furore', icon: Gamepad2, label: "Non C'è Furore", sub: 'Gioca con noi', colorClass: 'emerald-500' },
     isCommunityVisible && { key: 'community', to: '/social', icon: Users, label: 'Community', sub: 'Entra nel club', colorClass: 'accent' },
   ].filter(Boolean) as { key: string; to: string; icon: React.ElementType; label: string; sub: string; colorClass: string }[];
 

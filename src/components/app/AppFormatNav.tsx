@@ -18,7 +18,7 @@ export const AppFormatNav: React.FC = () => {
     { to: "/app", icon: LayoutGrid, label: "Hub", end: true },
     isOpenmicAppVisible && { to: "/app/openmic", icon: Mic2, label: "Open Mic" },
     isDedicheAppVisible && { to: "/app/dediche", icon: MessageCircle, label: "Dediche" },
-    isGiochiVisible && { to: "/app/giochi", icon: Gamepad2, label: "Furore" },
+    isGiochiVisible && { to: "/app/furore", icon: Gamepad2, label: "Furore" },
   ].filter(Boolean) as { to: string; icon: React.ElementType; label: string; end?: boolean }[];
 
   // Don't show if only hub would be visible
