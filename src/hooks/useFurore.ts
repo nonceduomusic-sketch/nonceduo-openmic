@@ -178,14 +178,15 @@ export const useFuroreAdmin = () => {
 
   const resetBookingsOnly = async (id: string) => {
     // Use atomic server-side function to award points and reset
+    console.log('[Furore] Calling furore_award_and_reset for session:', id);
     const { data, error } = await supabase.rpc('furore_award_and_reset', {
       p_session_id: id,
     });
     if (error) {
-      console.error('Error in furore_award_and_reset:', error);
+      console.error('[Furore] Error in furore_award_and_reset:', error);
       return false;
     }
-    console.log(`[Furore] Awarded points to ${data} players, bookings reset`);
+    console.log(`[Furore] furore_award_and_reset returned: ${data} (players awarded)`);
     return true;
   };
 
