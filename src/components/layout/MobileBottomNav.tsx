@@ -20,12 +20,13 @@ interface MobileBottomNavProps {
 export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ variant = 'main' }, ref) => {
   const location = useLocation();
   const { isStaff } = useStaffRole();
-  const { isActive: isFuroreMenu } = useFormatActiveCheck('furore', 'menu');
   const { isActive: isFuroreSite } = useFormatActiveCheck('furore', 'site');
-  const { isActive: isGiochiMenu } = useFormatActiveCheck('giochi', 'menu');
+  const { isActive: isFuroreApp } = useFormatActiveCheck('furore', 'app');
   const { isActive: isGiochiSite } = useFormatActiveCheck('giochi', 'site');
-  const isFuroreActive = isFuroreSite && isFuroreMenu;
-  const isGiochiActive = isGiochiSite && isGiochiMenu;
+  const { isActive: isGiochiApp } = useFormatActiveCheck('giochi', 'app');
+  // Format visible only if master switch (site) AND app flag are both ON
+  const isFuroreActive = isFuroreSite && isFuroreApp;
+  const isGiochiActive = isGiochiSite && isGiochiApp;
 
   const mainNavItems: NavItem[] = [
     { 
