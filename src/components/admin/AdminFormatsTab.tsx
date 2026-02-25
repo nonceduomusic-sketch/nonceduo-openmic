@@ -145,106 +145,6 @@ export const AdminFormatsTab: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Non C'è Furore (Live) */}
-          <Card className="border-red-500/20 bg-red-500/5">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Zap className="w-4 h-4 text-red-500" />
-                Non C'è Furore
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Format live sincrono — Pulsantiera e giochi dal vivo
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Globe className="w-3.5 h-3.5 text-muted-foreground" />
-                  <Label className="text-sm">Sito</Label>
-                  {globalSettings.furore && <Badge variant="outline" className="text-red-500 border-red-500/30 text-[10px]">Visibile</Badge>}
-                </div>
-                <Switch checked={globalSettings.furore} onCheckedChange={() => toggleGlobalFormat('furore', 'site')} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
-                  <Label className="text-sm">App</Label>
-                  {appSettings.furore && <Badge variant="outline" className="text-red-500 border-red-500/30 text-[10px]">Visibile</Badge>}
-                </div>
-                <Switch checked={appSettings.furore} onCheckedChange={() => toggleGlobalFormat('furore', 'app')} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Menu className="w-3.5 h-3.5 text-muted-foreground" />
-                  <Label className="text-sm">Menu</Label>
-                  {menuSettings.furore && <Badge variant="outline" className="text-red-500 border-red-500/30 text-[10px]">Visibile</Badge>}
-                </div>
-                <Switch checked={menuSettings.furore} onCheckedChange={() => toggleGlobalFormat('furore', 'menu')} />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Giochi (Passatempo) */}
-          <Card className="border-emerald-500/20 bg-emerald-500/5">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Gamepad2 className="w-4 h-4 text-emerald-500" />
-                Giochi
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Passatempo asincrono — Quiz, giochi individuali
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Globe className="w-3.5 h-3.5 text-muted-foreground" />
-                  <Label className="text-sm">Sito</Label>
-                  {globalSettings.giochi && <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 text-[10px]">Visibile</Badge>}
-                </div>
-                <Switch checked={globalSettings.giochi} onCheckedChange={() => toggleGlobalFormat('giochi', 'site')} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
-                  <Label className="text-sm">App</Label>
-                  {appSettings.giochi && <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 text-[10px]">Visibile</Badge>}
-                </div>
-                <Switch checked={appSettings.giochi} onCheckedChange={() => toggleGlobalFormat('giochi', 'app')} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Menu className="w-3.5 h-3.5 text-muted-foreground" />
-                  <Label className="text-sm">Menu</Label>
-                  {menuSettings.giochi && <Badge variant="outline" className="text-emerald-500 border-emerald-500/30 text-[10px]">Visibile</Badge>}
-                </div>
-                <Switch checked={menuSettings.giochi} onCheckedChange={() => toggleGlobalFormat('giochi', 'menu')} />
-              </div>
-
-              {/* Per-game toggles */}
-              {(globalSettings.giochi || appSettings.giochi) && gameConfigs && gameConfigs.length > 0 && (
-                <div className="border-t border-emerald-500/10 pt-3 space-y-2">
-                  <p className="text-xs text-muted-foreground font-medium mb-2">
-                    Giochi visibili agli utenti:
-                  </p>
-                  {gameConfigs.map((game) => (
-                    <div key={game.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-muted/20">
-                      <div className="flex items-center gap-2">
-                        <span className="text-base">{game.game_icon}</span>
-                        <span className="text-sm font-medium">{game.game_name}</span>
-                      </div>
-                      <Switch
-                        checked={game.is_enabled}
-                        onCheckedChange={() => toggleGameConfig.mutate({ id: game.id, is_enabled: !game.is_enabled })}
-                        className="scale-90"
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
           {/* Community */}
           <Card className="border-accent/20 bg-accent/5">
             <CardHeader className="pb-3">
@@ -281,6 +181,98 @@ export const AdminFormatsTab: React.FC = () => {
                 </div>
                 <Switch checked={menuSettings.community} onCheckedChange={() => toggleGlobalFormat('community', 'menu')} />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Giochi (include Pulsantiera Non C'è Furore) */}
+          <Card className="border-destructive/20 bg-destructive/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Gamepad2 className="w-4 h-4 text-destructive" />
+                Giochi
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Include Pulsantiera "Non C'è Furore", Quiz e giochi interattivi
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
+              {/* Non C'è Furore visibility */}
+              <p className="text-xs font-medium text-muted-foreground">⚡ Non C'è Furore (Pulsantiera)</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Sito</Label>
+                  {globalSettings.furore && <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={globalSettings.furore} onCheckedChange={() => toggleGlobalFormat('furore', 'site')} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">App</Label>
+                  {appSettings.furore && <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={appSettings.furore} onCheckedChange={() => toggleGlobalFormat('furore', 'app')} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Menu className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Menu</Label>
+                  {menuSettings.furore && <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={menuSettings.furore} onCheckedChange={() => toggleGlobalFormat('furore', 'menu')} />
+              </div>
+
+              <Separator className="my-2" />
+
+              {/* Giochi Passatempo visibility */}
+              <p className="text-xs font-medium text-muted-foreground">🎮 Giochi Passatempo (Quiz, ecc.)</p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Sito</Label>
+                  {globalSettings.giochi && <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={globalSettings.giochi} onCheckedChange={() => toggleGlobalFormat('giochi', 'site')} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">App</Label>
+                  {appSettings.giochi && <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={appSettings.giochi} onCheckedChange={() => toggleGlobalFormat('giochi', 'app')} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Menu className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Menu</Label>
+                  {menuSettings.giochi && <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={menuSettings.giochi} onCheckedChange={() => toggleGlobalFormat('giochi', 'menu')} />
+              </div>
+
+              {/* Per-game toggles */}
+              {(globalSettings.giochi || appSettings.giochi) && gameConfigs && gameConfigs.length > 0 && (
+                <div className="border-t border-destructive/10 pt-3 space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium mb-2">
+                    Giochi visibili agli utenti:
+                  </p>
+                  {gameConfigs.map((game) => (
+                    <div key={game.id} className="flex items-center justify-between py-1.5 px-2 rounded-lg bg-muted/20">
+                      <div className="flex items-center gap-2">
+                        <span className="text-base">{game.game_icon}</span>
+                        <span className="text-sm font-medium">{game.game_name}</span>
+                      </div>
+                      <Switch
+                        checked={game.is_enabled}
+                        onCheckedChange={() => toggleGameConfig.mutate({ id: game.id, is_enabled: !game.is_enabled })}
+                        className="scale-90"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 

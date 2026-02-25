@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Zap, Play, Pause, RotateCcw, Users, Volume2, Eye, EyeOff, Crown } from 'lucide-react';
+import { Zap, Play, Pause, RotateCcw, Users, Volume2, Eye, EyeOff, Crown, ExternalLink, QrCode, Tv, Gamepad2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   useFuroreSession,
@@ -17,6 +17,200 @@ import {
   useFuroreAdmin,
   FURORE_SOUNDS,
 } from '@/hooks/useFurore';
+
+// ─── Professional Sound Engine ───
+const SOUND_PRESETS: Record<string, { label: string; emoji: string; category: 'real' | 'synth'; play: (ctx: AudioContext) => void }> = {};
+
+// Synthetic sounds using AudioContext Pro (multi-oscillator, ADSR, reverb)
+function createSynthSound(
+  ctx: AudioContext,
+  frequencies: number[],
+  types: OscillatorType[],
+  duration: number,
+  attack: number,
+  decay: number,
+  sustain: number,
+  release: number,
+  detune: number = 0,
+) {
+  const masterGain = ctx.createGain();
+  // Simple convolver for reverb-like effect
+  const delayNode = ctx.createDelay();
+  delayNode.delayTime.value = 0.08;
+  const feedbackGain = ctx.createGain();
+  feedbackGain.gain.value = 0.2;
+  
+  masterGain.connect(ctx.destination);
+  delayNode.connect(feedbackGain);
+  feedbackGain.connect(delayNode);
+  delayNode.connect(masterGain);
+
+  const now = ctx.currentTime;
+  
+  frequencies.forEach((freq, i) => {
+    const osc = ctx.createOscillator();
+    const oscGain = ctx.createGain();
+    
+    osc.frequency.value = freq;
+    osc.type = types[i % types.length];
+    osc.detune.value = detune * (i % 2 === 0 ? 1 : -1);
+    
+    // ADSR envelope
+    oscGain.gain.setValueAtTime(0, now);
+    oscGain.gain.linearRampToValueAtTime(0.25 / frequencies.length, now + attack);
+    oscGain.gain.linearRampToValueAtTime(sustain * 0.25 / frequencies.length, now + attack + decay);
+    oscGain.gain.linearRampToValueAtTime(sustain * 0.25 / frequencies.length, now + duration - release);
+    oscGain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    
+    osc.connect(oscGain);
+    oscGain.connect(masterGain);
+    oscGain.connect(delayNode);
+    
+    osc.start(now);
+    osc.stop(now + duration + 0.1);
+  });
+}
+
+// Register all 8 synth sounds
+const SYNTH_SOUNDS = [
+  {
+    key: 'synth_quiz_classic',
+    label: 'Quiz Classico',
+    emoji: '🔔',
+    play: (ctx: AudioContext) => createSynthSound(ctx, [880, 1320, 1760], ['sine', 'triangle', 'sine'], 0.5, 0.01, 0.1, 0.7, 0.15, 5),
+  },
+  {
+    key: 'synth_game_buzzer',
+    label: 'Buzzer Energico',
+    emoji: '🚨',
+    play: (ctx: AudioContext) => createSynthSound(ctx, [440, 554, 659], ['square', 'sawtooth', 'square'], 0.6, 0.005, 0.05, 0.8, 0.2, 8),
+  },
+  {
+    key: 'synth_correct_chime',
+    label: 'Risposta Esatta',
+    emoji: '✅',
+    play: (ctx: AudioContext) => {
+      createSynthSound(ctx, [523, 659, 784], ['sine', 'sine', 'triangle'], 0.4, 0.01, 0.08, 0.6, 0.1, 3);
+      setTimeout(() => createSynthSound(ctx, [784, 988, 1047], ['sine', 'sine', 'triangle'], 0.3, 0.01, 0.06, 0.5, 0.1, 3), 200);
+    },
+  },
+  {
+    key: 'synth_wrong_soft',
+    label: 'Errore Morbido',
+    emoji: '❌',
+    play: (ctx: AudioContext) => createSynthSound(ctx, [300, 280], ['sine', 'triangle'], 0.7, 0.01, 0.3, 0.4, 0.3, 12),
+  },
+  {
+    key: 'synth_reveal_tension',
+    label: 'Suspense Rivelazione',
+    emoji: '🥁',
+    play: (ctx: AudioContext) => createSynthSound(ctx, [220, 330, 440], ['sawtooth', 'triangle', 'sine'], 1.0, 0.3, 0.2, 0.8, 0.3, 6),
+  },
+  {
+    key: 'synth_hit_energy',
+    label: 'Hit Energetico',
+    emoji: '💥',
+    play: (ctx: AudioContext) => createSynthSound(ctx, [600, 900, 1200, 1500], ['square', 'sawtooth', 'square', 'sine'], 0.35, 0.005, 0.05, 0.6, 0.15, 10),
+  },
+  {
+    key: 'synth_victory_fanfare',
+    label: 'Fanfara Vittoria',
+    emoji: '🏆',
+    play: (ctx: AudioContext) => {
+      createSynthSound(ctx, [523, 659], ['sine', 'triangle'], 0.25, 0.01, 0.05, 0.7, 0.05, 4);
+      setTimeout(() => createSynthSound(ctx, [659, 784], ['sine', 'triangle'], 0.25, 0.01, 0.05, 0.7, 0.05, 4), 180);
+      setTimeout(() => createSynthSound(ctx, [784, 1047], ['sine', 'triangle'], 0.5, 0.01, 0.1, 0.8, 0.15, 4), 360);
+    },
+  },
+  {
+    key: 'synth_countdown_tick',
+    label: 'Countdown Tick',
+    emoji: '⏱️',
+    play: (ctx: AudioContext) => createSynthSound(ctx, [1000, 2000], ['sine', 'sine'], 0.15, 0.002, 0.02, 0.5, 0.05, 0),
+  },
+];
+
+const ALL_SOUNDS = SYNTH_SOUNDS.map(s => ({
+  key: s.key,
+  label: s.label,
+  emoji: s.emoji,
+}));
+
+// Audio context singleton
+let _audioCtx: AudioContext | null = null;
+function getAudioContext(): AudioContext {
+  if (!_audioCtx || _audioCtx.state === 'closed') {
+    _audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  }
+  if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  return _audioCtx;
+}
+
+function playSoundByKey(key: string) {
+  const synth = SYNTH_SOUNDS.find(s => s.key === key);
+  if (synth) {
+    synth.play(getAudioContext());
+    return;
+  }
+  // Legacy fallback for old keys
+  const ctx = getAudioContext();
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+  osc.frequency.value = 800;
+  osc.type = 'sine';
+  gain.gain.setValueAtTime(0.3, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+  osc.start();
+  osc.stop(ctx.currentTime + 0.4);
+}
+
+// ─── Quick Links with QR ───
+const QuickLinksSection: React.FC = () => {
+  const baseUrl = window.location.origin;
+  const links = [
+    { label: 'Pulsantiera (Utenti)', url: `${baseUrl}/app/furore`, icon: Zap },
+    { label: 'Trasmetti (TV)', url: `${baseUrl}/trasmetti`, icon: Tv },
+    { label: 'Giochi (Utenti)', url: `${baseUrl}/app/giochi`, icon: Gamepad2 },
+  ];
+
+  const copyToClipboard = (url: string, label: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      toast.success(`Link "${label}" copiato!`);
+    });
+  };
+
+  return (
+    <Card className="border-primary/20">
+      <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+        <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+          <ExternalLink className="w-4 h-4" /> Link Rapidi & QR
+        </CardTitle>
+        <CardDescription className="text-xs">Condividi con concorrenti e staff</CardDescription>
+      </CardHeader>
+      <CardContent className="px-4 sm:px-6 space-y-3">
+        {links.map(link => (
+          <div key={link.url} className="flex items-center gap-3 p-3 rounded-lg border bg-card/50">
+            <link.icon className="w-5 h-5 text-primary shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium truncate">{link.label}</p>
+              <p className="text-[11px] text-muted-foreground truncate">{link.url}</p>
+            </div>
+            <div className="flex gap-1.5 shrink-0">
+              <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => copyToClipboard(link.url, link.label)}>
+                📋
+              </Button>
+              <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => window.open(link.url, '_blank')}>
+                <ExternalLink className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+};
 
 export const AdminFuroreTab: React.FC = () => {
   const { session, loading } = useFuroreSession();
@@ -48,31 +242,6 @@ export const AdminFuroreTab: React.FC = () => {
     toast.success('Partita resettata');
   };
 
-  const playSound = (key: string) => {
-    // Simple beep sounds using Web Audio API
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    const soundMap: Record<string, { freq: number; type: OscillatorType; dur: number }> = {
-      bell1: { freq: 800, type: 'sine', dur: 0.4 },
-      bell2: { freq: 1200, type: 'sine', dur: 0.3 },
-      buzzer: { freq: 400, type: 'square', dur: 0.5 },
-      horn: { freq: 600, type: 'sawtooth', dur: 0.6 },
-      pop: { freq: 1000, type: 'triangle', dur: 0.2 },
-    };
-
-    const s = soundMap[key] || soundMap.bell1;
-    osc.frequency.value = s.freq;
-    osc.type = s.type;
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + s.dur);
-    osc.start();
-    osc.stop(ctx.currentTime + s.dur);
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -84,12 +253,15 @@ export const AdminFuroreTab: React.FC = () => {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center gap-3">
-        <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
+        <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-red-500 shrink-0" />
         <div className="min-w-0">
           <h2 className="text-lg sm:text-xl font-bold">Non C'è Furore — Pulsantiera</h2>
           <p className="text-xs sm:text-sm text-muted-foreground">Gestisci prenotazioni e giocatori in tempo reale</p>
         </div>
       </div>
+
+      {/* Quick Links */}
+      <QuickLinksSection />
 
       {/* No session yet */}
       {!session && (
@@ -184,13 +356,14 @@ export const AdminFuroreTab: React.FC = () => {
                 <Label className="font-medium text-sm flex items-center gap-2">
                   <Volume2 className="w-4 h-4" /> Suono prenotazione
                 </Label>
+                <p className="text-[11px] text-muted-foreground mb-2">Suoni sintetici professionali stile quiz TV</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {FURORE_SOUNDS.map(s => (
+                  {ALL_SOUNDS.map(s => (
                     <button
                       key={s.key}
                       onClick={() => {
                         setSoundKey(session.id, s.key);
-                        playSound(s.key);
+                        playSoundByKey(s.key);
                         toast.success(`Suono: ${s.label}`);
                       }}
                       className={cn(
@@ -201,7 +374,18 @@ export const AdminFuroreTab: React.FC = () => {
                       )}
                     >
                       <span className="text-lg">{s.emoji}</span>
-                      <span>{s.label}</span>
+                      <span className="flex-1">{s.label}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          playSoundByKey(s.key);
+                        }}
+                      >
+                        <Play className="w-3 h-3" />
+                      </Button>
                     </button>
                   ))}
                 </div>

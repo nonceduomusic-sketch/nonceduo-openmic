@@ -25,25 +25,29 @@ import {
   type QuizQuestion, type QuizQuestionSet,
 } from '@/hooks/useGames';
 
+import { AdminFuroreTab } from '@/components/admin/AdminFuroreTab';
+
 export const AdminGamesTab: React.FC = () => {
   return (
     <div className="space-y-4 sm:space-y-6">
       <div className="flex items-center gap-3">
         <Gamepad2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary shrink-0" />
         <div className="min-w-0">
-          <h2 className="text-lg sm:text-xl font-bold">Giochi Interattivi</h2>
-          <p className="text-xs sm:text-sm text-muted-foreground">Gestisci giochi, classifiche e domande quiz</p>
+          <h2 className="text-lg sm:text-xl font-bold">Giochi & Non C'è Furore</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">Pulsantiera live, quiz, classifiche e domande</p>
         </div>
       </div>
 
-      <Tabs defaultValue="settings">
-        <TabsList className="grid grid-cols-4 w-full h-auto p-1">
+      <Tabs defaultValue="furore">
+        <TabsList className="grid grid-cols-5 w-full h-auto p-1">
+          <TabsTrigger value="furore" className="text-[11px] sm:text-sm py-2 px-1 sm:px-3 gap-1">⚡<span className="hidden sm:inline">Pulsantiera</span><span className="sm:hidden">Puls.</span></TabsTrigger>
           <TabsTrigger value="settings" className="text-[11px] sm:text-sm py-2 px-1 sm:px-3 gap-1"><Settings className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /><span className="hidden xs:inline sm:inline">Impostazioni</span><span className="xs:hidden sm:hidden">Imp.</span></TabsTrigger>
           <TabsTrigger value="scores" className="text-[11px] sm:text-sm py-2 px-1 sm:px-3 gap-1"><Trophy className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" /><span className="hidden sm:inline">Classifiche</span><span className="sm:hidden">Class.</span></TabsTrigger>
           <TabsTrigger value="quiz-sets" className="text-[11px] sm:text-sm py-2 px-1 sm:px-3 gap-1"><List className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />Elenchi</TabsTrigger>
           <TabsTrigger value="quiz-questions" className="text-[11px] sm:text-sm py-2 px-1 sm:px-3 gap-1"><HelpCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />Domande</TabsTrigger>
         </TabsList>
 
+        <TabsContent value="furore"><AdminFuroreTab /></TabsContent>
         <TabsContent value="settings"><GameSettingsPanel /></TabsContent>
         <TabsContent value="scores"><ScoresPanel /></TabsContent>
         <TabsContent value="quiz-sets"><QuizSetsPanel /></TabsContent>
