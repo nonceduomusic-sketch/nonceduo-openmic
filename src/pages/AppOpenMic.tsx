@@ -7,6 +7,7 @@ import { FreeModeOpenMic } from "@/components/FreeModeOpenMic";
 import { ConsultableOpenMic } from "@/components/ConsultableOpenMic";
 import { useLiveEvent, CatalogPreviewSettings } from "@/hooks/useLiveEvent";
 import { usePinSession } from "@/hooks/usePinSession";
+import { useFormatActiveCheck } from "@/hooks/useGlobalFormatSettings";
 
 /**
  * AppOpenMic - Entry point per Open Mic
@@ -29,6 +30,7 @@ import { usePinSession } from "@/hooks/usePinSession";
  * Una volta validato il PIN, l'utente ha accesso a TUTTI i format dell'evento.
  */
 const AppOpenMic: React.FC = () => {
+  const { isActive: isAppVisible, loading: visibilityLoading } = useFormatActiveCheck('openmic', 'app');
   const { eventState, liveEvent, upcomingEvents, isOpenmicVisible, isFreeMode, freeMode } = useLiveEvent();
   const { 
     hasValidSession, 
@@ -57,12 +59,17 @@ const AppOpenMic: React.FC = () => {
   }, []);
 
   // Loading state
-  if (eventState.type === 'loading' || sessionLoading) {
+  if (eventState.type === 'loading' || sessionLoading || visibilityLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
+  }
+
+  // App visibility toggle is OFF → show info page
+  if (!isAppVisible) {
+    return <OpenMicInfo />;
   }
 
   // CASE 1: Evento LIVE esiste
