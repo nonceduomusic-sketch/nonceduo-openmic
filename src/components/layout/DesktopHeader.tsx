@@ -19,8 +19,17 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   const { isActive: isFuroreSite } = useFormatActiveCheck('furore', 'site');
   const { isActive: isGiochiMenu } = useFormatActiveCheck('giochi', 'menu');
   const { isActive: isGiochiSite } = useFormatActiveCheck('giochi', 'site');
+  const { isActive: isCommunityMenu } = useFormatActiveCheck('community', 'menu');
+  const { isActive: isCommunitySite } = useFormatActiveCheck('community', 'site');
+  const { isActive: isOpenmicMenu } = useFormatActiveCheck('openmic', 'menu');
+  const { isActive: isOpenmicSite } = useFormatActiveCheck('openmic', 'site');
+  const { isActive: isDedicheMenu } = useFormatActiveCheck('dediche', 'menu');
+  const { isActive: isDedicheSite } = useFormatActiveCheck('dediche', 'site');
   const isFuroreActive = isFuroreSite && isFuroreMenu;
   const isGiochiActive = isGiochiSite && isGiochiMenu;
+  const isCommunityActive = isCommunitySite && isCommunityMenu;
+  const isOpenmicActive = isOpenmicSite && isOpenmicMenu;
+  const isDedicheActive = isDedicheSite && isDedicheMenu;
   const location = useLocation();
 
   const isActive = (path: string, matchPaths?: string[]) => {
@@ -57,13 +66,15 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
     <div className="flex items-center gap-1">
       <NavButton to="/" icon={<Home className="w-4 h-4" />} label="Home" />
       <NavButton to="/partyband" icon={<PartyPopper className="w-4 h-4" />} label="Party Band" />
-      <NavButton 
-        to="/openmic" 
-        matchPaths={['/openmic']} 
-        icon={<Mic2 className="w-4 h-4" />} 
-        label="Open Mic"
-        activeClass="neon-button-cyan"
-      />
+      {isOpenmicActive && (
+        <NavButton 
+          to="/openmic" 
+          matchPaths={['/openmic']} 
+          icon={<Mic2 className="w-4 h-4" />} 
+          label="Open Mic"
+          activeClass="neon-button-cyan"
+        />
+      )}
       {isFuroreActive && (
         <NavButton 
           to="/furore" 
@@ -73,12 +84,14 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           activeClass="bg-destructive text-destructive-foreground hover:bg-destructive/90"
         />
       )}
-      <NavButton 
-        to="/messaggi" 
-        matchPaths={['/messaggi']} 
-        icon={<MessageCircle className="w-4 h-4" />} 
-        label="Dediche"
-      />
+      {isDedicheActive && (
+        <NavButton 
+          to="/messaggi" 
+          matchPaths={['/messaggi']} 
+          icon={<MessageCircle className="w-4 h-4" />} 
+          label="Dediche"
+        />
+      )}
       {isGiochiActive && (
         <NavButton 
           to="/giochi" 
@@ -87,13 +100,15 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           label="Giochi"
         />
       )}
-      <NavButton 
-        to="/social" 
-        matchPaths={['/social', '/social/auth', '/social/dashboard']} 
-        icon={<Users className="w-4 h-4" />} 
-        label="Community"
-        activeClass="bg-accent text-accent-foreground hover:bg-accent/90"
-      />
+      {isCommunityActive && (
+        <NavButton 
+          to="/social" 
+          matchPaths={['/social', '/social/auth', '/social/dashboard']} 
+          icon={<Users className="w-4 h-4" />} 
+          label="Community"
+          activeClass="bg-accent text-accent-foreground hover:bg-accent/90"
+        />
+      )}
     </div>
   );
 
@@ -108,12 +123,29 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
           activeClass="bg-destructive text-destructive-foreground hover:bg-destructive/90"
         />
       )}
+      {isDedicheActive && (
+        <NavButton 
+          to="/messaggi" 
+          matchPaths={['/messaggi']} 
+          icon={<MessageCircle className="w-4 h-4" />} 
+          label="Dediche"
+        />
+      )}
       {isGiochiActive && (
         <NavButton 
           to="/giochi" 
           matchPaths={['/giochi']} 
           icon={<Gamepad2 className="w-4 h-4" />} 
           label="Giochi"
+        />
+      )}
+      {isCommunityActive && (
+        <NavButton 
+          to="/social" 
+          matchPaths={['/social', '/social/auth', '/social/dashboard']} 
+          icon={<Users className="w-4 h-4" />} 
+          label="Community"
+          activeClass="bg-accent text-accent-foreground hover:bg-accent/90"
         />
       )}
     </>
@@ -130,54 +162,38 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
         activeClass="neon-button-cyan"
       />
       {dynamicFormatButtons()}
-      <NavButton 
-        to="/messaggi" 
-        matchPaths={['/messaggi']} 
-        icon={<MessageCircle className="w-4 h-4" />} 
-        label="Dediche"
-      />
     </div>
   );
 
   const renderCommunityNav = () => (
     <div className="flex items-center gap-1">
       <NavButton to="/" icon={<Home className="w-4 h-4" />} label="Sito" />
-      <NavButton 
-        to="/openmic" 
-        matchPaths={['/openmic']} 
-        icon={<Mic2 className="w-4 h-4" />} 
-        label="Open Mic"
-        activeClass="neon-button-cyan"
-      />
+      {isOpenmicActive && (
+        <NavButton 
+          to="/openmic" 
+          matchPaths={['/openmic']} 
+          icon={<Mic2 className="w-4 h-4" />} 
+          label="Open Mic"
+          activeClass="neon-button-cyan"
+        />
+      )}
       {dynamicFormatButtons()}
-      <NavButton 
-        to="/social/dashboard" 
-        matchPaths={['/social/dashboard']} 
-        icon={<Users className="w-4 h-4" />} 
-        label="Community"
-        activeClass="bg-accent text-accent-foreground hover:bg-accent/90"
-      />
     </div>
   );
 
   const renderAdminNav = () => (
     <div className="flex items-center gap-1">
       <NavButton to="/" icon={<Home className="w-4 h-4" />} label="Sito" />
-      <NavButton 
-        to="/openmic" 
-        matchPaths={['/openmic']} 
-        icon={<Mic2 className="w-4 h-4" />} 
-        label="Open Mic"
-        activeClass="neon-button-cyan"
-      />
+      {isOpenmicActive && (
+        <NavButton 
+          to="/openmic" 
+          matchPaths={['/openmic']} 
+          icon={<Mic2 className="w-4 h-4" />} 
+          label="Open Mic"
+          activeClass="neon-button-cyan"
+        />
+      )}
       {dynamicFormatButtons()}
-      <NavButton 
-        to="/social/dashboard" 
-        matchPaths={['/social/dashboard']} 
-        icon={<Users className="w-4 h-4" />} 
-        label="Community"
-        activeClass="bg-accent text-accent-foreground hover:bg-accent/90"
-      />
     </div>
   );
 
