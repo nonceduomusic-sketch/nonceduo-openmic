@@ -1190,7 +1190,67 @@ export default function Trasmetti() {
     );
   }
 
-  // WAITING MODE - Promo screen with QR (shown when not broadcasting)
+  // WAITING MODE - Determine standby screen based on tv_standby_mode
+  const standbyMode = (session as any)?.tv_standby_mode || 'openmic';
+
+  // LOGO ONLY MODE - Big centered logo on dark background
+  if (standbyMode === 'logo') {
+    return (
+      <>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white relative overflow-hidden select-none flex items-center justify-center">
+        {/* Animated background */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/3 left-1/3 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[250px] animate-pulse" />
+          <div className="absolute bottom-1/3 right-1/3 w-[500px] h-[500px] bg-purple-500/8 rounded-full blur-[200px] animate-pulse" style={{ animationDelay: '1.5s' }} />
+        </div>
+        <div className="relative z-10 flex flex-col items-center gap-6">
+          <img 
+            src={tvSettings.logoUrl || brandLogoText} 
+            alt="Logo" 
+            className="h-32 md:h-48 lg:h-64 w-auto object-contain drop-shadow-2xl"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = brandLogoText;
+            }}
+          />
+          {tvSettings.showFooter && (
+            <p className="text-white/20 text-sm">{tvSettings.footer}</p>
+          )}
+        </div>
+        {/* Fullscreen + Connection Settings */}
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
+          <ConnectionSettings mode={mode} setMode={setMode} localIP={localIP} setLocalIP={setLocalIP} isLocalConnected={localConnected} localLatency={localLatency} />
+          <Button variant="outline" size="lg" onClick={toggleFullscreen} className="border-white/20 text-white hover:bg-white/10 backdrop-blur-sm">
+            <Maximize className="w-5 h-5 mr-2" />
+            {isFullscreen ? 'Esci' : 'Fullscreen'}
+          </Button>
+        </div>
+      </div>
+      <TVGameOverlay />
+      </>
+    );
+  }
+
+  // FURORE MODE - Show the Furore overlay directly
+  if (standbyMode === 'furore') {
+    return (
+      <>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white relative overflow-hidden select-none">
+        {/* Fullscreen + Connection Settings */}
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
+          <ConnectionSettings mode={mode} setMode={setMode} localIP={localIP} setLocalIP={setLocalIP} isLocalConnected={localConnected} localLatency={localLatency} />
+          <Button variant="outline" size="lg" onClick={toggleFullscreen} className="border-white/20 text-white hover:bg-white/10 backdrop-blur-sm">
+            <Maximize className="w-5 h-5 mr-2" />
+            {isFullscreen ? 'Esci' : 'Fullscreen'}
+          </Button>
+        </div>
+      </div>
+      <TVGameOverlay />
+      <TVFuroreOverlay />
+      </>
+    );
+  }
+
+  // OPEN MIC MODE (default) - Promo screen with QR
   return (
     <>
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white relative overflow-hidden select-none">
@@ -1311,7 +1371,6 @@ export default function Trasmetti() {
       </div>
     </div>
     <TVGameOverlay />
-    <TVFuroreOverlay />
     </>
   );
 }

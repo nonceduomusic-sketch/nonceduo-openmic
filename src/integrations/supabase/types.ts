@@ -423,6 +423,7 @@ export type Database = {
           tv_show_status: boolean | null
           tv_show_subtitle: boolean | null
           tv_show_title: boolean | null
+          tv_standby_mode: string
           tv_subtitle: string | null
           tv_title: string | null
           tv_view_mode: string | null
@@ -482,6 +483,7 @@ export type Database = {
           tv_show_status?: boolean | null
           tv_show_subtitle?: boolean | null
           tv_show_title?: boolean | null
+          tv_standby_mode?: string
           tv_subtitle?: string | null
           tv_title?: string | null
           tv_view_mode?: string | null
@@ -541,6 +543,7 @@ export type Database = {
           tv_show_status?: boolean | null
           tv_show_subtitle?: boolean | null
           tv_show_title?: boolean | null
+          tv_standby_mode?: string
           tv_subtitle?: string | null
           tv_title?: string | null
           tv_view_mode?: string | null

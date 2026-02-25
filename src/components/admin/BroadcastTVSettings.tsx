@@ -633,6 +633,45 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                   </div>
                 </div>
 
+                {/* Standby Mode */}
+                <div className="space-y-4">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <Tv className="w-4 h-4" />
+                    Schermata di Attesa (Standby)
+                  </h4>
+                  <p className="text-xs text-muted-foreground">
+                    Scegli cosa mostrare sulla TV quando non stai trasmettendo testi
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {[
+                      { value: 'openmic', label: '🎤 Open Mic', desc: 'QR code e info evento' },
+                      { value: 'furore', label: '🔥 Non C\'è Furore', desc: 'Pulsantiera e classifica' },
+                      { value: 'logo', label: '🎵 Solo Logo', desc: 'Logo grande su sfondo scuro' },
+                    ].map(opt => {
+                      const currentMode = (session as any)?.tv_standby_mode || 'openmic';
+                      return (
+                        <button
+                          key={opt.value}
+                          disabled={!canManage}
+                          onClick={() => {
+                            syncUpdate({ tv_standby_mode: opt.value });
+                            toast.success(`Standby: ${opt.label}`);
+                          }}
+                          className={cn(
+                            "p-3 rounded-lg border text-left text-sm transition-all",
+                            currentMode === opt.value
+                              ? "border-primary bg-primary/10 font-medium"
+                              : "border-border hover:border-primary/50"
+                          )}
+                        >
+                          <div className="font-medium">{opt.label}</div>
+                          <div className="text-[11px] text-muted-foreground mt-0.5">{opt.desc}</div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
                 {/* QR Code */}
                 <div className="space-y-4">
                   <h4 className="font-medium flex items-center gap-2">
