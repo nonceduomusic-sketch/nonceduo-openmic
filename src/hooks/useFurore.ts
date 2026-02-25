@@ -198,6 +198,25 @@ export const useFurorePlayerActions = () => {
     return data as unknown as FurorePlayer;
   };
 
+  const exitSession = async (playerId: string, sessionId: string) => {
+    const fingerprint = localStorage.getItem('furore_device_fp');
+    if (!fingerprint) return false;
+
+    const { data, error } = await supabase.rpc('furore_player_exit', {
+      p_player_id: playerId,
+      p_session_id: sessionId,
+      p_device_fingerprint: fingerprint,
+    });
+
+    if (error) {
+      console.error('Error exiting session:', error);
+      return false;
+    }
+
+    localStorage.removeItem('furore_device_fp');
+    return data === true;
+  };
+
   const pressButton = async (sessionId: string, playerId: string): Promise<number | null> => {
     // Get current max position
     const { data: existing } = await supabase
@@ -229,7 +248,7 @@ export const useFurorePlayerActions = () => {
     return (data as any).position;
   };
 
-  return { joinSession, pressButton };
+  return { joinSession, exitSession, pressButton };
 };
 
 // ─── Helpers ───
