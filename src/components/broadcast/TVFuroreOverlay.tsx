@@ -133,6 +133,7 @@ export const TVFuroreOverlay: React.FC = () => {
   }
 
   const maxSlots = session.max_players;
+  const showLeaderboard = (session as any).show_leaderboard === true;
 
   // Build list of booked players only (no empty slots)
   const bookedSlots = bookings
@@ -142,6 +143,9 @@ export const TVFuroreOverlay: React.FC = () => {
       player: players.find(p => p.id === booking.player_id),
     }))
     .filter(s => s.player);
+
+  // Leaderboard sorted by score
+  const leaderboard = [...players].sort((a, b) => (b.score || 0) - (a.score || 0));
 
   // Determine grid cols based on booked count
   const count = bookedSlots.length;
@@ -162,83 +166,152 @@ export const TVFuroreOverlay: React.FC = () => {
       <div className="relative z-10 text-center pt-8 pb-4">
         <h1 className="text-4xl md:text-6xl font-black tracking-tight">
           <span className="bg-gradient-to-r from-red-500 via-yellow-400 to-red-500 bg-clip-text text-transparent">
-            🔥 Non C'è Furore
+            {showLeaderboard ? '🏆 Classifica' : '🔥 Non C\'è Furore'}
           </span>
         </h1>
 
         {/* Status Banner */}
+        {!showLeaderboard && (
+          <AnimatePresence mode="wait">
+            {isOpen ? (
+              <motion.div
+                key="open"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="mt-4"
+              >
+                <div className="inline-block px-8 py-3 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xl md:text-2xl font-black animate-pulse shadow-lg shadow-green-500/30">
+                  ⚡ PRENOTAZIONI APERTE — PREMI ORA!
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="closed"
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="mt-4"
+              >
+                <div className="inline-block px-6 py-2 rounded-full bg-white/10 text-white/60 text-lg font-medium">
+                  In attesa...
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
+      </div>
+
+      {/* Main Content */}
+      <div className="relative z-10 flex-1 flex items-center justify-center px-8 pb-8">
         <AnimatePresence mode="wait">
-          {isOpen ? (
+          {showLeaderboard ? (
+            /* ─── LEADERBOARD VIEW ─── */
             <motion.div
-              key="open"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="mt-4"
+              key="leaderboard"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-3xl space-y-3"
             >
-              <div className="inline-block px-8 py-3 rounded-full bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xl md:text-2xl font-black animate-pulse shadow-lg shadow-green-500/30">
-                ⚡ PRENOTAZIONI APERTE — PREMI ORA!
-              </div>
+              {leaderboard.length === 0 ? (
+                <p className="text-2xl text-white/30 text-center">Nessun giocatore</p>
+              ) : (
+                leaderboard.map((player, index) => {
+                  const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}°`;
+                  const isTop3 = index < 3;
+                  return (
+                    <motion.div
+                      key={player.id}
+                      initial={{ opacity: 0, x: -30 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.08 }}
+                      className={cn(
+                        "flex items-center gap-4 px-6 py-4 rounded-2xl border-2",
+                        index === 0 && "bg-yellow-500/15 border-yellow-500/40 text-xl",
+                        index === 1 && "bg-gray-400/10 border-gray-400/30 text-lg",
+                        index === 2 && "bg-orange-500/10 border-orange-500/30 text-lg",
+                        index > 2 && "bg-white/5 border-white/10"
+                      )}
+                    >
+                      <span className={cn("font-black w-12 text-center", isTop3 ? "text-3xl" : "text-xl text-white/50")}>
+                        {medal}
+                      </span>
+                      <div
+                        className={cn("rounded-full flex items-center justify-center shrink-0", isTop3 ? "w-14 h-14 text-3xl" : "w-10 h-10 text-xl")}
+                        style={{ backgroundColor: `${player.color}40`, borderColor: player.color, borderWidth: 2 }}
+                      >
+                        {player.symbol}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("font-bold truncate", isTop3 ? "text-xl" : "text-base")}>
+                          {player.nickname}
+                        </p>
+                      </div>
+                      <div className={cn(
+                        "font-black tabular-nums",
+                        isTop3 ? "text-3xl" : "text-xl text-white/70"
+                      )}>
+                        {player.score || 0}
+                        <span className="text-sm font-medium text-white/40 ml-1">pt</span>
+                      </div>
+                    </motion.div>
+                  );
+                })
+              )}
             </motion.div>
           ) : (
+            /* ─── BOOKINGS VIEW ─── */
             <motion.div
-              key="closed"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              className="mt-4"
+              key="bookings"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full"
             >
-              <div className="inline-block px-6 py-2 rounded-full bg-white/10 text-white/60 text-lg font-medium">
-                In attesa...
-              </div>
+              {bookedSlots.length === 0 ? (
+                <div className="text-center">
+                  <p className="text-2xl md:text-3xl text-white/30 font-medium">
+                    {isOpen ? 'In attesa delle prenotazioni...' : 'Nessuna prenotazione'}
+                  </p>
+                </div>
+              ) : (
+                <div className={cn("grid gap-4 w-full max-w-5xl mx-auto", gridCols)}>
+                  {bookedSlots.map(({ booking, player }) => (
+                    <motion.div
+                      key={booking.id}
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: 'spring', damping: 12, stiffness: 200 }}
+                      className="relative aspect-square rounded-2xl border-2 flex flex-col items-center justify-center gap-2 border-white/30 shadow-lg"
+                      style={{
+                        backgroundColor: `${player!.color}20`,
+                        borderColor: `${player!.color}60`,
+                        boxShadow: `0 0 30px ${player!.color}30`,
+                      }}
+                    >
+                      <span className="absolute top-2 left-3 text-sm font-bold text-white/50">
+                        {booking.position}°
+                      </span>
+                      <span className="text-4xl md:text-5xl">{player!.symbol}</span>
+                      <span className="text-sm md:text-base font-bold text-white truncate max-w-full px-2">
+                        {player!.nickname}
+                      </span>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
       </div>
 
-      {/* Booked Players Grid — only shows who booked, in order */}
-      <div className="relative z-10 flex-1 flex items-center justify-center px-8 pb-8">
-        {bookedSlots.length === 0 ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-center"
-          >
-            <p className="text-2xl md:text-3xl text-white/30 font-medium">
-              {isOpen ? 'In attesa delle prenotazioni...' : 'Nessuna prenotazione'}
-            </p>
-          </motion.div>
-        ) : (
-          <div className={cn("grid gap-4 w-full max-w-5xl", gridCols)}>
-            {bookedSlots.map(({ booking, player }) => (
-              <motion.div
-                key={booking.id}
-                initial={{ scale: 0.5, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', damping: 12, stiffness: 200 }}
-                className="relative aspect-square rounded-2xl border-2 flex flex-col items-center justify-center gap-2 border-white/30 shadow-lg"
-                style={{
-                  backgroundColor: `${player!.color}20`,
-                  borderColor: `${player!.color}60`,
-                  boxShadow: `0 0 30px ${player!.color}30`,
-                }}
-              >
-                <span className="absolute top-2 left-3 text-sm font-bold text-white/50">
-                  {booking.position}°
-                </span>
-                <span className="text-4xl md:text-5xl">{player!.symbol}</span>
-                <span className="text-sm md:text-base font-bold text-white truncate max-w-full px-2">
-                  {player!.nickname}
-                </span>
-              </motion.div>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* Footer */}
       <div className="relative z-10 text-center pb-4 text-white/20 text-sm">
-        {bookings.length}/{maxSlots} prenotati — Powered by Non C'è Duo
+        {showLeaderboard
+          ? `Classifica — ${players.length} giocatori — Powered by Non C'è Duo`
+          : `${bookings.length}/${maxSlots} prenotati — Powered by Non C'è Duo`
+        }
       </div>
     </div>
   );

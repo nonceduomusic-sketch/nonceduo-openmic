@@ -9,6 +9,7 @@ export interface FuroreSession {
   show_order_to_players: boolean;
   show_player_count: boolean;
   show_bookings_to_players: boolean;
+  show_leaderboard: boolean;
   sound_key: string;
   created_at: string;
   updated_at: string;
@@ -21,6 +22,7 @@ export interface FurorePlayer {
   symbol: string;
   photo_url: string | null;
   color: string;
+  score: number;
   device_fingerprint: string | null;
   created_at: string;
 }
@@ -162,7 +164,34 @@ export const useFuroreAdmin = () => {
   };
 
   const resetBookingsOnly = async (id: string) => {
-    // Delete only bookings, keep players, and auto-open for next round
+    // Award points based on current bookings before clearing
+    const { data: currentBookings } = await supabase
+      .from('furore_bookings')
+      .select('player_id, position')
+      .eq('session_id', id)
+      .order('position', { ascending: true });
+
+    if (currentBookings && currentBookings.length > 0) {
+      const totalPlayers = currentBookings.length;
+      // Points: 1st gets totalPlayers pts, 2nd gets totalPlayers-1, etc.
+      for (const booking of currentBookings) {
+        const points = Math.max(1, totalPlayers - booking.position + 1);
+        // Increment score
+        const { data: player } = await supabase
+          .from('furore_players')
+          .select('score')
+          .eq('id', booking.player_id)
+          .single();
+        if (player) {
+          await supabase
+            .from('furore_players')
+            .update({ score: (player.score || 0) + points })
+            .eq('id', booking.player_id);
+        }
+      }
+    }
+
+    // Delete bookings, keep players with their scores, auto-open
     await supabase.from('furore_bookings').delete().eq('session_id', id);
     return updateSession(id, { status: 'open' } as any);
   };
@@ -183,7 +212,16 @@ export const useFuroreAdmin = () => {
     return !error;
   };
 
-  return { createSession, updateSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setSoundKey, deletePlayer, updatePlayer };
+  const setShowLeaderboard = async (id: string, show: boolean) => updateSession(id, { show_leaderboard: show } as any);
+
+  const resetScores = async (sessionId: string) => {
+    await supabase
+      .from('furore_players')
+      .update({ score: 0 })
+      .eq('session_id', sessionId);
+  };
+
+  return { createSession, updateSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, updatePlayer, resetScores };
 };
 
 // ─── Player Actions ───
