@@ -3,9 +3,11 @@ import { useLocation } from 'react-router-dom';
 import { AssistantWidget } from './AssistantWidget';
 
 // Map routes to sections
-const getSectionFromPath = (pathname: string): 'site' | 'app' | 'openmic' | 'dediche' | 'community' | 'giochi' => {
+const getSectionFromPath = (pathname: string): 'site' | 'app' | 'openmic' | 'dediche' | 'community' | 'giochi' | 'furore' => {
   // App launcher
   if (pathname === '/app') return 'app';
+  // Furore
+  if (pathname.startsWith('/app/furore')) return 'furore';
   // Giochi
   if (pathname.startsWith('/app/giochi')) return 'giochi';
   // Open Mic: app + legacy live
