@@ -22,7 +22,7 @@ export const SiteHeader: React.FC<{ className?: string }> = ({ className }) => {
   const menuFormats = [
     isOpenmicMenu && { label: "Open Mic", to: "/openmic", icon: Mic2 },
     isDedicheMenu && { label: "Dediche", to: "/messaggi", icon: MessageCircle },
-    isGiochiMenu && { label: "Non C'è Furore", to: "/app/giochi", icon: Gamepad2 },
+    isGiochiMenu && { label: "Non C'è Furore", to: "/app/furore", icon: Gamepad2 },
     isCommunityMenu && { label: "Community", to: "/social", icon: Users },
   ].filter(Boolean) as { label: string; to: string; icon: React.ElementType }[];
 
