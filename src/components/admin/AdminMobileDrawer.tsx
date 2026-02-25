@@ -23,6 +23,7 @@ import {
   SlidersHorizontal,
   Tv,
   Users,
+  Zap,
 } from "lucide-react";
 import {
   Sheet,
@@ -65,6 +66,7 @@ const MENU_ITEMS: MenuItem[] = [
   { key: "community", label: "Community", icon: Newspaper, group: "Operativo", gatedBy: "community" },
   { key: "assistant", label: "Assistente", icon: Bot, group: "Operativo", ownerOnly: true },
   { key: "games" as AdminMainTab, label: "Giochi", icon: Gamepad2, group: "Operativo" },
+  { key: "furore" as AdminMainTab, label: "Non C'è Furore", icon: Zap, group: "Operativo" },
 
   // === GRUPPO GESTIONE ===
   { key: "settings", label: "Impostazioni", icon: Settings, group: "Gestione" },
