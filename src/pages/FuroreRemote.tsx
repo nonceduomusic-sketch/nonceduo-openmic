@@ -126,6 +126,7 @@ export default function FuroreRemote() {
   const handleResetBookings = async () => {
     if (!session) return;
     await resetBookingsOnly(session.id);
+    await refetchPlayers();
     toast.success('Punti assegnati, prenotazioni riaperte!');
   };
   const handleReset = async () => {
