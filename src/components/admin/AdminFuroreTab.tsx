@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Zap, Play, Pause, RotateCcw, Users, Volume2, Eye, EyeOff, Crown, ExternalLink, QrCode, Tv, Gamepad2, Pencil, Trash2, Check, X, Trophy, BarChart3 } from 'lucide-react';
+import { Zap, Play, Pause, RotateCcw, Users, Volume2, Eye, EyeOff, Crown, ExternalLink, QrCode, Tv, Gamepad2, Pencil, Trash2, Check, X, Trophy, BarChart3, UserX } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   useFuroreSession,
@@ -218,7 +218,7 @@ export const AdminFuroreTab: React.FC = () => {
   const { session, loading } = useFuroreSession();
   const { players, refetch: refetchPlayers } = useFurorePlayers(session?.id);
   const { bookings } = useFuroreBookings(session?.id);
-  const { createSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, updatePlayer, resetScores, setScoringRules, setPlayerScore } = useFuroreAdmin();
+  const { createSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, kickAllPlayers, updatePlayer, resetScores, setScoringRules, setPlayerScore } = useFuroreAdmin();
 
   const handleCreateSession = async () => {
     const s = await createSession();
@@ -330,7 +330,7 @@ export const AdminFuroreTab: React.FC = () => {
                   <span className="text-sm">Reset & Apri</span>
                 </Button>
               </div>
-              <div className="grid grid-cols-1 gap-2">
+              <div className="grid grid-cols-2 gap-2">
                 <Button
                   onClick={handleReset}
                   variant="destructive"
@@ -338,7 +338,22 @@ export const AdminFuroreTab: React.FC = () => {
                   size="sm"
                 >
                   <RotateCcw className="w-4 h-4" />
-                  <span className="text-sm">Reset Completo (cancella tutto)</span>
+                  <span className="text-sm">Reset Completo</span>
+                </Button>
+                <Button
+                  onClick={async () => {
+                    if (!session) return;
+                    await kickAllPlayers(session.id);
+                    await refetchPlayers();
+                    toast.success('Tutti i giocatori sono stati espulsi');
+                  }}
+                  variant="outline"
+                  className="gap-2 h-10 border-destructive/50 text-destructive hover:bg-destructive/10"
+                  size="sm"
+                  disabled={players.length === 0}
+                >
+                  <UserX className="w-4 h-4" />
+                  <span className="text-sm">Espelli Tutti</span>
                 </Button>
               </div>
               <Separator />
@@ -361,7 +376,8 @@ export const AdminFuroreTab: React.FC = () => {
                 <strong>Standby</strong>: prenotazioni bloccate, in attesa. 
                 <strong> Apri</strong>: i giocatori possono prenotarsi. 
                 <strong> Reset & Apri</strong>: assegna punti e riapre. 
-                <strong> Reset Completo</strong>: cancella tutto.
+                <strong> Reset Completo</strong>: cancella tutto e butta fuori tutti.
+                <strong> Espelli Tutti</strong>: butta fuori tutti senza resettare punteggi.
               </p>
             </CardContent>
           </Card>
