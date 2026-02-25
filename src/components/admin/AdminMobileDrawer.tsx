@@ -58,14 +58,14 @@ const MENU_ITEMS: MenuItem[] = [
   { key: "notifiche-live", label: "Notifiche", icon: Send, group: "Live" },
   { key: "grafiche", label: "Grafiche", icon: Image, group: "Live" },
 
-  // === GRUPPO OPERATIVO ===
+  // === GRUPPO OPERATIVO (ordine: Open Mic, Canzoni, Furore, Dediche, Giochi, Community, Assistente) ===
   { key: "openmic", label: "Open Mic", icon: Music, group: "Operativo", gatedBy: "openmic" },
   { key: "songs", label: "Canzoni", icon: ListMusic, group: "Operativo", gatedBy: "openmic" },
+  { key: "furore" as AdminMainTab, label: "Furore", icon: Zap, group: "Operativo" },
   { key: "dediche", label: "Dediche", icon: MessageSquare, group: "Operativo", gatedBy: "dediche" },
+  { key: "games" as AdminMainTab, label: "Giochi", icon: Gamepad2, group: "Operativo" },
   { key: "community", label: "Community", icon: Newspaper, group: "Operativo", gatedBy: "community" },
   { key: "assistant", label: "Assistente", icon: Bot, group: "Operativo", ownerOnly: true },
-  { key: "games" as AdminMainTab, label: "Giochi", icon: Gamepad2, group: "Operativo" },
-  { key: "furore" as AdminMainTab, label: "Furore", icon: Zap, group: "Operativo" },
 
   // === GRUPPO GESTIONE ===
   { key: "settings", label: "Impostazioni", icon: Settings, group: "Gestione" },

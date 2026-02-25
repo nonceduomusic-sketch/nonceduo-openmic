@@ -83,13 +83,13 @@ const ITEMS: Item[] = [
   { key: "notifiche-live", label: "Notifiche Live", icon: Send, group: "Live", description: "Email e Telegram" },
   { key: "grafiche", label: "Grafiche", icon: Image, group: "Live", description: "Locandine e storie" },
   
-  // === GRUPPO OPERATIVO (ordine fisso) ===
+  // === GRUPPO OPERATIVO (ordine: Open Mic, Canzoni, Furore, Dediche, Giochi, Community, Assistente) ===
   { key: "openmic", label: "Open Mic", icon: Music, group: "Operativo", description: "Prenotazioni canzoni" },
   { key: "songs", label: "Canzoni", icon: ListMusic, group: "Operativo", description: "Coda e catalogo brani" },
-  { key: "dediche", label: "Dediche", icon: MessageSquare, group: "Operativo", description: "Messaggi e chat" },
-  { key: "community", label: "Community", icon: Newspaper, group: "Operativo", description: "Gruppi e bacheca" },
-  { key: "games", label: "Giochi", icon: Gamepad2, group: "Operativo", description: "Quiz e passatempi" },
   { key: "furore", label: "Non C'è Furore", icon: Zap, group: "Operativo", description: "Pulsantiera live buzzer" },
+  { key: "dediche", label: "Dediche", icon: MessageSquare, group: "Operativo", description: "Messaggi e chat" },
+  { key: "games", label: "Giochi", icon: Gamepad2, group: "Operativo", description: "Quiz e passatempi" },
+  { key: "community", label: "Community", icon: Newspaper, group: "Operativo", description: "Gruppi e bacheca" },
   { key: "assistant", label: "Assistente", icon: Bot, group: "Operativo", description: "Chat e lead" },
   
   // === GRUPPO GESTIONE ===
