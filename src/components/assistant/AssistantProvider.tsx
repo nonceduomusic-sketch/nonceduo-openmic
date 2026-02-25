@@ -14,10 +14,10 @@ const getSectionFromPath = (pathname: string): 'site' | 'app' | 'openmic' | 'ded
   if (pathname.includes('/app/openmic') || pathname.includes('/openmic/live')) return 'openmic';
   // Dediche: app + legacy live
   if (pathname.includes('/app/dediche') || pathname.includes('/messaggi/live')) return 'dediche';
-  // Open Mic info (site)
-  if (pathname.startsWith('/openmic')) return 'site';
-  // Dediche info (site)
-  if (pathname.startsWith('/messaggi')) return 'site';
+  // Open Mic pages (info + participation)
+  if (pathname.startsWith('/openmic')) return 'openmic';
+  // Dediche pages (info + participation)
+  if (pathname.startsWith('/messaggi')) return 'dediche';
   // Community
   if (pathname.includes('/social')) return 'community';
   // Admin pages - don't show widget
