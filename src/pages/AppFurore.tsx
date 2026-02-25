@@ -33,6 +33,12 @@ const AppFurore: React.FC = () => {
   const [joining, setJoining] = useState(false);
   const [pressing, setPressing] = useState(false);
   const [myPosition, setMyPosition] = useState<number | null>(null);
+  const hasLoadedPlayersRef = React.useRef(false);
+
+  // Track when players have been loaded at least once with data
+  useEffect(() => {
+    if (players.length > 0) hasLoadedPlayersRef.current = true;
+  }, [players]);
 
   // Reconnect player on page load via device fingerprint
   useEffect(() => {
@@ -69,11 +75,12 @@ const AppFurore: React.FC = () => {
     }
   }, [session?.status, session?.updated_at, refetchBookings]);
 
-  // If admin deletes the player, kick back to landing
+  // If admin deletes the player (or resets all), kick back to landing
   useEffect(() => {
     if (!myPlayer || !session?.id) return;
-    if (players.length > 0 && !players.find(p => p.id === myPlayer.id)) {
-      // Player was removed by admin
+    if (!hasLoadedPlayersRef.current) return; // Don't kick before first load
+    if (!players.find(p => p.id === myPlayer.id)) {
+      // Player was removed by admin (single delete or full reset)
       setMyPlayer(null);
       setMyPosition(null);
       setPhase('landing');
