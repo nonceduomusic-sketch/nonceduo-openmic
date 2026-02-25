@@ -44,15 +44,18 @@ const FormatGrid: React.FC<{ isOpenmicVisible: boolean; isDedicheVisible: boolea
     );
   }
 
-  const isOddOnMobile = formats.length % 2 !== 0;
+  const gridCols = formats.length <= 2 ? 'grid-cols-2' 
+    : formats.length === 3 ? 'grid-cols-3' 
+    : formats.length === 4 ? 'grid-cols-2 sm:grid-cols-4' 
+    : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5';
 
   return (
-    <div className={`grid grid-cols-2 ${formats.length >= 3 ? 'sm:grid-cols-3' : ''} ${formats.length >= 4 ? 'sm:grid-cols-4' : ''} ${formats.length >= 5 ? 'sm:grid-cols-5' : ''} gap-3 max-w-3xl mx-auto px-4`}>
+    <div className={`grid ${gridCols} gap-3 max-w-3xl mx-auto px-4`}>
       {formats.map((f, i) => {
-        const isLastOdd = isOddOnMobile && i === formats.length - 1;
+        const isLastOdd = formats.length % 2 !== 0 && i === formats.length - 1 && formats.length > 3;
         return (
-          <Link key={f.key} to={f.to} className={`group block touch-manipulation ${isLastOdd ? 'col-span-2 sm:col-span-1 max-w-[200px] mx-auto sm:max-w-none' : ''}`}>
-            <Card className={`bg-card/70 backdrop-blur-sm border-${f.colorClass}/40 hover:border-${f.colorClass} hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer`}>
+          <Link key={f.key} to={f.to} className={`group block touch-manipulation ${isLastOdd ? 'col-span-2 sm:col-span-1' : ''}`}>
+            <Card className={`bg-card/70 backdrop-blur-sm border-${f.colorClass}/40 hover:border-${f.colorClass} hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer h-full`}>
               <CardContent className="p-4 text-center relative">
                 <div className={`absolute inset-0 bg-gradient-to-t from-${f.colorClass}/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none`} />
                 <div className={`w-12 h-12 mx-auto mb-2 rounded-xl bg-${f.colorClass}/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-${f.colorClass}/30 transition-all pointer-events-none`}>
