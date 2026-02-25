@@ -11,6 +11,7 @@ import { SEO } from '@/components/SEO';
 import { useToast } from '@/hooks/use-toast';
 import { CommunityPrivateLanding } from '@/components/CommunityPrivateLanding';
 import { useSectionStatus } from '@/hooks/useSectionStatus';
+import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
 import { z } from 'zod';
 import { 
   Mail, 
@@ -36,6 +37,7 @@ const SocialAuth: React.FC = () => {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const { status: communityStatus, loading: communityLoading } = useSectionStatus('community');
+  const { isActive: registrationOpen, loading: regLoading } = useFormatActiveCheck('community_registration', 'site');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState<'login' | 'signup'>('login');
@@ -757,6 +759,20 @@ const SocialAuth: React.FC = () => {
               </TabsContent>
               
               <TabsContent value="signup">
+                {!registrationOpen ? (
+                  <div className="text-center py-8 space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto">
+                      <Lock className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-bold">Registrazioni chiuse</h3>
+                    <p className="text-muted-foreground text-sm max-w-xs mx-auto">
+                      Le registrazioni alla community sono temporaneamente sospese. Se hai già un account, puoi accedere dal tab Login.
+                    </p>
+                    <Button variant="outline" onClick={() => setActiveTab('login')}>
+                      Vai al Login
+                    </Button>
+                  </div>
+                ) : (
                 <form onSubmit={handleSignup} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="signup-name">Come ti chiami?</Label>
@@ -891,6 +907,7 @@ const SocialAuth: React.FC = () => {
                     📧 Riceverai un'email di conferma per attivare il tuo account
                   </p>
                 </form>
+                )}
               </TabsContent>
             </Tabs>
             
