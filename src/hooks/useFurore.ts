@@ -177,43 +177,16 @@ export const useFuroreAdmin = () => {
   };
 
   const resetBookingsOnly = async (id: string) => {
-    // Award points based on current bookings before clearing
-    const { data: currentBookings } = await supabase
-      .from('furore_bookings')
-      .select('player_id, position')
-      .eq('session_id', id)
-      .order('position', { ascending: true });
-
-    if (currentBookings && currentBookings.length > 0) {
-      // Get scoring rules from session
-      const { data: sessionData } = await supabase
-        .from('furore_sessions')
-        .select('scoring_rules')
-        .eq('id', id)
-        .single();
-      const rules: FuroreScoringRules = (sessionData?.scoring_rules as any) || DEFAULT_SCORING_RULES;
-
-      for (const booking of currentBookings) {
-        const posKey = String(booking.position);
-        const points = rules[posKey] ?? 0; // Only award points for configured positions
-        if (points <= 0) continue;
-        const { data: player } = await supabase
-          .from('furore_players')
-          .select('score')
-          .eq('id', booking.player_id)
-          .single();
-        if (player) {
-          await supabase
-            .from('furore_players')
-            .update({ score: (player.score || 0) + points })
-            .eq('id', booking.player_id);
-        }
-      }
+    // Use atomic server-side function to award points and reset
+    const { data, error } = await supabase.rpc('furore_award_and_reset', {
+      p_session_id: id,
+    });
+    if (error) {
+      console.error('Error in furore_award_and_reset:', error);
+      return false;
     }
-
-    // Delete bookings, keep players with their scores, auto-open
-    await supabase.from('furore_bookings').delete().eq('session_id', id);
-    return updateSession(id, { status: 'open' } as any);
+    console.log(`[Furore] Awarded points to ${data} players, bookings reset`);
+    return true;
   };
 
   const setMaxPlayers = async (id: string, max: number) => updateSession(id, { max_players: max } as any);
