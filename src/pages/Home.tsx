@@ -14,11 +14,12 @@ import duoPhoto2 from '@/assets/duo-photo-2.png';
 import duoPhoto3 from '@/assets/duo-photo-3.png';
 import duoPhoto4 from '@/assets/duo-photo-4.png';
 
-const FormatGrid: React.FC<{ isOpenmicVisible: boolean; isDedicheVisible: boolean; isGiochiVisible: boolean; isCommunityVisible: boolean }> = ({ isOpenmicVisible, isDedicheVisible, isGiochiVisible, isCommunityVisible }) => {
+const FormatGrid: React.FC<{ isOpenmicVisible: boolean; isDedicheVisible: boolean; isFuroreVisible: boolean; isGiochiVisible: boolean; isCommunityVisible: boolean }> = ({ isOpenmicVisible, isDedicheVisible, isFuroreVisible, isGiochiVisible, isCommunityVisible }) => {
   const formats = [
     isOpenmicVisible && { key: 'openmic', to: '/openmic', icon: Mic2, label: 'Open Mic', sub: 'Canta con noi', colorClass: 'secondary' },
     isDedicheVisible && { key: 'dediche', to: '/messaggi', icon: MessageCircle, label: 'Dediche', sub: 'Invia messaggi', colorClass: 'primary' },
-    isGiochiVisible && { key: 'giochi', to: '/app/furore', icon: Gamepad2, label: "Non C'è Furore", sub: 'Gioca con noi', colorClass: 'emerald-500' },
+    isFuroreVisible && { key: 'furore', to: '/app/furore', icon: Zap, label: "Non C'è Furore", sub: 'Gioco live', colorClass: 'destructive' },
+    isGiochiVisible && { key: 'giochi', to: '/app/giochi', icon: Gamepad2, label: 'Giochi', sub: 'Passatempo', colorClass: 'emerald-500' },
     isCommunityVisible && { key: 'community', to: '/social', icon: Users, label: 'Community', sub: 'Entra nel club', colorClass: 'accent' },
   ].filter(Boolean) as { key: string; to: string; icon: React.ElementType; label: string; sub: string; colorClass: string }[];
 
@@ -46,7 +47,7 @@ const FormatGrid: React.FC<{ isOpenmicVisible: boolean; isDedicheVisible: boolea
   const isOddOnMobile = formats.length % 2 !== 0;
 
   return (
-    <div className={`grid grid-cols-2 ${formats.length >= 3 ? 'sm:grid-cols-3' : ''} ${formats.length >= 4 ? 'sm:grid-cols-4' : ''} gap-3 max-w-xl mx-auto px-4`}>
+    <div className={`grid grid-cols-2 ${formats.length >= 3 ? 'sm:grid-cols-3' : ''} ${formats.length >= 4 ? 'sm:grid-cols-4' : ''} ${formats.length >= 5 ? 'sm:grid-cols-5' : ''} gap-3 max-w-3xl mx-auto px-4`}>
       {formats.map((f, i) => {
         const isLastOdd = isOddOnMobile && i === formats.length - 1;
         return (
@@ -69,6 +70,7 @@ const FormatGrid: React.FC<{ isOpenmicVisible: boolean; isDedicheVisible: boolea
 };
 
 const Home: React.FC = () => {
+  const { isActive: isFuroreVisible } = useFormatActiveCheck('furore');
   const { isActive: isGiochiVisible } = useFormatActiveCheck('giochi');
   const { isActive: isCommunityVisible } = useFormatActiveCheck('community');
   const { isActive: isOpenmicVisible } = useFormatActiveCheck('openmic');
@@ -144,6 +146,7 @@ const Home: React.FC = () => {
               <FormatGrid 
                 isOpenmicVisible={isOpenmicVisible} 
                 isDedicheVisible={isDedicheVisible} 
+                isFuroreVisible={isFuroreVisible}
                 isGiochiVisible={isGiochiVisible} 
                 isCommunityVisible={isCommunityVisible} 
               />

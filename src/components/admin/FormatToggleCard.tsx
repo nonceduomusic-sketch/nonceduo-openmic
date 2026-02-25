@@ -1,7 +1,7 @@
 import React from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Settings2, Music, MessageSquare, Users, Gamepad2 } from 'lucide-react';
+import { Settings2, Music, MessageSquare, Users, Gamepad2, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FormatPreferences } from '@/hooks/useFormatPreferences';
 import {
@@ -137,7 +137,7 @@ export const FormatToggleCard: React.FC<FormatToggleCardProps> = ({
       key: 'giochi' as const,
       label: 'Giochi',
       icon: <Gamepad2 className="w-4 h-4" />,
-      tooltip: 'Attiva per monitorare l\'attività dei giochi in tempo reale',
+      tooltip: 'Attiva per monitorare l\'attività dei giochi passatempo',
     },
   ];
 

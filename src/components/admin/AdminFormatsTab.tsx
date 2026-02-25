@@ -1,5 +1,5 @@
 import React from 'react';
-import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown, Play, Calendar, Eye, Gamepad2, Globe, Mic2, MessageCircle, Smartphone, Menu } from 'lucide-react';
+import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown, Play, Calendar, Eye, Gamepad2, Globe, Mic2, MessageCircle, Smartphone, Menu, Zap } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -145,15 +145,54 @@ export const AdminFormatsTab: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Giochi (Furore) */}
+          {/* Non C'è Furore (Live) */}
+          <Card className="border-red-500/20 bg-red-500/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Zap className="w-4 h-4 text-red-500" />
+                Non C'è Furore
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Format live sincrono — Pulsantiera e giochi dal vivo
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Sito</Label>
+                  {globalSettings.furore && <Badge variant="outline" className="text-red-500 border-red-500/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={globalSettings.furore} onCheckedChange={() => toggleGlobalFormat('furore', 'site')} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">App</Label>
+                  {appSettings.furore && <Badge variant="outline" className="text-red-500 border-red-500/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={appSettings.furore} onCheckedChange={() => toggleGlobalFormat('furore', 'app')} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Menu className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Menu</Label>
+                  {menuSettings.furore && <Badge variant="outline" className="text-red-500 border-red-500/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={menuSettings.furore} onCheckedChange={() => toggleGlobalFormat('furore', 'menu')} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Giochi (Passatempo) */}
           <Card className="border-emerald-500/20 bg-emerald-500/5">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Gamepad2 className="w-4 h-4 text-emerald-500" />
-                Non C'è Furore (Giochi)
+                Giochi
               </CardTitle>
               <CardDescription className="text-xs">
-                Visibilità della sezione Giochi
+                Passatempo asincrono — Quiz, giochi individuali
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-0 space-y-3">
