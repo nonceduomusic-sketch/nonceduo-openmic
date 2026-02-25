@@ -184,49 +184,18 @@ export const AdminFormatsTab: React.FC = () => {
             </CardContent>
           </Card>
 
-          {/* Giochi (include Pulsantiera Non C'è Furore) */}
+          {/* Giochi Passatempo */}
           <Card className="border-destructive/20 bg-destructive/5">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-base">
                 <Gamepad2 className="w-4 h-4 text-destructive" />
-                Giochi
+                Giochi Passatempo
               </CardTitle>
               <CardDescription className="text-xs">
-                Include Pulsantiera "Non C'è Furore", Quiz e giochi interattivi
+                Quiz e giochi interattivi asincroni
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-0 space-y-3">
-              {/* Non C'è Furore visibility */}
-              <p className="text-xs font-medium text-muted-foreground">⚡ Non C'è Furore (Pulsantiera)</p>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Globe className="w-3.5 h-3.5 text-muted-foreground" />
-                  <Label className="text-sm">Sito</Label>
-                  {globalSettings.furore && <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">Visibile</Badge>}
-                </div>
-                <Switch checked={globalSettings.furore} onCheckedChange={() => toggleGlobalFormat('furore', 'site')} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
-                  <Label className="text-sm">App</Label>
-                  {appSettings.furore && <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">Visibile</Badge>}
-                </div>
-                <Switch checked={appSettings.furore} onCheckedChange={() => toggleGlobalFormat('furore', 'app')} />
-              </div>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Menu className="w-3.5 h-3.5 text-muted-foreground" />
-                  <Label className="text-sm">Menu</Label>
-                  {menuSettings.furore && <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">Visibile</Badge>}
-                </div>
-                <Switch checked={menuSettings.furore} onCheckedChange={() => toggleGlobalFormat('furore', 'menu')} />
-              </div>
-
-              <Separator className="my-2" />
-
-              {/* Giochi Passatempo visibility */}
-              <p className="text-xs font-medium text-muted-foreground">🎮 Giochi Passatempo (Quiz, ecc.)</p>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Globe className="w-3.5 h-3.5 text-muted-foreground" />
@@ -273,6 +242,45 @@ export const AdminFormatsTab: React.FC = () => {
                   ))}
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Non C'è Furore — format separato */}
+          <Card className="border-orange-500/20 bg-orange-500/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Zap className="w-4 h-4 text-orange-500" />
+                Non C'è Furore
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Pulsantiera live buzzer — format indipendente
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Globe className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Sito</Label>
+                  {globalSettings.furore && <Badge variant="outline" className="text-orange-500 border-orange-500/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={globalSettings.furore} onCheckedChange={() => toggleGlobalFormat('furore', 'site')} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">App</Label>
+                  {appSettings.furore && <Badge variant="outline" className="text-orange-500 border-orange-500/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={appSettings.furore} onCheckedChange={() => toggleGlobalFormat('furore', 'app')} />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Menu className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm">Menu</Label>
+                  {menuSettings.furore && <Badge variant="outline" className="text-orange-500 border-orange-500/30 text-[10px]">Visibile</Badge>}
+                </div>
+                <Switch checked={menuSettings.furore} onCheckedChange={() => toggleGlobalFormat('furore', 'menu')} />
+              </div>
             </CardContent>
           </Card>
 
