@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -178,9 +179,79 @@ function playSoundByKey(key: string) {
   osc.stop(ctx.currentTime + 0.4);
 }
 
-// ─── Quick Links with QR ───
+// ─── Quick Links with QR + Telecomando ───
 const QuickLinksSection: React.FC = () => {
   const baseUrl = window.location.origin;
+  const [remoteToken, setRemoteToken] = useState<string | null>(null);
+  const [remotePinRequired, setRemotePinRequired] = useState(true);
+  const [remotePin, setRemotePin] = useState('');
+  const [remoteId, setRemoteId] = useState<string | null>(null);
+  const [loadingRemote, setLoadingRemote] = useState(true);
+  const [showQR, setShowQR] = useState<string | null>(null);
+
+  // Load or create remote access
+  useEffect(() => {
+    const loadRemote = async () => {
+      const { data } = await supabase
+        .from('furore_remote_access')
+        .select('*')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (data) {
+        setRemoteToken(data.access_token);
+        setRemotePinRequired(data.pin_required);
+        setRemotePin(data.pin_code);
+        setRemoteId(data.id);
+      } else {
+        // Create one automatically
+        const { data: newData } = await supabase
+          .from('furore_remote_access')
+          .insert({ name: 'Telecomando Furore' })
+          .select()
+          .single();
+        if (newData) {
+          setRemoteToken(newData.access_token);
+          setRemotePinRequired(newData.pin_required);
+          setRemotePin(newData.pin_code);
+          setRemoteId(newData.id);
+        }
+      }
+      setLoadingRemote(false);
+    };
+    loadRemote();
+  }, []);
+
+  const togglePinRequired = async () => {
+    if (!remoteId) return;
+    const newVal = !remotePinRequired;
+    await supabase.from('furore_remote_access').update({ pin_required: newVal }).eq('id', remoteId);
+    setRemotePinRequired(newVal);
+    toast.success(newVal ? 'PIN richiesto per il telecomando' : 'PIN disattivato — accesso diretto');
+  };
+
+  const regenerateToken = async () => {
+    if (!remoteId) return;
+    // Deactivate old, create new
+    await supabase.from('furore_remote_access').update({ is_active: false }).eq('id', remoteId);
+    const { data } = await supabase
+      .from('furore_remote_access')
+      .insert({ name: 'Telecomando Furore' })
+      .select()
+      .single();
+    if (data) {
+      setRemoteToken(data.access_token);
+      setRemotePinRequired(data.pin_required);
+      setRemotePin(data.pin_code);
+      setRemoteId(data.id);
+      toast.success('Nuovo telecomando generato!');
+    }
+  };
+
+  const remoteUrl = remoteToken ? `${baseUrl}/furore-remote/${remoteToken}` : '';
+
   const links = [
     { label: 'Pulsantiera (Utenti)', url: `${baseUrl}/app/furore`, icon: Zap },
     { label: 'Trasmetti (TV)', url: `${baseUrl}/trasmetti`, icon: Tv },
@@ -202,6 +273,7 @@ const QuickLinksSection: React.FC = () => {
         <CardDescription className="text-xs">Condividi con concorrenti e staff</CardDescription>
       </CardHeader>
       <CardContent className="px-4 sm:px-6 space-y-3">
+        {/* Standard links */}
         {links.map(link => (
           <div key={link.url} className="flex items-center gap-3 p-3 rounded-lg border bg-card/50">
             <link.icon className="w-5 h-5 text-primary shrink-0" />
@@ -216,11 +288,91 @@ const QuickLinksSection: React.FC = () => {
               <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => window.open(link.url, '_blank')}>
                 <ExternalLink className="w-3.5 h-3.5" />
               </Button>
+              <Button
+                variant="ghost" size="sm" className="h-8 px-2"
+                onClick={() => setShowQR(showQR === link.url ? null : link.url)}
+              >
+                <QrCode className="w-3.5 h-3.5" />
+              </Button>
             </div>
+            {showQR === link.url && (
+              <div className="w-full mt-2">
+                <FuroreQRDisplay url={link.url} />
+              </div>
+            )}
           </div>
         ))}
+
+        {/* Telecomando Furore - special section */}
+        <Separator />
+        {loadingRemote ? (
+          <div className="text-center py-3">
+            <div className="animate-spin w-5 h-5 border-2 border-primary border-t-transparent rounded-full mx-auto" />
+          </div>
+        ) : remoteToken ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-3 p-3 rounded-lg border-2 border-primary/30 bg-primary/5">
+              <Zap className="w-5 h-5 text-primary shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold">🎮 Telecomando Furore</p>
+                <p className="text-[11px] text-muted-foreground truncate">{remoteUrl}</p>
+                {remotePinRequired && (
+                  <p className="text-[11px] font-mono text-primary mt-0.5">PIN: {remotePin}</p>
+                )}
+              </div>
+              <div className="flex gap-1.5 shrink-0">
+                <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => copyToClipboard(remoteUrl, 'Telecomando Furore')}>
+                  📋
+                </Button>
+                <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => window.open(remoteUrl, '_blank')}>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </Button>
+                <Button
+                  variant="ghost" size="sm" className="h-8 px-2"
+                  onClick={() => setShowQR(showQR === 'furore-remote' ? null : 'furore-remote')}
+                >
+                  <QrCode className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+            </div>
+            {showQR === 'furore-remote' && (
+              <FuroreQRDisplay url={remoteUrl} />
+            )}
+            <div className="flex items-center gap-2 justify-between px-1">
+              <div className="flex items-center gap-2">
+                <Switch checked={remotePinRequired} onCheckedChange={togglePinRequired} />
+                <Label className="text-xs">PIN richiesto</Label>
+              </div>
+              <Button variant="ghost" size="sm" className="text-xs h-7" onClick={regenerateToken}>
+                <RotateCcw className="w-3 h-3 mr-1" /> Rigenera
+              </Button>
+            </div>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
+  );
+};
+
+// QR Code display component
+const FuroreQRDisplay: React.FC<{ url: string }> = ({ url }) => {
+  const canvasRef = React.useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    import('qrcode').then(QRCode => {
+      QRCode.toCanvas(canvasRef.current, url, {
+        width: 200,
+        margin: 2,
+        color: { dark: '#000000', light: '#ffffff' },
+      });
+    });
+  }, [url]);
+
+  return (
+    <div className="flex justify-center py-3">
+      <canvas ref={canvasRef} className="rounded-lg" />
+    </div>
   );
 };
 

@@ -1479,6 +1479,45 @@ export type Database = {
           },
         ]
       }
+      furore_remote_access: {
+        Row: {
+          access_token: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          last_used_at: string | null
+          name: string
+          pin_code: string
+          pin_required: boolean
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          name?: string
+          pin_code?: string
+          pin_required?: boolean
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          last_used_at?: string | null
+          name?: string
+          pin_code?: string
+          pin_required?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       furore_sessions: {
         Row: {
           created_at: string
