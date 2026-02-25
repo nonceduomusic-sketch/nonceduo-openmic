@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 const AppLauncher: React.FC = () => {
   const { eventState, liveEvent, isFreeMode, freeMode, isOpenmicVisible, isDedicheVisible, loading } = useLiveEvent();
   const { isActive: isGiochiVisible } = useFormatActiveCheck('giochi', 'app');
+  const { isActive: isFuroreVisible } = useFormatActiveCheck('furore', 'app');
   const { isActive: isOpenmicAppVisible } = useFormatActiveCheck('openmic', 'app');
   const { isActive: isDedicheAppVisible } = useFormatActiveCheck('dediche', 'app');
   
@@ -325,6 +326,7 @@ const AppLauncher: React.FC = () => {
               </div>
 
               {/* Non C'è Furore Banner */}
+              {isFuroreVisible && (
               <Link to="/app/furore" className="block mt-6">
                 <Card className="glass-card border-red-500/20 hover:border-red-500/50 transition-all group">
                   <CardContent className="p-4 flex items-center gap-4">
@@ -337,6 +339,7 @@ const AppLauncher: React.FC = () => {
                   </CardContent>
                 </Card>
               </Link>
+              )}
 
               {/* Games Banner - only if giochi is enabled */}
               {isGiochiVisible && (

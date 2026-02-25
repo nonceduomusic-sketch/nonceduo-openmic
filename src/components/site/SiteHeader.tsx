@@ -1,6 +1,6 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import { Menu, Mic2, ExternalLink, Phone, Instagram, Mail, Shield, Download, MessageCircle, Gamepad2, Users } from "lucide-react";
+import { Menu, Mic2, ExternalLink, Phone, Instagram, Mail, Shield, Download, MessageCircle, Gamepad2, Users, Zap } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -17,12 +17,14 @@ export const SiteHeader: React.FC<{ className?: string }> = ({ className }) => {
   const { isActive: isOpenmicMenu } = useFormatActiveCheck('openmic', 'menu');
   const { isActive: isDedicheMenu } = useFormatActiveCheck('dediche', 'menu');
   const { isActive: isGiochiMenu } = useFormatActiveCheck('giochi', 'menu');
+  const { isActive: isFuroreMenu } = useFormatActiveCheck('furore', 'menu');
   const { isActive: isCommunityMenu } = useFormatActiveCheck('community', 'menu');
 
   const menuFormats = [
     isOpenmicMenu && { label: "Open Mic", to: "/openmic", icon: Mic2 },
     isDedicheMenu && { label: "Dediche", to: "/messaggi", icon: MessageCircle },
-    isGiochiMenu && { label: "Non C'è Furore", to: "/app/furore", icon: Gamepad2 },
+    isFuroreMenu && { label: "Non C'è Furore", to: "/app/furore", icon: Zap },
+    isGiochiMenu && { label: "Giochi", to: "/app/giochi", icon: Gamepad2 },
     isCommunityMenu && { label: "Community", to: "/social", icon: Users },
   ].filter(Boolean) as { label: string; to: string; icon: React.ElementType }[];
 

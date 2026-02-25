@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export type GlobalFormatKey = 'openmic' | 'dediche' | 'community' | 'giochi' | 'voting' | 'show_booker_name' | 'show_live_queue' | 'lyrics_zoom' | 'lyrics_highlight_arrows' | 'lyrics_auto_scroll' | 'catalog_preview' | 'show_upcoming_events';
+export type GlobalFormatKey = 'openmic' | 'dediche' | 'community' | 'giochi' | 'furore' | 'voting' | 'show_booker_name' | 'show_live_queue' | 'lyrics_zoom' | 'lyrics_highlight_arrows' | 'lyrics_auto_scroll' | 'catalog_preview' | 'show_upcoming_events';
 
 export interface GlobalFormatSetting {
   format_key: GlobalFormatKey;
@@ -13,48 +13,15 @@ export interface GlobalFormatSetting {
 }
 
 export const useGlobalFormatSettings = () => {
-  const [settings, setSettings] = useState<Record<GlobalFormatKey, boolean>>({
-    openmic: true,
-    dediche: true,
-    community: true,
-    giochi: false,
-    voting: true,
-    show_booker_name: true,
-    show_live_queue: true,
-    lyrics_zoom: true,
-    lyrics_highlight_arrows: true,
-    lyrics_auto_scroll: true,
-    catalog_preview: false,
-    show_upcoming_events: false,
-  });
-  const [appSettings, setAppSettings] = useState<Record<GlobalFormatKey, boolean>>({
-    openmic: true,
-    dediche: true,
-    community: true,
-    giochi: false,
-    voting: true,
-    show_booker_name: true,
-    show_live_queue: true,
-    lyrics_zoom: true,
-    lyrics_highlight_arrows: true,
-    lyrics_auto_scroll: true,
-    catalog_preview: false,
-    show_upcoming_events: false,
-  });
-  const [menuSettings, setMenuSettings] = useState<Record<GlobalFormatKey, boolean>>({
-    openmic: true,
-    dediche: true,
-    community: true,
-    giochi: false,
-    voting: true,
-    show_booker_name: true,
-    show_live_queue: true,
-    lyrics_zoom: true,
-    lyrics_highlight_arrows: true,
-    lyrics_auto_scroll: true,
-    catalog_preview: false,
-    show_upcoming_events: false,
-  });
+  const defaultSettings: Record<GlobalFormatKey, boolean> = {
+    openmic: true, dediche: true, community: true, giochi: false, furore: true,
+    voting: true, show_booker_name: true, show_live_queue: true,
+    lyrics_zoom: true, lyrics_highlight_arrows: true, lyrics_auto_scroll: true,
+    catalog_preview: false, show_upcoming_events: false,
+  };
+  const [settings, setSettings] = useState<Record<GlobalFormatKey, boolean>>({ ...defaultSettings });
+  const [appSettings, setAppSettings] = useState<Record<GlobalFormatKey, boolean>>({ ...defaultSettings });
+  const [menuSettings, setMenuSettings] = useState<Record<GlobalFormatKey, boolean>>({ ...defaultSettings });
   const [loading, setLoading] = useState(true);
 
   const fetchSettings = useCallback(async () => {
@@ -66,12 +33,7 @@ export const useGlobalFormatSettings = () => {
       if (error) throw error;
 
       if (data) {
-        const newSettings: Record<GlobalFormatKey, boolean> = {
-          openmic: true, dediche: true, community: true, giochi: false,
-          voting: true, show_booker_name: true, show_live_queue: true,
-          lyrics_zoom: true, lyrics_highlight_arrows: true, lyrics_auto_scroll: true,
-          catalog_preview: false, show_upcoming_events: false,
-        };
+        const newSettings: Record<GlobalFormatKey, boolean> = { ...defaultSettings };
         const newAppSettings: Record<GlobalFormatKey, boolean> = { ...newSettings };
         const newMenuSettings: Record<GlobalFormatKey, boolean> = { ...newSettings };
         data.forEach((item) => {
@@ -145,7 +107,7 @@ export const useGlobalFormatSettings = () => {
       }
       const formatNames: Record<GlobalFormatKey, string> = {
         openmic: 'Open Mic', dediche: 'Dediche', community: 'Community',
-        giochi: 'Giochi (Furore)', voting: 'Votazioni', show_booker_name: 'Nome prenotante',
+        giochi: 'Giochi', furore: 'Non C\'è Furore', voting: 'Votazioni', show_booker_name: 'Nome prenotante',
         show_live_queue: 'Scaletta Live', lyrics_zoom: 'Zoom Testi',
         lyrics_highlight_arrows: 'Evidenziatore Testi', lyrics_auto_scroll: 'Auto-scroll Testi',
         catalog_preview: 'Anteprima Catalogo', show_upcoming_events: 'Mostra Eventi in Programma',

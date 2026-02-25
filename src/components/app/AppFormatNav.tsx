@@ -1,6 +1,6 @@
 import React from "react";
 import { NavLink } from "@/components/NavLink";
-import { Mic2, MessageCircle, Gamepad2, LayoutGrid } from "lucide-react";
+import { Mic2, MessageCircle, Gamepad2, LayoutGrid, Zap } from "lucide-react";
 import { useLiveEvent } from "@/hooks/useLiveEvent";
 import { useFormatActiveCheck } from "@/hooks/useGlobalFormatSettings";
 
@@ -11,6 +11,7 @@ import { useFormatActiveCheck } from "@/hooks/useGlobalFormatSettings";
 export const AppFormatNav: React.FC = () => {
   const { isOpenmicVisible, isDedicheVisible } = useLiveEvent();
   const { isActive: isGiochiVisible } = useFormatActiveCheck('giochi', 'app');
+  const { isActive: isFuroreVisible } = useFormatActiveCheck('furore', 'app');
   const { isActive: isOpenmicAppVisible } = useFormatActiveCheck('openmic', 'app');
   const { isActive: isDedicheAppVisible } = useFormatActiveCheck('dediche', 'app');
 
@@ -18,7 +19,8 @@ export const AppFormatNav: React.FC = () => {
     { to: "/app", icon: LayoutGrid, label: "Hub", end: true },
     isOpenmicAppVisible && { to: "/app/openmic", icon: Mic2, label: "Open Mic" },
     isDedicheAppVisible && { to: "/app/dediche", icon: MessageCircle, label: "Dediche" },
-    isGiochiVisible && { to: "/app/furore", icon: Gamepad2, label: "Furore" },
+    isFuroreVisible && { to: "/app/furore", icon: Zap, label: "Furore" },
+    isGiochiVisible && { to: "/app/giochi", icon: Gamepad2, label: "Giochi" },
   ].filter(Boolean) as { to: string; icon: React.ElementType; label: string; end?: boolean }[];
 
   // Don't show if only hub would be visible
