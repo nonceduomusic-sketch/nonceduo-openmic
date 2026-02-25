@@ -289,8 +289,11 @@ export const AdminFuroreTab: React.FC = () => {
             <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm sm:text-base">Controlli</CardTitle>
-                <Badge variant={session.status === 'open' ? 'default' : 'secondary'} className="text-xs">
-                  {session.status === 'open' ? '🟢 APERTE' : '🔴 CHIUSE'}
+                <Badge 
+                  variant={session.status === 'open' ? 'default' : 'secondary'} 
+                  className={cn("text-xs", session.status === 'open' && "bg-green-600 hover:bg-green-600")}
+                >
+                  {session.status === 'open' ? '🟢 APERTE' : bookings.length > 0 ? '⏸️ STANDBY' : '🔴 IN ATTESA'}
                 </Badge>
               </div>
             </CardHeader>
