@@ -12,7 +12,6 @@ import {
   useFurorePlayers,
   useFuroreBookings,
   useFurorePlayerActions,
-  useFuroreAdmin,
   FURORE_SYMBOLS,
   FURORE_COLORS,
   type FurorePlayer,
@@ -25,8 +24,7 @@ const AppFurore: React.FC = () => {
   const { session, loading } = useFuroreSession();
   const { players } = useFurorePlayers(session?.id);
   const { bookings } = useFuroreBookings(session?.id);
-  const { joinSession, pressButton } = useFurorePlayerActions();
-  const { deletePlayer } = useFuroreAdmin();
+  const { joinSession, exitSession, pressButton } = useFurorePlayerActions();
 
   const [phase, setPhase] = useState<Phase>('landing');
   const [myPlayer, setMyPlayer] = useState<FurorePlayer | null>(null);
@@ -82,11 +80,12 @@ const AppFurore: React.FC = () => {
 
   const handleExit = async () => {
     if (!session?.id || !myPlayer) return;
-    await deletePlayer(myPlayer.id, session.id);
-    localStorage.removeItem('furore_device_fp');
-    setMyPlayer(null);
-    setMyPosition(null);
-    setPhase('landing');
+    const ok = await exitSession(myPlayer.id, session.id);
+    if (ok) {
+      setMyPlayer(null);
+      setMyPosition(null);
+      setPhase('landing');
+    }
   };
 
   const isBookingOpen = session?.status === 'open';

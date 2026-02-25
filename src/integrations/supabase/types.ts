@@ -3070,6 +3070,14 @@ export type Database = {
         }
         Returns: string
       }
+      furore_player_exit: {
+        Args: {
+          p_device_fingerprint: string
+          p_player_id: string
+          p_session_id: string
+        }
+        Returns: boolean
+      }
       get_active_session_for_format: {
         Args: { p_format: string }
         Returns: {
