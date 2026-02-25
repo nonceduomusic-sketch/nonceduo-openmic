@@ -252,7 +252,9 @@ export const AdminFuroreTab: React.FC = () => {
 
   const handleResetBookings = async () => {
     if (!session) return;
-    await resetBookingsOnly(session.id);
+    console.log('[Furore Admin] Reset & Apri - session:', session.id, 'bookings count:', bookings.length);
+    const result = await resetBookingsOnly(session.id);
+    console.log('[Furore Admin] Reset & Apri result:', result);
     toast.success('Prenotazioni resettate e riaperte!');
   };
 
