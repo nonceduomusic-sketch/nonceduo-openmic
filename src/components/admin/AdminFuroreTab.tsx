@@ -16,6 +16,8 @@ import {
   useFuroreBookings,
   useFuroreAdmin,
   FURORE_SOUNDS,
+  DEFAULT_SCORING_RULES,
+  FuroreScoringRules,
 } from '@/hooks/useFurore';
 
 // ─── Professional Sound Engine ───
@@ -216,7 +218,7 @@ export const AdminFuroreTab: React.FC = () => {
   const { session, loading } = useFuroreSession();
   const { players } = useFurorePlayers(session?.id);
   const { bookings } = useFuroreBookings(session?.id);
-  const { createSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, updatePlayer, resetScores } = useFuroreAdmin();
+  const { createSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, updatePlayer, resetScores, setScoringRules, setPlayerScore } = useFuroreAdmin();
 
   const handleCreateSession = async () => {
     const s = await createSession();
@@ -474,6 +476,15 @@ export const AdminFuroreTab: React.FC = () => {
               await resetScores(session.id);
               toast.success('Punteggi azzerati');
             }}
+            onSetPlayerScore={async (playerId, score) => {
+              const ok = await setPlayerScore(playerId, score);
+              if (ok) toast.success('Punteggio aggiornato');
+              else toast.error('Errore');
+            }}
+            onSetScoringRules={async (rules) => {
+              await setScoringRules(session.id, rules);
+              toast.success('Punteggi per posizione aggiornati');
+            }}
           />
         </>
       )}
@@ -489,11 +500,22 @@ const FurorePlayersAndLeaderboard: React.FC<{
   onDeletePlayer: (playerId: string) => Promise<void>;
   onUpdatePlayer: (playerId: string, updates: { nickname?: string; symbol?: string }) => Promise<void>;
   onResetScores: () => Promise<void>;
-}> = ({ players, bookings, session, onDeletePlayer, onUpdatePlayer, onResetScores }) => {
+  onSetPlayerScore: (playerId: string, score: number) => Promise<void>;
+  onSetScoringRules: (rules: FuroreScoringRules) => Promise<void>;
+}> = ({ players, bookings, session, onDeletePlayer, onUpdatePlayer, onResetScores, onSetPlayerScore, onSetScoringRules }) => {
   const [activeTab, setActiveTab] = useState<'players' | 'leaderboard'>('players');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editNickname, setEditNickname] = useState('');
   const [editSymbol, setEditSymbol] = useState('');
+  const [editingScoreId, setEditingScoreId] = useState<string | null>(null);
+  const [editScoreValue, setEditScoreValue] = useState(0);
+  const [scoringRules, setScoringRulesLocal] = useState<FuroreScoringRules>(
+    session?.scoring_rules || DEFAULT_SCORING_RULES
+  );
+
+  useEffect(() => {
+    if (session?.scoring_rules) setScoringRulesLocal(session.scoring_rules);
+  }, [session?.scoring_rules]);
 
   const startEdit = (player: any) => {
     setEditingId(player.id);
@@ -509,7 +531,23 @@ const FurorePlayersAndLeaderboard: React.FC<{
 
   const cancelEdit = () => setEditingId(null);
 
-  // Sorted leaderboard by score descending
+  const startScoreEdit = (player: any) => {
+    setEditingScoreId(player.id);
+    setEditScoreValue(player.score || 0);
+  };
+
+  const saveScoreEdit = async () => {
+    if (!editingScoreId) return;
+    await onSetPlayerScore(editingScoreId, editScoreValue);
+    setEditingScoreId(null);
+  };
+
+  const handleScoringRuleChange = (pos: string, value: number) => {
+    const updated = { ...scoringRules, [pos]: value };
+    setScoringRulesLocal(updated);
+    onSetScoringRules(updated);
+  };
+
   const leaderboard = [...players].sort((a, b) => (b.score || 0) - (a.score || 0));
 
   return (
@@ -525,27 +563,16 @@ const FurorePlayersAndLeaderboard: React.FC<{
           </CardTitle>
         </div>
         <div className="flex gap-2 mt-2">
-          <Button
-            variant={activeTab === 'players' ? 'default' : 'outline'}
-            size="sm"
-            className="gap-1.5 h-8"
-            onClick={() => setActiveTab('players')}
-          >
+          <Button variant={activeTab === 'players' ? 'default' : 'outline'} size="sm" className="gap-1.5 h-8" onClick={() => setActiveTab('players')}>
             <Users className="w-3.5 h-3.5" /> Prenotati
           </Button>
-          <Button
-            variant={activeTab === 'leaderboard' ? 'default' : 'outline'}
-            size="sm"
-            className="gap-1.5 h-8"
-            onClick={() => setActiveTab('leaderboard')}
-          >
+          <Button variant={activeTab === 'leaderboard' ? 'default' : 'outline'} size="sm" className="gap-1.5 h-8" onClick={() => setActiveTab('leaderboard')}>
             <Trophy className="w-3.5 h-3.5" /> Classifica
           </Button>
         </div>
       </CardHeader>
       <CardContent className="px-4 sm:px-6">
         {activeTab === 'players' ? (
-          /* ─── PLAYERS TAB ─── */
           bookings.length === 0 && players.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">Nessun giocatore collegato</p>
           ) : (
@@ -578,7 +605,6 @@ const FurorePlayersAndLeaderboard: React.FC<{
                   </div>
                 );
               })}
-              {/* Unbooked players */}
               {players.filter((p: any) => !bookings.find((b: any) => b.player_id === p.id)).map((player: any) => (
                 <div key={player.id} className="flex items-center gap-3 p-3 rounded-lg border border-dashed opacity-70">
                   <span className="text-lg font-bold w-8 text-center">—</span>
@@ -594,14 +620,41 @@ const FurorePlayersAndLeaderboard: React.FC<{
             </div>
           )
         ) : (
-          /* ─── LEADERBOARD TAB ─── */
           <div className="space-y-3">
+            {/* Scoring Rules Config */}
+            <div className="p-3 rounded-lg border bg-muted/30 space-y-2">
+              <Label className="font-medium text-sm flex items-center gap-2">
+                <BarChart3 className="w-3.5 h-3.5" /> Punti per posizione (manche)
+              </Label>
+              <div className="grid grid-cols-5 gap-2">
+                {['1', '2', '3', '4', '5'].map(pos => (
+                  <div key={pos} className="text-center space-y-1">
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {pos === '1' ? '🥇' : pos === '2' ? '🥈' : pos === '3' ? '🥉' : `${pos}°`}
+                    </span>
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={scoringRules[pos] ?? 0}
+                      onChange={e => handleScoringRuleChange(pos, parseInt(e.target.value) || 0)}
+                      className="h-9 text-center text-sm font-bold"
+                    />
+                    <span className="text-[10px] text-muted-foreground">pt</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
             {leaderboard.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">Nessun giocatore</p>
             ) : (
               <>
                 {leaderboard.map((player: any, index: number) => {
                   const medal = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}°`;
+                  const isEditingScore = editingScoreId === player.id;
                   return (
                     <div key={player.id} className={cn(
                       "flex items-center gap-3 p-3 rounded-lg border",
@@ -615,10 +668,31 @@ const FurorePlayersAndLeaderboard: React.FC<{
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate">{player.nickname}</p>
                       </div>
-                      <Badge variant="secondary" className="text-sm font-bold gap-1">
-                        <BarChart3 className="w-3 h-3" />
-                        {player.score || 0} pt
-                      </Badge>
+                      {isEditingScore ? (
+                        <div className="flex items-center gap-1">
+                          <Input
+                            type="number"
+                            min={0}
+                            value={editScoreValue}
+                            onChange={e => setEditScoreValue(parseInt(e.target.value) || 0)}
+                            className="w-16 h-8 text-center text-sm"
+                            autoFocus
+                            onKeyDown={e => { if (e.key === 'Enter') saveScoreEdit(); if (e.key === 'Escape') setEditingScoreId(null); }}
+                          />
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={saveScoreEdit}><Check className="w-3.5 h-3.5 text-green-500" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingScoreId(null)}><X className="w-3.5 h-3.5" /></Button>
+                        </div>
+                      ) : (
+                        <Badge
+                          variant="secondary"
+                          className="text-sm font-bold gap-1 cursor-pointer hover:bg-primary/20 transition-colors"
+                          onClick={() => startScoreEdit(player)}
+                        >
+                          <BarChart3 className="w-3 h-3" />
+                          {player.score || 0} pt
+                          <Pencil className="w-2.5 h-2.5 ml-1 opacity-50" />
+                        </Badge>
+                      )}
                     </div>
                   );
                 })}
