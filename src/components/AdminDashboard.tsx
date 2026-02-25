@@ -52,7 +52,7 @@ import { AdminAssistantTab } from '@/components/admin/AdminAssistantTab';
 import { AdminTrasmettiTab } from '@/components/admin/AdminTrasmettiTab';
 import { AdminCatalogSongbookTab } from '@/components/admin/AdminCatalogSongbookTab';
 import { AdminGamesTab } from '@/components/admin/AdminGamesTab';
-import { AdminFuroreTab } from '@/components/admin/AdminFuroreTab';
+
 import AdminManual from '@/pages/AdminManual';
 import { AdminSidebar, type AdminMainTab } from '@/components/admin/AdminSidebar';
 import {
@@ -977,10 +977,8 @@ export const AdminDashboard: React.FC = () => {
           />
         ) : mainTab === 'catalog-songbook' ? (
           <AdminCatalogSongbookTab />
-        ) : mainTab === 'games' ? (
+) : mainTab === 'games' ? (
           <AdminGamesTab />
-        ) : mainTab === 'furore' ? (
-          <AdminFuroreTab />
         ) : mainTab === 'manuale' ? (
           <AdminManual embedded />
         ) : mainTab === 'notifications' ? (
