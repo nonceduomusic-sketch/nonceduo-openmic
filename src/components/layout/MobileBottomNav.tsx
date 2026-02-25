@@ -68,6 +68,23 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
     },
   ];
 
+  const dynamicFormats: NavItem[] = [
+    ...(isFuroreActive ? [{
+      path: '/app/furore',
+      icon: <Zap className="w-5 h-5" />,
+      label: 'Furore',
+      matchPaths: ['/app/furore'],
+      activeClass: 'text-destructive'
+    }] : []),
+    ...(isGiochiActive ? [{
+      path: '/app/giochi',
+      icon: <Gamepad2 className="w-5 h-5" />,
+      label: 'Giochi',
+      matchPaths: ['/app/giochi'],
+      activeClass: 'text-primary'
+    }] : []),
+  ];
+
   const openmicNavItems: NavItem[] = [
     { 
       path: '/', 
@@ -89,6 +106,7 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       matchPaths: ['/messaggi'],
       activeClass: 'text-primary'
     },
+    ...dynamicFormats,
     { 
       path: '/admin', 
       icon: <Settings className="w-5 h-5" />, 
@@ -119,6 +137,7 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       matchPaths: ['/openmic'],
       activeClass: 'text-secondary'
     },
+    ...dynamicFormats,
   ];
 
   const adminNavItems: NavItem[] = [
@@ -134,6 +153,7 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       label: 'Open Mic',
       activeClass: 'text-secondary'
     },
+    ...dynamicFormats,
     { 
       path: '/admin', 
       icon: <Shield className="w-5 h-5" />, 
