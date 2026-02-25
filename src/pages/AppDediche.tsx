@@ -6,6 +6,7 @@ import { FormatPinGate } from "@/components/FormatPinGate";
 import { FreeModeDediche } from "@/components/FreeModeDediche";
 import { useLiveEvent } from "@/hooks/useLiveEvent";
 import { usePinSession } from "@/hooks/usePinSession";
+import { useFormatActiveCheck } from "@/hooks/useGlobalFormatSettings";
 
 /**
  * AppDediche - Entry point per Dediche
@@ -26,6 +27,7 @@ import { usePinSession } from "@/hooks/usePinSession";
  * Una volta validato il PIN, l'utente ha accesso a TUTTI i format dell'evento.
  */
 const AppDediche: React.FC = () => {
+  const { isActive: isAppVisible, loading: visibilityLoading } = useFormatActiveCheck('dediche', 'app');
   const { eventState, liveEvent, upcomingEvents, isDedicheVisible, isFreeMode, freeMode } = useLiveEvent();
   const { 
     hasValidSession, 
@@ -54,12 +56,17 @@ const AppDediche: React.FC = () => {
   }, []);
 
   // Loading state
-  if (eventState.type === 'loading' || sessionLoading) {
+  if (eventState.type === 'loading' || sessionLoading || visibilityLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
       </div>
     );
+  }
+
+  // App visibility toggle is OFF → show info page
+  if (!isAppVisible) {
+    return <DedicheInfo />;
   }
 
   // CASE 1: Evento LIVE esiste

@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Zap, Users, Clock, Trophy, ArrowLeft, Check, LogOut, Flame, Music, Sparkles } from 'lucide-react';
+import { Zap, Users, Clock, Trophy, ArrowLeft, Check, LogOut, Flame, Music, Sparkles, Instagram } from 'lucide-react';
+import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
 import {
   useFuroreSession,
   useFurorePlayers,
@@ -20,6 +21,7 @@ import {
 type Phase = 'landing' | 'register' | 'buzzer';
 
 const AppFurore: React.FC = () => {
+  const { isActive: isAppVisible, loading: visibilityLoading } = useFormatActiveCheck('furore', 'app');
   const { session, loading } = useFuroreSession();
   const { players } = useFurorePlayers(session?.id);
   const { bookings, refetch: refetchBookings } = useFuroreBookings(session?.id);
@@ -125,11 +127,85 @@ const AppFurore: React.FC = () => {
   const showOrder = session?.show_order_to_players ?? true;
   const showBookings = (session as any)?.show_bookings_to_players ?? true;
 
-  if (loading) {
+  if (loading || visibilityLoading) {
     return (
       <PageLayout variant="main" title="Non C'è Furore" showBack backPath="/app" hideDesktopHeader>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
+        </div>
+      </PageLayout>
+    );
+  }
+
+  // ─── APP VISIBILITY OFF — Show nice landing page ───
+  if (!isAppVisible) {
+    return (
+      <PageLayout variant="main" title="Non C'è Furore" showBack backPath="/app" hideDesktopHeader>
+        <div className="max-w-lg mx-auto px-4 py-8 sm:py-12">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center space-y-6"
+          >
+            <div className="relative inline-block">
+              <div className="text-7xl">🔥</div>
+              <motion.div
+                animate={{ rotate: [0, 5, -5, 0], scale: [1, 1.05, 1] }}
+                transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+                className="absolute -top-2 -right-2"
+              >
+                <Sparkles className="w-6 h-6 text-yellow-500" />
+              </motion.div>
+            </div>
+
+            <div className="space-y-2">
+              <h1 className="text-2xl sm:text-3xl font-bold">Non C'è Furore</h1>
+              <p className="text-muted-foreground text-sm sm:text-base leading-relaxed max-w-sm mx-auto">
+                Giochi musicali interattivi dal vivo: pulsantiera, quiz e molto altro! Sfida gli altri partecipanti durante le nostre serate.
+              </p>
+            </div>
+
+            <Badge variant="outline" className="text-sm px-4 py-2 gap-2 text-muted-foreground">
+              <Clock className="w-4 h-4" />
+              Non disponibile al momento
+            </Badge>
+
+            <div className="grid grid-cols-3 gap-4 pt-2">
+              {[
+                { icon: Zap, label: 'Pulsantiera', desc: 'Velocità' },
+                { icon: Music, label: 'Quiz', desc: 'Musica' },
+                { icon: Trophy, label: 'Classifica', desc: 'Premi' },
+              ].map((item) => (
+                <div key={item.label} className="flex flex-col items-center gap-1.5">
+                  <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                    <item.icon className="w-5 h-5 text-primary" />
+                  </div>
+                  <span className="text-xs font-medium">{item.label}</span>
+                  <span className="text-[10px] text-muted-foreground">{item.desc}</span>
+                </div>
+              ))}
+            </div>
+
+            <Card className="border-primary/20 bg-primary/5">
+              <CardContent className="p-4 text-sm text-muted-foreground">
+                <p>Non C'è Furore si attiva durante le serate dal vivo. Seguici su Instagram per le prossime date! 🎶</p>
+              </CardContent>
+            </Card>
+
+            <div className="flex flex-col sm:flex-row gap-3 pt-2">
+              <a
+                href="https://www.instagram.com/nonceduo.music/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1"
+              >
+                <Button variant="outline" className="w-full gap-2" size="lg">
+                  <Instagram className="w-5 h-5" />
+                  Seguici su Instagram
+                </Button>
+              </a>
+            </div>
+          </motion.div>
         </div>
       </PageLayout>
     );
