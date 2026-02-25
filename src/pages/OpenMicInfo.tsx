@@ -1,44 +1,27 @@
 import React from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { ExternalLink, Mic2, Phone, Instagram, Calendar, Clock, Music, Users, ArrowLeft } from "lucide-react";
+import { Link } from "react-router-dom";
+import { ExternalLink, Mic2, Phone, Instagram, Calendar, Clock, Music, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SEO } from "@/components/SEO";
-import { SiteHeader } from "@/components/site/SiteHeader";
+import { PageLayout } from "@/components/layout/PageLayout";
 import { useLiveEvent } from "@/hooks/useLiveEvent";
 
 const OpenMicInfo: React.FC = () => {
-  const navigate = useNavigate();
   const { isOpenmicVisible, loading, liveEvent, isFreeMode } = useLiveEvent();
 
   const isActuallyLive = isOpenmicVisible && (Boolean(liveEvent) || isFreeMode);
 
   return (
-    <div className="min-h-screen bg-background">
+    <PageLayout variant="main" title="Open Mic" showBack showAdmin>
       <SEO
         title="Open Mic | Non C'è Duo"
         description="Karaoke live con la band: scegli la canzone e sali sul palco durante i nostri eventi."
         image="/og-openmic.jpg"
         url="/openmic"
       />
-
-      <SiteHeader />
-
-      {/* Navigation bar */}
-      <div className="container py-3 flex items-center justify-between">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="gap-1.5">
-          <ArrowLeft className="w-4 h-4" />
-          Indietro
-        </Button>
-        <Link to="/app/openmic">
-          <Button size="sm" className="neon-button-cyan gap-1.5">
-            Vai all'App
-            <ExternalLink className="w-3.5 h-3.5" />
-          </Button>
-        </Link>
-      </div>
 
       <main className="container py-4 md:py-8">
         <div className="max-w-2xl mx-auto space-y-6">
@@ -55,7 +38,7 @@ const OpenMicInfo: React.FC = () => {
             </div>
           </div>
 
-          {/* Status Badge - only show "Evento Live in corso" when ACTUALLY live */}
+          {/* Status Badge */}
           {!loading && (
             <div className="flex justify-center">
               {isActuallyLive ? (
@@ -175,7 +158,7 @@ const OpenMicInfo: React.FC = () => {
           </div>
         </div>
       </main>
-    </div>
+    </PageLayout>
   );
 };
 
