@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PageLayout } from '@/components/layout/PageLayout';
 import { Button } from '@/components/ui/button';
@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Zap, Users, Clock, Trophy, ArrowLeft, Check, LogOut } from 'lucide-react';
+import { Zap, Users, Clock, Trophy, ArrowLeft, Check, LogOut, Flame, Music, Sparkles } from 'lucide-react';
 import {
   useFuroreSession,
   useFurorePlayers,
@@ -16,7 +16,6 @@ import {
   FURORE_COLORS,
   type FurorePlayer,
 } from '@/hooks/useFurore';
-import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
 
 type Phase = 'landing' | 'register' | 'buzzer';
 
@@ -35,27 +34,45 @@ const AppFurore: React.FC = () => {
   const [pressing, setPressing] = useState(false);
   const [myPosition, setMyPosition] = useState<number | null>(null);
 
-  // Check if player already registered (by device fingerprint)
+  // Reconnect player on page load via device fingerprint
   useEffect(() => {
     if (!session?.id || players.length === 0) return;
+    // Already reconnected
+    if (myPlayer) return;
     const fp = localStorage.getItem('furore_device_fp');
     if (!fp) return;
     const existing = players.find(p => p.device_fingerprint === fp);
     if (existing) {
       setMyPlayer(existing);
       setPhase('buzzer');
-      // Check if already booked
       const myBooking = bookings.find(b => b.player_id === existing.id);
       if (myBooking) setMyPosition(myBooking.position);
     }
-  }, [session?.id, players, bookings]);
+  }, [session?.id, players, bookings, myPlayer]);
 
   // Watch for my booking position in realtime
   useEffect(() => {
     if (!myPlayer) return;
     const myBooking = bookings.find(b => b.player_id === myPlayer.id);
-    if (myBooking) setMyPosition(myBooking.position);
+    if (myBooking) {
+      setMyPosition(myBooking.position);
+    } else {
+      // Booking was removed by admin
+      setMyPosition(null);
+    }
   }, [bookings, myPlayer]);
+
+  // If admin deletes the player, kick back to landing
+  useEffect(() => {
+    if (!myPlayer || !session?.id) return;
+    if (players.length > 0 && !players.find(p => p.id === myPlayer.id)) {
+      // Player was removed by admin
+      setMyPlayer(null);
+      setMyPosition(null);
+      setPhase('landing');
+      localStorage.removeItem('furore_device_fp');
+    }
+  }, [players, myPlayer, session?.id]);
 
   const handleRegister = async () => {
     if (!session?.id || !nickname.trim()) return;
@@ -92,6 +109,7 @@ const AppFurore: React.FC = () => {
   const hasBooked = myPosition !== null;
   const isFull = bookings.length >= (session?.max_players ?? 8);
   const showOrder = session?.show_order_to_players ?? true;
+  const showBookings = (session as any)?.show_bookings_to_players ?? true;
 
   if (loading) {
     return (
@@ -103,24 +121,83 @@ const AppFurore: React.FC = () => {
     );
   }
 
+  // ─── NO SESSION — Engaging idle screen ───
   if (!session) {
     return (
       <PageLayout variant="main" title="Non C'è Furore" showBack backPath="/app">
-        <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
-          <div className="text-6xl mb-4">🔥</div>
-          <h1 className="text-2xl font-bold mb-2">Non C'è Furore</h1>
-          <p className="text-muted-foreground mb-6">
-            Preparati per i giochi musicali live! Pulsantiera, quiz dal vivo e molto altro...
-          </p>
-          <p className="text-sm text-muted-foreground/60">
-            La serata non è ancora iniziata. Resta sintonizzato!
-          </p>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ type: 'spring', damping: 15 }}
+            className="relative mb-6"
+          >
+            <div className="text-8xl">🔥</div>
+            <motion.div
+              animate={{ rotate: [0, 5, -5, 0], scale: [1, 1.05, 1] }}
+              transition={{ repeat: Infinity, duration: 3, ease: 'easeInOut' }}
+              className="absolute -top-2 -right-2"
+            >
+              <Sparkles className="w-6 h-6 text-yellow-500" />
+            </motion.div>
+          </motion.div>
+          <motion.h1
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-3xl font-black mb-3"
+          >
+            Non C'è Furore
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="text-muted-foreground max-w-xs mb-8"
+          >
+            Giochi musicali interattivi dal vivo: pulsantiera, quiz e molto altro!
+          </motion.p>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="flex items-center gap-3 px-5 py-3 rounded-full bg-muted/50 border border-border"
+          >
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">In attesa dell'inizio della serata...</span>
+          </motion.div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.7 }}
+            className="mt-10 grid grid-cols-3 gap-6 text-center"
+          >
+            {[
+              { icon: Zap, label: 'Pulsantiera', desc: 'Velocità' },
+              { icon: Music, label: 'Quiz', desc: 'Musica' },
+              { icon: Trophy, label: 'Classifica', desc: 'Premi' },
+            ].map((item, i) => (
+              <motion.div
+                key={item.label}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 + i * 0.1 }}
+                className="flex flex-col items-center gap-1.5"
+              >
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <item.icon className="w-5 h-5 text-primary" />
+                </div>
+                <span className="text-xs font-medium">{item.label}</span>
+                <span className="text-[10px] text-muted-foreground">{item.desc}</span>
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
       </PageLayout>
     );
   }
 
-  // ─── LANDING ───
+  // ─── LANDING (session exists) ───
   if (phase === 'landing') {
     return (
       <PageLayout variant="main" title="🔥 Non C'è Furore" showBack backPath="/app">
@@ -350,8 +427,8 @@ const AppFurore: React.FC = () => {
           )}
         </AnimatePresence>
 
-        {/* Bookings List (if show_order is enabled) */}
-        {showOrder && bookings.length > 0 && (
+        {/* Bookings List (only if admin allows it) */}
+        {showBookings && showOrder && bookings.length > 0 && (
           <div className="space-y-2">
             <h3 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
               <Trophy className="w-4 h-4" /> Ordine di prenotazione

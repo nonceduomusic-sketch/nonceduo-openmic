@@ -1,0 +1,1 @@
+ALTER TABLE public.furore_sessions ADD COLUMN IF NOT EXISTS show_bookings_to_players boolean NOT NULL DEFAULT true;
