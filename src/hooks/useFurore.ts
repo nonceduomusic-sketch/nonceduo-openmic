@@ -227,6 +227,13 @@ export const useFuroreAdmin = () => {
     await supabase.from('furore_players').delete().eq('id', playerId);
   };
 
+  const kickAllPlayers = async (sessionId: string) => {
+    // Delete all bookings first (FK constraint), then all players
+    await supabase.from('furore_bookings').delete().eq('session_id', sessionId);
+    await supabase.from('furore_players').delete().eq('session_id', sessionId);
+    // Keep session status unchanged
+  };
+
   const updatePlayer = async (playerId: string, updates: { nickname?: string; symbol?: string; color?: string }) => {
     const { error } = await supabase.from('furore_players').update(updates).eq('id', playerId);
     return !error;
@@ -248,7 +255,7 @@ export const useFuroreAdmin = () => {
     return !error;
   };
 
-  return { createSession, updateSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, updatePlayer, resetScores, setScoringRules, setPlayerScore };
+  return { createSession, updateSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, kickAllPlayers, updatePlayer, resetScores, setScoringRules, setPlayerScore };
 };
 
 // ─── Player Actions ───
