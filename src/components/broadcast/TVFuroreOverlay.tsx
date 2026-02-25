@@ -313,7 +313,9 @@ export const TVFuroreOverlay: React.FC = () => {
       <div className="relative z-10 text-center pb-4 text-white/20 text-sm">
         {showLeaderboard
           ? `Classifica — ${players.length} giocatori — Powered by Non C'è Duo`
-          : `${bookings.length}/${maxSlots} prenotati — Powered by Non C'è Duo`
+          : isClosed
+            ? `In attesa — ${maxSlots} posti disponibili — Powered by Non C'è Duo`
+            : `${visibleBookings.length}/${maxSlots} prenotati — Powered by Non C'è Duo`
         }
       </div>
     </div>
