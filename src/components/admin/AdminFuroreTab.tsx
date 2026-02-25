@@ -1,4 +1,14 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -219,6 +229,8 @@ export const AdminFuroreTab: React.FC = () => {
   const { players, refetch: refetchPlayers } = useFurorePlayers(session?.id);
   const { bookings } = useFuroreBookings(session?.id);
   const { createSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, kickAllPlayers, updatePlayer, resetScores, setScoringRules, setPlayerScore } = useFuroreAdmin();
+  const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmKickAll, setConfirmKickAll] = useState(false);
 
   const handleCreateSession = async () => {
     const s = await createSession();
@@ -247,9 +259,17 @@ export const AdminFuroreTab: React.FC = () => {
   const handleReset = async () => {
     if (!session) return;
     await resetSession(session.id);
-    // Force refetch to ensure UI updates immediately
     await refetchPlayers();
+    setConfirmReset(false);
     toast.success('Partita resettata completamente');
+  };
+
+  const handleKickAll = async () => {
+    if (!session) return;
+    await kickAllPlayers(session.id);
+    await refetchPlayers();
+    setConfirmKickAll(false);
+    toast.success('Tutti i giocatori sono stati espulsi');
   };
 
   if (loading) {
@@ -332,7 +352,7 @@ export const AdminFuroreTab: React.FC = () => {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <Button
-                  onClick={handleReset}
+                  onClick={() => setConfirmReset(true)}
                   variant="destructive"
                   className="gap-2 h-10"
                   size="sm"
@@ -341,12 +361,7 @@ export const AdminFuroreTab: React.FC = () => {
                   <span className="text-sm">Reset Completo</span>
                 </Button>
                 <Button
-                  onClick={async () => {
-                    if (!session) return;
-                    await kickAllPlayers(session.id);
-                    await refetchPlayers();
-                    toast.success('Tutti i giocatori sono stati espulsi');
-                  }}
+                  onClick={() => setConfirmKickAll(true)}
                   variant="outline"
                   className="gap-2 h-10 border-destructive/50 text-destructive hover:bg-destructive/10"
                   size="sm"
@@ -506,6 +521,43 @@ export const AdminFuroreTab: React.FC = () => {
           />
         </>
       )}
+
+      {/* Confirmation Dialogs */}
+      <AlertDialog open={confirmReset} onOpenChange={setConfirmReset}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset Completo</AlertDialogTitle>
+            <AlertDialogDescription>
+              Questa azione cancellerà tutti i giocatori, le prenotazioni e i punteggi. 
+              Tutti gli utenti collegati verranno espulsi e dovranno registrarsi di nuovo. 
+              Sei sicuro di voler procedere?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleReset} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Sì, resetta tutto
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmKickAll} onOpenChange={setConfirmKickAll}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Espelli Tutti</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`Tutti i ${players.length} giocatori verranno espulsi dalla partita. I punteggi accumulati andranno persi. Sei sicuro?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annulla</AlertDialogCancel>
+            <AlertDialogAction onClick={handleKickAll} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Sì, espelli tutti
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
