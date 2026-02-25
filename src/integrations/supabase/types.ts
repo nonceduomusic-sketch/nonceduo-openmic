@@ -1483,6 +1483,7 @@ export type Database = {
           id: string
           max_players: number
           show_order_to_players: boolean
+          show_player_count: boolean
           sound_key: string
           status: string
           updated_at: string
@@ -1493,6 +1494,7 @@ export type Database = {
           id?: string
           max_players?: number
           show_order_to_players?: boolean
+          show_player_count?: boolean
           sound_key?: string
           status?: string
           updated_at?: string
@@ -1503,6 +1505,7 @@ export type Database = {
           id?: string
           max_players?: number
           show_order_to_players?: boolean
+          show_player_count?: boolean
           sound_key?: string
           status?: string
           updated_at?: string
