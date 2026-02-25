@@ -21,7 +21,7 @@ const GamesHub: React.FC = () => {
 
   if (visibilityLoading) {
     return (
-      <PageLayout variant="main" title="Giochi" showBack backPath="/app">
+      <PageLayout variant="main" title="Giochi" showBack backPath="/app" hideDesktopHeader>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
         </div>
@@ -31,7 +31,7 @@ const GamesHub: React.FC = () => {
 
   if (!isGiochiVisible || (settings && !settings.games_enabled)) {
     return (
-      <PageLayout variant="main" title="Giochi" showBack backPath="/app">
+      <PageLayout variant="main" title="Giochi" showBack backPath="/app" hideDesktopHeader>
         <div className="flex flex-col items-center justify-center min-h-[60vh] px-4">
           <Gamepad2 className="w-16 h-16 text-muted-foreground/30 mb-4" />
           <p className="text-muted-foreground">I giochi non sono disponibili al momento</p>
@@ -41,7 +41,7 @@ const GamesHub: React.FC = () => {
   }
 
   return (
-    <PageLayout variant="main" title="🎮 Giochi" showBack backPath="/app">
+    <PageLayout variant="main" title="🎮 Giochi" showBack backPath="/app" hideDesktopHeader>
       <div className="max-w-lg mx-auto px-3 sm:px-4 py-4 sm:py-6 space-y-4 sm:space-y-6">
         {/* Header */}
         <motion.div

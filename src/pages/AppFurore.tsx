@@ -127,7 +127,7 @@ const AppFurore: React.FC = () => {
 
   if (loading) {
     return (
-      <PageLayout variant="main" title="Non C'è Furore" showBack backPath="/app">
+      <PageLayout variant="main" title="Non C'è Furore" showBack backPath="/app" hideDesktopHeader>
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full" />
         </div>
@@ -138,7 +138,7 @@ const AppFurore: React.FC = () => {
   // ─── NO SESSION — Engaging idle screen ───
   if (!session) {
     return (
-      <PageLayout variant="main" title="Non C'è Furore" showBack backPath="/app">
+      <PageLayout variant="main" title="Non C'è Furore" showBack backPath="/app" hideDesktopHeader>
         <div className="flex flex-col items-center justify-center min-h-[60vh] px-6 text-center">
           <motion.div
             initial={{ opacity: 0, scale: 0.8 }}
@@ -214,7 +214,7 @@ const AppFurore: React.FC = () => {
   // ─── LANDING (session exists) ───
   if (phase === 'landing') {
     return (
-      <PageLayout variant="main" title="🔥 Non C'è Furore" showBack backPath="/app">
+      <PageLayout variant="main" title="🔥 Non C'è Furore" showBack backPath="/app" hideDesktopHeader>
         <div className="max-w-md mx-auto px-4 py-6 space-y-6">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
             <div className="text-7xl mb-4">🔥</div>
@@ -259,7 +259,7 @@ const AppFurore: React.FC = () => {
   // ─── REGISTER ───
   if (phase === 'register') {
     return (
-      <PageLayout variant="main" title="Registrati" showBack backPath="/app">
+      <PageLayout variant="main" title="Registrati" showBack backPath="/app" hideDesktopHeader>
         <div className="max-w-md mx-auto px-4 py-6 space-y-6">
           <Button variant="ghost" size="sm" onClick={() => setPhase('landing')} className="gap-2">
             <ArrowLeft className="w-4 h-4" /> Indietro
@@ -336,7 +336,7 @@ const AppFurore: React.FC = () => {
 
   // ─── BUZZER ───
   return (
-    <PageLayout variant="main" title="🔥 Pulsantiera" showBack backPath="/app">
+    <PageLayout variant="main" title="🔥 Pulsantiera" showBack backPath="/app" hideDesktopHeader>
       <div className="max-w-md mx-auto px-4 py-6 space-y-6">
         {/* Player Info */}
         <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">

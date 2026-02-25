@@ -46,12 +46,12 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   }> = ({ to, matchPaths, icon, label, activeClass = 'neon-button-pink' }) => {
     const active = isActive(to, matchPaths);
     return (
-      <Link to={to}>
+      <Link to={to} className="shrink-0">
         <Button 
           variant={active ? 'default' : 'ghost'} 
           size="sm"
           className={cn(
-            "gap-1.5 transition-all duration-200",
+            "gap-1.5 transition-all duration-200 whitespace-nowrap",
             active && activeClass
           )}
         >
@@ -63,7 +63,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   };
 
   const renderMainNav = () => (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide min-w-0">
       <NavButton to="/" icon={<Home className="w-4 h-4" />} label="Home" />
       <NavButton to="/partyband" icon={<PartyPopper className="w-4 h-4" />} label="Party Band" />
       {isOpenmicActive && (
@@ -152,7 +152,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   );
 
   const renderOpenMicNav = () => (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide min-w-0">
       <NavButton to="/" icon={<Home className="w-4 h-4" />} label="Sito" />
       <NavButton 
         to="/openmic" 
@@ -166,7 +166,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   );
 
   const renderCommunityNav = () => (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide min-w-0">
       <NavButton to="/" icon={<Home className="w-4 h-4" />} label="Sito" />
       {isOpenmicActive && (
         <NavButton 
@@ -182,7 +182,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   );
 
   const renderAdminNav = () => (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide min-w-0">
       <NavButton to="/" icon={<Home className="w-4 h-4" />} label="Sito" />
       {isOpenmicActive && (
         <NavButton 
@@ -238,7 +238,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
 
   return (
     <header className="hidden md:flex sticky top-0 z-40 bg-card/95 backdrop-blur-xl border-b border-border/50 shadow-sm">
-      <div className="container py-3 flex items-center justify-between">
+      <div className="container py-3 flex items-center justify-between gap-4 min-w-0">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-3 group">
           <div className={cn(

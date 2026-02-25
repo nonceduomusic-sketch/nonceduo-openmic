@@ -199,7 +199,7 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
 
   return (
     <nav ref={ref} className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-card/98 backdrop-blur-xl border-t border-border/80 safe-area-bottom shadow-lg shadow-background/50">
-      <div className="flex items-center justify-around h-16 px-1 max-w-md mx-auto">
+      <div className="flex items-center justify-around h-16 px-1 max-w-md mx-auto overflow-x-auto scrollbar-hide">
         {visibleNavItems.map((item) => {
           const active = isActive(item);
           return (
@@ -207,7 +207,7 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
               key={item.path}
               to={item.path}
               className={cn(
-                "flex flex-col items-center justify-center flex-1 h-full py-1.5 transition-all duration-200 relative group",
+                "flex flex-col items-center justify-center flex-1 min-w-[56px] shrink-0 h-full py-1.5 transition-all duration-200 relative group",
                 active 
                   ? item.activeClass || "text-primary"
                   : "text-muted-foreground hover:text-foreground"

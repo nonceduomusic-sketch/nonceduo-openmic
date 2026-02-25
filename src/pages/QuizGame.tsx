@@ -145,7 +145,7 @@ const QuizGame: React.FC = () => {
     : [];
 
   return (
-    <PageLayout variant="main" title="🎵 Quiz Musicale" showBack backPath="/app/giochi">
+    <PageLayout variant="main" title="🎵 Quiz Musicale" showBack backPath="/app/giochi" hideDesktopHeader>
       <div className="max-w-lg mx-auto px-3 sm:px-4 py-4 sm:py-6">
         <AnimatePresence mode="wait">
           {/* MENU */}

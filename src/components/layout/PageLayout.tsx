@@ -15,6 +15,7 @@ interface PageLayoutProps {
   showAdmin?: boolean;
   rightContent?: React.ReactNode;
   hideBottomNav?: boolean;
+  hideDesktopHeader?: boolean;
   className?: string;
 }
 
@@ -28,6 +29,7 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
   showAdmin = false,
   rightContent,
   hideBottomNav = false,
+  hideDesktopHeader = false,
   className
 }) => {
   const { isStaff } = useStaffRole();
@@ -36,18 +38,20 @@ export const PageLayout: React.FC<PageLayoutProps> = ({
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Desktop Header */}
-      <DesktopHeader variant={variant} showAdmin={effectiveShowAdmin} />
+      {!hideDesktopHeader && <DesktopHeader variant={variant} showAdmin={effectiveShowAdmin} />}
       
-      {/* Mobile Header */}
-      <MobileHeader 
-        title={title}
-        subtitle={subtitle}
-        variant={variant}
-        showBack={showBack}
-        backPath={backPath}
-        showAdmin={effectiveShowAdmin}
-        rightContent={rightContent}
-      />
+      {/* Mobile Header - also shown on desktop when DesktopHeader is hidden */}
+      <div className={cn(!hideDesktopHeader && "md:hidden")}>
+        <MobileHeader 
+          title={title}
+          subtitle={subtitle}
+          variant={variant}
+          showBack={showBack}
+          backPath={backPath}
+          showAdmin={effectiveShowAdmin}
+          rightContent={rightContent}
+        />
+      </div>
       
       {/* Main Content - with padding for bottom nav on mobile */}
       <main className={cn(
