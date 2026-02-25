@@ -105,7 +105,10 @@ export const useFurorePlayers = (sessionId: string | undefined) => {
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    // Polling fallback every 3s for reliability
+    const poll = setInterval(fetchPlayers, 3000);
+
+    return () => { supabase.removeChannel(channel); clearInterval(poll); };
   }, [sessionId, fetchPlayers]);
 
   return { players, refetch: fetchPlayers };
@@ -136,7 +139,10 @@ export const useFuroreBookings = (sessionId: string | undefined) => {
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    // Polling fallback every 3s for reliability
+    const poll = setInterval(fetchBookings, 3000);
+
+    return () => { supabase.removeChannel(channel); clearInterval(poll); };
   }, [sessionId, fetchBookings]);
 
   return { bookings, refetch: fetchBookings };
