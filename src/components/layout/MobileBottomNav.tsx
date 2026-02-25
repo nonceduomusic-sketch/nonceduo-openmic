@@ -48,10 +48,10 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       activeClass: 'text-secondary'
     }] : []),
     ...(isFuroreActive ? [{
-      path: '/app/furore',
+      path: '/furore',
       icon: <Zap className="w-5 h-5" />,
       label: 'Furore',
-      matchPaths: ['/app/furore'],
+      matchPaths: ['/furore'],
       activeClass: 'text-destructive'
     }] : []),
     ...(isDedicheSite ? [{ 
@@ -62,10 +62,10 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       activeClass: 'text-primary'
     }] : []),
     ...(isGiochiActive ? [{
-      path: '/app/giochi',
+      path: '/giochi',
       icon: <Gamepad2 className="w-5 h-5" />,
       label: 'Giochi',
-      matchPaths: ['/app/giochi'],
+      matchPaths: ['/giochi'],
       activeClass: 'text-primary'
     }] : []),
     ...(isCommunityActive ? [{ 

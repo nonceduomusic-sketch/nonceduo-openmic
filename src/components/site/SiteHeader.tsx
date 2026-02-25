@@ -27,9 +27,9 @@ export const SiteHeader: React.FC<{ className?: string }> = ({ className }) => {
 
   const menuFormats = [
     (isOpenmicSite && isOpenmicMenu) && { label: "Open Mic", to: "/openmic", icon: Mic2 },
-    (isFuroreSite && isFuroreMenu) && { label: "Non C'è Furore", to: "/app/furore", icon: Zap },
+    (isFuroreSite && isFuroreMenu) && { label: "Non C'è Furore", to: "/furore", icon: Zap },
     (isDedicheSite && isDedicheMenu) && { label: "Dediche", to: "/messaggi", icon: MessageCircle },
-    (isGiochiSite && isGiochiMenu) && { label: "Giochi", to: "/app/giochi", icon: Gamepad2 },
+    (isGiochiSite && isGiochiMenu) && { label: "Giochi", to: "/giochi", icon: Gamepad2 },
     (isCommunitySite && isCommunityMenu) && { label: "Community", to: "/social", icon: Users },
   ].filter(Boolean) as { label: string; to: string; icon: React.ElementType }[];
 
