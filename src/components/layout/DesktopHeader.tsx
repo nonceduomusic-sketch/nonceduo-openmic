@@ -93,6 +93,28 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
     </div>
   );
 
+  const dynamicFormatButtons = () => (
+    <>
+      {isFuroreActive && (
+        <NavButton 
+          to="/app/furore" 
+          matchPaths={['/app/furore']} 
+          icon={<Zap className="w-4 h-4" />} 
+          label="Furore"
+          activeClass="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+        />
+      )}
+      {isGiochiActive && (
+        <NavButton 
+          to="/app/giochi" 
+          matchPaths={['/app/giochi']} 
+          icon={<Gamepad2 className="w-4 h-4" />} 
+          label="Giochi"
+        />
+      )}
+    </>
+  );
+
   const renderOpenMicNav = () => (
     <div className="flex items-center gap-1">
       <NavButton to="/" icon={<Home className="w-4 h-4" />} label="Sito" />
@@ -109,6 +131,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
         icon={<MessageCircle className="w-4 h-4" />} 
         label="Dediche"
       />
+      {dynamicFormatButtons()}
     </div>
   );
 
@@ -129,6 +152,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
         label="Open Mic"
         activeClass="neon-button-cyan"
       />
+      {dynamicFormatButtons()}
     </div>
   );
 
@@ -142,6 +166,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
         label="Open Mic"
         activeClass="neon-button-cyan"
       />
+      {dynamicFormatButtons()}
       <NavButton 
         to="/social/dashboard" 
         matchPaths={['/social/dashboard']} 
