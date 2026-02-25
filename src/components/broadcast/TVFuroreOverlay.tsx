@@ -62,6 +62,11 @@ export const TVFuroreOverlay: React.FC = () => {
 
   if (loading || !session) return null;
 
+  // Don't render if session is closed AND there are no players/bookings (after reset)
+  // This allows the OpenMic standby to show through
+  const hasActivity = players.length > 0 || bookings.length > 0;
+  if (session.status === 'closed' && !hasActivity) return null;
+
   const isOpen = session.status === 'open';
   const maxSlots = session.max_players;
 
