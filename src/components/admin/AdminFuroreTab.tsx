@@ -430,14 +430,23 @@ export const AdminFuroreTab: React.FC = () => {
 
   // Quiz state
   const [quizSetFilter, setQuizSetFilter] = useState<string>('all');
+  const [quizSearchQuery, setQuizSearchQuery] = useState('');
   const { data: questionSets } = useQuizQuestionSets();
   const { data: quizQuestions } = useQuizQuestions(quizSetFilter === 'all' ? undefined : quizSetFilter === 'general' ? undefined : quizSetFilter);
   
   const filteredQuestions = React.useMemo(() => {
     if (!quizQuestions) return [];
-    if (quizSetFilter === 'general') return quizQuestions.filter(q => !q.question_set_id);
-    return quizQuestions;
-  }, [quizQuestions, quizSetFilter]);
+    let result = quizQuestions;
+    if (quizSetFilter === 'general') result = result.filter(q => !q.question_set_id);
+    if (quizSearchQuery.trim()) {
+      const q = quizSearchQuery.toLowerCase();
+      result = result.filter(item => {
+        const setName = questionSets?.find(s => s.id === item.question_set_id)?.name || '';
+        return item.question_text.toLowerCase().includes(q) || setName.toLowerCase().includes(q);
+      });
+    }
+    return result;
+  }, [quizQuestions, quizSetFilter, quizSearchQuery, questionSets]);
 
   const activeQuizQuestion = React.useMemo(() => {
     if (!session?.quiz_question_id || !quizQuestions) return null;
@@ -715,6 +724,13 @@ export const AdminFuroreTab: React.FC = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                  <Input
+                    type="text"
+                    value={quizSearchQuery}
+                    onChange={e => setQuizSearchQuery(e.target.value)}
+                    placeholder="Cerca domanda..."
+                    className="h-8 text-xs"
+                  />
                   {filteredQuestions.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-3">Nessuna domanda disponibile</p>
                   ) : (

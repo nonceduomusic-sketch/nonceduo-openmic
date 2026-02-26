@@ -238,8 +238,8 @@ export const TVFuroreOverlay: React.FC = () => {
               transition={{ type: 'spring', damping: 18 }}
               className="w-full max-w-4xl"
             >
-              <div className="rounded-3xl border-2 border-amber-500/50 bg-gradient-to-br from-amber-500/15 to-orange-500/10 p-6 md:p-8 backdrop-blur-sm shadow-2xl shadow-amber-500/10">
-                <p className="text-2xl md:text-4xl font-black text-center mb-6 leading-tight">
+               <div className="rounded-3xl border-2 border-amber-500/50 bg-gradient-to-br from-amber-500/20 to-orange-500/15 p-6 md:p-8 backdrop-blur-md shadow-2xl shadow-amber-500/10">
+                <p className="text-2xl md:text-4xl font-black text-center mb-6 leading-tight text-white drop-shadow-lg">
                   {quizQuestion.question_text}
                 </p>
                 <div className="grid grid-cols-2 gap-3 md:gap-4">
@@ -255,18 +255,22 @@ export const TVFuroreOverlay: React.FC = () => {
                         transition={{ duration: 0.5 }}
                         className={cn(
                           "rounded-xl border-2 px-5 py-4 flex items-center gap-3 transition-all duration-500",
-                          revealed && isCorrect && "bg-green-500/25 border-green-500 shadow-lg shadow-green-500/20",
-                          revealed && !isCorrect && "opacity-40 border-white/10",
-                          !revealed && "border-white/20 bg-white/5"
+                          revealed && isCorrect && "bg-green-500/30 border-green-500 shadow-lg shadow-green-500/20",
+                          revealed && !isCorrect && "opacity-40 border-white/10 bg-black/20",
+                          !revealed && "border-white/30 bg-white/10 backdrop-blur-sm"
                         )}
                       >
                         <span className={cn(
                           "w-10 h-10 rounded-full flex items-center justify-center font-black text-lg shrink-0",
-                          revealed && isCorrect ? "bg-green-500 text-white" : "bg-white/10"
+                          revealed && isCorrect ? "bg-green-500 text-white" : "bg-white/20 text-white"
                         )}>
                           {opt}
                         </span>
-                        <span className={cn("text-lg md:text-2xl font-bold", revealed && isCorrect && "text-green-300")}>
+                        <span className={cn(
+                          "text-lg md:text-2xl font-bold text-white drop-shadow-md",
+                          revealed && isCorrect && "text-green-300",
+                          revealed && !isCorrect && "text-white/50"
+                        )}>
                           {text}
                         </span>
                         {revealed && isCorrect && (
