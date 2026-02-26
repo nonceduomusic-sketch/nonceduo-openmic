@@ -1,11 +1,13 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
 import {
   useFuroreSession,
   useFurorePlayers,
   useFuroreBookings,
 } from '@/hooks/useFurore';
+import { type QuizQuestion } from '@/hooks/useGames';
 import brandLogo from '@/assets/brand-logo-splash.png';
 
 /**
@@ -18,6 +20,24 @@ export const TVFuroreOverlay: React.FC = () => {
   const { bookings, refetch: refetchBookings } = useFuroreBookings(session?.id);
   const lastBookingCountRef = useRef(0);
   const audioCtxRef = useRef<AudioContext | null>(null);
+  const [quizQuestion, setQuizQuestion] = useState<QuizQuestion | null>(null);
+
+  // Fetch quiz question when session has one
+  useEffect(() => {
+    if (!session?.quiz_question_id) {
+      setQuizQuestion(null);
+      return;
+    }
+    const fetchQuestion = async () => {
+      const { data } = await supabase
+        .from('quiz_questions')
+        .select('*')
+        .eq('id', session.quiz_question_id)
+        .maybeSingle();
+      if (data) setQuizQuestion(data as unknown as QuizQuestion);
+    };
+    fetchQuestion();
+  }, [session?.quiz_question_id]);
 
   // Force refetch when session changes (status or updated_at)
   useEffect(() => {
@@ -206,7 +226,69 @@ export const TVFuroreOverlay: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 flex-1 flex items-center justify-center px-8 pb-8">
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-8 pb-8 gap-6">
+        {/* Quiz Question Overlay */}
+        <AnimatePresence>
+          {quizQuestion && !showLeaderboard && (
+            <motion.div
+              key="quiz"
+              initial={{ opacity: 0, y: -30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -30, scale: 0.95 }}
+              transition={{ type: 'spring', damping: 18 }}
+              className="w-full max-w-4xl"
+            >
+              <div className="rounded-3xl border-2 border-amber-500/50 bg-gradient-to-br from-amber-500/15 to-orange-500/10 p-6 md:p-8 backdrop-blur-sm shadow-2xl shadow-amber-500/10">
+                <p className="text-2xl md:text-4xl font-black text-center mb-6 leading-tight">
+                  {quizQuestion.question_text}
+                </p>
+                <div className="grid grid-cols-2 gap-3 md:gap-4">
+                  {(['A', 'B', 'C', 'D'] as const).map(opt => {
+                    const text = quizQuestion[`option_${opt.toLowerCase()}` as keyof QuizQuestion] as string | null;
+                    if (!text) return null;
+                    const isCorrect = quizQuestion.correct_option === opt;
+                    const revealed = session?.quiz_answer_revealed;
+                    return (
+                      <motion.div
+                        key={opt}
+                        animate={revealed && isCorrect ? { scale: [1, 1.05, 1], borderColor: ['rgba(34,197,94,0.5)', 'rgba(34,197,94,1)', 'rgba(34,197,94,0.8)'] } : {}}
+                        transition={{ duration: 0.5 }}
+                        className={cn(
+                          "rounded-xl border-2 px-5 py-4 flex items-center gap-3 transition-all duration-500",
+                          revealed && isCorrect && "bg-green-500/25 border-green-500 shadow-lg shadow-green-500/20",
+                          revealed && !isCorrect && "opacity-40 border-white/10",
+                          !revealed && "border-white/20 bg-white/5"
+                        )}
+                      >
+                        <span className={cn(
+                          "w-10 h-10 rounded-full flex items-center justify-center font-black text-lg shrink-0",
+                          revealed && isCorrect ? "bg-green-500 text-white" : "bg-white/10"
+                        )}>
+                          {opt}
+                        </span>
+                        <span className={cn("text-lg md:text-2xl font-bold", revealed && isCorrect && "text-green-300")}>
+                          {text}
+                        </span>
+                        {revealed && isCorrect && (
+                          <motion.span
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            className="ml-auto text-3xl"
+                          >
+                            ✅
+                          </motion.span>
+                        )}
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Bookings/Leaderboard Area */}
+        <div className={cn("w-full flex items-center justify-center", quizQuestion && !showLeaderboard && "max-h-[40vh]")}>
         <AnimatePresence mode="wait">
           {showLeaderboard ? (
             /* ─── LEADERBOARD VIEW ─── */
@@ -272,13 +354,13 @@ export const TVFuroreOverlay: React.FC = () => {
               exit={{ opacity: 0, scale: 0.95 }}
               className="w-full"
             >
-              {bookedSlots.length === 0 ? (
+              {bookedSlots.length === 0 && !quizQuestion ? (
                 <div className="text-center">
                   <p className="text-2xl md:text-3xl text-white/30 font-medium">
                     {isOpen ? 'In attesa delle prenotazioni...' : 'In attesa di aprire le prenotazioni...'}
                   </p>
                 </div>
-              ) : (
+              ) : bookedSlots.length > 0 ? (
                 <div className={cn("grid gap-4 w-full max-w-5xl mx-auto", gridCols)}>
                   {bookedSlots.map(({ booking, player }) => (
                     <motion.div
@@ -286,27 +368,31 @@ export const TVFuroreOverlay: React.FC = () => {
                       initial={{ scale: 0.5, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ type: 'spring', damping: 12, stiffness: 200 }}
-                      className="relative aspect-square rounded-2xl border-2 flex flex-col items-center justify-center gap-2 border-white/30 shadow-lg"
+                      className={cn(
+                        "relative rounded-2xl border-2 flex flex-col items-center justify-center gap-2 border-white/30 shadow-lg",
+                        quizQuestion ? "p-3" : "aspect-square"
+                      )}
                       style={{
                         backgroundColor: `${player!.color}20`,
                         borderColor: `${player!.color}60`,
                         boxShadow: `0 0 30px ${player!.color}30`,
                       }}
                     >
-                      <span className="absolute top-2 left-3 text-sm font-bold text-white/50">
+                      <span className={cn("absolute top-2 left-3 font-bold text-white/50", quizQuestion ? "text-xs" : "text-sm")}>
                         {booking.position}°
                       </span>
-                      <span className="text-4xl md:text-5xl">{player!.symbol}</span>
-                      <span className="text-sm md:text-base font-bold text-white truncate max-w-full px-2">
+                      <span className={cn(quizQuestion ? "text-2xl" : "text-4xl md:text-5xl")}>{player!.symbol}</span>
+                      <span className={cn("font-bold text-white truncate max-w-full px-2", quizQuestion ? "text-xs" : "text-sm md:text-base")}>
                         {player!.nickname}
                       </span>
                     </motion.div>
                   ))}
                 </div>
-              )}
+              ) : null}
             </motion.div>
           )}
         </AnimatePresence>
+        </div>
       </div>
 
       {/* Footer */}

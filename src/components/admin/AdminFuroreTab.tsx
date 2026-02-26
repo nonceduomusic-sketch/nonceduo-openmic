@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useQuizQuestionSets, useQuizQuestions, type QuizQuestion } from '@/hooks/useGames';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Zap, Play, Pause, RotateCcw, Users, Volume2, Eye, EyeOff, Crown, ExternalLink, QrCode, Tv, Gamepad2, Pencil, Trash2, Check, X, Trophy, BarChart3, UserX, Award } from 'lucide-react';
+import { Zap, Play, Pause, RotateCcw, Users, Volume2, Eye, EyeOff, Crown, ExternalLink, QrCode, Tv, Gamepad2, Pencil, Trash2, Check, X, Trophy, BarChart3, UserX, Award, HelpCircle, Send, ChevronDown } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import {
@@ -420,12 +421,28 @@ export const AdminFuroreTab: React.FC = () => {
   const { session, loading } = useFuroreSession();
   const { players, refetch: refetchPlayers } = useFurorePlayers(session?.id);
   const { bookings } = useFuroreBookings(session?.id);
-  const { createSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, kickAllPlayers, updatePlayer, resetScores, setScoringRules, setAutoScoring, setPlayerScore } = useFuroreAdmin();
+  const { createSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, kickAllPlayers, updatePlayer, resetScores, setScoringRules, setAutoScoring, publishQuizQuestion, revealQuizAnswer, clearQuizQuestion, setPlayerScore } = useFuroreAdmin();
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmKickAll, setConfirmKickAll] = useState(false);
   const [showAssignScore, setShowAssignScore] = useState(false);
   const [assignPlayerId, setAssignPlayerId] = useState<string | null>(null);
   const [assignScoreValue, setAssignScoreValue] = useState(0);
+
+  // Quiz state
+  const [quizSetFilter, setQuizSetFilter] = useState<string>('all');
+  const { data: questionSets } = useQuizQuestionSets();
+  const { data: quizQuestions } = useQuizQuestions(quizSetFilter === 'all' ? undefined : quizSetFilter === 'general' ? undefined : quizSetFilter);
+  
+  const filteredQuestions = React.useMemo(() => {
+    if (!quizQuestions) return [];
+    if (quizSetFilter === 'general') return quizQuestions.filter(q => !q.question_set_id);
+    return quizQuestions;
+  }, [quizQuestions, quizSetFilter]);
+
+  const activeQuizQuestion = React.useMemo(() => {
+    if (!session?.quiz_question_id || !quizQuestions) return null;
+    return quizQuestions.find(q => q.id === session.quiz_question_id) || null;
+  }, [session?.quiz_question_id, quizQuestions]);
 
   const handleCreateSession = async () => {
     const s = await createSession();
@@ -614,6 +631,114 @@ export const AdminFuroreTab: React.FC = () => {
                 <strong> Reset Completo</strong>: cancella tutto e butta fuori tutti.
                 <strong> Espelli Tutti</strong>: butta fuori tutti senza resettare punteggi.
               </p>
+            </CardContent>
+          </Card>
+
+          {/* Quiz Mode Card */}
+          <Card className="border-amber-500/30">
+            <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+              <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                <HelpCircle className="w-4 h-4 text-amber-500" /> Modalità Quiz
+              </CardTitle>
+              <p className="text-[11px] text-muted-foreground">Pubblica domande su /trasmetti durante la partita</p>
+            </CardHeader>
+            <CardContent className="px-4 sm:px-6 space-y-3">
+              {session.quiz_question_id && activeQuizQuestion ? (
+                /* Active question controls */
+                <div className="space-y-3">
+                  <div className="p-3 rounded-lg border-2 border-amber-500/40 bg-amber-500/5">
+                    <p className="text-xs font-medium text-muted-foreground mb-1">Domanda pubblicata:</p>
+                    <p className="font-bold text-sm">{activeQuizQuestion.question_text}</p>
+                    <div className="grid grid-cols-2 gap-1.5 mt-2">
+                      {['A', 'B', 'C', 'D'].map(opt => {
+                        const text = activeQuizQuestion[`option_${opt.toLowerCase()}` as keyof QuizQuestion] as string | null;
+                        if (!text) return null;
+                        const isCorrect = activeQuizQuestion.correct_option === opt;
+                        return (
+                          <div key={opt} className={cn(
+                            "text-xs p-1.5 rounded border",
+                            session.quiz_answer_revealed && isCorrect && "bg-green-500/20 border-green-500/50 font-bold",
+                            session.quiz_answer_revealed && !isCorrect && "opacity-50"
+                          )}>
+                            <span className="font-bold">{opt}.</span> {text}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {!session.quiz_answer_revealed ? (
+                      <Button
+                        onClick={async () => {
+                          await revealQuizAnswer(session.id);
+                          toast.success('Risposta rivelata su TV!');
+                        }}
+                        className="gap-1.5 h-10 bg-green-600 hover:bg-green-700"
+                      >
+                        <Eye className="w-4 h-4" />
+                        <span className="text-xs">Mostra risposta</span>
+                      </Button>
+                    ) : (
+                      <Button variant="secondary" disabled className="gap-1.5 h-10">
+                        <Check className="w-4 h-4" />
+                        <span className="text-xs">Risposta visibile</span>
+                      </Button>
+                    )}
+                    <Button
+                      onClick={async () => {
+                        await clearQuizQuestion(session.id);
+                        toast.success('Domanda rimossa da TV');
+                      }}
+                      variant="outline"
+                      className="gap-1.5 h-10 border-destructive/50 text-destructive hover:bg-destructive/10"
+                    >
+                      <X className="w-4 h-4" />
+                      <span className="text-xs">Rimuovi domanda</span>
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                /* Question selector */
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs font-medium shrink-0">Elenco:</Label>
+                    <Select value={quizSetFilter} onValueChange={setQuizSetFilter}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutte le domande</SelectItem>
+                        <SelectItem value="general">Generali (senza elenco)</SelectItem>
+                        {questionSets?.map(s => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {filteredQuestions.length === 0 ? (
+                    <p className="text-xs text-muted-foreground text-center py-3">Nessuna domanda disponibile</p>
+                  ) : (
+                    <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                      {filteredQuestions.map(q => (
+                        <button
+                          key={q.id}
+                          onClick={async () => {
+                            await publishQuizQuestion(session.id, q.id);
+                            toast.success('Domanda pubblicata su TV!');
+                          }}
+                          className="flex items-center gap-2 w-full p-2.5 rounded-lg border text-left text-xs hover:border-amber-500/50 hover:bg-amber-500/5 transition-all"
+                        >
+                          <Send className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                          <span className="flex-1 truncate">{q.question_text}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-[10px] text-muted-foreground">
+                    Clicca su una domanda per pubblicarla su /trasmetti. Le prenotazioni rimangono attive.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 

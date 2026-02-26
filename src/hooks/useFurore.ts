@@ -21,6 +21,8 @@ export interface FuroreSession {
   sound_key: string;
   scoring_rules: FuroreScoringRules;
   auto_scoring: boolean;
+  quiz_question_id: string | null;
+  quiz_answer_revealed: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -240,12 +242,24 @@ export const useFuroreAdmin = () => {
 
   const setAutoScoring = async (id: string, enabled: boolean) => updateSession(id, { auto_scoring: enabled });
 
+  const publishQuizQuestion = async (id: string, questionId: string | null) => {
+    return updateSession(id, { quiz_question_id: questionId, quiz_answer_revealed: false });
+  };
+
+  const revealQuizAnswer = async (id: string) => {
+    return updateSession(id, { quiz_answer_revealed: true });
+  };
+
+  const clearQuizQuestion = async (id: string) => {
+    return updateSession(id, { quiz_question_id: null, quiz_answer_revealed: false });
+  };
+
   const setPlayerScore = async (playerId: string, score: number) => {
     const { error } = await supabase.from('furore_players').update({ score }).eq('id', playerId);
     return !error;
   };
 
-  return { createSession, updateSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, kickAllPlayers, updatePlayer, resetScores, setScoringRules, setAutoScoring, setPlayerScore };
+  return { createSession, updateSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, kickAllPlayers, updatePlayer, resetScores, setScoringRules, setAutoScoring, publishQuizQuestion, revealQuizAnswer, clearQuizQuestion, setPlayerScore };
 };
 
 // ─── Player Actions ───
