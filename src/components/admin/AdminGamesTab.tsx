@@ -384,12 +384,39 @@ const ScoresPanel: React.FC = () => {
 // ─── Quiz Sets Panel ───
 const QuizSetsPanel: React.FC = () => {
   const { data: sets } = useQuizQuestionSets();
+  const { data: allQuestions } = useQuizQuestions();
   const createSet = useCreateQuestionSet();
   const updateSet = useUpdateQuestionSet();
   const deleteSet = useDeleteQuestionSet();
+  const updateQuestion = useUpdateQuizQuestion();
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
+  const [editingSet, setEditingSet] = useState<QuizQuestionSet | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editDesc, setEditDesc] = useState('');
+  const [showMoveDialog, setShowMoveDialog] = useState(false);
+  const [moveFromSetId, setMoveFromSetId] = useState<string>('');
+  const [moveToSetId, setMoveToSetId] = useState<string>('');
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
+
+  const questionsForMove = allQuestions?.filter(q =>
+    moveFromSetId === '__none__' ? !q.question_set_id : q.question_set_id === moveFromSetId
+  ) || [];
+
+  const getQuestionCount = (setId: string) =>
+    allQuestions?.filter(q => q.question_set_id === setId).length || 0;
+
+  const handleBulkMove = () => {
+    if (!selectedQuestionIds.length) return toast.error('Seleziona almeno una domanda');
+    const targetId = moveToSetId === '__none__' ? null : moveToSetId;
+    selectedQuestionIds.forEach(id => {
+      updateQuestion.mutate({ id, question_set_id: targetId } as any);
+    });
+    toast.success(`${selectedQuestionIds.length} domande spostate`);
+    setSelectedQuestionIds([]);
+    setShowMoveDialog(false);
+  };
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -400,9 +427,14 @@ const QuizSetsPanel: React.FC = () => {
               <CardTitle className="text-sm sm:text-base">Elenchi Domande</CardTitle>
               <CardDescription className="text-xs sm:text-sm">Crea elenchi tematici per serate diverse</CardDescription>
             </div>
-            <Button size="sm" className="h-8 sm:h-9 text-xs sm:text-sm" onClick={() => setShowCreate(true)}>
-              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />Nuovo Elenco
-            </Button>
+            <div className="flex gap-1.5">
+              <Button size="sm" className="h-8 sm:h-9 text-xs sm:text-sm" variant="outline" onClick={() => { setMoveFromSetId(''); setMoveToSetId(''); setSelectedQuestionIds([]); setShowMoveDialog(true); }}>
+                <Shuffle className="w-3.5 h-3.5 mr-1" />Sposta Domande
+              </Button>
+              <Button size="sm" className="h-8 sm:h-9 text-xs sm:text-sm" onClick={() => setShowCreate(true)}>
+                <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />Nuovo Elenco
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-2 sm:space-y-3 px-4 sm:px-6">
@@ -413,10 +445,16 @@ const QuizSetsPanel: React.FC = () => {
                 <div className="min-w-0">
                   <p className="font-medium text-xs sm:text-sm">{s.name}</p>
                   {s.description && <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{s.description}</p>}
+                  <p className="text-[10px] text-muted-foreground">{getQuestionCount(s.id)} domande</p>
                 </div>
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                 {s.is_default && <Badge variant="secondary" className="text-[10px] sm:text-xs">Default</Badge>}
+                <Button size="sm" className="h-7 sm:h-8 w-7 sm:w-8 p-0" variant="ghost" onClick={() => {
+                  setEditingSet(s); setEditName(s.name); setEditDesc(s.description || '');
+                }}>
+                  <Edit className="w-3.5 h-3.5" />
+                </Button>
                 <Button size="sm" className="h-7 sm:h-8 w-7 sm:w-8 p-0" variant={s.is_active ? 'default' : 'outline'} onClick={() => {
                   updateSet.mutate({ id: s.id, is_active: !s.is_active });
                   toast.success(s.is_active ? 'Disattivato' : 'Attivato');
@@ -434,6 +472,7 @@ const QuizSetsPanel: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
         <DialogContent>
           <DialogHeader><DialogTitle>Nuovo Elenco Domande</DialogTitle></DialogHeader>
@@ -450,6 +489,84 @@ const QuizSetsPanel: React.FC = () => {
               setShowCreate(false);
               toast.success('Elenco creato');
             }}><Save className="w-4 h-4 mr-1" />Crea</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit/Rename Dialog */}
+      <Dialog open={!!editingSet} onOpenChange={open => { if (!open) setEditingSet(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Modifica Elenco</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label>Nome</Label><Input value={editName} onChange={e => setEditName(e.target.value)} /></div>
+            <div><Label>Descrizione</Label><Textarea value={editDesc} onChange={e => setEditDesc(e.target.value)} /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingSet(null)}>Annulla</Button>
+            <Button onClick={() => {
+              if (!editName.trim()) return toast.error('Il nome è obbligatorio');
+              updateSet.mutate({ id: editingSet!.id, name: editName.trim(), description: editDesc.trim() || null } as any);
+              setEditingSet(null);
+              toast.success('Elenco aggiornato');
+            }}><Save className="w-4 h-4 mr-1" />Salva</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Move Questions Dialog */}
+      <Dialog open={showMoveDialog} onOpenChange={setShowMoveDialog}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Sposta Domande tra Elenchi</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-sm">Da elenco</Label>
+              <Select value={moveFromSetId} onValueChange={v => { setMoveFromSetId(v); setSelectedQuestionIds([]); }}>
+                <SelectTrigger><SelectValue placeholder="Seleziona origine..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">🌐 Senza elenco</SelectItem>
+                  {sets?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-sm">A elenco</Label>
+              <Select value={moveToSetId} onValueChange={setMoveToSetId}>
+                <SelectTrigger><SelectValue placeholder="Seleziona destinazione..." /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">🌐 Senza elenco</SelectItem>
+                  {sets?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            {moveFromSetId && (
+              <div className="space-y-1.5 max-h-[40vh] overflow-y-auto border rounded-lg p-2">
+                <div className="flex items-center gap-2 pb-1 border-b">
+                  <Checkbox
+                    checked={selectedQuestionIds.length === questionsForMove.length && questionsForMove.length > 0}
+                    onCheckedChange={checked => setSelectedQuestionIds(checked ? questionsForMove.map(q => q.id) : [])}
+                  />
+                  <Label className="text-xs font-semibold">Seleziona tutte ({questionsForMove.length})</Label>
+                </div>
+                {questionsForMove.map(q => (
+                  <div key={q.id} className="flex items-center gap-2">
+                    <Checkbox
+                      checked={selectedQuestionIds.includes(q.id)}
+                      onCheckedChange={checked => setSelectedQuestionIds(prev =>
+                        checked ? [...prev, q.id] : prev.filter(id => id !== q.id)
+                      )}
+                    />
+                    <span className="text-xs truncate">{q.question_text}</span>
+                  </div>
+                ))}
+                {questionsForMove.length === 0 && <p className="text-xs text-muted-foreground text-center py-2">Nessuna domanda</p>}
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowMoveDialog(false)}>Annulla</Button>
+            <Button onClick={handleBulkMove} disabled={!selectedQuestionIds.length || !moveToSetId || moveFromSetId === moveToSetId}>
+              <Shuffle className="w-4 h-4 mr-1" />Sposta ({selectedQuestionIds.length})
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -536,6 +653,11 @@ const QuizQuestionsPanel: React.FC = () => {
   };
 
   // ─── Import ───
+  const [importSetTarget, setImportSetTarget] = useState<string>('__selected__');
+  const [showNewSetForImport, setShowNewSetForImport] = useState(false);
+  const [newSetNameForImport, setNewSetNameForImport] = useState('');
+  const createSetForImport = useCreateQuestionSet();
+
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -557,6 +679,11 @@ const QuizQuestionsPanel: React.FC = () => {
       const setMap: Record<string, string> = {};
       sets?.forEach(s => { setMap[s.name.toLowerCase().trim()] = s.id; });
 
+      // Determine target set
+      const targetSetId = importSetTarget === '__selected__' ? selectedSetId :
+                          importSetTarget === '__csv__' ? undefined :
+                          importSetTarget;
+
       for (let i = 1; i < lines.length; i++) {
         const cols = parseCSVLine(lines[i], sep);
         if (cols.length < 5) { errors++; continue; }
@@ -572,9 +699,9 @@ const QuizQuestionsPanel: React.FC = () => {
 
         if (!question_text || !option_a || !option_b) { errors++; continue; }
 
-        // Find or use selected set
-        let question_set_id = selectedSetId || sets?.[0]?.id;
-        if (setName) {
+        // Determine question_set_id
+        let question_set_id = targetSetId || sets?.[0]?.id;
+        if (importSetTarget === '__csv__' && setName) {
           const matchedId = setMap[setName.toLowerCase()];
           if (matchedId) question_set_id = matchedId;
         }
@@ -592,7 +719,6 @@ const QuizQuestionsPanel: React.FC = () => {
       toast.success(`Importate ${imported} domande${errors > 0 ? `, ${errors} righe ignorate` : ''}`);
     };
     reader.readAsText(file);
-    // Reset input
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -614,10 +740,27 @@ const QuizQuestionsPanel: React.FC = () => {
             </Button>
           </div>
           <Separator />
-          <div className="space-y-1.5">
+          <div className="space-y-2">
             <Label className="text-[10px] sm:text-xs text-muted-foreground">
               Colonne CSV: domanda, opzione_a, opzione_b, opzione_c, opzione_d, risposta, difficolta [, elenco]
             </Label>
+            <div>
+              <Label className="text-xs font-medium">Elenco di destinazione</Label>
+              <Select value={importSetTarget} onValueChange={v => {
+                if (v === '__new__') { setShowNewSetForImport(true); return; }
+                setImportSetTarget(v);
+              }}>
+                <SelectTrigger className="text-sm h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__selected__">📋 Elenco selezionato nel filtro</SelectItem>
+                  <SelectItem value="__csv__">📄 Leggi dal CSV (colonna "elenco")</SelectItem>
+                  <Separator className="my-1" />
+                  {sets?.map(s => <SelectItem key={s.id} value={s.id}>📁 {s.name}</SelectItem>)}
+                  <Separator className="my-1" />
+                  <SelectItem value="__new__">➕ Crea nuovo elenco...</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <Button variant="outline" size="sm" className="w-full text-xs sm:text-sm h-8 sm:h-9" onClick={() => fileInputRef.current?.click()}>
               <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />Carica CSV
             </Button>
@@ -625,6 +768,30 @@ const QuizQuestionsPanel: React.FC = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* New set for import dialog */}
+      <Dialog open={showNewSetForImport} onOpenChange={setShowNewSetForImport}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Crea Nuovo Elenco per Import</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div><Label>Nome elenco</Label><Input value={newSetNameForImport} onChange={e => setNewSetNameForImport(e.target.value)} placeholder="es. Rock Classico" /></div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowNewSetForImport(false)}>Annulla</Button>
+            <Button onClick={() => {
+              if (!newSetNameForImport.trim()) return toast.error('Inserisci un nome');
+              createSetForImport.mutate({ name: newSetNameForImport.trim() }, {
+                onSuccess: () => {
+                  toast.success('Elenco creato! Selezionalo e poi carica il CSV.');
+                  setNewSetNameForImport('');
+                  setShowNewSetForImport(false);
+                  // After creation, user picks it from dropdown
+                },
+              });
+            }}><Save className="w-4 h-4 mr-1" />Crea</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Questions List */}
       <Card>
