@@ -10,6 +10,20 @@ import {
 import { type QuizQuestion } from '@/hooks/useGames';
 import brandLogo from '@/assets/brand-logo-splash.png';
 
+/** Generate a vibrant HSL color palette from a string seed */
+const quizColorFromId = (id: string) => {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  const hue = ((hash % 360) + 360) % 360;
+  return {
+    border: `hsla(${hue}, 80%, 55%, 0.5)`,
+    bgFrom: `hsla(${hue}, 70%, 50%, 0.20)`,
+    bgTo: `hsla(${hue}, 60%, 40%, 0.15)`,
+    shadow: `hsla(${hue}, 80%, 55%, 0.10)`,
+    glow: `hsla(${hue}, 90%, 60%, 0.30)`,
+  };
+};
+
 /**
  * TV overlay for /trasmetti — shows Furore buzzer board
  * Shows idle screen when no session or no activity
@@ -238,7 +252,14 @@ export const TVFuroreOverlay: React.FC = () => {
               transition={{ type: 'spring', damping: 18 }}
               className="w-full max-w-4xl"
             >
-               <div className="rounded-3xl border-2 border-amber-500/50 bg-gradient-to-br from-amber-500/20 to-orange-500/15 p-6 md:p-8 backdrop-blur-md shadow-2xl shadow-amber-500/10">
+               <div
+                className="rounded-3xl border-2 p-6 md:p-8 backdrop-blur-md shadow-2xl"
+                style={{
+                  borderColor: quizColorFromId(quizQuestion.id).border,
+                  background: `linear-gradient(135deg, ${quizColorFromId(quizQuestion.id).bgFrom}, ${quizColorFromId(quizQuestion.id).bgTo})`,
+                  boxShadow: `0 25px 50px -12px ${quizColorFromId(quizQuestion.id).shadow}`,
+                }}
+              >
                 <p className="text-2xl md:text-4xl font-black text-center mb-6 leading-tight text-white drop-shadow-lg">
                   {quizQuestion.question_text}
                 </p>
