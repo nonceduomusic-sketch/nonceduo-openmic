@@ -19,7 +19,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Zap, Play, Pause, RotateCcw, Users, Volume2, Eye, EyeOff, Crown, ExternalLink, QrCode, Tv, Gamepad2, Pencil, Trash2, Check, X, Trophy, BarChart3, UserX } from 'lucide-react';
+import { Zap, Play, Pause, RotateCcw, Users, Volume2, Eye, EyeOff, Crown, ExternalLink, QrCode, Tv, Gamepad2, Pencil, Trash2, Check, X, Trophy, BarChart3, UserX, Award } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import {
   useFuroreSession,
@@ -422,6 +423,9 @@ export const AdminFuroreTab: React.FC = () => {
   const { createSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, kickAllPlayers, updatePlayer, resetScores, setScoringRules, setAutoScoring, setPlayerScore } = useFuroreAdmin();
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmKickAll, setConfirmKickAll] = useState(false);
+  const [showAssignScore, setShowAssignScore] = useState(false);
+  const [assignPlayerId, setAssignPlayerId] = useState<string | null>(null);
+  const [assignScoreValue, setAssignScoreValue] = useState(0);
 
   const handleCreateSession = async () => {
     const s = await createSession();
@@ -589,6 +593,20 @@ export const AdminFuroreTab: React.FC = () => {
                   <span className="text-sm">{(session as any).show_leaderboard ? '🏆 Classifica su TV — ATTIVA' : 'Mostra Classifica su TV'}</span>
                 </Button>
               </div>
+              {/* Manual Score Assignment Button */}
+              {!session.auto_scoring && players.length > 0 && (
+                <>
+                  <Separator />
+                  <Button
+                    onClick={() => { setShowAssignScore(true); setAssignPlayerId(null); setAssignScoreValue(0); }}
+                    variant="outline"
+                    className="gap-2 w-full h-12 sm:h-10 border-primary/50 text-primary hover:bg-primary/10"
+                  >
+                    <Award className="w-4 h-4" />
+                    <span className="text-sm">Assegna punti</span>
+                  </Button>
+                </>
+              )}
               <p className="text-[11px] text-muted-foreground">
                 <strong>Standby</strong>: prenotazioni bloccate, in attesa. 
                 <strong> Apri</strong>: i giocatori possono prenotarsi. 
@@ -737,6 +755,75 @@ export const AdminFuroreTab: React.FC = () => {
           />
         </>
       )}
+
+      {/* Assign Score Dialog */}
+      <Dialog open={showAssignScore} onOpenChange={setShowAssignScore}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Award className="w-5 h-5" /> Assegna punti
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Seleziona giocatore</Label>
+              <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                {players.map(p => (
+                  <button
+                    key={p.id}
+                    onClick={() => setAssignPlayerId(p.id)}
+                    className={cn(
+                      "flex items-center gap-2 w-full p-2.5 rounded-lg border text-left text-sm transition-all",
+                      assignPlayerId === p.id ? "border-primary bg-primary/10 font-medium" : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <span className="w-8 h-8 rounded-full flex items-center justify-center text-base shrink-0" style={{ backgroundColor: p.color }}>{p.symbol}</span>
+                    <span className="flex-1 truncate">{p.nickname}</span>
+                    <span className="text-xs text-muted-foreground">{p.score || 0} pt</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            {assignPlayerId && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Punti da aggiungere</Label>
+                <Input
+                  type="number"
+                  value={assignScoreValue}
+                  onChange={e => setAssignScoreValue(parseInt(e.target.value) || 0)}
+                  className="text-center text-lg font-bold"
+                  autoFocus
+                />
+                <p className="text-[11px] text-muted-foreground text-center">
+                  Nuovo totale: {(players.find(p => p.id === assignPlayerId)?.score || 0) + assignScoreValue} pt
+                </p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAssignScore(false)}>Annulla</Button>
+            <Button
+              disabled={!assignPlayerId || assignScoreValue === 0}
+              onClick={async () => {
+                if (!assignPlayerId) return;
+                const player = players.find(p => p.id === assignPlayerId);
+                const newScore = (player?.score || 0) + assignScoreValue;
+                const ok = await setPlayerScore(assignPlayerId, newScore);
+                if (ok) {
+                  toast.success(`${assignScoreValue > 0 ? '+' : ''}${assignScoreValue} punti a ${player?.nickname}`);
+                  await refetchPlayers();
+                  setAssignPlayerId(null);
+                  setAssignScoreValue(0);
+                } else {
+                  toast.error('Errore nell\'assegnazione');
+                }
+              }}
+            >
+              <Award className="w-4 h-4 mr-1" /> Assegna
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Confirmation Dialogs */}
       <AlertDialog open={confirmReset} onOpenChange={setConfirmReset}>
