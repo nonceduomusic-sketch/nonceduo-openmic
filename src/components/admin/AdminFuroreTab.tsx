@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuizQuestionSets, useQuizQuestions, type QuizQuestion } from '@/hooks/useGames';
+import { useQuizQuestionSets, useQuizQuestions, useUpdateQuizQuestion, type QuizQuestion } from '@/hooks/useGames';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -430,14 +430,20 @@ export const AdminFuroreTab: React.FC = () => {
 
   // Quiz state
   const [quizSetFilter, setQuizSetFilter] = useState<string>('all');
+  const [quizDifficultyFilter, setQuizDifficultyFilter] = useState<string>('all');
   const [quizSearchQuery, setQuizSearchQuery] = useState('');
   const { data: questionSets } = useQuizQuestionSets();
   const { data: quizQuestions } = useQuizQuestions(quizSetFilter === 'all' ? undefined : quizSetFilter === 'general' ? undefined : quizSetFilter);
+  const updateQuizQuestion = useUpdateQuizQuestion();
   
   const filteredQuestions = React.useMemo(() => {
     if (!quizQuestions) return [];
     let result = quizQuestions;
     if (quizSetFilter === 'general') result = result.filter(q => !q.question_set_id);
+    if (quizDifficultyFilter !== 'all') {
+      const diff = parseInt(quizDifficultyFilter);
+      result = result.filter(q => q.difficulty === diff);
+    }
     if (quizSearchQuery.trim()) {
       const q = quizSearchQuery.toLowerCase();
       result = result.filter(item => {
@@ -446,7 +452,7 @@ export const AdminFuroreTab: React.FC = () => {
       });
     }
     return result;
-  }, [quizQuestions, quizSetFilter, quizSearchQuery, questionSets]);
+  }, [quizQuestions, quizSetFilter, quizDifficultyFilter, quizSearchQuery, questionSets]);
 
   const activeQuizQuestion = React.useMemo(() => {
     if (!session?.quiz_question_id || !quizQuestions) return null;
@@ -727,6 +733,20 @@ export const AdminFuroreTab: React.FC = () => {
                       </SelectContent>
                     </Select>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs font-medium shrink-0">Difficoltà:</Label>
+                    <Select value={quizDifficultyFilter} onValueChange={setQuizDifficultyFilter}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutte</SelectItem>
+                        <SelectItem value="1">⭐ Facile</SelectItem>
+                        <SelectItem value="2">⭐⭐ Media</SelectItem>
+                        <SelectItem value="3">⭐⭐⭐ Difficile</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <Input
                     type="text"
                     value={quizSearchQuery}
@@ -739,17 +759,30 @@ export const AdminFuroreTab: React.FC = () => {
                   ) : (
                     <div className="space-y-1.5 max-h-60 overflow-y-auto">
                       {filteredQuestions.map(q => (
-                        <button
-                          key={q.id}
-                          onClick={async () => {
-                            await publishQuizQuestion(session.id, q.id);
-                            toast.success('Domanda pubblicata su TV!');
-                          }}
-                          className="flex items-center gap-2 w-full p-2.5 rounded-lg border text-left text-xs hover:border-amber-500/50 hover:bg-amber-500/5 transition-all"
-                        >
-                          <Send className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                          <span className="flex-1 truncate">{q.question_text}</span>
-                        </button>
+                        <div key={q.id} className="flex items-center gap-1.5 w-full p-2 rounded-lg border text-xs hover:border-amber-500/50 hover:bg-amber-500/5 transition-all">
+                          <button
+                            onClick={async () => {
+                              await publishQuizQuestion(session.id, q.id);
+                              toast.success('Domanda pubblicata su TV!');
+                            }}
+                            className="flex items-center gap-2 flex-1 min-w-0 text-left"
+                          >
+                            <Send className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                            <span className="flex-1 truncate">{q.question_text}</span>
+                          </button>
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const newDiff = q.difficulty >= 3 ? 1 : q.difficulty + 1;
+                              await updateQuizQuestion.mutateAsync({ id: q.id, difficulty: newDiff } as any);
+                              toast.success(`Difficoltà → ${'⭐'.repeat(newDiff)}`);
+                            }}
+                            className="text-[10px] text-muted-foreground shrink-0 hover:text-foreground px-1 py-0.5 rounded hover:bg-muted transition-colors"
+                            title="Clicca per cambiare difficoltà"
+                          >
+                            {'⭐'.repeat(q.difficulty || 1)}
+                          </button>
+                        </div>
                       ))}
                     </div>
                   )}
