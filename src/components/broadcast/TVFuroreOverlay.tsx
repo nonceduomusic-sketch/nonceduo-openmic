@@ -273,13 +273,16 @@ export const TVFuroreOverlay: React.FC = () => {
                     return (
                       <motion.div
                         key={opt}
-                        animate={revealed && isCorrect ? { scale: [1, 1.05, 1], borderColor: ['rgba(34,197,94,0.5)', 'rgba(34,197,94,1)', 'rgba(34,197,94,0.8)'] } : {}}
+                        animate={revealed && isCorrect
+                          ? { scale: [1, 1.06, 1] }
+                          : { scale: 1 }
+                        }
                         transition={{ duration: 0.5 }}
                         className={cn(
                           "rounded-xl border-2 px-5 py-4 flex items-center gap-3 transition-all duration-500",
-                          revealed && isCorrect && "bg-green-500/30 border-green-500 shadow-lg shadow-green-500/20 scale-[1.02]",
-                          revealed && !isCorrect && "border-white/10 bg-white/5",
-                          !revealed && "border-white/20 bg-white/8 backdrop-blur-sm"
+                          revealed && isCorrect && "bg-green-500/30 border-green-500 shadow-lg shadow-green-500/20",
+                          revealed && !isCorrect && "border-white/10 bg-white/5 opacity-60",
+                          !revealed && "border-white/20 bg-white/[0.08] backdrop-blur-sm"
                         )}
                       >
                         <span className={cn(
