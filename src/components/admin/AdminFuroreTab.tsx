@@ -662,12 +662,12 @@ export const AdminFuroreTab: React.FC = () => {
                       {['A', 'B', 'C', 'D'].map(opt => {
                         const text = activeQuizQuestion[`option_${opt.toLowerCase()}` as keyof QuizQuestion] as string | null;
                         if (!text) return null;
-                        const isCorrect = activeQuizQuestion.correct_option === opt;
+                        const isCorrect = activeQuizQuestion.correct_option?.toLowerCase() === opt.toLowerCase();
                         return (
                           <div key={opt} className={cn(
                             "text-xs p-1.5 rounded border",
-                            session.quiz_answer_revealed && isCorrect && "bg-green-500/20 border-green-500/50 font-bold",
-                            session.quiz_answer_revealed && !isCorrect && "opacity-50"
+                            session.quiz_answer_revealed && isCorrect && "bg-green-500/20 border-green-500/50 font-bold text-green-700 dark:text-green-300",
+                            session.quiz_answer_revealed && !isCorrect && "opacity-70"
                           )}>
                             <span className="font-bold">{opt}.</span> {text}
                           </div>
