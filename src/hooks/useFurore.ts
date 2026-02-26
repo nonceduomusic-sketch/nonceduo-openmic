@@ -20,6 +20,7 @@ export interface FuroreSession {
   show_leaderboard: boolean;
   sound_key: string;
   scoring_rules: FuroreScoringRules;
+  auto_scoring: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -237,12 +238,14 @@ export const useFuroreAdmin = () => {
 
   const setScoringRules = async (id: string, rules: FuroreScoringRules) => updateSession(id, { scoring_rules: rules });
 
+  const setAutoScoring = async (id: string, enabled: boolean) => updateSession(id, { auto_scoring: enabled });
+
   const setPlayerScore = async (playerId: string, score: number) => {
     const { error } = await supabase.from('furore_players').update({ score }).eq('id', playerId);
     return !error;
   };
 
-  return { createSession, updateSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, kickAllPlayers, updatePlayer, resetScores, setScoringRules, setPlayerScore };
+  return { createSession, updateSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, kickAllPlayers, updatePlayer, resetScores, setScoringRules, setAutoScoring, setPlayerScore };
 };
 
 // ─── Player Actions ───
