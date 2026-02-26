@@ -10,17 +10,18 @@ import {
 import { type QuizQuestion } from '@/hooks/useGames';
 import brandLogo from '@/assets/brand-logo-splash.png';
 
-/** Generate a vibrant HSL color palette from a string seed */
+/** Generate a vibrant HSL color palette from a string seed (avoids green zone 90-160 to not clash with correct-answer highlight) */
 const quizColorFromId = (id: string) => {
   let hash = 0;
-  for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  const hue = ((hash % 360) + 360) % 360;
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0;
+  // Map to hue range excluding green (90-160) to avoid confusion with correct answer
+  const raw = ((hash % 270) + 270) % 270; // 0..269
+  const hue = raw < 90 ? raw : raw + 70; // skip 90-160 range
   return {
     border: `hsla(${hue}, 80%, 55%, 0.5)`,
     bgFrom: `hsla(${hue}, 70%, 50%, 0.20)`,
     bgTo: `hsla(${hue}, 60%, 40%, 0.15)`,
     shadow: `hsla(${hue}, 80%, 55%, 0.10)`,
-    glow: `hsla(${hue}, 90%, 60%, 0.30)`,
   };
 };
 
@@ -277,20 +278,21 @@ export const TVFuroreOverlay: React.FC = () => {
                         className={cn(
                           "rounded-xl border-2 px-5 py-4 flex items-center gap-3 transition-all duration-500",
                           revealed && isCorrect && "bg-green-500/30 border-green-500 shadow-lg shadow-green-500/20 scale-[1.02]",
-                          revealed && !isCorrect && "opacity-70 border-white/15 bg-white/5",
-                          !revealed && "border-white/30 bg-white/10 backdrop-blur-sm"
+                          revealed && !isCorrect && "border-white/10 bg-white/5",
+                          !revealed && "border-white/20 bg-white/8 backdrop-blur-sm"
                         )}
                       >
                         <span className={cn(
                           "w-10 h-10 rounded-full flex items-center justify-center font-black text-lg shrink-0",
-                          revealed && isCorrect ? "bg-green-500 text-white" : "bg-white/20 text-white"
+                          revealed && isCorrect ? "bg-green-500 text-white" : "bg-white/15 text-white/90"
                         )}>
                           {opt}
                         </span>
                         <span className={cn(
-                          "text-lg md:text-2xl font-bold text-white drop-shadow-md",
+                          "text-lg md:text-2xl font-bold drop-shadow-md",
                           revealed && isCorrect && "text-green-300",
-                          revealed && !isCorrect && "text-white/70"
+                          revealed && !isCorrect && "text-white/50",
+                          !revealed && "text-white"
                         )}>
                           {text}
                         </span>
