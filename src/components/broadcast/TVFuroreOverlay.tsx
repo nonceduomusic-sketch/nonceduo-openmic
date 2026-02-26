@@ -246,7 +246,7 @@ export const TVFuroreOverlay: React.FC = () => {
                   {(['A', 'B', 'C', 'D'] as const).map(opt => {
                     const text = quizQuestion[`option_${opt.toLowerCase()}` as keyof QuizQuestion] as string | null;
                     if (!text) return null;
-                    const isCorrect = quizQuestion.correct_option === opt;
+                    const isCorrect = quizQuestion.correct_option?.toLowerCase() === opt.toLowerCase();
                     const revealed = session?.quiz_answer_revealed;
                     return (
                       <motion.div
