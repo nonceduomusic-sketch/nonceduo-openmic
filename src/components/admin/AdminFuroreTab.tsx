@@ -419,7 +419,7 @@ export const AdminFuroreTab: React.FC = () => {
   const { session, loading } = useFuroreSession();
   const { players, refetch: refetchPlayers } = useFurorePlayers(session?.id);
   const { bookings } = useFuroreBookings(session?.id);
-  const { createSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, kickAllPlayers, updatePlayer, resetScores, setScoringRules, setPlayerScore } = useFuroreAdmin();
+  const { createSession, openBookings, closeBookings, resetSession, resetBookingsOnly, setMaxPlayers, setShowOrder, setShowPlayerCount, setShowBookings, setShowLeaderboard, setSoundKey, deletePlayer, kickAllPlayers, updatePlayer, resetScores, setScoringRules, setAutoScoring, setPlayerScore } = useFuroreAdmin();
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmKickAll, setConfirmKickAll] = useState(false);
 
@@ -592,7 +592,7 @@ export const AdminFuroreTab: React.FC = () => {
               <p className="text-[11px] text-muted-foreground">
                 <strong>Standby</strong>: prenotazioni bloccate, in attesa. 
                 <strong> Apri</strong>: i giocatori possono prenotarsi. 
-                <strong> Reset & Apri</strong>: assegna punti e riapre. 
+                <strong> Reset & Apri</strong>: {session.auto_scoring ? 'assegna punti e riapre' : 'cancella prenotazioni e riapre'}. 
                 <strong> Reset Completo</strong>: cancella tutto e butta fuori tutti.
                 <strong> Espelli Tutti</strong>: butta fuori tutti senza resettare punteggi.
               </p>
@@ -650,6 +650,20 @@ export const AdminFuroreTab: React.FC = () => {
                 <Switch
                   checked={session.show_bookings_to_players ?? true}
                   onCheckedChange={v => setShowBookings(session.id, v)}
+                />
+              </div>
+              <Separator />
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <Label className="font-medium text-sm">Punteggio automatico</Label>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground">Se disattivato, i punti si assegnano solo manualmente dalla classifica</p>
+                </div>
+                <Switch
+                  checked={session.auto_scoring ?? true}
+                  onCheckedChange={v => {
+                    setAutoScoring(session.id, v);
+                    toast.success(v ? 'Punteggio automatico attivato' : 'Punteggio automatico disattivato — gestione manuale');
+                  }}
                 />
               </div>
               <div className="space-y-2">

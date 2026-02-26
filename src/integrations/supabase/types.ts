@@ -1520,6 +1520,7 @@ export type Database = {
       }
       furore_sessions: {
         Row: {
+          auto_scoring: boolean
           created_at: string
           created_by: string | null
           id: string
@@ -1534,6 +1535,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          auto_scoring?: boolean
           created_at?: string
           created_by?: string | null
           id?: string
@@ -1548,6 +1550,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          auto_scoring?: boolean
           created_at?: string
           created_by?: string | null
           id?: string
