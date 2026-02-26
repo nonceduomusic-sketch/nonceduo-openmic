@@ -586,6 +586,24 @@ const QuizQuestionsPanel: React.FC = () => {
   const [showEditor, setShowEditor] = useState(false);
   const [editingQ, setEditingQ] = useState<Partial<QuizQuestion> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const displayedQuestions = React.useMemo(() => {
+    if (!questions) return [];
+    if (!searchQuery.trim()) return questions;
+    const q = searchQuery.toLowerCase();
+    return questions.filter(item => {
+      const setName = sets?.find(s => s.id === item.question_set_id)?.name || '';
+      return (
+        item.question_text.toLowerCase().includes(q) ||
+        item.option_a?.toLowerCase().includes(q) ||
+        item.option_b?.toLowerCase().includes(q) ||
+        item.option_c?.toLowerCase().includes(q) ||
+        item.option_d?.toLowerCase().includes(q) ||
+        setName.toLowerCase().includes(q)
+      );
+    });
+  }, [questions, searchQuery, sets]);
 
   const openNew = () => {
     setEditingQ({
@@ -802,20 +820,32 @@ const QuizQuestionsPanel: React.FC = () => {
           </div>
         </CardHeader>
         <CardContent className="px-4 sm:px-6">
-          <div className="mb-3 sm:mb-4">
-            <Label className="text-[11px] sm:text-xs">Filtra per elenco</Label>
-            <Select value={selectedSetId || 'all'} onValueChange={v => setSelectedSetId(v === 'all' ? undefined : v)}>
-              <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tutti gli elenchi</SelectItem>
-                {sets?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="mb-3 sm:mb-4 space-y-2">
+            <div>
+              <Label className="text-[11px] sm:text-xs">Filtra per elenco</Label>
+              <Select value={selectedSetId || 'all'} onValueChange={v => setSelectedSetId(v === 'all' ? undefined : v)}>
+                <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tutti gli elenchi</SelectItem>
+                  {sets?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-[11px] sm:text-xs">Cerca domanda</Label>
+              <Input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Cerca per testo, opzioni o elenco..."
+                className="h-9 text-sm"
+              />
+            </div>
           </div>
 
           <div className="space-y-1.5 sm:space-y-2">
-            {questions?.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nessuna domanda</p>}
-            {questions?.map(q => (
+            {displayedQuestions?.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nessuna domanda</p>}
+            {displayedQuestions?.map(q => (
               <div key={q.id} className="p-2.5 sm:p-3 rounded-lg border bg-card/30 space-y-1">
                 <div className="flex items-start justify-between gap-2">
                   <p className="text-xs sm:text-sm font-medium flex-1 leading-snug">{q.question_text}</p>
