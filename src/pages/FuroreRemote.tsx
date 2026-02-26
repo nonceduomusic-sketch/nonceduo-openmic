@@ -63,6 +63,7 @@ export default function FuroreRemote() {
   // Quiz state
   const [quizSearchQuery, setQuizSearchQuery] = useState('');
   const [quizSetFilter, setQuizSetFilter] = useState('all');
+  const [quizDifficultyFilter, setQuizDifficultyFilter] = useState('all');
 
   const { data: allQuizQuestions } = useQuizQuestions();
   const { data: questionSets } = useQuizQuestionSets();
@@ -80,12 +81,16 @@ export default function FuroreRemote() {
     } else if (quizSetFilter !== 'all') {
       list = list.filter(q => q.question_set_id === quizSetFilter);
     }
+    if (quizDifficultyFilter !== 'all') {
+      const diff = parseInt(quizDifficultyFilter);
+      list = list.filter(q => q.difficulty === diff);
+    }
     if (quizSearchQuery.trim()) {
       const term = quizSearchQuery.toLowerCase();
       list = list.filter(q => q.question_text.toLowerCase().includes(term));
     }
     return list;
-  }, [allQuizQuestions, quizSetFilter, quizSearchQuery]);
+  }, [allQuizQuestions, quizSetFilter, quizDifficultyFilter, quizSearchQuery]);
 
   // Validate token on mount
   useEffect(() => {
@@ -420,6 +425,17 @@ export default function FuroreRemote() {
                             ))}
                           </SelectContent>
                         </Select>
+                        <Select value={quizDifficultyFilter} onValueChange={setQuizDifficultyFilter}>
+                          <SelectTrigger className="h-8 text-xs w-28">
+                            <SelectValue placeholder="Diff." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tutte</SelectItem>
+                            <SelectItem value="1">⭐</SelectItem>
+                            <SelectItem value="2">⭐⭐</SelectItem>
+                            <SelectItem value="3">⭐⭐⭐</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                       <div className="relative">
                         <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -444,7 +460,8 @@ export default function FuroreRemote() {
                               className="flex items-center gap-2 w-full p-2 rounded-lg border text-left text-[11px] hover:border-amber-500/50 hover:bg-amber-500/5 transition-all"
                             >
                               <Send className="w-3 h-3 text-amber-500 shrink-0" />
-                              <span className="truncate">{q.question_text}</span>
+                              <span className="truncate flex-1">{q.question_text}</span>
+                              <span className="text-[9px] text-muted-foreground shrink-0">{'⭐'.repeat(q.difficulty || 1)}</span>
                             </button>
                           ))}
                         </div>
