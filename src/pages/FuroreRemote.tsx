@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -22,9 +23,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  Zap, Play, Pause, RotateCcw, Trophy, Lock, Users, UserX, Eye, EyeOff, Award, HelpCircle, Check, X,
+  Zap, Play, Pause, RotateCcw, Trophy, Lock, Users, UserX, Eye, EyeOff, Award, HelpCircle, Check, X, Send, Search,
 } from 'lucide-react';
-import { useQuizQuestions, type QuizQuestion } from '@/hooks/useGames';
+import { useQuizQuestions, useQuizQuestionSets, type QuizQuestion } from '@/hooks/useGames';
 import {
   useFuroreSession,
   useFurorePlayers,
@@ -59,12 +60,32 @@ export default function FuroreRemote() {
     publishQuizQuestion, revealQuizAnswer, clearQuizQuestion,
   } = useFuroreAdmin();
 
-  // Quiz question data
+  // Quiz state
+  const [quizSearchQuery, setQuizSearchQuery] = useState('');
+  const [quizSetFilter, setQuizSetFilter] = useState('all');
+
   const { data: allQuizQuestions } = useQuizQuestions();
-  const activeQuizQuestion = React.useMemo(() => {
+  const { data: questionSets } = useQuizQuestionSets();
+
+  const activeQuizQuestion = useMemo(() => {
     if (!session?.quiz_question_id || !allQuizQuestions) return null;
     return allQuizQuestions.find(q => q.id === session.quiz_question_id) || null;
   }, [session?.quiz_question_id, allQuizQuestions]);
+
+  const filteredQuestions = useMemo(() => {
+    if (!allQuizQuestions) return [];
+    let list = allQuizQuestions;
+    if (quizSetFilter === 'general') {
+      list = list.filter(q => !q.question_set_id);
+    } else if (quizSetFilter !== 'all') {
+      list = list.filter(q => q.question_set_id === quizSetFilter);
+    }
+    if (quizSearchQuery.trim()) {
+      const term = quizSearchQuery.toLowerCase();
+      list = list.filter(q => q.question_text.toLowerCase().includes(term));
+    }
+    return list;
+  }, [allQuizQuestions, quizSetFilter, quizSearchQuery]);
 
   // Validate token on mount
   useEffect(() => {
@@ -343,10 +364,14 @@ export default function FuroreRemote() {
                   </Button>
                 )}
 
-                {/* Quiz Controls */}
-                {session.quiz_question_id && activeQuizQuestion ? (
-                  <>
-                    <Separator />
+                {/* Quiz Mode Section */}
+                <Separator />
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                    <HelpCircle className="w-3.5 h-3.5 text-amber-500" /> Modalità Quiz
+                  </div>
+
+                  {session.quiz_question_id && activeQuizQuestion ? (
                     <div className="p-3 rounded-lg border-2 border-amber-500/40 bg-amber-500/5 space-y-2">
                       <p className="text-[10px] font-medium text-muted-foreground">Quiz attivo:</p>
                       <p className="text-xs font-bold">{activeQuizQuestion.question_text}</p>
@@ -380,8 +405,53 @@ export default function FuroreRemote() {
                         </Button>
                       </div>
                     </div>
-                  </>
-                ) : null}
+                  ) : (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Select value={quizSetFilter} onValueChange={setQuizSetFilter}>
+                          <SelectTrigger className="h-8 text-xs flex-1">
+                            <SelectValue placeholder="Elenco" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tutte</SelectItem>
+                            <SelectItem value="general">Generali</SelectItem>
+                            {questionSets?.map(s => (
+                              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                        <Input
+                          value={quizSearchQuery}
+                          onChange={e => setQuizSearchQuery(e.target.value)}
+                          placeholder="Cerca domanda..."
+                          className="h-8 text-xs pl-8"
+                        />
+                      </div>
+                      {filteredQuestions.length === 0 ? (
+                        <p className="text-[10px] text-muted-foreground text-center py-2">Nessuna domanda</p>
+                      ) : (
+                        <div className="space-y-1 max-h-48 overflow-y-auto">
+                          {filteredQuestions.map(q => (
+                            <button
+                              key={q.id}
+                              onClick={async () => {
+                                await publishQuizQuestion(session.id, q.id);
+                                toast.success('Domanda pubblicata su TV!');
+                              }}
+                              className="flex items-center gap-2 w-full p-2 rounded-lg border text-left text-[11px] hover:border-amber-500/50 hover:bg-amber-500/5 transition-all"
+                            >
+                              <Send className="w-3 h-3 text-amber-500 shrink-0" />
+                              <span className="truncate">{q.question_text}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
