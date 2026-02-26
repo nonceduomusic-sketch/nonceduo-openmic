@@ -22,8 +22,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  Zap, Play, Pause, RotateCcw, Trophy, Lock, Users, UserX, Eye, EyeOff, Award,
+  Zap, Play, Pause, RotateCcw, Trophy, Lock, Users, UserX, Eye, EyeOff, Award, HelpCircle, Check, X,
 } from 'lucide-react';
+import { useQuizQuestions, type QuizQuestion } from '@/hooks/useGames';
 import {
   useFuroreSession,
   useFurorePlayers,
@@ -55,7 +56,15 @@ export default function FuroreRemote() {
   const {
     openBookings, closeBookings, resetSession, resetBookingsOnly,
     setShowLeaderboard, kickAllPlayers, setPlayerScore,
+    publishQuizQuestion, revealQuizAnswer, clearQuizQuestion,
   } = useFuroreAdmin();
+
+  // Quiz question data
+  const { data: allQuizQuestions } = useQuizQuestions();
+  const activeQuizQuestion = React.useMemo(() => {
+    if (!session?.quiz_question_id || !allQuizQuestions) return null;
+    return allQuizQuestions.find(q => q.id === session.quiz_question_id) || null;
+  }, [session?.quiz_question_id, allQuizQuestions]);
 
   // Validate token on mount
   useEffect(() => {
@@ -333,6 +342,46 @@ export default function FuroreRemote() {
                     <span className="text-xs">Assegna punti</span>
                   </Button>
                 )}
+
+                {/* Quiz Controls */}
+                {session.quiz_question_id && activeQuizQuestion ? (
+                  <>
+                    <Separator />
+                    <div className="p-3 rounded-lg border-2 border-amber-500/40 bg-amber-500/5 space-y-2">
+                      <p className="text-[10px] font-medium text-muted-foreground">Quiz attivo:</p>
+                      <p className="text-xs font-bold">{activeQuizQuestion.question_text}</p>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {!session.quiz_answer_revealed ? (
+                          <Button
+                            onClick={async () => {
+                              await revealQuizAnswer(session.id);
+                              toast.success('Risposta rivelata!');
+                            }}
+                            size="sm"
+                            className="gap-1 h-9 bg-green-600 hover:bg-green-700 text-xs"
+                          >
+                            <Eye className="w-3.5 h-3.5" /> Mostra risposta
+                          </Button>
+                        ) : (
+                          <Button variant="secondary" disabled size="sm" className="gap-1 h-9 text-xs">
+                            <Check className="w-3.5 h-3.5" /> Visibile
+                          </Button>
+                        )}
+                        <Button
+                          onClick={async () => {
+                            await clearQuizQuestion(session.id);
+                            toast.success('Domanda rimossa');
+                          }}
+                          variant="outline"
+                          size="sm"
+                          className="gap-1 h-9 text-xs border-destructive/50 text-destructive"
+                        >
+                          <X className="w-3.5 h-3.5" /> Rimuovi
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                ) : null}
               </CardContent>
             </Card>
 

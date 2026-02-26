@@ -1525,6 +1525,8 @@ export type Database = {
           created_by: string | null
           id: string
           max_players: number
+          quiz_answer_revealed: boolean | null
+          quiz_question_id: string | null
           scoring_rules: Json
           show_bookings_to_players: boolean
           show_leaderboard: boolean
@@ -1540,6 +1542,8 @@ export type Database = {
           created_by?: string | null
           id?: string
           max_players?: number
+          quiz_answer_revealed?: boolean | null
+          quiz_question_id?: string | null
           scoring_rules?: Json
           show_bookings_to_players?: boolean
           show_leaderboard?: boolean
@@ -1555,6 +1559,8 @@ export type Database = {
           created_by?: string | null
           id?: string
           max_players?: number
+          quiz_answer_revealed?: boolean | null
+          quiz_question_id?: string | null
           scoring_rules?: Json
           show_bookings_to_players?: boolean
           show_leaderboard?: boolean
