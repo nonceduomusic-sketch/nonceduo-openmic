@@ -255,8 +255,8 @@ export const TVFuroreOverlay: React.FC = () => {
                         transition={{ duration: 0.5 }}
                         className={cn(
                           "rounded-xl border-2 px-5 py-4 flex items-center gap-3 transition-all duration-500",
-                          revealed && isCorrect && "bg-green-500/30 border-green-500 shadow-lg shadow-green-500/20",
-                          revealed && !isCorrect && "opacity-40 border-white/10 bg-black/20",
+                          revealed && isCorrect && "bg-green-500/30 border-green-500 shadow-lg shadow-green-500/20 scale-[1.02]",
+                          revealed && !isCorrect && "opacity-70 border-white/15 bg-white/5",
                           !revealed && "border-white/30 bg-white/10 backdrop-blur-sm"
                         )}
                       >
@@ -269,7 +269,7 @@ export const TVFuroreOverlay: React.FC = () => {
                         <span className={cn(
                           "text-lg md:text-2xl font-bold text-white drop-shadow-md",
                           revealed && isCorrect && "text-green-300",
-                          revealed && !isCorrect && "text-white/50"
+                          revealed && !isCorrect && "text-white/70"
                         )}>
                           {text}
                         </span>
