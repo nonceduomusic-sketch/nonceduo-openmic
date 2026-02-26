@@ -656,8 +656,8 @@ export const AdminFuroreTab: React.FC = () => {
                 /* Active question controls */
                 <div className="space-y-3">
                     <div className="p-3 rounded-lg border-2 bg-opacity-5" style={{
-                      borderColor: `hsla(${[...activeQuizQuestion.id].reduce((h, c) => c.charCodeAt(0) + ((h << 5) - h), 0) % 360 + 360}deg, 70%, 55%, 0.4)`,
-                      backgroundColor: `hsla(${[...activeQuizQuestion.id].reduce((h, c) => c.charCodeAt(0) + ((h << 5) - h), 0) % 360 + 360}deg, 60%, 50%, 0.08)`,
+                      borderColor: (() => { let h=0; for(let i=0;i<activeQuizQuestion.id.length;i++) h=(h*31+activeQuizQuestion.id.charCodeAt(i))|0; const r=((h%270)+270)%270; const hue=r<90?r:r+70; return `hsla(${hue}, 70%, 55%, 0.4)`; })(),
+                      backgroundColor: (() => { let h=0; for(let i=0;i<activeQuizQuestion.id.length;i++) h=(h*31+activeQuizQuestion.id.charCodeAt(i))|0; const r=((h%270)+270)%270; const hue=r<90?r:r+70; return `hsla(${hue}, 60%, 50%, 0.08)`; })(),
                     }}>
                     <p className="text-xs font-medium text-muted-foreground mb-1">Domanda pubblicata:</p>
                     <p className="font-bold text-sm">{activeQuizQuestion.question_text}</p>
