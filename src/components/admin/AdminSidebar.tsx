@@ -17,6 +17,7 @@ import {
   Calendar, 
   Gamepad2,
   Guitar,
+  HelpCircle,
   Link2,
   Zap,
   ListMusic, 
@@ -56,6 +57,7 @@ export type AdminMainTab =
   | "manuale"
   | "catalog-songbook"
   | "games"
+  | "quiz"
   | "furore";
 
 type Item = {
@@ -88,7 +90,8 @@ const ITEMS: Item[] = [
   { key: "songs", label: "Canzoni", icon: ListMusic, group: "Operativo", description: "Coda e catalogo brani" },
   { key: "furore", label: "Non C'è Furore", icon: Zap, group: "Operativo", description: "Pulsantiera live buzzer" },
   { key: "dediche", label: "Dediche", icon: MessageSquare, group: "Operativo", description: "Messaggi e chat" },
-  { key: "games", label: "Giochi", icon: Gamepad2, group: "Operativo", description: "Quiz e passatempi" },
+  { key: "quiz", label: "Quiz", icon: HelpCircle, group: "Operativo", description: "Elenchi, domande e filtri" },
+  { key: "games", label: "Giochi", icon: Gamepad2, group: "Operativo", description: "Impostazioni e classifiche" },
   { key: "community", label: "Community", icon: Newspaper, group: "Operativo", description: "Gruppi e bacheca" },
   { key: "assistant", label: "Assistente", icon: Bot, group: "Operativo", description: "Chat e lead" },
   
