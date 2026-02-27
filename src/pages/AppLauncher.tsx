@@ -20,8 +20,9 @@ const AppLauncher: React.FC = () => {
   
   const visibleFormatCount = [isOpenmicAppVisible, isDedicheAppVisible].filter(Boolean).length;
 
-  // Check if everything is OFF (no live event, no freemode, nothing visible)
-  const isEverythingOff = !loading && eventState.type === 'none' && !isOpenmicVisible && !isDedicheVisible;
+  // Check if everything is OFF: no formats visible on app AND no live event/freemode
+  const hasAnyAppFormat = isOpenmicAppVisible || isDedicheAppVisible || isFuroreVisible || isGiochiVisible;
+  const isEverythingOff = !loading && !hasAnyAppFormat;
 
   return (
     <>
