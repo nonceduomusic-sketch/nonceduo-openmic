@@ -99,6 +99,7 @@ const QuizSetsPanel: React.FC = () => {
   const updateSet = useUpdateQuestionSet();
   const deleteSet = useDeleteQuestionSet();
   const updateQuestion = useUpdateQuizQuestion();
+  const deleteQuestion = useDeleteQuizQuestion();
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
@@ -109,6 +110,7 @@ const QuizSetsPanel: React.FC = () => {
   const [moveFromSetId, setMoveFromSetId] = useState<string>('');
   const [moveToSetId, setMoveToSetId] = useState<string>('');
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
+  const [confirmClearSetId, setConfirmClearSetId] = useState<string | null>(null);
 
   const questionsForMove = allQuestions?.filter(q =>
     moveFromSetId === '__none__' ? !q.question_set_id : q.question_set_id === moveFromSetId
@@ -116,6 +118,9 @@ const QuizSetsPanel: React.FC = () => {
 
   const getQuestionCount = (setId: string) =>
     allQuestions?.filter(q => q.question_set_id === setId).length || 0;
+
+  const getSetQuestions = (setId: string) =>
+    allQuestions?.filter(q => q.question_set_id === setId) || [];
 
   const handleBulkMove = () => {
     if (!selectedQuestionIds.length) return toast.error('Seleziona almeno una domanda');
@@ -126,6 +131,33 @@ const QuizSetsPanel: React.FC = () => {
     toast.success(`${selectedQuestionIds.length} domande spostate`);
     setSelectedQuestionIds([]);
     setShowMoveDialog(false);
+  };
+
+  const handleExportSet = (setId: string) => {
+    const questions = getSetQuestions(setId);
+    if (!questions.length) return toast.error('Nessuna domanda in questo elenco');
+    const setName = sets?.find(s => s.id === setId)?.name || 'elenco';
+    const headers = ['domanda', 'opzione_a', 'opzione_b', 'opzione_c', 'opzione_d', 'risposta_corretta', 'difficolta', 'decade'];
+    const rows = questions.map(q => [
+      escapeCSV(q.question_text), escapeCSV(q.option_a), escapeCSV(q.option_b),
+      escapeCSV(q.option_c || ''), escapeCSV(q.option_d || ''),
+      q.correct_option, String(q.difficulty), q.decade || '',
+    ].join(','));
+    const csvContent = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `quiz-${setName.replace(/\s+/g, '-').toLowerCase()}.csv`; a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Esportate ${questions.length} domande`);
+  };
+
+  const handleClearSet = (setId: string) => {
+    const questions = getSetQuestions(setId);
+    if (!questions.length) return toast.error('Elenco già vuoto');
+    questions.forEach(q => deleteQuestion.mutate(q.id));
+    toast.success(`${questions.length} domande eliminate dall'elenco`);
+    setConfirmClearSetId(null);
   };
 
   return (
@@ -149,17 +181,23 @@ const QuizSetsPanel: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-2 sm:space-y-3 px-4 sm:px-6">
           {sets?.map(s => (
-            <div key={s.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 p-2.5 sm:p-3 rounded-lg border bg-card/50">
-              <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground shrink-0" />
-                <div className="min-w-0">
+            <div key={s.id} className="flex flex-col gap-2 p-2.5 sm:p-3 rounded-lg border bg-card/50">
+              <div className="flex items-start sm:items-center gap-2 sm:gap-3">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground shrink-0 mt-0.5 sm:mt-0" />
+                <div className="flex-1 min-w-0">
                   <p className="font-medium text-xs sm:text-sm">{s.name}</p>
                   {s.description && <p className="text-[10px] sm:text-xs text-muted-foreground truncate">{s.description}</p>}
                   <p className="text-[10px] text-muted-foreground">{getQuestionCount(s.id)} domande</p>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 {s.is_default && <Badge variant="secondary" className="text-[10px] sm:text-xs">Default</Badge>}
+                <Button size="sm" className="h-7 sm:h-8 text-[10px] sm:text-xs px-2" variant="outline" onClick={() => handleExportSet(s.id)} title="Scarica CSV">
+                  <Download className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-0.5 sm:mr-1" /><span className="hidden sm:inline">Scarica</span>
+                </Button>
+                <Button size="sm" className="h-7 sm:h-8 text-[10px] sm:text-xs px-2" variant="outline" onClick={() => setConfirmClearSetId(s.id)} title="Svuota elenco">
+                  <Trash2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 mr-0.5 sm:mr-1" /><span className="hidden sm:inline">Svuota</span>
+                </Button>
                 <Button size="sm" className="h-7 sm:h-8 w-7 sm:w-8 p-0" variant="ghost" onClick={() => {
                   setEditingSet(s); setEditName(s.name); setEditDesc(s.description || '');
                 }}>
@@ -181,6 +219,32 @@ const QuizSetsPanel: React.FC = () => {
           ))}
         </CardContent>
       </Card>
+
+      {/* Confirm Clear Dialog */}
+      <Dialog open={!!confirmClearSetId} onOpenChange={open => { if (!open) setConfirmClearSetId(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-destructive" />
+              Svuota Elenco
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Stai per eliminare tutte le <strong>{getQuestionCount(confirmClearSetId || '')}</strong> domande dall'elenco
+            <strong> {sets?.find(s => s.id === confirmClearSetId)?.name}</strong>.
+            Questa azione è irreversibile. Le domande presenti solo in questo elenco verranno cancellate definitivamente.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            💡 Consiglio: scarica prima il CSV come backup, poi svuota e ricarica le domande aggiornate.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmClearSetId(null)}>Annulla</Button>
+            <Button variant="destructive" onClick={() => confirmClearSetId && handleClearSet(confirmClearSetId)}>
+              <Trash2 className="w-4 h-4 mr-1" />Conferma Svuota
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Create Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
@@ -289,6 +353,7 @@ const QuizDuplicatesPanel: React.FC = () => {
   const { data: sets } = useQuizQuestionSets();
   const { data: allQuestions } = useQuizQuestions();
   const deleteQuestion = useDeleteQuizQuestion();
+  const [selectedForDeletion, setSelectedForDeletion] = useState<Record<string, Set<string>>>({});
 
   const duplicates = useMemo(() => {
     if (!allQuestions || allQuestions.length < 2) return [];
@@ -302,6 +367,35 @@ const QuizDuplicatesPanel: React.FC = () => {
     return Array.from(seen.values()).filter(group => group.length > 1);
   }, [allQuestions]);
 
+  const toggleSelection = (groupIdx: number, questionId: string) => {
+    setSelectedForDeletion(prev => {
+      const key = String(groupIdx);
+      const current = new Set(prev[key] || []);
+      if (current.has(questionId)) current.delete(questionId);
+      else current.add(questionId);
+      return { ...prev, [key]: current };
+    });
+  };
+
+  const handleDeleteSelected = (groupIdx: number) => {
+    const selected = selectedForDeletion[String(groupIdx)];
+    if (!selected || selected.size === 0) return toast.error('Seleziona almeno una copia da eliminare');
+    const group = duplicates[groupIdx];
+    if (selected.size >= group.length) return toast.error('Non puoi eliminare tutte le copie! Mantieni almeno una.');
+    selected.forEach(id => deleteQuestion.mutate(id));
+    toast.success(`${selected.size} duplicat${selected.size > 1 ? 'i eliminati' : 'o eliminato'}`);
+    setSelectedForDeletion(prev => { const n = { ...prev }; delete n[String(groupIdx)]; return n; });
+  };
+
+  const handleDeleteAllDuplicates = () => {
+    let count = 0;
+    duplicates.forEach(group => {
+      // Keep the oldest (first), delete the rest
+      group.slice(1).forEach(q => { deleteQuestion.mutate(q.id); count++; });
+    });
+    toast.success(`${count} duplicati eliminati (mantenuta la copia più vecchia per ogni gruppo)`);
+  };
+
   if (duplicates.length === 0) {
     return (
       <Card>
@@ -313,39 +407,73 @@ const QuizDuplicatesPanel: React.FC = () => {
     );
   }
 
+  const totalDuplicates = duplicates.reduce((sum, g) => sum + g.length - 1, 0);
+
   return (
     <div className="space-y-3">
       <Card className="border-amber-500/30">
         <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
-          <CardTitle className="text-sm sm:text-base flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-500" />
-            {duplicates.length} gruppi di duplicati trovati
-          </CardTitle>
-          <CardDescription className="text-xs">Puoi eliminare i duplicati mantenendo una sola copia</CardDescription>
-        </CardHeader>
-        <CardContent className="px-4 sm:px-6 space-y-2">
-          {duplicates.map((group, i) => (
-            <div key={i} className="p-2.5 sm:p-3 rounded-lg border border-amber-500/20 bg-amber-500/5 space-y-1.5">
-              <p className="text-xs sm:text-sm font-medium leading-snug">{group[0].question_text}</p>
-              <div className="flex flex-wrap gap-1">
-                {group.map(q => {
-                  const setName = sets?.find(s => s.id === q.question_set_id)?.name || 'Senza elenco';
-                  return (
-                    <Badge key={q.id} variant="outline" className="text-[10px]">
-                      {setName} | {'⭐'.repeat(q.difficulty)}
-                    </Badge>
-                  );
-                })}
-              </div>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {group.slice(1).map(q => (
-                  <Button key={q.id} size="sm" variant="destructive" className="h-6 text-[10px] px-2" onClick={() => { deleteQuestion.mutate(q.id); toast.success('Duplicato eliminato'); }}>
-                    <Trash2 className="w-3 h-3 mr-0.5" />Elimina
-                  </Button>
-                ))}
-              </div>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div>
+              <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                {duplicates.length} gruppi · {totalDuplicates} duplicati
+              </CardTitle>
+              <CardDescription className="text-xs">Seleziona le copie da eliminare. Almeno una copia per gruppo viene mantenuta.</CardDescription>
             </div>
-          ))}
+            <Button size="sm" variant="destructive" className="h-8 text-xs shrink-0" onClick={handleDeleteAllDuplicates}>
+              <Trash2 className="w-3.5 h-3.5 mr-1" />Elimina tutti i duplicati (mantieni più vecchi)
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 sm:px-6 space-y-3">
+          {duplicates.map((group, i) => {
+            const selected = selectedForDeletion[String(i)] || new Set();
+            return (
+              <div key={i} className="p-3 sm:p-4 rounded-lg border border-amber-500/20 bg-amber-500/5 space-y-2">
+                <p className="text-xs sm:text-sm font-semibold leading-snug">{group[0].question_text}</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground">{group.length} copie trovate — seleziona quelle da eliminare</p>
+                <div className="space-y-1.5">
+                  {group.map((q, qIdx) => {
+                    const setName = sets?.find(s => s.id === q.question_set_id)?.name || 'Senza elenco';
+                    const isSelected = selected.has(q.id);
+                    const createdAt = q.id; // uuid v4 doesn't have timestamp, use index as proxy
+                    return (
+                      <div
+                        key={q.id}
+                        className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-2.5 rounded-md border transition-colors cursor-pointer ${
+                          isSelected ? 'border-destructive/50 bg-destructive/10' : 'border-border bg-card/50'
+                        }`}
+                        onClick={() => toggleSelection(i, q.id)}
+                      >
+                        <Checkbox
+                          checked={isSelected}
+                          onCheckedChange={() => toggleSelection(i, q.id)}
+                          className="shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-1">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">📁 {setName}</Badge>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">{'⭐'.repeat(q.difficulty)}</Badge>
+                            {q.decade && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{DECADES.find(d => d.value === q.decade)?.label}</Badge>}
+                            {qIdx === 0 && <Badge className="text-[10px] px-1.5 py-0 bg-primary/20 text-primary">Più vecchia</Badge>}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
+                            ✅ {q.correct_option.toUpperCase()}: {q[`option_${q.correct_option}` as keyof QuizQuestion] as string}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {selected.size > 0 && (
+                  <Button size="sm" variant="destructive" className="h-7 text-xs w-full sm:w-auto" onClick={() => handleDeleteSelected(i)}>
+                    <Trash2 className="w-3 h-3 mr-1" />Elimina {selected.size} selezionat{selected.size > 1 ? 'i' : 'o'}
+                  </Button>
+                )}
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
     </div>
