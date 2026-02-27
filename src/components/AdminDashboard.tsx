@@ -52,6 +52,7 @@ import { AdminAssistantTab } from '@/components/admin/AdminAssistantTab';
 import { AdminTrasmettiTab } from '@/components/admin/AdminTrasmettiTab';
 import { AdminCatalogSongbookTab } from '@/components/admin/AdminCatalogSongbookTab';
 import { AdminGamesTab } from '@/components/admin/AdminGamesTab';
+import { AdminQuizTab } from '@/components/admin/AdminQuizTab';
 import { AdminFuroreTab } from '@/components/admin/AdminFuroreTab';
 
 import AdminManual from '@/pages/AdminManual';
@@ -980,6 +981,8 @@ export const AdminDashboard: React.FC = () => {
           <AdminCatalogSongbookTab />
 ) : mainTab === 'games' ? (
           <AdminGamesTab />
+        ) : mainTab === 'quiz' ? (
+          <AdminQuizTab />
         ) : mainTab === 'furore' ? (
           <AdminFuroreTab />
         ) : mainTab === 'manuale' ? (
