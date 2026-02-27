@@ -58,8 +58,6 @@ const AppLauncher: React.FC = () => {
                   Prossimamente
                 </h1>
                 <p className="text-lg text-muted-foreground max-w-sm mx-auto leading-relaxed">
-                  Non ci sono eventi live al momento.
-                  <br />
                   <span className="text-foreground/80">Seguici per non perdere le prossime serate!</span>
                 </p>
               </div>
