@@ -56,8 +56,19 @@ export interface QuizQuestion {
   option_d: string | null;
   correct_option: string;
   difficulty: number;
+  decade: string | null;
   auto_generated: boolean;
 }
+
+export const DECADES = [
+  { value: '1960', label: 'Anni 60' },
+  { value: '1970', label: 'Anni 70' },
+  { value: '1980', label: 'Anni 80' },
+  { value: '1990', label: 'Anni 90' },
+  { value: '2000', label: 'Anni 2000' },
+  { value: '2010', label: 'Anni 2010' },
+  { value: '2020', label: 'Anni 2020' },
+] as const;
 
 // ─── Settings ───
 export const useGameSettings = () =>

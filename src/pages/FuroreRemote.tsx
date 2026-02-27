@@ -25,7 +25,7 @@ import {
 import {
   Zap, Play, Pause, RotateCcw, Trophy, Lock, Users, UserX, Eye, EyeOff, Award, HelpCircle, Check, X, Send, Search,
 } from 'lucide-react';
-import { useQuizQuestions, useQuizQuestionSets, type QuizQuestion } from '@/hooks/useGames';
+import { useQuizQuestions, useQuizQuestionSets, DECADES, type QuizQuestion } from '@/hooks/useGames';
 import {
   useFuroreSession,
   useFurorePlayers,
@@ -64,6 +64,7 @@ export default function FuroreRemote() {
   const [quizSearchQuery, setQuizSearchQuery] = useState('');
   const [quizSetFilter, setQuizSetFilter] = useState('all');
   const [quizDifficultyFilter, setQuizDifficultyFilter] = useState('all');
+  const [quizDecadeFilter, setQuizDecadeFilter] = useState('all');
 
   const { data: allQuizQuestions } = useQuizQuestions();
   const { data: questionSets } = useQuizQuestionSets();
@@ -85,12 +86,15 @@ export default function FuroreRemote() {
       const diff = parseInt(quizDifficultyFilter);
       list = list.filter(q => q.difficulty === diff);
     }
+    if (quizDecadeFilter !== 'all') {
+      list = list.filter(q => q.decade === quizDecadeFilter);
+    }
     if (quizSearchQuery.trim()) {
       const term = quizSearchQuery.toLowerCase();
       list = list.filter(q => q.question_text.toLowerCase().includes(term));
     }
     return list;
-  }, [allQuizQuestions, quizSetFilter, quizDifficultyFilter, quizSearchQuery]);
+  }, [allQuizQuestions, quizSetFilter, quizDifficultyFilter, quizDecadeFilter, quizSearchQuery]);
 
   // Validate token on mount
   useEffect(() => {
@@ -434,6 +438,19 @@ export default function FuroreRemote() {
                             <SelectItem value="1">⭐</SelectItem>
                             <SelectItem value="2">⭐⭐</SelectItem>
                             <SelectItem value="3">⭐⭐⭐</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Select value={quizDecadeFilter} onValueChange={setQuizDecadeFilter}>
+                          <SelectTrigger className="h-8 text-xs flex-1">
+                            <SelectValue placeholder="Decade" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Tutte le epoche</SelectItem>
+                            {DECADES.map(d => (
+                              <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>

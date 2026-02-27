@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useCallback, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuizQuestionSets, useQuizQuestions, useUpdateQuizQuestion, type QuizQuestion } from '@/hooks/useGames';
+import { useQuizQuestionSets, useQuizQuestions, useUpdateQuizQuestion, DECADES, type QuizQuestion } from '@/hooks/useGames';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -431,6 +431,7 @@ export const AdminFuroreTab: React.FC = () => {
   // Quiz state
   const [quizSetFilter, setQuizSetFilter] = useState<string>('all');
   const [quizDifficultyFilter, setQuizDifficultyFilter] = useState<string>('all');
+  const [quizDecadeFilter, setQuizDecadeFilter] = useState<string>('all');
   const [quizSearchQuery, setQuizSearchQuery] = useState('');
   const { data: questionSets } = useQuizQuestionSets();
   const { data: quizQuestions } = useQuizQuestions(quizSetFilter === 'all' ? undefined : quizSetFilter === 'general' ? undefined : quizSetFilter);
@@ -444,6 +445,9 @@ export const AdminFuroreTab: React.FC = () => {
       const diff = parseInt(quizDifficultyFilter);
       result = result.filter(q => q.difficulty === diff);
     }
+    if (quizDecadeFilter !== 'all') {
+      result = result.filter(q => q.decade === quizDecadeFilter);
+    }
     if (quizSearchQuery.trim()) {
       const q = quizSearchQuery.toLowerCase();
       result = result.filter(item => {
@@ -452,7 +456,7 @@ export const AdminFuroreTab: React.FC = () => {
       });
     }
     return result;
-  }, [quizQuestions, quizSetFilter, quizDifficultyFilter, quizSearchQuery, questionSets]);
+  }, [quizQuestions, quizSetFilter, quizDifficultyFilter, quizDecadeFilter, quizSearchQuery, questionSets]);
 
   const activeQuizQuestion = React.useMemo(() => {
     if (!session?.quiz_question_id || !quizQuestions) return null;
@@ -740,10 +744,24 @@ export const AdminFuroreTab: React.FC = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Tutte</SelectItem>
+                      <SelectItem value="all">Tutte</SelectItem>
                         <SelectItem value="1">⭐ Facile</SelectItem>
                         <SelectItem value="2">⭐⭐ Media</SelectItem>
                         <SelectItem value="3">⭐⭐⭐ Difficile</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs font-medium shrink-0">Decade:</Label>
+                    <Select value={quizDecadeFilter} onValueChange={setQuizDecadeFilter}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tutte</SelectItem>
+                        {DECADES.map(d => (
+                          <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>

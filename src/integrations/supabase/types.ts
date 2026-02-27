@@ -2447,6 +2447,42 @@ export type Database = {
         }
         Relationships: []
       }
+      quiz_question_set_members: {
+        Row: {
+          created_at: string
+          id: string
+          question_id: string
+          question_set_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          question_id: string
+          question_set_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          question_id?: string
+          question_set_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quiz_question_set_members_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "quiz_question_set_members_question_set_id_fkey"
+            columns: ["question_set_id"]
+            isOneToOne: false
+            referencedRelation: "quiz_question_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       quiz_question_sets: {
         Row: {
           created_at: string | null
@@ -2482,6 +2518,7 @@ export type Database = {
           auto_generated: boolean
           correct_option: string
           created_at: string | null
+          decade: string | null
           difficulty: number
           id: string
           option_a: string
@@ -2496,6 +2533,7 @@ export type Database = {
           auto_generated?: boolean
           correct_option?: string
           created_at?: string | null
+          decade?: string | null
           difficulty?: number
           id?: string
           option_a: string
@@ -2510,6 +2548,7 @@ export type Database = {
           auto_generated?: boolean
           correct_option?: string
           created_at?: string | null
+          decade?: string | null
           difficulty?: number
           id?: string
           option_a?: string

@@ -14,7 +14,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import {
   Gamepad2, Settings, Trophy, HelpCircle, Plus, Trash2, Edit, Save, Eye, EyeOff,
-  Monitor, Smartphone, Clock, List, FileText, Download, Upload, Shuffle, ArrowDownNarrowWide
+  Monitor, Smartphone, Clock, List, FileText, Download, Upload, Shuffle, ArrowDownNarrowWide, AlertTriangle
 } from 'lucide-react';
 import {
   useGameSettings, useUpdateGameSettings,
@@ -22,6 +22,7 @@ import {
   useGameScores, useClearGameScores,
   useQuizQuestionSets, useCreateQuestionSet, useUpdateQuestionSet, useDeleteQuestionSet,
   useQuizQuestions, useCreateQuizQuestion, useUpdateQuizQuestion, useDeleteQuizQuestion,
+  DECADES,
   type QuizQuestion, type QuizQuestionSet,
 } from '@/hooks/useGames';
 
@@ -578,8 +579,10 @@ const QuizSetsPanel: React.FC = () => {
 const QuizQuestionsPanel: React.FC = () => {
   const { data: sets } = useQuizQuestionSets();
   const [selectedSetId, setSelectedSetId] = useState<string | undefined>();
+  const [difficultyFilter, setDifficultyFilter] = useState<string>('all');
+  const [decadeFilter, setDecadeFilter] = useState<string>('all');
   const { data: questions } = useQuizQuestions(selectedSetId);
-  const { data: allQuestions } = useQuizQuestions(); // all questions for full export
+  const { data: allQuestions } = useQuizQuestions();
   const createQuestion = useCreateQuizQuestion();
   const updateQuestion = useUpdateQuizQuestion();
   const deleteQuestion = useDeleteQuizQuestion();
@@ -587,23 +590,47 @@ const QuizQuestionsPanel: React.FC = () => {
   const [editingQ, setEditingQ] = useState<Partial<QuizQuestion> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showDuplicates, setShowDuplicates] = useState(false);
 
   const displayedQuestions = React.useMemo(() => {
     if (!questions) return [];
-    if (!searchQuery.trim()) return questions;
-    const q = searchQuery.toLowerCase();
-    return questions.filter(item => {
-      const setName = sets?.find(s => s.id === item.question_set_id)?.name || '';
-      return (
-        item.question_text.toLowerCase().includes(q) ||
-        item.option_a?.toLowerCase().includes(q) ||
-        item.option_b?.toLowerCase().includes(q) ||
-        item.option_c?.toLowerCase().includes(q) ||
-        item.option_d?.toLowerCase().includes(q) ||
-        setName.toLowerCase().includes(q)
-      );
-    });
-  }, [questions, searchQuery, sets]);
+    let result = questions;
+    if (difficultyFilter !== 'all') {
+      const diff = parseInt(difficultyFilter);
+      result = result.filter(q => q.difficulty === diff);
+    }
+    if (decadeFilter !== 'all') {
+      result = result.filter(q => q.decade === decadeFilter);
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(item => {
+        const setName = sets?.find(s => s.id === item.question_set_id)?.name || '';
+        return (
+          item.question_text.toLowerCase().includes(q) ||
+          item.option_a?.toLowerCase().includes(q) ||
+          item.option_b?.toLowerCase().includes(q) ||
+          item.option_c?.toLowerCase().includes(q) ||
+          item.option_d?.toLowerCase().includes(q) ||
+          setName.toLowerCase().includes(q)
+        );
+      });
+    }
+    return result;
+  }, [questions, difficultyFilter, decadeFilter, searchQuery, sets]);
+
+  // Duplicate detection
+  const duplicates = React.useMemo(() => {
+    if (!allQuestions || allQuestions.length < 2) return [];
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9àèéìòù]/g, '').trim();
+    const seen = new Map<string, QuizQuestion[]>();
+    for (const q of allQuestions) {
+      const key = normalize(q.question_text);
+      if (!seen.has(key)) seen.set(key, []);
+      seen.get(key)!.push(q);
+    }
+    return Array.from(seen.values()).filter(group => group.length > 1);
+  }, [allQuestions]);
 
   const openNew = () => {
     setEditingQ({
@@ -811,11 +838,54 @@ const QuizQuestionsPanel: React.FC = () => {
         </DialogContent>
       </Dialog>
 
+      {/* Duplicate Detection */}
+      {duplicates.length > 0 && (
+        <Card className="border-amber-500/30">
+          <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm sm:text-base flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500" />
+                {duplicates.length} gruppi di duplicati
+              </CardTitle>
+              <Button size="sm" variant="outline" className="text-xs h-8" onClick={() => setShowDuplicates(!showDuplicates)}>
+                {showDuplicates ? 'Nascondi' : 'Mostra'}
+              </Button>
+            </div>
+          </CardHeader>
+          {showDuplicates && (
+            <CardContent className="px-4 sm:px-6 space-y-2 max-h-60 overflow-y-auto">
+              {duplicates.map((group, i) => (
+                <div key={i} className="p-2.5 rounded-lg border border-amber-500/20 bg-amber-500/5 space-y-1">
+                  <p className="text-xs font-medium">{group[0].question_text}</p>
+                  <div className="flex flex-wrap gap-1">
+                    {group.map(q => {
+                      const setName = sets?.find(s => s.id === q.question_set_id)?.name || 'Senza elenco';
+                      return (
+                        <Badge key={q.id} variant="outline" className="text-[10px]">
+                          {setName} | {'⭐'.repeat(q.difficulty)}
+                        </Badge>
+                      );
+                    })}
+                  </div>
+                  <div className="flex gap-1 mt-1">
+                    {group.slice(1).map(q => (
+                      <Button key={q.id} size="sm" variant="destructive" className="h-6 text-[10px] px-2" onClick={() => { deleteQuestion.mutate(q.id); toast.success('Duplicato eliminato'); }}>
+                        <Trash2 className="w-3 h-3 mr-0.5" />Elimina
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          )}
+        </Card>
+      )}
+
       {/* Questions List */}
       <Card>
         <CardHeader className="px-4 py-3 sm:px-6 sm:py-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-            <CardTitle className="text-sm sm:text-base">Domande Quiz</CardTitle>
+            <CardTitle className="text-sm sm:text-base">Domande Quiz ({displayedQuestions.length})</CardTitle>
             <Button size="sm" className="h-8 sm:h-9 text-xs sm:text-sm" onClick={openNew}><Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1" />Nuova Domanda</Button>
           </div>
         </CardHeader>
@@ -830,6 +900,30 @@ const QuizQuestionsPanel: React.FC = () => {
                   {sets?.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-[11px] sm:text-xs">Difficoltà</Label>
+                <Select value={difficultyFilter} onValueChange={setDifficultyFilter}>
+                  <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tutte</SelectItem>
+                    <SelectItem value="1">⭐ Facile</SelectItem>
+                    <SelectItem value="2">⭐⭐ Media</SelectItem>
+                    <SelectItem value="3">⭐⭐⭐ Difficile</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-[11px] sm:text-xs">Decade</Label>
+                <Select value={decadeFilter} onValueChange={setDecadeFilter}>
+                  <SelectTrigger className="text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tutte</SelectItem>
+                    {DECADES.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div>
               <Label className="text-[11px] sm:text-xs">Cerca domanda</Label>
@@ -900,7 +994,7 @@ const QuizQuestionsPanel: React.FC = () => {
                   </div>
                 ))}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <div>
                   <Label>Risposta corretta</Label>
                   <Select value={editingQ.correct_option || 'a'} onValueChange={v => setEditingQ(p => ({ ...p!, correct_option: v }))}>
@@ -921,6 +1015,16 @@ const QuizQuestionsPanel: React.FC = () => {
                       <SelectItem value="1">⭐ Facile</SelectItem>
                       <SelectItem value="2">⭐⭐ Media</SelectItem>
                       <SelectItem value="3">⭐⭐⭐ Difficile</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Decade</Label>
+                  <Select value={editingQ.decade || '__none__'} onValueChange={v => setEditingQ(p => ({ ...p!, decade: v === '__none__' ? null : v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">Nessuna</SelectItem>
+                      {DECADES.map(d => <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
