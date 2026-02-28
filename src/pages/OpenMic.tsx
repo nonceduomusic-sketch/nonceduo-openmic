@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Mic2, Home, MessageCircle, Users, Music, Settings, ListMusic, Trophy, Sparkles } from 'lucide-react';
+import { Mic2, Home, MessageCircle, Users, Music, Settings, ListMusic, Trophy, Sparkles, Monitor, ExternalLink } from 'lucide-react';
 import { Song } from '@/data/songs';
 import { useSongsCatalog, useFilteredSongs } from '@/hooks/useSongsCatalog';
 import { MobileBottomNav } from '@/components/layout/MobileBottomNav';
@@ -52,6 +52,9 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
   
   // Check if live queue should be shown to users
   const { isActive: showLiveQueue } = useFormatActiveCheck('show_live_queue');
+  
+  // Check if trasmetti banner should be shown
+  const { isActive: showTrasmettiBanner } = useFormatActiveCheck('show_trasmetti_banner');
   
   // Use the public statuses hook for real-time updates (no auth required)
   const { isSongBooked, isSongCompleted, activeCount, loading: statusesLoading, bookedSongKeys, statuses } = useReservationStatuses();
@@ -202,6 +205,26 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
           )}
         </div>
       </header>
+
+      {/* Trasmetti Banner */}
+      {showTrasmettiBanner && (
+        <div className="container pt-4">
+          <Link to="/trasmetti">
+            <div className="relative overflow-hidden rounded-xl p-3 bg-gradient-to-r from-indigo-500/20 via-indigo-500/10 to-purple-500/10 border border-indigo-500/30 hover:border-indigo-500/50 transition-all group cursor-pointer">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center shrink-0">
+                  <Monitor className="w-5 h-5 text-indigo-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-foreground">📺 Segui i testi dal vivo!</p>
+                  <p className="text-xs text-muted-foreground">Apri Trasmetti per vedere i testi che scorrono sul tuo schermo</p>
+                </div>
+                <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
+              </div>
+            </div>
+          </Link>
+        </div>
+      )}
 
       {/* Event Context Banner + Status */}
       {liveEvent && (

@@ -1,12 +1,12 @@
 import React, { useEffect, useState, useMemo, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
 import { useScreenShareViewer } from '@/hooks/useScreenShare';
 import { supabase } from '@/integrations/supabase/client';
 import { getCachedSongById } from '@/lib/songsCatalogCache';
 import { safeGetItem } from '@/lib/safeStorage';
 import { ConnectionSettings } from '@/components/songbook/ConnectionSettings';
-import { Maximize, Mic, Guitar } from 'lucide-react';
+import { Maximize, Mic, Guitar, Mic2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { scrollElementToRatio } from '@/lib/scrollRatio';
@@ -1349,8 +1349,18 @@ export default function Trasmetti() {
           </div>
         )}
 
-        {/* Fullscreen + Connection Settings */}
+        {/* Fullscreen + Back to Open Mic + Connection Settings */}
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
+          <Link to="/app/openmic">
+            <Button
+              variant="outline"
+              size="lg"
+              className="border-white/20 text-white hover:bg-white/10 backdrop-blur-sm"
+            >
+              <Mic2 className="w-5 h-5 mr-2" />
+              Prenota
+            </Button>
+          </Link>
           <ConnectionSettings
             mode={mode}
             setMode={setMode}

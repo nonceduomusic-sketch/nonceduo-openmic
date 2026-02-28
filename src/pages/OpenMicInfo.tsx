@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import { ExternalLink, Mic2, Phone, Instagram, Calendar, Clock, Music, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,11 @@ const OpenMicInfo: React.FC = () => {
   const { isOpenmicVisible, loading, liveEvent, isFreeMode } = useLiveEvent();
 
   const isActuallyLive = isOpenmicVisible && (Boolean(liveEvent) || isFreeMode);
+
+  // When Open Mic is live, redirect to the app experience directly
+  if (!loading && isActuallyLive) {
+    return <Navigate to="/app/openmic" replace />;
+  }
 
   return (
     <PageLayout variant="main" title="Open Mic" showBack showAdmin>

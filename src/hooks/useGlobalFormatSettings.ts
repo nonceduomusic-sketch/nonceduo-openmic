@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export type GlobalFormatKey = 'openmic' | 'dediche' | 'community' | 'community_registration' | 'giochi' | 'furore' | 'voting' | 'show_booker_name' | 'show_live_queue' | 'lyrics_zoom' | 'lyrics_highlight_arrows' | 'lyrics_auto_scroll' | 'catalog_preview' | 'show_upcoming_events';
+export type GlobalFormatKey = 'openmic' | 'dediche' | 'community' | 'community_registration' | 'giochi' | 'furore' | 'voting' | 'show_booker_name' | 'show_live_queue' | 'lyrics_zoom' | 'lyrics_highlight_arrows' | 'lyrics_auto_scroll' | 'catalog_preview' | 'show_upcoming_events' | 'show_trasmetti_banner';
 
 export interface GlobalFormatSetting {
   format_key: GlobalFormatKey;
@@ -17,7 +17,7 @@ export const useGlobalFormatSettings = () => {
     openmic: true, dediche: true, community: true, community_registration: true, giochi: false, furore: true,
     voting: true, show_booker_name: true, show_live_queue: true,
     lyrics_zoom: true, lyrics_highlight_arrows: true, lyrics_auto_scroll: true,
-    catalog_preview: false, show_upcoming_events: false,
+    catalog_preview: false, show_upcoming_events: false, show_trasmetti_banner: false,
   };
   const [settings, setSettings] = useState<Record<GlobalFormatKey, boolean>>({ ...defaultSettings });
   const [appSettings, setAppSettings] = useState<Record<GlobalFormatKey, boolean>>({ ...defaultSettings });
@@ -112,6 +112,7 @@ export const useGlobalFormatSettings = () => {
         show_live_queue: 'Scaletta Live', lyrics_zoom: 'Zoom Testi',
         lyrics_highlight_arrows: 'Evidenziatore Testi', lyrics_auto_scroll: 'Auto-scroll Testi',
         catalog_preview: 'Anteprima Catalogo', show_upcoming_events: 'Mostra Eventi in Programma',
+        show_trasmetti_banner: 'Banner Trasmetti',
       };
       const targetLabel = target === 'app' ? ' (App)' : target === 'menu' ? ' (Menu)' : ' (Sito)';
       toast.success(`${formatNames[format]}${targetLabel} ${newValue ? 'attivato' : 'disattivato'}`);
