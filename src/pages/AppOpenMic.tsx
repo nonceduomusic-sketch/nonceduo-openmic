@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { Navigate } from "react-router-dom";
 import OpenMic from "@/pages/OpenMic";
 import OpenMicInfo from "@/pages/OpenMicInfo";
 import { PreEventPage } from "@/components/PreEventPage";
@@ -67,9 +68,9 @@ const AppOpenMic: React.FC = () => {
     );
   }
 
-  // App visibility toggle is OFF → show info page
+  // App visibility toggle is OFF → redirect to app launcher
   if (!isAppVisible) {
-    return <OpenMicInfo />;
+    return <Navigate to="/app" replace />;
   }
 
   // CASE 1: Evento LIVE esiste
