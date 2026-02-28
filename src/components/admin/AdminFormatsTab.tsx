@@ -1,5 +1,5 @@
 import React from 'react';
-import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown, Play, Calendar, Eye, Gamepad2, Globe, Mic2, MessageCircle, Smartphone, Menu, Zap } from 'lucide-react';
+import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown, Play, Calendar, Eye, Gamepad2, Globe, Mic2, MessageCircle, Smartphone, Menu, Zap, Monitor } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -290,6 +290,38 @@ export const AdminFormatsTab: React.FC = () => {
                   {menuSettings.furore && <Badge variant="outline" className="text-orange-500 border-orange-500/30 text-[10px]">Visibile</Badge>}
                 </div>
                 <Switch checked={menuSettings.furore} onCheckedChange={() => toggleGlobalFormat('furore', 'menu')} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Banner Trasmetti su Open Mic */}
+          <Card className="border-indigo-500/20 bg-indigo-500/5">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Monitor className="w-4 h-4 text-indigo-500" />
+                Mostra Trasmetti su Open Mic
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Quando attivo, nella pagina Open Mic appare un banner che invita gli utenti a seguire i testi su /trasmetti
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="trasmetti-toggle" className="text-sm">
+                    {globalSettings.show_trasmetti_banner ? 'Visibile' : 'Nascosto'}
+                  </Label>
+                  {globalSettings.show_trasmetti_banner && (
+                    <Badge variant="outline" className="text-indigo-500 border-indigo-500/30 text-xs">
+                      📺 Attivo
+                    </Badge>
+                  )}
+                </div>
+                <Switch
+                  id="trasmetti-toggle"
+                  checked={globalSettings.show_trasmetti_banner}
+                  onCheckedChange={() => toggleGlobalFormat('show_trasmetti_banner')}
+                />
               </div>
             </CardContent>
           </Card>
