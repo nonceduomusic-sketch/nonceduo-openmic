@@ -32,6 +32,7 @@ import { useFormatActiveCheck } from "@/hooks/useGlobalFormatSettings";
  */
 const AppOpenMic: React.FC = () => {
   const { isActive: isAppVisible, loading: visibilityLoading } = useFormatActiveCheck('openmic', 'app');
+  const { isActive: isFormatActive, loading: formatActiveLoading } = useFormatActiveCheck('openmic', 'format_active');
   const { eventState, liveEvent, upcomingEvents, isOpenmicVisible, isFreeMode, freeMode } = useLiveEvent();
   const { 
     hasValidSession, 
@@ -60,7 +61,7 @@ const AppOpenMic: React.FC = () => {
   }, []);
 
   // Loading state
-  if (eventState.type === 'loading' || sessionLoading || visibilityLoading) {
+  if (eventState.type === 'loading' || sessionLoading || visibilityLoading || formatActiveLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -71,6 +72,11 @@ const AppOpenMic: React.FC = () => {
   // App visibility toggle is OFF → redirect to app launcher
   if (!isAppVisible) {
     return <Navigate to="/app" replace />;
+  }
+
+  // Format not active → show info page only
+  if (!isFormatActive) {
+    return <OpenMicInfo />;
   }
 
   // CASE 1: Evento LIVE esiste

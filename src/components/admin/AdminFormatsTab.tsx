@@ -1,5 +1,5 @@
 import React from 'react';
-import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown, Play, Calendar, Eye, Gamepad2, Globe, Mic2, MessageCircle, Smartphone, Menu, Zap, Monitor } from 'lucide-react';
+import { Power, Trophy, Info, Users, User, ListMusic, ZoomIn, ArrowUpDown, Play, Calendar, Eye, Gamepad2, Globe, Mic2, MessageCircle, Smartphone, Menu, Zap, Monitor, ToggleLeft } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -23,7 +23,7 @@ import { useGameConfigs, useToggleGameConfig } from '@/hooks/useGames';
  */
 export const AdminFormatsTab: React.FC = () => {
   const { permissions, isOwner: hookIsOwner, loading: permsLoading } = useCentroPermissions();
-  const { settings: globalSettings, appSettings, menuSettings, toggleFormat: toggleGlobalFormat, loading: globalLoading } = useGlobalFormatSettings();
+  const { settings: globalSettings, appSettings, menuSettings, formatActiveSettings, toggleFormat: toggleGlobalFormat, loading: globalLoading } = useGlobalFormatSettings();
   const { data: gameConfigs, isLoading: gamesLoading } = useGameConfigs();
   const toggleGameConfig = useToggleGameConfig();
   
@@ -63,7 +63,7 @@ export const AdminFormatsTab: React.FC = () => {
           <Alert className="bg-muted/20 border-muted-foreground/10 mb-4">
             <Info className="h-4 w-4" />
             <AlertDescription className="text-xs text-muted-foreground">
-              Controlla dove mostrare ogni sezione: sul <strong>Sito</strong> (homepage), sull'<strong>App</strong> (nonceduo.com/app) e nel <strong>Menu</strong> (hamburger del sito).
+              <strong>Attiva Format</strong> = il gioco è funzionante e accessibile. <strong>Visualizza in /app</strong> = il riquadro appare nella pagina /app. Se il format è visibile ma non attivo, l'utente vedrà solo la pagina di spiegazione.
             </AlertDescription>
           </Alert>
 
@@ -81,6 +81,18 @@ export const AdminFormatsTab: React.FC = () => {
             <CardContent className="pt-0 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
+                  <Power className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm font-medium">Attiva Format</Label>
+                  {formatActiveSettings.openmic 
+                    ? <Badge variant="outline" className="text-green-500 border-green-500/30 text-[10px]">Attivo</Badge>
+                    : <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">Spento</Badge>
+                  }
+                </div>
+                <Switch checked={formatActiveSettings.openmic} onCheckedChange={() => toggleGlobalFormat('openmic', 'format_active')} />
+              </div>
+              <Separator className="my-1" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
                   <Globe className="w-3.5 h-3.5 text-muted-foreground" />
                   <Label className="text-sm">Sito</Label>
                   {globalSettings.openmic && <Badge variant="outline" className="text-secondary border-secondary/30 text-[10px]">Visibile</Badge>}
@@ -90,7 +102,7 @@ export const AdminFormatsTab: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
-                  <Label className="text-sm">App</Label>
+                  <Label className="text-sm">Visualizza in /app</Label>
                   {appSettings.openmic && <Badge variant="outline" className="text-secondary border-secondary/30 text-[10px]">Visibile</Badge>}
                 </div>
                 <Switch checked={appSettings.openmic} onCheckedChange={() => toggleGlobalFormat('openmic', 'app')} />
@@ -120,6 +132,18 @@ export const AdminFormatsTab: React.FC = () => {
             <CardContent className="pt-0 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
+                  <Power className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm font-medium">Attiva Format</Label>
+                  {formatActiveSettings.dediche 
+                    ? <Badge variant="outline" className="text-green-500 border-green-500/30 text-[10px]">Attivo</Badge>
+                    : <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">Spento</Badge>
+                  }
+                </div>
+                <Switch checked={formatActiveSettings.dediche} onCheckedChange={() => toggleGlobalFormat('dediche', 'format_active')} />
+              </div>
+              <Separator className="my-1" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
                   <Globe className="w-3.5 h-3.5 text-muted-foreground" />
                   <Label className="text-sm">Sito</Label>
                   {globalSettings.dediche && <Badge variant="outline" className="text-primary border-primary/30 text-[10px]">Visibile</Badge>}
@@ -129,7 +153,7 @@ export const AdminFormatsTab: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
-                  <Label className="text-sm">App</Label>
+                  <Label className="text-sm">Visualizza in /app</Label>
                   {appSettings.dediche && <Badge variant="outline" className="text-primary border-primary/30 text-[10px]">Visibile</Badge>}
                 </div>
                 <Switch checked={appSettings.dediche} onCheckedChange={() => toggleGlobalFormat('dediche', 'app')} />
@@ -159,6 +183,18 @@ export const AdminFormatsTab: React.FC = () => {
             <CardContent className="pt-0 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
+                  <Power className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm font-medium">Attiva Format</Label>
+                  {formatActiveSettings.community 
+                    ? <Badge variant="outline" className="text-green-500 border-green-500/30 text-[10px]">Attivo</Badge>
+                    : <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">Spento</Badge>
+                  }
+                </div>
+                <Switch checked={formatActiveSettings.community} onCheckedChange={() => toggleGlobalFormat('community', 'format_active')} />
+              </div>
+              <Separator className="my-1" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
                   <Globe className="w-3.5 h-3.5 text-muted-foreground" />
                   <Label className="text-sm">Sito</Label>
                   {globalSettings.community && <Badge variant="outline" className="text-accent border-accent/30 text-[10px]">Visibile</Badge>}
@@ -168,7 +204,7 @@ export const AdminFormatsTab: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
-                  <Label className="text-sm">App</Label>
+                  <Label className="text-sm">Visualizza in /app</Label>
                   {appSettings.community && <Badge variant="outline" className="text-accent border-accent/30 text-[10px]">Visibile</Badge>}
                 </div>
                 <Switch checked={appSettings.community} onCheckedChange={() => toggleGlobalFormat('community', 'app')} />
@@ -208,6 +244,18 @@ export const AdminFormatsTab: React.FC = () => {
             <CardContent className="pt-0 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
+                  <Power className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm font-medium">Attiva Format</Label>
+                  {formatActiveSettings.giochi 
+                    ? <Badge variant="outline" className="text-green-500 border-green-500/30 text-[10px]">Attivo</Badge>
+                    : <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">Spento</Badge>
+                  }
+                </div>
+                <Switch checked={formatActiveSettings.giochi} onCheckedChange={() => toggleGlobalFormat('giochi', 'format_active')} />
+              </div>
+              <Separator className="my-1" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
                   <Globe className="w-3.5 h-3.5 text-muted-foreground" />
                   <Label className="text-sm">Sito</Label>
                   {globalSettings.giochi && <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">Visibile</Badge>}
@@ -217,7 +265,7 @@ export const AdminFormatsTab: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
-                  <Label className="text-sm">App</Label>
+                  <Label className="text-sm">Visualizza in /app</Label>
                   {appSettings.giochi && <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">Visibile</Badge>}
                 </div>
                 <Switch checked={appSettings.giochi} onCheckedChange={() => toggleGlobalFormat('giochi', 'app')} />
@@ -269,6 +317,18 @@ export const AdminFormatsTab: React.FC = () => {
             <CardContent className="pt-0 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
+                  <Power className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Label className="text-sm font-medium">Attiva Format</Label>
+                  {formatActiveSettings.furore 
+                    ? <Badge variant="outline" className="text-green-500 border-green-500/30 text-[10px]">Attivo</Badge>
+                    : <Badge variant="outline" className="text-destructive border-destructive/30 text-[10px]">Spento</Badge>
+                  }
+                </div>
+                <Switch checked={formatActiveSettings.furore} onCheckedChange={() => toggleGlobalFormat('furore', 'format_active')} />
+              </div>
+              <Separator className="my-1" />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
                   <Globe className="w-3.5 h-3.5 text-muted-foreground" />
                   <Label className="text-sm">Sito</Label>
                   {globalSettings.furore && <Badge variant="outline" className="text-orange-500 border-orange-500/30 text-[10px]">Visibile</Badge>}
@@ -278,7 +338,7 @@ export const AdminFormatsTab: React.FC = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Smartphone className="w-3.5 h-3.5 text-muted-foreground" />
-                  <Label className="text-sm">App</Label>
+                  <Label className="text-sm">Visualizza in /app</Label>
                   {appSettings.furore && <Badge variant="outline" className="text-orange-500 border-orange-500/30 text-[10px]">Visibile</Badge>}
                 </div>
                 <Switch checked={appSettings.furore} onCheckedChange={() => toggleGlobalFormat('furore', 'app')} />

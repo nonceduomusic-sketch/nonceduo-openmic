@@ -1702,6 +1702,7 @@ export type Database = {
       }
       global_format_settings: {
         Row: {
+          format_active: boolean
           format_key: string
           is_active: boolean
           updated_at: string | null
@@ -1710,6 +1711,7 @@ export type Database = {
           visible_on_menu: boolean
         }
         Insert: {
+          format_active?: boolean
           format_key: string
           is_active?: boolean
           updated_at?: string | null
@@ -1718,6 +1720,7 @@ export type Database = {
           visible_on_menu?: boolean
         }
         Update: {
+          format_active?: boolean
           format_key?: string
           is_active?: boolean
           updated_at?: string | null

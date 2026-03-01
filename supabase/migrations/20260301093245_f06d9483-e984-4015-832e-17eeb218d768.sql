@@ -1,0 +1,1 @@
+ALTER TABLE public.global_format_settings ADD COLUMN IF NOT EXISTS format_active boolean NOT NULL DEFAULT true;

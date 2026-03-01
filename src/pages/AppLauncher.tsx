@@ -65,17 +65,22 @@ const AppLauncher: React.FC = () => {
   const { isActive: isFuroreVisible } = useFormatActiveCheck('furore', 'app');
   const { isActive: isOpenmicAppVisible } = useFormatActiveCheck('openmic', 'app');
   const { isActive: isDedicheAppVisible } = useFormatActiveCheck('dediche', 'app');
+  const { isActive: isOpenmicFormatActive } = useFormatActiveCheck('openmic', 'format_active');
+  const { isActive: isDedicheFormatActive } = useFormatActiveCheck('dediche', 'format_active');
+  const { isActive: isFuroreFormatActive } = useFormatActiveCheck('furore', 'format_active');
+  const { isActive: isGiochiFormatActive } = useFormatActiveCheck('giochi', 'format_active');
 
   // Build list of visible format cards
   const formatCards: FormatCardProps[] = [];
 
   if (isOpenmicAppVisible) {
+    const isLive = isOpenmicFormatActive && isOpenmicVisible;
     formatCards.push({
-      to: isOpenmicVisible ? "/app/openmic" : "/openmic",
+      to: isLive ? "/app/openmic" : "/openmic",
       icon: Mic2,
       label: "Open Mic",
-      description: isOpenmicVisible ? "Prenota la canzone e sali sul palco." : "Scopri come funziona l'Open Mic.",
-      isLive: isOpenmicVisible,
+      description: isLive ? "Prenota la canzone e sali sul palco." : "Scopri come funziona l'Open Mic.",
+      isLive,
       accentClass: "secondary",
       liveCta: "Prenota",
       infoCta: "Scopri",
@@ -83,12 +88,13 @@ const AppLauncher: React.FC = () => {
   }
 
   if (isDedicheAppVisible) {
+    const isLive = isDedicheFormatActive && isDedicheVisible;
     formatCards.push({
-      to: isDedicheVisible ? "/app/dediche" : "/messaggi",
+      to: isLive ? "/app/dediche" : "/messaggi",
       icon: MessageCircle,
       label: "Dediche",
-      description: isDedicheVisible ? "Scrivi una dedica e mandala allo staff." : "Scopri come funzionano le dediche.",
-      isLive: isDedicheVisible,
+      description: isLive ? "Scrivi una dedica e mandala allo staff." : "Scopri come funzionano le dediche.",
+      isLive,
       accentClass: "primary",
       liveCta: "Scrivi",
       infoCta: "Scopri",
@@ -97,25 +103,27 @@ const AppLauncher: React.FC = () => {
 
   if (isFuroreVisible) {
     formatCards.push({
-      to: "/app/furore",
+      to: isFuroreFormatActive ? "/app/furore" : "/furore",
       icon: Zap,
       label: "Non C'è Furore",
-      description: "Gioco dal vivo a buzzer — Pulsantiera",
-      isLive: true,
+      description: isFuroreFormatActive ? "Gioco dal vivo a buzzer — Pulsantiera" : "Scopri il gioco a buzzer dal vivo!",
+      isLive: isFuroreFormatActive,
       accentClass: "destructive",
       liveCta: "Gioca",
+      infoCta: "Scopri",
     });
   }
 
   if (isGiochiVisible) {
     formatCards.push({
-      to: "/app/giochi",
+      to: isGiochiFormatActive ? "/app/giochi" : "/giochi",
       icon: Gamepad2,
       label: "Giochi",
-      description: "Quiz musicale e altri giochi passatempo",
-      isLive: true,
+      description: isGiochiFormatActive ? "Quiz musicale e altri giochi passatempo" : "Scopri i giochi interattivi!",
+      isLive: isGiochiFormatActive,
       accentClass: "primary",
       liveCta: "Gioca",
+      infoCta: "Scopri",
     });
   }
 

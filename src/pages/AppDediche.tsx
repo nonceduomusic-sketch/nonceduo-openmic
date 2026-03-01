@@ -28,6 +28,7 @@ import { useFormatActiveCheck } from "@/hooks/useGlobalFormatSettings";
  */
 const AppDediche: React.FC = () => {
   const { isActive: isAppVisible, loading: visibilityLoading } = useFormatActiveCheck('dediche', 'app');
+  const { isActive: isFormatActive, loading: formatActiveLoading } = useFormatActiveCheck('dediche', 'format_active');
   const { eventState, liveEvent, upcomingEvents, isDedicheVisible, isFreeMode, freeMode } = useLiveEvent();
   const { 
     hasValidSession, 
@@ -56,7 +57,7 @@ const AppDediche: React.FC = () => {
   }, []);
 
   // Loading state
-  if (eventState.type === 'loading' || sessionLoading || visibilityLoading) {
+  if (eventState.type === 'loading' || sessionLoading || visibilityLoading || formatActiveLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -66,6 +67,11 @@ const AppDediche: React.FC = () => {
 
   // App visibility toggle is OFF → show info page
   if (!isAppVisible) {
+    return <DedicheInfo />;
+  }
+
+  // Format not active → show info page only
+  if (!isFormatActive) {
     return <DedicheInfo />;
   }
 

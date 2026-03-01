@@ -15,11 +15,12 @@ const GamesHub: React.FC = () => {
   const { data: settings } = useGameSettings();
   const { data: configs } = useGameConfigs();
   const { isActive: isGiochiVisible, loading: visibilityLoading } = useFormatActiveCheck('giochi', 'app');
+  const { isActive: isFormatActive, loading: formatActiveLoading } = useFormatActiveCheck('giochi', 'format_active');
 
   // Filter to only show enabled games
   const visibleGames = (configs || []).filter(g => g.is_enabled);
 
-  if (visibilityLoading) {
+  if (visibilityLoading || formatActiveLoading) {
     return (
       <PageLayout variant="main" title="Giochi" showBack backPath="/app" hideDesktopHeader>
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -29,7 +30,7 @@ const GamesHub: React.FC = () => {
     );
   }
 
-  if (!isGiochiVisible || (settings && !settings.games_enabled)) {
+  if (!isGiochiVisible || !isFormatActive || (settings && !settings.games_enabled)) {
     return (
       <PageLayout variant="main" title="Giochi" showBack backPath="/app" hideDesktopHeader>
         <div className="max-w-lg mx-auto px-4 py-8 sm:py-12">
