@@ -98,6 +98,7 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
   const [showChordsInPreview, setShowChordsInPreview] = useState(true);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
   
   // Import destination state
   const [importDestination, setImportDestination] = useState<'catalog' | 'catalog_existing' | 'catalog_new'>('catalog');
@@ -225,7 +226,13 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
   }, []);
 
   const handleImportWithDestination = useCallback(async (fileList: FileList | File[]) => {
-    const count = await uploadFiles(fileList);
+    setUploadProgress({ current: 0, total: Array.from(fileList).filter(f => f.name.toLowerCase().endsWith('.cho')).length });
+    
+    const count = await uploadFiles(fileList, (current, total) => {
+      setUploadProgress({ current, total });
+    });
+    
+    setUploadProgress(null);
     
     if (count > 0 && importDestination !== 'catalog') {
       // After upload, get the newly uploaded file IDs by matching filenames
@@ -442,6 +449,24 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
                   />
                 )}
               </div>
+              
+              {/* Upload progress bar */}
+              {uploadProgress && (
+                <div className="mt-4 pt-4 border-t border-border space-y-2" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-medium">Caricamento in corso...</span>
+                    <span className="text-muted-foreground">
+                      {uploadProgress.current}/{uploadProgress.total} ({Math.round((uploadProgress.current / uploadProgress.total) * 100)}%)
+                    </span>
+                  </div>
+                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="h-full bg-primary rounded-full transition-all duration-300"
+                      style={{ width: `${(uploadProgress.current / uploadProgress.total) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
