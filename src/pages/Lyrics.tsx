@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Home, Music2, ExternalLink, Plus, Minus, ChevronUp, ChevronDown, Play, Pause, Gauge } from 'lucide-react';
+import { ArrowLeft, Home, Music2, Plus, Minus, ChevronUp, ChevronDown, Play, Pause, Gauge } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Slider } from '@/components/ui/slider';
@@ -379,23 +379,12 @@ const Lyrics: React.FC = () => {
           ) : (
             <div className="text-center py-12">
               <Music2 className="w-12 h-12 text-white/50 mx-auto mb-4" />
-              <p className="text-white/70 text-lg">
-                Testo non ancora disponibile per questa canzone.
+              <p className="text-white/70 text-lg mb-2">
+                Testo in arrivo per questa canzone! 🎶
               </p>
-              <Button
-                variant="outline"
-                asChild
-                className="mt-4 border-white/30 text-white hover:bg-white/10"
-              >
-                <a
-                  href={`https://www.google.com/search?q=${encodeURIComponent(song.titolo + ' ' + song.artista + ' testo')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Cerca su Google
-                </a>
-              </Button>
+              <p className="text-white/50 text-sm">
+                Stiamo lavorando per aggiungere il testo. Torna a trovarci presto!
+              </p>
             </div>
           )}
         </div>
