@@ -22,6 +22,8 @@ import {
   CheckSquare,
   Square,
   PackagePlus,
+  Link,
+  Loader2,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
@@ -61,6 +63,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useSongbookFiles, useSongbookSetlists, useSongbookSetlistSongs, SongbookFile } from '@/hooks/useSongbook';
+import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
 import { parseChordPro, renderWithChords, renderLyricsOnly } from '@/lib/chordpro';
 import { toast } from 'sonner';
 import { SongbookSetlistsTab } from './SongbookSetlistsTab';
@@ -83,7 +86,7 @@ interface SongbookTabProps {
 }
 
 export function SongbookTab({ canManage = true, canFull = true }: SongbookTabProps) {
-  const { files, loading, uploadFiles, updateFile, deleteFile, deleteAllFiles } = useSongbookFiles();
+  const { files, loading, uploadFiles, importFromUrl, updateFile, deleteFile, deleteAllFiles } = useSongbookFiles();
   const { setlists, createSetlist } = useSongbookSetlists();
   const { syncUpdate } = useHybridBroadcast('main');
   
@@ -100,6 +103,11 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [uploadProgress, setUploadProgress] = useState<{ current: number; total: number } | null>(null);
   
+  // Import from URL state
+  const [importUrl, setImportUrl] = useState('');
+  const [googleApiKey, setGoogleApiKey] = useState(() => safeGetItem('local', 'google_api_key') || '');
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState<{ imported: number; duplicates: number; errors: string[] } | null>(null);
   // Import destination state
   const [importDestination, setImportDestination] = useState<'catalog' | 'catalog_existing' | 'catalog_new'>('catalog');
   const [importSetlistId, setImportSetlistId] = useState<string>('');
@@ -291,6 +299,26 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
     }
   }, [canFull, handleImportWithDestination]);
 
+  const handleImportFromUrl = useCallback(async () => {
+    if (!importUrl.trim()) {
+      toast.warning('Inserisci un URL');
+      return;
+    }
+    setIsImporting(true);
+    setImportResult(null);
+    try {
+      // Save Google API key for reuse
+      if (googleApiKey) safeSetItem('local', 'google_api_key', googleApiKey);
+      const result = await importFromUrl(importUrl.trim(), googleApiKey || undefined);
+      setImportResult(result);
+      if (result.imported > 0) setImportUrl('');
+    } catch {
+      // error already shown by toast in importFromUrl
+    } finally {
+      setIsImporting(false);
+    }
+  }, [importUrl, googleApiKey, importFromUrl]);
+
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!canFull) return;
     const selectedFiles = e.target.files;
@@ -398,13 +426,13 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
                   {isDragging ? "Rilascia i file qui" : "Trascina file .cho oppure clicca per selezionare"}
                 </p>
                 <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                  Supporta upload multiplo
+                  Supporta upload multiplo (.cho e .zip)
                 </p>
               </div>
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".cho"
+                accept=".cho,.zip"
                 multiple
                 onChange={handleFileSelect}
                 className="hidden"
@@ -470,6 +498,59 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
             </CardContent>
           </Card>
 
+          {/* Import from URL */}
+          {canFull && (
+            <Card>
+              <CardContent className="py-4 space-y-3">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Link className="w-4 h-4" />
+                  Importa da URL (Google Drive, ZIP, .cho)
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="https://drive.google.com/drive/folders/... oppure URL a .zip/.cho"
+                    value={importUrl}
+                    onChange={e => setImportUrl(e.target.value)}
+                    className="h-10 sm:h-11 text-sm flex-1"
+                    disabled={isImporting}
+                  />
+                  <Button onClick={handleImportFromUrl} disabled={isImporting || !importUrl.trim()} className="h-10 sm:h-11">
+                    {isImporting ? <Loader2 className="w-4 h-4 animate-spin mr-1.5" /> : <Download className="w-4 h-4 mr-1.5" />}
+                    Importa
+                  </Button>
+                </div>
+                {importUrl.includes('drive.google.com') && (
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Google API Key (necessaria per Google Drive)</Label>
+                    <Input
+                      placeholder="AIza..."
+                      value={googleApiKey}
+                      onChange={e => setGoogleApiKey(e.target.value)}
+                      className="h-9 text-xs font-mono"
+                      type="password"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      Ottienila da console.cloud.google.com → API & Services → Credentials → Abilita Google Drive API
+                    </p>
+                  </div>
+                )}
+                {importResult && (
+                  <div className="text-sm space-y-1 p-3 bg-muted/50 rounded-lg">
+                    <p>✅ Importati: <strong>{importResult.imported}</strong> | Duplicati: {importResult.duplicates}</p>
+                    {importResult.errors.length > 0 && (
+                      <details className="text-xs text-destructive">
+                        <summary className="cursor-pointer">{importResult.errors.length} errori</summary>
+                        <ul className="mt-1 space-y-0.5 max-h-32 overflow-auto">
+                          {importResult.errors.map((e, i) => <li key={i}>• {e}</li>)}
+                        </ul>
+                      </details>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Broadcast page links - always visible */}
           <BroadcastLinksCards filter={['tv', 'partiture', 'songbook']} />
           <Card>
@@ -484,6 +565,9 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
                     className="pl-10 sm:pl-11 h-11 sm:h-12 text-sm sm:text-base"
                   />
                 </div>
+                <Badge variant="secondary" className="text-xs sm:text-sm shrink-0">
+                  {searchQuery || filterUnderscore !== 'all' ? `${filteredFiles.length} / ` : ''}{files.length} file
+                </Badge>
                 <div className="flex items-center gap-2 flex-wrap">
                   {/* Sort dropdown */}
                   <DropdownMenu>

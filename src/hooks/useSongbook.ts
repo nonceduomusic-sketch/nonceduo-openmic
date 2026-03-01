@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { extractChordProTitle } from '@/lib/chordpro';
+import JSZip from 'jszip';
 
 export interface SongbookFile {
   id: string;
@@ -142,76 +143,147 @@ export function useSongbookFiles() {
     };
   }, [fetchFiles]);
 
+  const isUploading = useRef(false);
+
   const uploadFiles = useCallback(async (
     fileList: FileList | File[],
     onProgress?: (current: number, total: number) => void,
   ): Promise<number> => {
-    const choFiles = Array.from(fileList).filter(f => {
-      if (!f.name.toLowerCase().endsWith('.cho')) {
-        toast.warning(`File ignorato (non .cho): ${f.name}`);
-        return false;
-      }
-      return true;
-    });
-
-    if (choFiles.length === 0) return 0;
-
-    // Read all file contents
-    const records: { title: string; artist: string | null; content: string; filename: string }[] = [];
-    for (const file of choFiles) {
-      const content = await file.text();
-      const { title, artist } = extractChordProTitle(content);
-      records.push({
-        title: title || file.name.replace(/\.cho$/i, ''),
-        artist: artist || null,
-        content,
-        filename: file.name,
-      });
+    // Guard against concurrent uploads
+    if (isUploading.current) {
+      toast.warning('Upload già in corso, attendi...');
+      return 0;
     }
+    isUploading.current = true;
 
-    // Batch insert in chunks of 200
-    const BATCH_SIZE = 200;
-    let successCount = 0;
-    let duplicateCount = 0;
+    try {
+      const allFiles = Array.from(fileList);
+      const choFiles: File[] = [];
+      const zipFiles: File[] = [];
 
-    for (let i = 0; i < records.length; i += BATCH_SIZE) {
-      const batch = records.slice(i, i + BATCH_SIZE);
-      const { data, error } = await supabase
-        .from('songbook_files')
-        .upsert(batch, { onConflict: 'filename', ignoreDuplicates: true })
-        .select('id');
+      for (const f of allFiles) {
+        const name = f.name.toLowerCase();
+        if (name.endsWith('.cho')) choFiles.push(f);
+        else if (name.endsWith('.zip')) zipFiles.push(f);
+        else toast.warning(`File ignorato (non .cho/.zip): ${f.name}`);
+      }
 
-      if (error) {
-        console.error(`Batch ${Math.floor(i / BATCH_SIZE) + 1} error:`, error);
-        // Fallback: insert one by one for this batch
-        for (const rec of batch) {
-          const { error: singleErr } = await supabase
-            .from('songbook_files')
-            .insert(rec);
-          if (!singleErr) {
-            successCount++;
-          } else if (singleErr.code === '23505') {
-            duplicateCount++;
+      // Extract .cho from ZIP files
+      for (const zipFile of zipFiles) {
+        try {
+          const zipData = await zipFile.arrayBuffer();
+          const zip = await JSZip.loadAsync(zipData);
+          for (const [path, entry] of Object.entries(zip.files)) {
+            if (entry.dir) continue;
+            const fileName = path.split('/').pop() || path;
+            if (!fileName.toLowerCase().endsWith('.cho')) continue;
+            const content = await entry.async('string');
+            const blob = new Blob([content], { type: 'text/plain' });
+            choFiles.push(new File([blob], fileName));
           }
+        } catch (err) {
+          console.error('Error extracting ZIP:', err);
+          toast.error(`Errore apertura ZIP: ${zipFile.name}`);
         }
-      } else {
-        successCount += data?.length ?? batch.length;
       }
 
-      onProgress?.(Math.min(i + BATCH_SIZE, records.length), records.length);
-      // Yield to UI thread
-      await new Promise(r => setTimeout(r, 30));
-    }
+      if (choFiles.length === 0) return 0;
 
-    if (successCount > 0) {
-      toast.success(`${successCount} file caricati${duplicateCount > 0 ? ` (${duplicateCount} duplicati ignorati)` : ''}`);
-      await fetchFiles();
-      import('@/lib/autoSyncLAN').then(m => m.autoSyncToLAN('songbook')).catch(() => {});
-    } else if (duplicateCount > 0) {
-      toast.info(`${duplicateCount} file già esistenti, nessun nuovo caricamento`);
-    }
+      // Read all file contents
+      const records: { title: string; artist: string | null; content: string; filename: string }[] = [];
+      for (const file of choFiles) {
+        const content = await file.text();
+        const { title, artist } = extractChordProTitle(content);
+        records.push({
+          title: title || file.name.replace(/\.cho$/i, ''),
+          artist: artist || null,
+          content,
+          filename: file.name,
+        });
+      }
 
-    return successCount;
+      // Batch insert in chunks of 200
+      const BATCH_SIZE = 200;
+      let successCount = 0;
+      let duplicateCount = 0;
+
+      for (let i = 0; i < records.length; i += BATCH_SIZE) {
+        const batch = records.slice(i, i + BATCH_SIZE);
+        const { data, error } = await supabase
+          .from('songbook_files')
+          .upsert(batch, { onConflict: 'filename', ignoreDuplicates: true })
+          .select('id');
+
+        if (error) {
+          console.error(`Batch ${Math.floor(i / BATCH_SIZE) + 1} error:`, error);
+          // Fallback: insert one by one for this batch
+          for (const rec of batch) {
+            const { error: singleErr } = await supabase
+              .from('songbook_files')
+              .insert(rec);
+            if (!singleErr) {
+              successCount++;
+            } else if (singleErr.code === '23505') {
+              duplicateCount++;
+            }
+          }
+        } else {
+          successCount += data?.length ?? batch.length;
+        }
+
+        onProgress?.(Math.min(i + BATCH_SIZE, records.length), records.length);
+        // Yield to UI thread
+        await new Promise(r => setTimeout(r, 30));
+      }
+
+      if (successCount > 0) {
+        toast.success(`${successCount} file caricati${duplicateCount > 0 ? ` (${duplicateCount} duplicati ignorati)` : ''}`);
+        await fetchFiles();
+        import('@/lib/autoSyncLAN').then(m => m.autoSyncToLAN('songbook')).catch(() => {});
+      } else if (duplicateCount > 0) {
+        toast.info(`${duplicateCount} file già esistenti, nessun nuovo caricamento`);
+      }
+
+      return successCount;
+    } finally {
+      isUploading.current = false;
+    }
+  }, [fetchFiles]);
+
+  const importFromUrl = useCallback(async (
+    url: string,
+    googleApiKey?: string,
+    onProgress?: (msg: string) => void,
+  ): Promise<{ imported: number; duplicates: number; errors: string[] }> => {
+    onProgress?.('Avvio importazione...');
+    try {
+      const { data, error } = await supabase.functions.invoke('import-songbook-from-url', {
+        body: { url, googleApiKey },
+      });
+
+      if (error) throw new Error(error.message);
+      if (!data?.success) throw new Error(data?.error || 'Importazione fallita');
+
+      const result = { imported: data.imported, duplicates: data.duplicates, errors: data.errors || [] };
+
+      if (result.imported > 0) {
+        toast.success(`${result.imported} file importati${result.duplicates > 0 ? ` (${result.duplicates} duplicati)` : ''}`);
+        await fetchFiles();
+      } else if (result.duplicates > 0) {
+        toast.info(`${result.duplicates} file già esistenti`);
+      }
+
+      if (result.errors.length > 0) {
+        toast.warning(`${result.errors.length} file con errori`);
+        console.warn('[importFromUrl] Errors:', result.errors);
+      }
+
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Errore importazione';
+      toast.error(msg);
+      throw err;
+    }
   }, [fetchFiles]);
 
   const updateFile = useCallback(async (id: string, updates: Partial<SongbookFile>): Promise<boolean> => {
@@ -354,6 +426,7 @@ export function useSongbookFiles() {
     files,
     loading,
     uploadFiles,
+    importFromUrl,
     updateFile,
     deleteFile,
     deleteAllFiles,
