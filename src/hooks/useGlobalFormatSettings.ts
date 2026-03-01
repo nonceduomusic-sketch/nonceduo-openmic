@@ -9,6 +9,7 @@ export interface GlobalFormatSetting {
   is_active: boolean;
   visible_on_app: boolean;
   visible_on_menu: boolean;
+  format_active: boolean;
   updated_at: string;
 }
 
@@ -22,6 +23,7 @@ export const useGlobalFormatSettings = () => {
   const [settings, setSettings] = useState<Record<GlobalFormatKey, boolean>>({ ...defaultSettings });
   const [appSettings, setAppSettings] = useState<Record<GlobalFormatKey, boolean>>({ ...defaultSettings });
   const [menuSettings, setMenuSettings] = useState<Record<GlobalFormatKey, boolean>>({ ...defaultSettings });
+  const [formatActiveSettings, setFormatActiveSettings] = useState<Record<GlobalFormatKey, boolean>>({ ...defaultSettings });
   const [loading, setLoading] = useState(true);
 
   const fetchSettings = useCallback(async () => {
@@ -36,17 +38,20 @@ export const useGlobalFormatSettings = () => {
         const newSettings: Record<GlobalFormatKey, boolean> = { ...defaultSettings };
         const newAppSettings: Record<GlobalFormatKey, boolean> = { ...newSettings };
         const newMenuSettings: Record<GlobalFormatKey, boolean> = { ...newSettings };
+        const newFormatActiveSettings: Record<GlobalFormatKey, boolean> = { ...newSettings };
         data.forEach((item) => {
           const key = item.format_key as GlobalFormatKey;
           if (key in newSettings) {
             newSettings[key] = item.is_active;
             newAppSettings[key] = item.visible_on_app ?? true;
             newMenuSettings[key] = (item as any).visible_on_menu ?? true;
+            newFormatActiveSettings[key] = (item as any).format_active ?? true;
           }
         });
         setSettings(newSettings);
         setAppSettings(newAppSettings);
         setMenuSettings(newMenuSettings);
+        setFormatActiveSettings(newFormatActiveSettings);
       }
     } catch (error) {
       console.error('Error fetching global format settings:', error);
@@ -79,10 +84,10 @@ export const useGlobalFormatSettings = () => {
     };
   }, [fetchSettings]);
 
-  const toggleFormat = async (format: GlobalFormatKey, target: 'site' | 'app' | 'menu' = 'site'): Promise<boolean> => {
-    const currentValue = target === 'app' ? appSettings[format] : target === 'menu' ? menuSettings[format] : settings[format];
+  const toggleFormat = async (format: GlobalFormatKey, target: 'site' | 'app' | 'menu' | 'format_active' = 'site'): Promise<boolean> => {
+    const currentValue = target === 'app' ? appSettings[format] : target === 'menu' ? menuSettings[format] : target === 'format_active' ? formatActiveSettings[format] : settings[format];
     const newValue = !currentValue;
-    const column = target === 'app' ? 'visible_on_app' : target === 'menu' ? 'visible_on_menu' : 'is_active';
+    const column = target === 'app' ? 'visible_on_app' : target === 'menu' ? 'visible_on_menu' : target === 'format_active' ? 'format_active' : 'is_active';
     
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -102,6 +107,8 @@ export const useGlobalFormatSettings = () => {
         setAppSettings(prev => ({ ...prev, [format]: newValue }));
       } else if (target === 'menu') {
         setMenuSettings(prev => ({ ...prev, [format]: newValue }));
+      } else if (target === 'format_active') {
+        setFormatActiveSettings(prev => ({ ...prev, [format]: newValue }));
       } else {
         setSettings(prev => ({ ...prev, [format]: newValue }));
       }
@@ -114,7 +121,7 @@ export const useGlobalFormatSettings = () => {
         catalog_preview: 'Anteprima Catalogo', show_upcoming_events: 'Mostra Eventi in Programma',
         show_trasmetti_banner: 'Banner Trasmetti',
       };
-      const targetLabel = target === 'app' ? ' (App)' : target === 'menu' ? ' (Menu)' : ' (Sito)';
+      const targetLabel = target === 'app' ? ' (App)' : target === 'menu' ? ' (Menu)' : target === 'format_active' ? '' : ' (Sito)';
       toast.success(`${formatNames[format]}${targetLabel} ${newValue ? 'attivato' : 'disattivato'}`);
       return true;
     } catch (error) {
@@ -132,6 +139,7 @@ export const useGlobalFormatSettings = () => {
     settings,
     appSettings,
     menuSettings,
+    formatActiveSettings,
     loading,
     toggleFormat,
     isFormatActive,
@@ -141,11 +149,11 @@ export const useGlobalFormatSettings = () => {
 
 // Hook for public pages to check if a format is active (with real-time updates)
 // target: 'site' checks is_active, 'app' checks visible_on_app, 'menu' checks visible_on_menu
-export const useFormatActiveCheck = (format: GlobalFormatKey, target: 'site' | 'app' | 'menu' = 'site') => {
+export const useFormatActiveCheck = (format: GlobalFormatKey, target: 'site' | 'app' | 'menu' | 'format_active' = 'site') => {
   const [isActive, setIsActive] = useState<boolean | null>(null); // null = loading
   const [loading, setLoading] = useState(true);
   const mountedRef = useRef(true);
-  const column = target === 'app' ? 'visible_on_app' : target === 'menu' ? 'visible_on_menu' : 'is_active';
+  const column = target === 'app' ? 'visible_on_app' : target === 'menu' ? 'visible_on_menu' : target === 'format_active' ? 'format_active' : 'is_active';
 
   // Stable fetch function
   const fetchFormatStatus = useCallback(async () => {

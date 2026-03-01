@@ -33,6 +33,7 @@ type Phase = 'landing' | 'register' | 'buzzer';
 
 const AppFurore: React.FC = () => {
   const { isActive: isAppVisible, loading: visibilityLoading } = useFormatActiveCheck('furore', 'app');
+  const { isActive: isFormatActive, loading: formatActiveLoading } = useFormatActiveCheck('furore', 'format_active');
   const { session, loading } = useFuroreSession();
   const { players } = useFurorePlayers(session?.id);
   const { bookings, refetch: refetchBookings } = useFuroreBookings(session?.id);
@@ -181,7 +182,7 @@ const AppFurore: React.FC = () => {
   const showOrder = session?.show_order_to_players ?? true;
   const showBookings = (session as any)?.show_bookings_to_players ?? true;
 
-  if (loading || visibilityLoading) {
+  if (loading || visibilityLoading || formatActiveLoading) {
     return (
       <PageLayout variant="main" title="Non C'è Furore" showBack backPath="/app" hideDesktopHeader>
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -191,8 +192,8 @@ const AppFurore: React.FC = () => {
     );
   }
 
-  // ─── APP VISIBILITY OFF — Show nice landing page ───
-  if (!isAppVisible) {
+  // ─── APP VISIBILITY OFF or FORMAT NOT ACTIVE — Show nice landing page ───
+  if (!isAppVisible || !isFormatActive) {
     return (
       <PageLayout variant="main" title="Non C'è Furore" showBack backPath="/app" hideDesktopHeader>
         <div className="max-w-lg mx-auto px-4 py-8 sm:py-12">
