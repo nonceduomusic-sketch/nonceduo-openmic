@@ -78,6 +78,7 @@ export function useSongbookFiles() {
       const pageSize = 1000;
       let from = 0;
       let hasMore = true;
+      let hadNetworkError = false;
 
       while (hasMore) {
         const controller = new AbortController();
@@ -93,6 +94,7 @@ export function useSongbookFiles() {
 
         if (error) {
           console.error('Error fetching songbook files:', error);
+          hadNetworkError = true;
           break;
         }
 
@@ -105,11 +107,15 @@ export function useSongbookFiles() {
         }
       }
 
-      if (allData.length > 0) {
+      // If fetch succeeded (even with 0 rows), database is the source of truth
+      if (!hadNetworkError) {
         setFiles(allData);
-        // Update IndexedDB cache in background
-        import('@/lib/songbookCache').then(({ cacheSongbookFiles }) => {
-          cacheSongbookFiles(allData).catch(() => {});
+        import('@/lib/songbookCache').then(({ cacheSongbookFiles, clearSongbookCache }) => {
+          if (allData.length > 0) {
+            cacheSongbookFiles(allData).catch(() => {});
+          } else {
+            clearSongbookCache().catch(() => {});
+          }
         });
       }
     } catch {
@@ -208,27 +214,49 @@ export function useSongbookFiles() {
   }, []);
 
   const deleteFile = useCallback(async (id: string): Promise<boolean> => {
-    // Clear catalog_songbook_links referencing this file
-    await supabase.from('catalog_songbook_links').delete().eq('songbook_file_id', id);
-    // Clear songbook_setlist_songs referencing this file
-    await supabase.from('songbook_setlist_songs').delete().eq('songbook_file_id', id);
-    // Clear broadcast_sessions referencing this file
-    await supabase.from('broadcast_sessions').update({ songbook_file_id: null, songbook_mode: false }).eq('songbook_file_id', id);
+    try {
+      // Clear catalog_songbook_links referencing this file
+      const { error: linksError } = await supabase
+        .from('catalog_songbook_links')
+        .delete()
+        .eq('songbook_file_id', id);
+      if (linksError) throw linksError;
 
-    const { error } = await supabase
-      .from('songbook_files')
-      .delete()
-      .eq('id', id);
+      // Clear songbook_setlist_songs referencing this file
+      const { error: setlistError } = await supabase
+        .from('songbook_setlist_songs')
+        .delete()
+        .eq('songbook_file_id', id);
+      if (setlistError) throw setlistError;
 
-    if (error) {
-      console.error('Error deleting songbook file:', error);
+      // Clear broadcast_sessions referencing this file
+      const { error: broadcastError } = await supabase
+        .from('broadcast_sessions')
+        .update({ songbook_file_id: null, songbook_mode: false })
+        .eq('songbook_file_id', id);
+      if (broadcastError) throw broadcastError;
+
+      const { error } = await supabase
+        .from('songbook_files')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      // Optimistic UI + cache cleanup to avoid stale local entries
+      setFiles(prev => prev.filter(f => f.id !== id));
+      import('@/lib/songbookCache').then(({ removeCachedFile }) => {
+        removeCachedFile(id).catch(() => {});
+      });
+
+      toast.success('File eliminato');
+      import('@/lib/autoSyncLAN').then(m => m.autoSyncToLAN('songbook')).catch(() => {});
+      return true;
+    } catch (err) {
+      console.error('Error deleting songbook file:', err);
       toast.error('Errore eliminazione file');
       return false;
     }
-
-    toast.success('File eliminato');
-    import('@/lib/autoSyncLAN').then(m => m.autoSyncToLAN('songbook')).catch(() => {});
-    return true;
   }, []);
 
   const deleteAllFiles = useCallback(async (): Promise<boolean> => {
@@ -285,7 +313,16 @@ export function useSongbookFiles() {
         if (!data || data.length === 0) break;
       }
 
-      toast.success(`Tutti i file eliminati (${totalDeleted})`);
+      const visibleCount = files.length;
+      const displayDeleted = totalDeleted > 0 ? totalDeleted : visibleCount;
+
+      // Immediately clear UI/cache to prevent stale IndexedDB ghost rows
+      setFiles([]);
+      import('@/lib/songbookCache').then(({ clearSongbookCache }) => {
+        clearSongbookCache().catch(() => {});
+      });
+
+      toast.success(`Tutti i file eliminati (${displayDeleted})`);
       await fetchFiles();
       return true;
     } catch (err) {
@@ -293,7 +330,7 @@ export function useSongbookFiles() {
       toast.error('Errore eliminazione file');
       return false;
     }
-  }, [fetchFiles]);
+  }, [fetchFiles, files]);
 
   return {
     files,
