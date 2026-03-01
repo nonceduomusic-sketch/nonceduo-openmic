@@ -142,59 +142,77 @@ export function useSongbookFiles() {
     };
   }, [fetchFiles]);
 
-  const uploadFile = useCallback(async (file: File): Promise<boolean> => {
-    try {
-      const content = await file.text();
-      const { title, artist } = extractChordProTitle(content);
-      
-      const { error } = await supabase
-        .from('songbook_files')
-        .insert({
-          title: title || file.name.replace(/\.cho$/i, ''),
-          artist: artist || null,
-          content,
-          filename: file.name,
-        });
-
-      if (error) {
-        if (error.code === '23505') {
-          toast.error(`File "${file.name}" già esistente`);
-        } else {
-          throw error;
-        }
+  const uploadFiles = useCallback(async (
+    fileList: FileList | File[],
+    onProgress?: (current: number, total: number) => void,
+  ): Promise<number> => {
+    const choFiles = Array.from(fileList).filter(f => {
+      if (!f.name.toLowerCase().endsWith('.cho')) {
+        toast.warning(`File ignorato (non .cho): ${f.name}`);
         return false;
       }
-
       return true;
-    } catch (err: any) {
-      console.error('Error uploading songbook file:', err);
-      toast.error(`Errore upload: ${file.name}`);
-      return false;
+    });
+
+    if (choFiles.length === 0) return 0;
+
+    // Read all file contents
+    const records: { title: string; artist: string | null; content: string; filename: string }[] = [];
+    for (const file of choFiles) {
+      const content = await file.text();
+      const { title, artist } = extractChordProTitle(content);
+      records.push({
+        title: title || file.name.replace(/\.cho$/i, ''),
+        artist: artist || null,
+        content,
+        filename: file.name,
+      });
     }
-  }, []);
 
-  const uploadFiles = useCallback(async (fileList: FileList | File[]): Promise<number> => {
-    const files = Array.from(fileList);
+    // Batch insert in chunks of 200
+    const BATCH_SIZE = 200;
     let successCount = 0;
+    let duplicateCount = 0;
 
-    for (const file of files) {
-      if (!file.name.toLowerCase().endsWith('.cho')) {
-        toast.warning(`File ignorato (non .cho): ${file.name}`);
-        continue;
+    for (let i = 0; i < records.length; i += BATCH_SIZE) {
+      const batch = records.slice(i, i + BATCH_SIZE);
+      const { data, error } = await supabase
+        .from('songbook_files')
+        .upsert(batch, { onConflict: 'filename', ignoreDuplicates: true })
+        .select('id');
+
+      if (error) {
+        console.error(`Batch ${Math.floor(i / BATCH_SIZE) + 1} error:`, error);
+        // Fallback: insert one by one for this batch
+        for (const rec of batch) {
+          const { error: singleErr } = await supabase
+            .from('songbook_files')
+            .insert(rec);
+          if (!singleErr) {
+            successCount++;
+          } else if (singleErr.code === '23505') {
+            duplicateCount++;
+          }
+        }
+      } else {
+        successCount += data?.length ?? batch.length;
       }
-      const success = await uploadFile(file);
-      if (success) successCount++;
+
+      onProgress?.(Math.min(i + BATCH_SIZE, records.length), records.length);
+      // Yield to UI thread
+      await new Promise(r => setTimeout(r, 30));
     }
 
     if (successCount > 0) {
-      toast.success(`${successCount} file caricati con successo`);
+      toast.success(`${successCount} file caricati${duplicateCount > 0 ? ` (${duplicateCount} duplicati ignorati)` : ''}`);
       await fetchFiles();
-      // Auto-sync to LAN server in background
       import('@/lib/autoSyncLAN').then(m => m.autoSyncToLAN('songbook')).catch(() => {});
+    } else if (duplicateCount > 0) {
+      toast.info(`${duplicateCount} file già esistenti, nessun nuovo caricamento`);
     }
 
     return successCount;
-  }, [uploadFile, fetchFiles]);
+  }, [fetchFiles]);
 
   const updateFile = useCallback(async (id: string, updates: Partial<SongbookFile>): Promise<boolean> => {
     const { error } = await supabase
