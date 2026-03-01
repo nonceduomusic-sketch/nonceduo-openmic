@@ -208,6 +208,13 @@ export function useSongbookFiles() {
   }, []);
 
   const deleteFile = useCallback(async (id: string): Promise<boolean> => {
+    // Clear catalog_songbook_links referencing this file
+    await supabase.from('catalog_songbook_links').delete().eq('songbook_file_id', id);
+    // Clear songbook_setlist_songs referencing this file
+    await supabase.from('songbook_setlist_songs').delete().eq('songbook_file_id', id);
+    // Clear broadcast_sessions referencing this file
+    await supabase.from('broadcast_sessions').update({ songbook_file_id: null, songbook_mode: false }).eq('songbook_file_id', id);
+
     const { error } = await supabase
       .from('songbook_files')
       .delete()
@@ -238,21 +245,24 @@ export function useSongbookFiles() {
         return false;
       }
 
-      // Also clear songbook_setlist_songs references
-      const { data: setlists } = await supabase
-        .from('songbook_setlist_songs')
-        .select('id')
-        .limit(1);
+      // Also clear catalog_songbook_links references
+      const { error: linksError } = await supabase
+        .from('catalog_songbook_links')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
       
-      if (setlists && setlists.length > 0) {
-        const { error: setlistError } = await supabase
-          .from('songbook_setlist_songs')
-          .delete()
-          .neq('id', '00000000-0000-0000-0000-000000000000');
-        
-        if (setlistError) {
-          console.error('Error clearing setlist songs:', setlistError);
-        }
+      if (linksError) {
+        console.error('Error clearing catalog songbook links:', linksError);
+      }
+
+      // Also clear songbook_setlist_songs references
+      const { error: setlistError } = await supabase
+        .from('songbook_setlist_songs')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000');
+      
+      if (setlistError) {
+        console.error('Error clearing setlist songs:', setlistError);
       }
 
       // Delete in batches to bypass the 1000-row limit
