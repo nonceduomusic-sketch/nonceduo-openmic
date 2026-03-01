@@ -21,6 +21,7 @@ import {
   Download,
   CheckSquare,
   Square,
+  PackagePlus,
 } from 'lucide-react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
@@ -50,9 +51,16 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { useSongbookFiles, SongbookFile } from '@/hooks/useSongbook';
+import { useSongbookFiles, useSongbookSetlists, useSongbookSetlistSongs, SongbookFile } from '@/hooks/useSongbook';
 import { parseChordPro, renderWithChords, renderLyricsOnly } from '@/lib/chordpro';
 import { toast } from 'sonner';
 import { SongbookSetlistsTab } from './SongbookSetlistsTab';
@@ -65,6 +73,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import JSZip from 'jszip';
 
 type SortMode = 'title-asc' | 'title-desc' | 'artist-asc' | 'artist-desc';
 
@@ -75,6 +84,7 @@ interface SongbookTabProps {
 
 export function SongbookTab({ canManage = true, canFull = true }: SongbookTabProps) {
   const { files, loading, uploadFiles, updateFile, deleteFile, deleteAllFiles } = useSongbookFiles();
+  const { setlists, createSetlist } = useSongbookSetlists();
   const { syncUpdate } = useHybridBroadcast('main');
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -88,6 +98,11 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
   const [showChordsInPreview, setShowChordsInPreview] = useState(true);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  
+  // Import destination state
+  const [importDestination, setImportDestination] = useState<'catalog' | 'catalog_existing' | 'catalog_new'>('catalog');
+  const [importSetlistId, setImportSetlistId] = useState<string>('');
+  const [newSetlistName, setNewSetlistName] = useState('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,7 +128,7 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
     setSelectedIds(new Set());
   };
 
-  const exportChoFiles = (filesToExport: SongbookFile[]) => {
+  const exportChoFiles = async (filesToExport: SongbookFile[]) => {
     if (filesToExport.length === 1) {
       // Single file download
       const f = filesToExport[0];
@@ -126,17 +141,21 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
       URL.revokeObjectURL(url);
       toast.success(`"${f.title}" esportato`);
     } else {
-      // Multiple files: download each one
+      // Multiple files: create ZIP
+      const zip = new JSZip();
       for (const f of filesToExport) {
-        const blob = new Blob([f.content], { type: 'text/plain;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = f.filename || `${f.title}.cho`;
-        a.click();
-        URL.revokeObjectURL(url);
+        const filename = f.filename || `${f.title}.cho`;
+        zip.file(filename, f.content);
       }
-      toast.success(`${filesToExport.length} file esportati`);
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const date = new Date().toISOString().slice(0, 10);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `songbook_export_${date}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${filesToExport.length} file esportati in ZIP`);
     }
   };
 
@@ -205,6 +224,51 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
     setIsDragging(false);
   }, []);
 
+  const handleImportWithDestination = useCallback(async (fileList: FileList | File[]) => {
+    const count = await uploadFiles(fileList);
+    
+    if (count > 0 && importDestination !== 'catalog') {
+      // After upload, get the newly uploaded file IDs by matching filenames
+      const uploadedNames = Array.from(fileList)
+        .filter(f => f.name.toLowerCase().endsWith('.cho'))
+        .map(f => f.name);
+      
+      // Wait a moment for realtime to update, then find the files
+      await new Promise(r => setTimeout(r, 500));
+      
+      try {
+        const { supabase } = await import('@/integrations/supabase/client');
+        const { data: newFiles } = await supabase
+          .from('songbook_files')
+          .select('id, filename')
+          .in('filename', uploadedNames);
+        
+        if (newFiles && newFiles.length > 0) {
+          let targetSetlistId = importSetlistId;
+          
+          if (importDestination === 'catalog_new') {
+            const name = newSetlistName.trim() || `Scaletta ${new Date().toLocaleDateString('it')}`;
+            const newSetlist = await createSetlist(name);
+            if (newSetlist) targetSetlistId = newSetlist.id;
+          }
+          
+          if (targetSetlistId) {
+            for (let i = 0; i < newFiles.length; i++) {
+              await supabase.from('songbook_setlist_songs').insert({
+                setlist_id: targetSetlistId,
+                songbook_file_id: newFiles[i].id,
+                position: i,
+              });
+            }
+            toast.success(`${newFiles.length} brani aggiunti alla scaletta`);
+          }
+        }
+      } catch (err) {
+        console.error('Error adding to setlist:', err);
+      }
+    }
+  }, [uploadFiles, importDestination, importSetlistId, newSetlistName, createSetlist]);
+
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
@@ -216,20 +280,20 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
     
     const droppedFiles = e.dataTransfer.files;
     if (droppedFiles.length > 0) {
-      await uploadFiles(droppedFiles);
+      await handleImportWithDestination(droppedFiles);
     }
-  }, [canFull, uploadFiles]);
+  }, [canFull, handleImportWithDestination]);
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!canFull) return;
     const selectedFiles = e.target.files;
     if (selectedFiles && selectedFiles.length > 0) {
-      await uploadFiles(selectedFiles);
+      await handleImportWithDestination(selectedFiles);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
-  }, [canFull, uploadFiles]);
+  }, [canFull, handleImportWithDestination]);
 
   const handleEdit = (file: SongbookFile) => {
     setEditingFile(file);
@@ -307,16 +371,18 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
           {/* Upload Zone */}
           <Card
             className={cn(
-              "border-2 border-dashed transition-colors cursor-pointer",
+              "border-2 border-dashed transition-colors",
               isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"
             )}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            onClick={() => canFull && fileInputRef.current?.click()}
           >
             <CardContent className="py-6 sm:py-8">
-              <div className="flex flex-col items-center justify-center text-center">
+              <div 
+                className="flex flex-col items-center justify-center text-center cursor-pointer"
+                onClick={() => canFull && fileInputRef.current?.click()}
+              >
                 <Upload className={cn(
                   "w-8 h-8 sm:w-10 sm:h-10 mb-3 transition-colors",
                   isDragging ? "text-primary" : "text-muted-foreground"
@@ -336,6 +402,46 @@ export function SongbookTab({ canManage = true, canFull = true }: SongbookTabPro
                 onChange={handleFileSelect}
                 className="hidden"
               />
+              
+              {/* Import destination selector */}
+              <div className="mt-4 pt-4 border-t border-border space-y-3" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <PackagePlus className="w-4 h-4" />
+                  Destinazione Import
+                </div>
+                <Select value={importDestination} onValueChange={(v: any) => setImportDestination(v)}>
+                  <SelectTrigger className="h-10 sm:h-11 text-sm">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="catalog">Solo Catalogo SongBook</SelectItem>
+                    <SelectItem value="catalog_existing">Catalogo + Scaletta esistente</SelectItem>
+                    <SelectItem value="catalog_new">Catalogo + Nuova Scaletta</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                {importDestination === 'catalog_existing' && (
+                  <Select value={importSetlistId} onValueChange={setImportSetlistId}>
+                    <SelectTrigger className="h-10 sm:h-11 text-sm">
+                      <SelectValue placeholder="Seleziona scaletta..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {setlists.map(s => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                
+                {importDestination === 'catalog_new' && (
+                  <Input
+                    placeholder="Nome nuova scaletta..."
+                    value={newSetlistName}
+                    onChange={e => setNewSetlistName(e.target.value)}
+                    className="h-10 sm:h-11 text-sm"
+                  />
+                )}
+              </div>
             </CardContent>
           </Card>
 
