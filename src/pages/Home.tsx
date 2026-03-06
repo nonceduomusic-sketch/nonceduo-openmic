@@ -133,8 +133,8 @@ const Home: React.FC = () => {
               className="mb-6"
             >
               <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-[1.1]">
-                <span className="text-foreground block">La tua serata merita</span>
-                <span className="neon-text-pink block">musica dal vivo vera</span>
+                <span className="text-foreground block">La colonna sonora perfetta?</span>
+                <span className="neon-text-pink block">Adesso è dal vivo</span>
               </h1>
             </motion.div>
             
