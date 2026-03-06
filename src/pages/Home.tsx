@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Music, MapPin, PartyPopper, Heart, Users, Phone, Mail, Instagram, ChevronDown, Mic2, MessageCircle, Sparkles, Star, ArrowRight, Zap, Gamepad2 } from 'lucide-react';
+import { Music, MapPin, PartyPopper, Heart, Users, Phone, Mail, Instagram, ChevronDown, Mic2, MessageCircle, Sparkles, Star, ArrowRight, Zap, Gamepad2, Guitar, Volume2, ListMusic } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { TestimonialsSection } from '@/components/TestimonialsSection';
@@ -16,33 +17,14 @@ import duoPhoto4 from '@/assets/duo-photo-4.png';
 
 const FormatGrid: React.FC<{ isOpenmicVisible: boolean; isDedicheVisible: boolean; isFuroreVisible: boolean; isGiochiVisible: boolean; isCommunityVisible: boolean }> = ({ isOpenmicVisible, isDedicheVisible, isFuroreVisible, isGiochiVisible, isCommunityVisible }) => {
   const formats = [
-    isOpenmicVisible && { key: 'openmic', to: '/openmic', icon: Mic2, label: 'Open Mic', sub: 'Canta con noi', colorClass: 'secondary' },
-    isDedicheVisible && { key: 'dediche', to: '/messaggi', icon: MessageCircle, label: 'Dediche', sub: 'Invia messaggi', colorClass: 'primary' },
-    isFuroreVisible && { key: 'furore', to: '/app/furore', icon: Zap, label: "Non C'è Furore", sub: 'Gioco live', colorClass: 'destructive' },
-    isGiochiVisible && { key: 'giochi', to: '/app/giochi', icon: Gamepad2, label: 'Giochi', sub: 'Passatempo', colorClass: 'emerald-500' },
+    isOpenmicVisible && { key: 'openmic', to: '/openmic', icon: Mic2, label: 'Open Mic', sub: 'Il pubblico canta con noi', colorClass: 'secondary' },
+    isDedicheVisible && { key: 'dediche', to: '/messaggi', icon: MessageCircle, label: 'Dediche', sub: 'Dedica una canzone live', colorClass: 'primary' },
+    isFuroreVisible && { key: 'furore', to: '/app/furore', icon: Zap, label: "Non C'è Furore", sub: 'Quiz musicale dal vivo', colorClass: 'destructive' },
+    isGiochiVisible && { key: 'giochi', to: '/app/giochi', icon: Gamepad2, label: 'Giochi', sub: 'Sfide tra il pubblico', colorClass: 'emerald-500' },
     isCommunityVisible && { key: 'community', to: '/social', icon: Users, label: 'Community', sub: 'Entra nel club', colorClass: 'accent' },
   ].filter(Boolean) as { key: string; to: string; icon: React.ElementType; label: string; sub: string; colorClass: string }[];
 
   if (formats.length === 0) return null;
-
-  if (formats.length === 1) {
-    const f = formats[0];
-    return (
-      <div className="flex justify-center px-4">
-        <Link to={f.to} className="group block touch-manipulation w-full max-w-[200px]">
-          <Card className={`bg-card/70 backdrop-blur-sm border-${f.colorClass}/40 hover:border-${f.colorClass} hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer`}>
-            <CardContent className="p-4 text-center relative">
-              <div className={`w-12 h-12 mx-auto mb-2 rounded-xl bg-${f.colorClass}/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-${f.colorClass}/30 transition-all pointer-events-none`}>
-                <f.icon className={`w-6 h-6 text-${f.colorClass} pointer-events-none`} />
-              </div>
-              <span className="text-sm font-bold text-foreground block pointer-events-none">{f.label}</span>
-              <p className={`text-[10px] text-${f.colorClass} font-medium mt-0.5 pointer-events-none`}>{f.sub}</p>
-            </CardContent>
-          </Card>
-        </Link>
-      </div>
-    );
-  }
 
   const gridCols = formats.length <= 2 ? 'grid-cols-2' 
     : formats.length === 3 ? 'grid-cols-3' 
@@ -50,22 +32,30 @@ const FormatGrid: React.FC<{ isOpenmicVisible: boolean; isDedicheVisible: boolea
     : 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-5';
 
   return (
-    <div className={`grid ${gridCols} gap-3 max-w-3xl mx-auto px-4`}>
+    <div className={`grid ${gridCols} gap-3 max-w-4xl mx-auto px-4`}>
       {formats.map((f, i) => {
         const isLastOdd = formats.length % 2 !== 0 && i === formats.length - 1 && formats.length > 3;
         return (
-          <Link key={f.key} to={f.to} className={`group block touch-manipulation ${isLastOdd ? 'col-span-2 sm:col-span-1' : ''}`}>
-            <Card className={`bg-card/70 backdrop-blur-sm border-${f.colorClass}/40 hover:border-${f.colorClass} hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer h-full`}>
-              <CardContent className="p-4 text-center relative">
-                <div className={`absolute inset-0 bg-gradient-to-t from-${f.colorClass}/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none`} />
-                <div className={`w-12 h-12 mx-auto mb-2 rounded-xl bg-${f.colorClass}/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-${f.colorClass}/30 transition-all pointer-events-none`}>
-                  <f.icon className={`w-6 h-6 text-${f.colorClass} pointer-events-none`} />
-                </div>
-                <span className="text-sm font-bold text-foreground block pointer-events-none">{f.label}</span>
-                <p className={`text-[10px] text-${f.colorClass} font-medium mt-0.5 pointer-events-none`}>{f.sub}</p>
-              </CardContent>
-            </Card>
-          </Link>
+          <motion.div
+            key={f.key}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: i * 0.1, duration: 0.4 }}
+          >
+            <Link to={f.to} className={`group block touch-manipulation ${isLastOdd ? 'col-span-2 sm:col-span-1' : ''}`}>
+              <Card className={`bg-card/70 backdrop-blur-sm border-${f.colorClass}/40 hover:border-${f.colorClass} hover:scale-105 transition-all duration-300 overflow-hidden cursor-pointer h-full`}>
+                <CardContent className="p-4 md:p-5 text-center relative">
+                  <div className={`absolute inset-0 bg-gradient-to-t from-${f.colorClass}/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none`} />
+                  <div className={`w-12 h-12 mx-auto mb-2 rounded-xl bg-${f.colorClass}/20 flex items-center justify-center group-hover:scale-110 group-hover:bg-${f.colorClass}/30 transition-all pointer-events-none`}>
+                    <f.icon className={`w-6 h-6 text-${f.colorClass} pointer-events-none`} />
+                  </div>
+                  <span className="text-sm font-bold text-foreground block pointer-events-none">{f.label}</span>
+                  <p className={`text-[10px] text-${f.colorClass} font-medium mt-0.5 pointer-events-none`}>{f.sub}</p>
+                </CardContent>
+              </Card>
+            </Link>
+          </motion.div>
         );
       })}
     </div>
@@ -83,43 +73,107 @@ const Home: React.FC = () => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const hasAnyFormat = isOpenmicVisible || isDedicheVisible || isFuroreVisible || isGiochiVisible || isCommunityVisible;
+
   return (
     <>
       <SEO 
         title="Non C'è Duo | Musica Live per Eventi"
-        description="Energia acustica allo stato puro. Musica live per locali, eventi privati, matrimoni e feste."
+        description="Musica live che accende la serata. Un duo acustico che trasforma ogni evento in un'esperienza indimenticabile. Locali, eventi, matrimoni, feste."
       />
 
       <div className="min-h-screen bg-background">
         <SiteHeader />
 
-        {/* Hero Section - Maximum Impact */}
+        {/* ═══════════════════════════════════════════════════════════════
+            HERO SECTION — IL LIVE È IL PROTAGONISTA
+        ═══════════════════════════════════════════════════════════════ */}
         <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-          {/* Animated background gradients */}
-          <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-background z-0" />
+          {/* Background image */}
+          <div 
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${duoPhoto1})` }}
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/70 via-background/85 to-background" />
+          
+          {/* Animated orbs */}
           <div className="absolute inset-0 overflow-hidden z-0">
-            <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-primary/25 rounded-full blur-[100px] animate-pulse" />
-            <div className="absolute bottom-1/4 right-1/4 w-[350px] h-[350px] bg-secondary/25 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }} />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-accent/15 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
+            <motion.div
+              className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-primary/20 rounded-full blur-[100px]"
+              animate={{ scale: [1, 1.2, 1], opacity: [0.2, 0.35, 0.2] }}
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute bottom-1/4 right-1/4 w-[350px] h-[350px] bg-secondary/20 rounded-full blur-[100px]"
+              animate={{ scale: [1.2, 1, 1.2], opacity: [0.15, 0.3, 0.15] }}
+              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+            />
           </div>
 
           <div className="container mx-auto px-4 text-center relative z-10 py-8">
-            {/* Main headline */}
-            <div className="mb-6 animate-fade-in">
-              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black mb-4 leading-[1.1]">
-                <span className="text-foreground">I migliori successi</span>
-                <br />
-                <span className="neon-text-pink">ora sai dove ascoltarli</span>
+            {/* Live badge */}
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/15 border border-primary/30 mb-6"
+            >
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
+              </span>
+              <span className="text-primary font-bold text-sm uppercase tracking-wider">Musica Live</span>
+            </motion.div>
+
+            {/* Main headline — LIVE SHOW centered */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="mb-6"
+            >
+              <h1 className="font-display text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black leading-[1.1]">
+                <span className="text-foreground block">La tua serata merita</span>
+                <span className="neon-text-pink block">musica dal vivo vera</span>
               </h1>
-            </div>
+            </motion.div>
             
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed px-4">
-              Energia acustica allo stato puro. Un duo musicale che trasforma 
-              ogni evento in un'esperienza <strong className="text-foreground">indimenticabile</strong>.
-            </p>
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.6 }}
+              className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto mb-8 leading-relaxed px-4"
+            >
+              Voce, chitarra, energia e un repertorio che spacca. <strong className="text-foreground">Non C'è Duo</strong> porta 
+              il palco ovunque e trasforma ogni evento in un'esperienza da ricordare.
+            </motion.p>
+
+            {/* Live Show highlights — quick value props */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.5 }}
+              className="flex flex-wrap items-center justify-center gap-4 md:gap-6 mb-10 px-4"
+            >
+              {[
+                { icon: Guitar, text: 'Duo Acustico' },
+                { icon: ListMusic, text: '500+ Brani' },
+                { icon: Volume2, text: 'Show Personalizzato' },
+              ].map((item, i) => (
+                <div key={i} className="flex items-center gap-2 text-muted-foreground">
+                  <item.icon className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">{item.text}</span>
+                </div>
+              ))}
+            </motion.div>
 
             {/* Primary CTAs */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center mb-10 px-4">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.5 }}
+              className="flex flex-col sm:flex-row gap-3 justify-center mb-10 px-4"
+            >
               <Button 
                 size="lg" 
                 className="neon-button-pink text-lg px-8 py-6 touch-target group"
@@ -139,21 +193,7 @@ const Home: React.FC = () => {
                   Scopri Party Band
                 </Button>
               </Link>
-            </div>
-
-            {/* Format Cards - WOW experience teaser */}
-            <div className="mb-10">
-              <p className="text-sm text-muted-foreground mb-4 uppercase tracking-wider font-medium">
-                Scopri i nostri format interattivi
-              </p>
-              <FormatGrid 
-                isOpenmicVisible={isOpenmicVisible} 
-                isDedicheVisible={isDedicheVisible} 
-                isFuroreVisible={isFuroreVisible}
-                isGiochiVisible={isGiochiVisible} 
-                isCommunityVisible={isCommunityVisible} 
-              />
-            </div>
+            </motion.div>
 
             <button 
               onClick={() => scrollToSection('about')}
@@ -164,7 +204,9 @@ const Home: React.FC = () => {
           </div>
         </section>
 
-        {/* About Section */}
+        {/* ═══════════════════════════════════════════════════════════════
+            ABOUT SECTION — Chi siamo, cosa facciamo dal vivo
+        ═══════════════════════════════════════════════════════════════ */}
         <section id="about" className="py-16 md:py-24 bg-card/30">
           <div className="container mx-auto px-4">
             <div className="grid lg:grid-cols-2 gap-8 md:gap-12 items-center">
@@ -172,7 +214,7 @@ const Home: React.FC = () => {
                 <div className="aspect-[4/5] rounded-2xl overflow-hidden shadow-2xl border border-border/50">
                   <img 
                     src={duoPhoto4} 
-                    alt="Non C'è Duo" 
+                    alt="Non C'è Duo dal vivo" 
                     className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-700"
                     loading="lazy"
                   />
@@ -215,7 +257,55 @@ const Home: React.FC = () => {
           </div>
         </section>
 
-        {/* Services Section */}
+        {/* ═══════════════════════════════════════════════════════════════
+            FORMAT SECTION — Complementari al live, non alternativi
+        ═══════════════════════════════════════════════════════════════ */}
+        {hasAnyFormat && (
+          <section className="py-16 md:py-24 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent" />
+            
+            <div className="container mx-auto px-4 relative z-10">
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.6 }}
+                className="text-center mb-10 md:mb-14"
+              >
+                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary/10 border border-secondary/30 mb-4">
+                  <Sparkles className="w-4 h-4 text-secondary" />
+                  <span className="text-xs font-semibold text-secondary uppercase tracking-wider">Il tocco in più</span>
+                </div>
+                
+                <h2 className="font-display text-2xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4 leading-tight">
+                  Rendi unico il tuo evento con i nostri{' '}
+                  <span className="neon-text-cyan">Format Esclusivi</span>
+                </h2>
+                <p className="text-muted-foreground max-w-2xl mx-auto text-base md:text-lg leading-relaxed">
+                  Noi suoniamo dal vivo, e se vuoi, puoi abbinare questi format originali 
+                  per <strong className="text-foreground">arricchire la serata</strong> e sorprendere i tuoi ospiti.
+                </p>
+                
+                <div className="flex items-center justify-center gap-2 mt-4 text-sm text-muted-foreground">
+                  <Music className="w-4 h-4 text-primary" />
+                  <span>Modulari e combinabili con il live show</span>
+                </div>
+              </motion.div>
+
+              <FormatGrid 
+                isOpenmicVisible={isOpenmicVisible} 
+                isDedicheVisible={isDedicheVisible} 
+                isFuroreVisible={isFuroreVisible}
+                isGiochiVisible={isGiochiVisible} 
+                isCommunityVisible={isCommunityVisible} 
+              />
+            </div>
+          </section>
+        )}
+
+        {/* ═══════════════════════════════════════════════════════════════
+            SERVICES — Dove Suoniamo
+        ═══════════════════════════════════════════════════════════════ */}
         <section id="services" className="py-16 md:py-24">
           <div className="container mx-auto px-4">
             <div className="text-center mb-10 md:mb-16">
@@ -250,11 +340,10 @@ const Home: React.FC = () => {
               ))}
             </div>
 
-            {/* CTA Collabora - Super Visible */}
+            {/* CTA Collabora */}
             <div className="mt-10 md:mt-16">
               <Link to="/collabora">
                 <div className="relative p-6 md:p-10 rounded-2xl bg-gradient-to-r from-primary/20 via-accent/15 to-secondary/20 border-2 border-primary/30 hover:border-primary/60 transition-all duration-300 hover:scale-[1.02] group overflow-hidden">
-                  {/* Animated background glow */}
                   <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-secondary/10 opacity-0 group-hover:opacity-100 transition-opacity" />
                   
                   <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
@@ -286,18 +375,27 @@ const Home: React.FC = () => {
           </div>
         </section>
 
-        {/* Party Band Section - Maximum WOW */}
+        {/* ═══════════════════════════════════════════════════════════════
+            PARTY BAND SECTION
+        ═══════════════════════════════════════════════════════════════ */}
         <section className="py-16 md:py-24 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-accent/10 to-secondary/20" />
           <div className="absolute inset-0">
-            <div className="absolute top-0 left-1/4 w-[400px] h-[400px] bg-primary/30 rounded-full blur-[100px] animate-pulse" />
-            <div className="absolute bottom-0 right-1/4 w-[350px] h-[350px] bg-secondary/30 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '1s' }} />
+            <motion.div
+              className="absolute top-0 left-1/4 w-[400px] h-[400px] bg-primary/30 rounded-full blur-[100px]"
+              animate={{ scale: [1, 1.15, 1], opacity: [0.2, 0.35, 0.2] }}
+              transition={{ duration: 5, repeat: Infinity, ease: "easeInOut" }}
+            />
+            <motion.div
+              className="absolute bottom-0 right-1/4 w-[350px] h-[350px] bg-secondary/30 rounded-full blur-[80px]"
+              animate={{ scale: [1.15, 1, 1.15], opacity: [0.15, 0.3, 0.15] }}
+              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+            />
           </div>
           
           <div className="container mx-auto px-4 relative z-10">
             <div className="max-w-4xl mx-auto text-center">
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 border border-primary/40 mb-6 md:mb-8 animate-float">
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/20 border border-primary/40 mb-6 md:mb-8">
                 <span className="relative flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
