@@ -111,10 +111,10 @@ const FuroreInfo: React.FC = () => {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                <Link to="/app/furore" className="flex-1">
-                  <Button className="w-full neon-button-cyan gap-2" size="lg">
+                <Link to="/app/furore" className="flex-1 block touch-manipulation">
+                  <Button className="w-full neon-button-cyan gap-2 cursor-pointer" size="lg">
                     Apri App
-                    <ExternalLink className="w-4 h-4" />
+                    <ExternalLink className="w-4 h-4 pointer-events-none" />
                   </Button>
                 </Link>
                 <a
