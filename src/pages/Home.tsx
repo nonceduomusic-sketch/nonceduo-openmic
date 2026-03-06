@@ -157,7 +157,7 @@ const Home: React.FC = () => {
             >
               {[
                 { icon: Guitar, text: 'Duo Acustico' },
-                { icon: ListMusic, text: '500+ Brani' },
+                { icon: Music, text: 'Ogni Evento, Ogni Mood' },
                 { icon: Volume2, text: 'Show Personalizzato' },
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-2 text-muted-foreground">
