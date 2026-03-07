@@ -18,6 +18,7 @@ import { renderResponsiveChordLine } from '@/lib/chordproRenderer';
 import { usePedalScroll } from '@/hooks/usePedalControl';
 import { TVGameOverlay } from '@/components/broadcast/TVGameOverlay';
 import { TVFuroreOverlay } from '@/components/broadcast/TVFuroreOverlay';
+import { resolveStandbyMode } from '@/lib/tvStandbyModes';
 
 interface Song {
   id: string;
@@ -72,16 +73,6 @@ const DEFAULT_POSITIONS: Record<string, ElementPosition> = {
   qr: { x: 50, y: 65 },
   qr_cta: { x: 50, y: 82 },
   footer: { x: 50, y: 90 },
-};
-
-type StandbyMode = 'openmic' | 'furore' | 'furore_qr' | 'logo';
-
-const normalizeStandbyMode = (mode: string | null | undefined): StandbyMode => {
-  const value = (mode ?? '').toLowerCase().trim();
-  if (value === 'furore_qr' || (value.includes('furore') && value.includes('qr'))) return 'furore_qr';
-  if (value === 'furore') return 'furore';
-  if (value === 'logo') return 'logo';
-  return 'openmic';
 };
 
 type LyricsViewMode = 'compact' | 'karaoke' | 'spotify' | 'chordpro';
