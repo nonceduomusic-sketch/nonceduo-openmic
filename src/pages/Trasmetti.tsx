@@ -1192,7 +1192,12 @@ export default function Trasmetti() {
   }
 
   // WAITING MODE - Determine standby screen based on tv_standby_mode
-  const standbyMode = normalizeStandbyMode((session as any)?.tv_standby_mode);
+  const standbyMode = resolveStandbyMode({
+    mode: (session as any)?.tv_standby_mode,
+    title: tvSettings.title,
+    subtitle: tvSettings.subtitle,
+    qrCta: tvSettings.qrCta,
+  });
 
   // LOGO ONLY MODE - Big centered logo on dark background
   if (standbyMode === 'logo') {
