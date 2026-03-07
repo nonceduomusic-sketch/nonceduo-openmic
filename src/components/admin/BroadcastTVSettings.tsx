@@ -79,6 +79,23 @@ const DEFAULT_POSITIONS: Record<string, ElementPosition> = {
   footer: { x: 50, y: 90 },
 };
 
+type StandbyMode = 'openmic' | 'furore' | 'furore_qr' | 'logo';
+
+const STANDBY_MODE_OPTIONS: Array<{ value: StandbyMode; label: string; desc: string }> = [
+  { value: 'openmic', label: '🎤 Open Mic', desc: 'Schermata classica con QR code e info evento' },
+  { value: 'furore', label: '🔥 Non C\'è Furore', desc: 'Mostra la pulsantiera e la griglia giocatori' },
+  { value: 'furore_qr', label: '🔥 Non C\'è Furore + QR Code', desc: 'Logo, titolo, sottotitolo, QR, CTA QR e footer' },
+  { value: 'logo', label: '🎵 Solo Logo', desc: 'Logo grande centrato su sfondo scuro (ideale per LED wall)' },
+];
+
+const normalizeStandbyMode = (mode: string | null | undefined): StandbyMode => {
+  const value = (mode ?? '').toLowerCase().trim();
+  if (value === 'furore_qr' || (value.includes('furore') && value.includes('qr'))) return 'furore_qr';
+  if (value === 'furore') return 'furore';
+  if (value === 'logo') return 'logo';
+  return 'openmic';
+};
+
 const ELEMENT_COLORS: Record<string, { bg: string; border: string }> = {
   logo: { bg: "from-violet-500/90 to-purple-600/90", border: "border-violet-400/50" },
   title: { bg: "from-amber-500/90 to-orange-600/90", border: "border-amber-400/50" },

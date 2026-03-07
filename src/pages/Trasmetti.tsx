@@ -74,6 +74,16 @@ const DEFAULT_POSITIONS: Record<string, ElementPosition> = {
   footer: { x: 50, y: 90 },
 };
 
+type StandbyMode = 'openmic' | 'furore' | 'furore_qr' | 'logo';
+
+const normalizeStandbyMode = (mode: string | null | undefined): StandbyMode => {
+  const value = (mode ?? '').toLowerCase().trim();
+  if (value === 'furore_qr' || (value.includes('furore') && value.includes('qr'))) return 'furore_qr';
+  if (value === 'furore') return 'furore';
+  if (value === 'logo') return 'logo';
+  return 'openmic';
+};
+
 type LyricsViewMode = 'compact' | 'karaoke' | 'spotify' | 'chordpro';
 
 /**
