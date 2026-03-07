@@ -1251,6 +1251,100 @@ export default function Trasmetti() {
     );
   }
 
+  // FURORE + QR MODE - Furore themed screen with QR code for buzzer
+  if (standbyMode === 'furore_qr') {
+    return (
+      <>
+      <div className="min-h-screen bg-gradient-to-br from-orange-950 via-black to-red-950 text-white relative overflow-hidden select-none">
+        {/* Animated background - Furore theme */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-orange-500/20 rounded-full blur-[200px] animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-red-500/15 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '1s' }} />
+        </div>
+
+        {/* Content container */}
+        <div className="relative z-10 min-h-screen w-full">
+          {/* Logo */}
+          {tvSettings.showLogo && (
+            <div style={getPosition('logo')}>
+              <img 
+                src={tvSettings.logoUrl || brandLogoText} 
+                alt="Logo" 
+                className="h-16 md:h-24 w-auto object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = brandLogoText;
+                }}
+              />
+            </div>
+          )}
+
+          {/* Title */}
+          {tvSettings.showTitle && (
+            <div style={getPosition('title')} className="text-center w-full px-8">
+              <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight">
+                <span className="bg-gradient-to-r from-orange-400 via-red-400 to-orange-400 bg-clip-text text-transparent">
+                  {tvSettings.title}
+                </span>
+              </h1>
+            </div>
+          )}
+
+          {/* Subtitle */}
+          {tvSettings.showSubtitle && (
+            <div style={getPosition('subtitle')} className="text-center w-full px-8">
+              <p className="text-xl md:text-2xl text-white/60 font-light">
+                {tvSettings.subtitle}
+              </p>
+            </div>
+          )}
+
+          {/* QR Code */}
+          {tvSettings.showQr && qrCodeDataUrl && (
+            <div style={getPosition('qr')} className="flex justify-center">
+              <div className="bg-white rounded-2xl p-4 shadow-2xl shadow-orange-500/20">
+                <img 
+                  src={qrCodeDataUrl} 
+                  alt="QR Code per pulsantiera" 
+                  className="w-40 h-40 md:w-56 md:h-56"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* QR CTA */}
+          {tvSettings.showQr && (
+            <div style={getPosition('qr_cta')} className="text-center w-full px-8">
+              <p className="text-lg md:text-xl text-orange-200/70">
+                {tvSettings.qrCta || 'Scansiona e premi il buzzer!'}
+              </p>
+            </div>
+          )}
+
+          {/* Footer */}
+          {tvSettings.showFooter && (
+            <div style={getPosition('footer')} className="text-center w-full px-8">
+              <p className="text-white/30 text-sm">
+                {tvSettings.footer}
+              </p>
+            </div>
+          )}
+
+          {/* Fullscreen + Connection Settings */}
+          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
+            <ConnectionSettings mode={mode} setMode={setMode} localIP={localIP} setLocalIP={setLocalIP} isLocalConnected={localConnected} localLatency={localLatency} />
+            <Button variant="outline" size="lg" onClick={toggleFullscreen} className="border-white/20 text-white hover:bg-white/10 backdrop-blur-sm">
+              <Maximize className="w-5 h-5 mr-2" />
+              {isFullscreen ? 'Esci' : 'Fullscreen'}
+            </Button>
+          </div>
+        </div>
+      </div>
+      <TVGameOverlay />
+      <TVFuroreOverlay />
+      </>
+    );
+  }
+
   // OPEN MIC MODE (default) - Promo screen with QR
   return (
     <>
