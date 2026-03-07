@@ -70,13 +70,13 @@ const DRAGGABLE_ELEMENTS: DraggableElement[] = [
 ];
 
 const DEFAULT_POSITIONS: Record<string, ElementPosition> = {
-  logo: { x: 50, y: 15 },
-  title: { x: 50, y: 35 },
-  subtitle: { x: 50, y: 42 },
-  status: { x: 50, y: 52 },
-  qr: { x: 50, y: 72 },
-  qr_cta: { x: 50, y: 88 },
-  footer: { x: 50, y: 96 },
+  logo: { x: 50, y: 12 },
+  title: { x: 50, y: 30 },
+  subtitle: { x: 50, y: 40 },
+  status: { x: 50, y: 50 },
+  qr: { x: 50, y: 65 },
+  qr_cta: { x: 50, y: 82 },
+  footer: { x: 50, y: 90 },
 };
 
 const ELEMENT_COLORS: Record<string, { bg: string; border: string }> = {
