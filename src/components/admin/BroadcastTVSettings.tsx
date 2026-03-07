@@ -383,7 +383,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
               <span>Trascina gli elementi per posizionarli</span>
             </div>
 
-            {/* Preview Canvas - 16:9 aspect ratio */}
+            {/* Preview Canvas - 16:9 aspect ratio, responsive */}
             <div className="flex justify-center">
               <motion.div
                 ref={previewRef}
@@ -391,10 +391,12 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                   "relative rounded-xl overflow-hidden",
                   "ring-1 ring-border/50 shadow-xl",
                   "touch-none select-none",
-                  currentStandbyMode === 'furore_qr' ? "bg-gradient-to-br from-orange-950 via-black to-red-950" : "bg-gradient-to-br from-gray-900 via-black to-gray-900",
+                  "w-full max-w-[480px] aspect-video",
+                  currentStandbyMode === 'furore' || currentStandbyMode === 'furore_qr' 
+                    ? "bg-gradient-to-br from-orange-950 via-black to-red-950" 
+                    : "bg-gradient-to-br from-gray-900 via-black to-gray-900",
                   dragging && "ring-2 ring-primary/50"
                 )}
-                style={{ width: 400, height: 225 }}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
                 onPointerLeave={handlePointerUp}
