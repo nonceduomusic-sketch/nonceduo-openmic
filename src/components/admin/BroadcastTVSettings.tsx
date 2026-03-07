@@ -70,13 +70,13 @@ const DRAGGABLE_ELEMENTS: DraggableElement[] = [
 ];
 
 const DEFAULT_POSITIONS: Record<string, ElementPosition> = {
-  logo: { x: 50, y: 15 },
-  title: { x: 50, y: 35 },
-  subtitle: { x: 50, y: 42 },
-  status: { x: 50, y: 52 },
-  qr: { x: 50, y: 72 },
-  qr_cta: { x: 50, y: 88 },
-  footer: { x: 50, y: 96 },
+  logo: { x: 50, y: 12 },
+  title: { x: 50, y: 30 },
+  subtitle: { x: 50, y: 40 },
+  status: { x: 50, y: 50 },
+  qr: { x: 50, y: 65 },
+  qr_cta: { x: 50, y: 82 },
+  footer: { x: 50, y: 90 },
 };
 
 const ELEMENT_COLORS: Record<string, { bg: string; border: string }> = {
@@ -247,8 +247,8 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
     if (!dragging || !previewRef.current) return;
     
     const rect = previewRef.current.getBoundingClientRect();
-    const x = Math.max(5, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100));
-    const y = Math.max(5, Math.min(95, ((e.clientY - rect.top) / rect.height) * 100));
+    const x = Math.max(3, Math.min(97, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(3, Math.min(97, ((e.clientY - rect.top) / rect.height) * 100));
     
     const nearCenterH = Math.abs(x - 50) <= 3;
     const nearCenterV = Math.abs(y - 50) <= 3;
@@ -383,7 +383,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
               <span>Trascina gli elementi per posizionarli</span>
             </div>
 
-            {/* Preview Canvas - 16:9 aspect ratio */}
+            {/* Preview Canvas - 16:9 aspect ratio, responsive */}
             <div className="flex justify-center">
               <motion.div
                 ref={previewRef}
@@ -391,10 +391,12 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                   "relative rounded-xl overflow-hidden",
                   "ring-1 ring-border/50 shadow-xl",
                   "touch-none select-none",
-                  currentStandbyMode === 'furore_qr' ? "bg-gradient-to-br from-orange-950 via-black to-red-950" : "bg-gradient-to-br from-gray-900 via-black to-gray-900",
+                  "w-full max-w-[480px] aspect-video",
+                  currentStandbyMode === 'furore' || currentStandbyMode === 'furore_qr' 
+                    ? "bg-gradient-to-br from-orange-950 via-black to-red-950" 
+                    : "bg-gradient-to-br from-gray-900 via-black to-gray-900",
                   dragging && "ring-2 ring-primary/50"
                 )}
-                style={{ width: 400, height: 225 }}
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
                 onPointerLeave={handlePointerUp}
@@ -431,11 +433,11 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                   const colors = ELEMENT_COLORS[element.id];
                   const isDragging = dragging === element.id;
 
-                  return (
+                    return (
                     <motion.div
                       key={element.id}
                       className={cn(
-                        "absolute flex items-center gap-1.5 px-2 py-1 rounded-lg",
+                        "absolute flex items-center gap-1.5 px-3 py-2 rounded-lg",
                         "cursor-grab active:cursor-grabbing backdrop-blur-md",
                         `bg-gradient-to-r ${colors.bg} border ${colors.border}`,
                         isDragging && "shadow-lg ring-2 ring-white/50"
@@ -445,12 +447,14 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                         top: `${pos.y}%`,
                         transform: 'translate(-50%, -50%)',
                         zIndex: isDragging ? 50 : 30,
+                        minWidth: 44,
+                        minHeight: 32,
                       }}
                       animate={{ scale: isDragging ? 1.1 : 1 }}
                       onPointerDown={(e) => handlePointerDown(e, element.id)}
                     >
                       <span className="text-white/90">{element.icon}</span>
-                      <span className="text-[10px] font-medium text-white">{element.label}</span>
+                      <span className="text-[11px] font-medium text-white whitespace-nowrap">{element.label}</span>
                     </motion.div>
                   );
                 })}
