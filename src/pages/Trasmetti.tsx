@@ -496,12 +496,15 @@ export default function Trasmetti() {
     };
   }, [autoScrollActive, autoScrollBpm, isBroadcasting]);
 
-  // Generate QR code
+  // Resolve standby mode early so QR generation can use the per-mode URL
+  const currentStandbyMode = resolveStandbyMode((session as any)?.tv_standby_mode);
+  const modeQrUrl = STANDBY_QR_URLS[currentStandbyMode];
+
+  // Generate QR code — prefer per-mode URL, fallback to custom tv_qr_url
   useEffect(() => {
     const generateQR = async () => {
       try {
-        const qrDestination = tvSettings.qrUrl || 'https://nonceduo.com';
-        // Se è un URL assoluto, usalo direttamente; altrimenti usa il dominio di produzione
+        const qrDestination = modeQrUrl || tvSettings.qrUrl || 'https://nonceduo.com';
         let fullUrl: string;
         if (qrDestination.startsWith('http')) {
           fullUrl = qrDestination;
@@ -526,7 +529,7 @@ export default function Trasmetti() {
     };
     
     generateQR();
-  }, [tvSettings.qrUrl]);
+  }, [modeQrUrl, tvSettings.qrUrl]);
 
   // Fullscreen toggle
   const toggleFullscreen = () => {
