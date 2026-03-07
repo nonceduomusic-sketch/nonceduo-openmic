@@ -371,10 +371,10 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
   };
 
   const availableElements = getAvailableElements();
-  const requiredFuroreQrElements = [...FURORE_QR_REQUIRED_ELEMENTS];
+  const requiredFuroreQrElements: string[] = [...FURORE_QR_REQUIRED_ELEMENTS];
   const isElementVisibleInPreview = (element: DraggableElement) => {
     if (currentStandbyMode === 'furore_qr') {
-      return requiredFuroreQrElements.includes(element.id as any);
+      return requiredFuroreQrElements.includes(element.id);
     }
     return isElementVisible(element);
   };
