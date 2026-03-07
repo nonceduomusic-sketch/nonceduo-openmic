@@ -325,8 +325,16 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
   };
 
   const availableElements = getAvailableElements();
-  const visibleElements = availableElements.filter(el => isElementVisible(el));
-  const hiddenElements = availableElements.filter(el => !isElementVisible(el));
+  const requiredFuroreQrElements = ['logo', 'title', 'subtitle', 'qr', 'qr_cta', 'footer'];
+  const isElementVisibleInPreview = (element: DraggableElement) => {
+    if (currentStandbyMode === 'furore_qr') {
+      return requiredFuroreQrElements.includes(element.id);
+    }
+    return isElementVisible(element);
+  };
+
+  const visibleElements = availableElements.filter(isElementVisibleInPreview);
+  const hiddenElements = availableElements.filter(el => !isElementVisibleInPreview(el));
 
   return (
     <Card>
