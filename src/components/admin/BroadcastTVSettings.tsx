@@ -276,8 +276,26 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
     return settings[element.showKey] as boolean;
   };
 
-  const visibleElements = DRAGGABLE_ELEMENTS.filter(el => isElementVisible(el));
-  const hiddenElements = DRAGGABLE_ELEMENTS.filter(el => !isElementVisible(el));
+  // Determine which elements are available based on standby mode
+  const currentStandbyMode = (session as any)?.tv_standby_mode || 'openmic';
+  
+  const getAvailableElements = (): DraggableElement[] => {
+    switch (currentStandbyMode) {
+      case 'logo':
+        return DRAGGABLE_ELEMENTS.filter(el => ['logo', 'footer'].includes(el.id));
+      case 'furore':
+        return DRAGGABLE_ELEMENTS.filter(el => ['logo', 'title', 'footer'].includes(el.id));
+      case 'furore_qr':
+        return DRAGGABLE_ELEMENTS.filter(el => ['logo', 'title', 'subtitle', 'qr', 'qr_cta', 'footer'].includes(el.id));
+      case 'openmic':
+      default:
+        return DRAGGABLE_ELEMENTS;
+    }
+  };
+
+  const availableElements = getAvailableElements();
+  const visibleElements = availableElements.filter(el => isElementVisible(el));
+  const hiddenElements = availableElements.filter(el => !isElementVisible(el));
 
   return (
     <Card>
