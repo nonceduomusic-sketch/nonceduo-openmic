@@ -1356,6 +1356,101 @@ export default function Trasmetti() {
     );
   }
 
+  // APP MODE - Beautiful screen with large QR to /app
+  if (standbyMode === 'app') {
+    const appDefaults = STANDBY_DEFAULTS.app;
+    const appTitle = tvSettings.title?.trim() && tvSettings.title !== 'Open Mic' && tvSettings.title !== "Non C'è Furore"
+      ? tvSettings.title : appDefaults.title;
+    const appSubtitle = tvSettings.subtitle?.trim() && tvSettings.subtitle !== 'NonceDuo Live Experience' && tvSettings.subtitle !== 'Scansiona e apri la tua pulsantiera'
+      ? tvSettings.subtitle : appDefaults.subtitle;
+    const appCta = tvSettings.qrCta?.trim() && tvSettings.qrCta !== 'Scansiona per prenotare la tua canzone' && tvSettings.qrCta !== 'Scansiona e premi il buzzer!'
+      ? tvSettings.qrCta : appDefaults.qrCta;
+    const appFooter = tvSettings.footer?.trim() || 'Powered by NonceDuo';
+
+    return (
+      <>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-950 via-black to-violet-950 text-white relative overflow-hidden select-none">
+        {/* Animated background - APP theme */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/4 left-1/3 w-[600px] h-[600px] bg-indigo-500/15 rounded-full blur-[250px] animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-violet-500/15 rounded-full blur-[200px] animate-pulse" style={{ animationDelay: '1.2s' }} />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-cyan-500/8 rounded-full blur-[180px] animate-pulse" style={{ animationDelay: '2.5s' }} />
+        </div>
+
+        {/* Content container */}
+        <div className="relative z-10 min-h-screen w-full">
+          {/* Logo */}
+          <div style={getPosition('logo')}>
+            <img
+              src={tvSettings.logoUrl || brandLogoText}
+              alt="Logo"
+              className="h-16 md:h-24 w-auto object-contain drop-shadow-lg"
+              onError={(e) => { (e.target as HTMLImageElement).src = brandLogoText; }}
+            />
+          </div>
+
+          {/* Title */}
+          <div style={getPosition('title')} className="text-center w-full px-8">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight">
+              <span className="bg-gradient-to-r from-cyan-400 via-indigo-400 to-violet-400 bg-clip-text text-transparent drop-shadow-lg">
+                {appTitle}
+              </span>
+            </h1>
+          </div>
+
+          {/* Subtitle */}
+          <div style={getPosition('subtitle')} className="text-center w-full px-8">
+            <p className="text-xl md:text-2xl text-white/60 font-light">
+              {appSubtitle}
+            </p>
+          </div>
+
+          {/* QR Code - large and prominent */}
+          <div style={getPosition('qr')} className="flex justify-center">
+            <div className="bg-white rounded-3xl p-5 shadow-2xl shadow-indigo-500/30 ring-2 ring-white/20">
+              {qrCodeDataUrl ? (
+                <img
+                  src={qrCodeDataUrl}
+                  alt="QR Code per APP"
+                  className="w-48 h-48 md:w-64 md:h-64"
+                />
+              ) : (
+                <div className="w-48 h-48 md:w-64 md:h-64 rounded-lg border border-black/10 bg-white/90 flex items-center justify-center text-black/60 text-sm font-medium">
+                  QR non disponibile
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* QR CTA */}
+          <div style={getPosition('qr_cta')} className="text-center w-full px-8">
+            <p className="text-lg md:text-xl text-indigo-200/70 font-medium">
+              {appCta}
+            </p>
+          </div>
+
+          {/* Footer */}
+          <div style={getPosition('footer')} className="text-center w-full px-8">
+            <p className="text-white/30 text-sm">
+              {appFooter}
+            </p>
+          </div>
+
+          {/* Fullscreen + Connection Settings */}
+          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
+            <ConnectionSettings mode={mode} setMode={setMode} localIP={localIP} setLocalIP={setLocalIP} isLocalConnected={localConnected} localLatency={localLatency} />
+            <Button variant="outline" size="lg" onClick={toggleFullscreen} className="border-white/20 text-white hover:bg-white/10 backdrop-blur-sm">
+              <Maximize className="w-5 h-5 mr-2" />
+              {isFullscreen ? 'Esci' : 'Fullscreen'}
+            </Button>
+          </div>
+        </div>
+      </div>
+      <TVGameOverlay />
+      </>
+    );
+  }
+
   // OPEN MIC MODE (default) - Promo screen with QR
   return (
     <>
