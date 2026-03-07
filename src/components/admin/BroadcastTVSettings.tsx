@@ -810,10 +810,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                         <button
                           key={opt.value}
                           disabled={!canManage}
-                          onClick={() => {
-                            syncUpdate({ tv_standby_mode: opt.value });
-                            toast.success(`Standby: ${opt.label}`);
-                          }}
+                          onClick={() => handleStandbyModeSelect(opt.value, opt.label)}
                           className={cn(
                             "p-3 rounded-lg border text-left text-sm transition-all",
                             currentMode === opt.value

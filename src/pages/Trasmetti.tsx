@@ -1251,8 +1251,22 @@ export default function Trasmetti() {
     );
   }
 
-  // FURORE + QR MODE - Furore themed screen with QR code for buzzer
+  // FURORE + QR MODE - Furore themed screen with fixed QR invitation structure
   if (standbyMode === 'furore_qr') {
+    const furoreQrTitle = !tvSettings.title?.trim() || tvSettings.title === 'Open Mic'
+      ? "Non C'è Furore"
+      : tvSettings.title;
+
+    const furoreQrSubtitle = !tvSettings.subtitle?.trim() || tvSettings.subtitle === 'NonceDuo Live Experience'
+      ? 'Scansiona e apri la tua pulsantiera'
+      : tvSettings.subtitle;
+
+    const furoreQrCta = !tvSettings.qrCta?.trim() || tvSettings.qrCta === 'Scansiona per prenotare la tua canzone'
+      ? 'Scansiona e premi il buzzer!'
+      : tvSettings.qrCta;
+
+    const furoreQrFooter = tvSettings.footer?.trim() || 'Powered by NonceDuo';
+
     return (
       <>
       <div className="min-h-screen bg-gradient-to-br from-orange-950 via-black to-red-950 text-white relative overflow-hidden select-none">
@@ -1265,46 +1279,40 @@ export default function Trasmetti() {
         {/* Content container */}
         <div className="relative z-10 min-h-screen w-full">
           {/* Logo */}
-          {tvSettings.showLogo && (
-            <div style={getPosition('logo')}>
-              <img 
-                src={tvSettings.logoUrl || brandLogoText} 
-                alt="Logo" 
-                className="h-16 md:h-24 w-auto object-contain"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = brandLogoText;
-                }}
-              />
-            </div>
-          )}
+          <div style={getPosition('logo')}>
+            <img
+              src={tvSettings.logoUrl || brandLogoText}
+              alt="Logo"
+              className="h-16 md:h-24 w-auto object-contain"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = brandLogoText;
+              }}
+            />
+          </div>
 
           {/* Title */}
-          {tvSettings.showTitle && (
-            <div style={getPosition('title')} className="text-center w-full px-8">
-              <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight">
-                <span className="bg-gradient-to-r from-orange-400 via-red-400 to-orange-400 bg-clip-text text-transparent">
-                  {tvSettings.title}
-                </span>
-              </h1>
-            </div>
-          )}
+          <div style={getPosition('title')} className="text-center w-full px-8">
+            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight">
+              <span className="bg-gradient-to-r from-orange-400 via-red-400 to-orange-400 bg-clip-text text-transparent">
+                {furoreQrTitle}
+              </span>
+            </h1>
+          </div>
 
           {/* Subtitle */}
-          {tvSettings.showSubtitle && (
-            <div style={getPosition('subtitle')} className="text-center w-full px-8">
-              <p className="text-xl md:text-2xl text-white/60 font-light">
-                {tvSettings.subtitle}
-              </p>
-            </div>
-          )}
+          <div style={getPosition('subtitle')} className="text-center w-full px-8">
+            <p className="text-xl md:text-2xl text-white/60 font-light">
+              {furoreQrSubtitle}
+            </p>
+          </div>
 
           {/* QR Code */}
-          {tvSettings.showQr && qrCodeDataUrl && (
+          {qrCodeDataUrl && (
             <div style={getPosition('qr')} className="flex justify-center">
               <div className="bg-white rounded-2xl p-4 shadow-2xl shadow-orange-500/20">
-                <img 
-                  src={qrCodeDataUrl} 
-                  alt="QR Code per pulsantiera" 
+                <img
+                  src={qrCodeDataUrl}
+                  alt="QR Code per pulsantiera"
                   className="w-40 h-40 md:w-56 md:h-56"
                 />
               </div>
@@ -1312,22 +1320,18 @@ export default function Trasmetti() {
           )}
 
           {/* QR CTA */}
-          {tvSettings.showQr && (
-            <div style={getPosition('qr_cta')} className="text-center w-full px-8">
-              <p className="text-lg md:text-xl text-orange-200/70">
-                {tvSettings.qrCta || 'Scansiona e premi il buzzer!'}
-              </p>
-            </div>
-          )}
+          <div style={getPosition('qr_cta')} className="text-center w-full px-8">
+            <p className="text-lg md:text-xl text-orange-200/70">
+              {furoreQrCta}
+            </p>
+          </div>
 
           {/* Footer */}
-          {tvSettings.showFooter && (
-            <div style={getPosition('footer')} className="text-center w-full px-8">
-              <p className="text-white/30 text-sm">
-                {tvSettings.footer}
-              </p>
-            </div>
-          )}
+          <div style={getPosition('footer')} className="text-center w-full px-8">
+            <p className="text-white/30 text-sm">
+              {furoreQrFooter}
+            </p>
+          </div>
 
           {/* Fullscreen + Connection Settings */}
           <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
