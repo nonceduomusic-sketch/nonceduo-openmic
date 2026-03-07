@@ -405,10 +405,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
             {/* Current mode indicator */}
             <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2 text-center">
               Anteprima per: <span className="font-medium text-foreground">
-                {currentStandbyMode === 'openmic' ? '🎤 Open Mic' : 
-                 currentStandbyMode === 'furore' ? '🔥 Non C\'è Furore' :
-                 currentStandbyMode === 'furore_qr' ? '🔥 Non C\'è Furore + QR' :
-                 '🎵 Solo Logo'}
+                {STANDBY_MODE_OPTIONS.find(opt => opt.value === currentStandbyMode)?.label ?? '🎤 Open Mic'}
               </span>
               <span className="ml-1 opacity-60">— Cambia in Contenuti</span>
             </div>
