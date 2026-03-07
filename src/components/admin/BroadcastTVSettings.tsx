@@ -349,12 +349,9 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
   };
 
   // Determine which elements are available based on standby mode
-  const currentStandbyMode = optimisticStandbyMode ?? resolveStandbyMode({
-    mode: (session as any)?.tv_standby_mode,
-    title: settings.tv_title,
-    subtitle: settings.tv_subtitle,
-    qrCta: settings.tv_qr_cta,
-  });
+  const currentStandbyMode = optimisticStandbyMode ?? resolveStandbyMode(
+    (session as any)?.tv_standby_mode
+  );
   
   const getAvailableElements = (): DraggableElement[] => {
     switch (currentStandbyMode) {
