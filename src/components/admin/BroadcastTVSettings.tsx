@@ -808,12 +808,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                     Scegli cosa mostrare sulla TV quando non stai trasmettendo testi
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {[
-                      { value: 'openmic', label: '🎤 Open Mic', desc: 'QR code e info evento' },
-                      { value: 'furore', label: '🔥 Non C\'è Furore', desc: 'Pulsantiera e classifica' },
-                      { value: 'furore_qr', label: '🔥 Furore + QR', desc: 'Furore con QR pulsantiera' },
-                      { value: 'logo', label: '🎵 Solo Logo', desc: 'Logo grande su sfondo scuro' },
-                    ].map(opt => {
+                    {STANDBY_MODE_OPTIONS.map(opt => {
                       const currentMode = (session as any)?.tv_standby_mode || 'openmic';
                       return (
                         <button
