@@ -74,6 +74,16 @@ const DEFAULT_POSITIONS: Record<string, ElementPosition> = {
   footer: { x: 50, y: 90 },
 };
 
+type StandbyMode = 'openmic' | 'furore' | 'furore_qr' | 'logo';
+
+const normalizeStandbyMode = (mode: string | null | undefined): StandbyMode => {
+  const value = (mode ?? '').toLowerCase().trim();
+  if (value === 'furore_qr' || (value.includes('furore') && value.includes('qr'))) return 'furore_qr';
+  if (value === 'furore') return 'furore';
+  if (value === 'logo') return 'logo';
+  return 'openmic';
+};
+
 type LyricsViewMode = 'compact' | 'karaoke' | 'spotify' | 'chordpro';
 
 /**
@@ -1191,7 +1201,7 @@ export default function Trasmetti() {
   }
 
   // WAITING MODE - Determine standby screen based on tv_standby_mode
-  const standbyMode = (session as any)?.tv_standby_mode || 'openmic';
+  const standbyMode = normalizeStandbyMode((session as any)?.tv_standby_mode);
 
   // LOGO ONLY MODE - Big centered logo on dark background
   if (standbyMode === 'logo') {
@@ -1307,17 +1317,21 @@ export default function Trasmetti() {
           </div>
 
           {/* QR Code */}
-          {qrCodeDataUrl && (
-            <div style={getPosition('qr')} className="flex justify-center">
-              <div className="bg-white rounded-2xl p-4 shadow-2xl shadow-orange-500/20">
+          <div style={getPosition('qr')} className="flex justify-center">
+            <div className="bg-white rounded-2xl p-4 shadow-2xl shadow-orange-500/20">
+              {qrCodeDataUrl ? (
                 <img
                   src={qrCodeDataUrl}
                   alt="QR Code per pulsantiera"
                   className="w-40 h-40 md:w-56 md:h-56"
                 />
-              </div>
+              ) : (
+                <div className="w-40 h-40 md:w-56 md:h-56 rounded-lg border border-black/10 bg-white/90 flex items-center justify-center text-black/60 text-sm font-medium">
+                  QR non disponibile
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* QR CTA */}
           <div style={getPosition('qr_cta')} className="text-center w-full px-8">

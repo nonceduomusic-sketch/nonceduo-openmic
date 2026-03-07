@@ -79,6 +79,23 @@ const DEFAULT_POSITIONS: Record<string, ElementPosition> = {
   footer: { x: 50, y: 90 },
 };
 
+type StandbyMode = 'openmic' | 'furore' | 'furore_qr' | 'logo';
+
+const STANDBY_MODE_OPTIONS: Array<{ value: StandbyMode; label: string; desc: string }> = [
+  { value: 'openmic', label: '🎤 Open Mic', desc: 'Schermata classica con QR code e info evento' },
+  { value: 'furore', label: '🔥 Non C\'è Furore', desc: 'Mostra la pulsantiera e la griglia giocatori' },
+  { value: 'furore_qr', label: '🔥 Non C\'è Furore + QR Code', desc: 'Logo, titolo, sottotitolo, QR, CTA QR e footer' },
+  { value: 'logo', label: '🎵 Solo Logo', desc: 'Logo grande centrato su sfondo scuro (ideale per LED wall)' },
+];
+
+const normalizeStandbyMode = (mode: string | null | undefined): StandbyMode => {
+  const value = (mode ?? '').toLowerCase().trim();
+  if (value === 'furore_qr' || (value.includes('furore') && value.includes('qr'))) return 'furore_qr';
+  if (value === 'furore') return 'furore';
+  if (value === 'logo') return 'logo';
+  return 'openmic';
+};
+
 const ELEMENT_COLORS: Record<string, { bg: string; border: string }> = {
   logo: { bg: "from-violet-500/90 to-purple-600/90", border: "border-violet-400/50" },
   title: { bg: "from-amber-500/90 to-orange-600/90", border: "border-amber-400/50" },
@@ -146,7 +163,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
     setHasChanges(true);
   }, []);
 
-  const handleStandbyModeSelect = (mode: string, label: string) => {
+  const handleStandbyModeSelect = (mode: StandbyMode, label: string) => {
     if (!canManage) return;
 
     const payload: Record<string, any> = { tv_standby_mode: mode };
@@ -308,7 +325,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
   };
 
   // Determine which elements are available based on standby mode
-  const currentStandbyMode = (session as any)?.tv_standby_mode || 'openmic';
+  const currentStandbyMode = normalizeStandbyMode((session as any)?.tv_standby_mode);
   
   const getAvailableElements = (): DraggableElement[] => {
     switch (currentStandbyMode) {
@@ -388,10 +405,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
             {/* Current mode indicator */}
             <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2 text-center">
               Anteprima per: <span className="font-medium text-foreground">
-                {currentStandbyMode === 'openmic' ? '🎤 Open Mic' : 
-                 currentStandbyMode === 'furore' ? '🔥 Non C\'è Furore' :
-                 currentStandbyMode === 'furore_qr' ? '🔥 Non C\'è Furore + QR' :
-                 '🎵 Solo Logo'}
+                {STANDBY_MODE_OPTIONS.find(opt => opt.value === currentStandbyMode)?.label ?? '🎤 Open Mic'}
               </span>
               <span className="ml-1 opacity-60">— Cambia in Contenuti</span>
             </div>
@@ -537,14 +551,8 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                     Scegli cosa mostrare sulla TV quando non stai trasmettendo testi
                   </p>
                   <div className="grid grid-cols-1 gap-2">
-                    {[
-                      { value: 'openmic', label: '🎤 Open Mic', desc: 'Schermata classica con QR code e info evento' },
-                      { value: 'furore', label: '🔥 Non C\'è Furore', desc: 'Mostra la pulsantiera e la griglia giocatori' },
-                      { value: 'furore_qr', label: '🔥 Non C\'è Furore + QR', desc: 'Schermata Furore con QR code per la pulsantiera' },
-                      { value: 'logo', label: '🎵 Solo Logo', desc: 'Logo grande centrato su sfondo scuro (ideale per LED wall)' },
-                    ].map((opt) => {
-                      const currentStandby = (session as any)?.tv_standby_mode || 'openmic';
-                      const isSelected = currentStandby === opt.value;
+                    {STANDBY_MODE_OPTIONS.map((opt) => {
+                      const isSelected = currentStandbyMode === opt.value;
                       return (
                         <button
                           key={opt.value}
@@ -570,7 +578,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                   </div>
 
                   {/* Logo scale slider - only visible when logo mode is selected */}
-                  {((session as any)?.tv_standby_mode || 'openmic') === 'logo' && (
+                  {currentStandbyMode === 'logo' && (
                     <div className="space-y-2 pt-2">
                       <div className="flex items-center justify-between">
                         <Label className="text-sm">Dimensione Logo</Label>
@@ -799,13 +807,8 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                     Scegli cosa mostrare sulla TV quando non stai trasmettendo testi
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    {[
-                      { value: 'openmic', label: '🎤 Open Mic', desc: 'QR code e info evento' },
-                      { value: 'furore', label: '🔥 Non C\'è Furore', desc: 'Pulsantiera e classifica' },
-                      { value: 'furore_qr', label: '🔥 Furore + QR', desc: 'Furore con QR pulsantiera' },
-                      { value: 'logo', label: '🎵 Solo Logo', desc: 'Logo grande su sfondo scuro' },
-                    ].map(opt => {
-                      const currentMode = (session as any)?.tv_standby_mode || 'openmic';
+                    {STANDBY_MODE_OPTIONS.map(opt => {
+                      const isSelected = currentStandbyMode === opt.value;
                       return (
                         <button
                           key={opt.value}
@@ -813,7 +816,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                           onClick={() => handleStandbyModeSelect(opt.value, opt.label)}
                           className={cn(
                             "p-3 rounded-lg border text-left text-sm transition-all",
-                            currentMode === opt.value
+                            isSelected
                               ? "border-primary bg-primary/10 font-medium"
                               : "border-border hover:border-primary/50"
                           )}
