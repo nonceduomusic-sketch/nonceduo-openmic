@@ -398,22 +398,32 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
 
             {/* Element visibility toggles */}
             <div className="flex flex-wrap gap-2">
-              {availableElements.filter(el => el.id !== 'qr_cta').map(element => (
-                <button
-                  key={element.id}
-                  onClick={() => updateSetting(element.showKey, !settings[element.showKey])}
-                  disabled={!canManage}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
-                    settings[element.showKey]
-                      ? "bg-primary/10 text-primary border border-primary/30"
-                      : "bg-muted text-muted-foreground border border-transparent"
-                  )}
-                >
-                  {settings[element.showKey] ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                  {element.label}
-                </button>
-              ))}
+              {availableElements.filter(el => el.id !== 'qr_cta').map(element => {
+                const isLockedInMode = currentStandbyMode === 'furore_qr' && requiredFuroreQrElements.includes(element.id);
+                const isVisible = isElementVisibleInPreview(element);
+
+                return (
+                  <button
+                    key={element.id}
+                    onClick={() => {
+                      if (isLockedInMode) return;
+                      updateSetting(element.showKey, !settings[element.showKey]);
+                    }}
+                    disabled={!canManage || isLockedInMode}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                      isVisible
+                        ? "bg-primary/10 text-primary border border-primary/30"
+                        : "bg-muted text-muted-foreground border border-transparent",
+                      isLockedInMode && "opacity-70 cursor-not-allowed"
+                    )}
+                  >
+                    {isVisible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                    {element.label}
+                    {isLockedInMode && <span className="text-[10px] opacity-70">• fisso</span>}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Drag instruction */}
