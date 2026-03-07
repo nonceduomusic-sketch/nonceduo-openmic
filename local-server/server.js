@@ -302,6 +302,23 @@ let broadcastState = {
   current_song_id: null,
   current_reservation_id: null,
   cached_songs: {},
+  // TV standby & display settings
+  tv_standby_mode: 'openmic',
+  tv_title: null,
+  tv_subtitle: null,
+  tv_footer: null,
+  tv_logo_url: null,
+  tv_logo_scale: 100,
+  tv_qr_url: null,
+  tv_qr_cta: null,
+  tv_show_title: true,
+  tv_show_subtitle: true,
+  tv_show_logo: true,
+  tv_show_qr: true,
+  tv_show_footer: true,
+  tv_show_status: true,
+  tv_view_mode: null,
+  tv_element_positions: null,
 };
 
 // ═══════════════════════════════════════
