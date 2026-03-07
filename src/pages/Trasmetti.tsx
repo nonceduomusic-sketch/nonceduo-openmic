@@ -1317,17 +1317,21 @@ export default function Trasmetti() {
           </div>
 
           {/* QR Code */}
-          {qrCodeDataUrl && (
-            <div style={getPosition('qr')} className="flex justify-center">
-              <div className="bg-white rounded-2xl p-4 shadow-2xl shadow-orange-500/20">
+          <div style={getPosition('qr')} className="flex justify-center">
+            <div className="bg-white rounded-2xl p-4 shadow-2xl shadow-orange-500/20">
+              {qrCodeDataUrl ? (
                 <img
                   src={qrCodeDataUrl}
                   alt="QR Code per pulsantiera"
                   className="w-40 h-40 md:w-56 md:h-56"
                 />
-              </div>
+              ) : (
+                <div className="w-40 h-40 md:w-56 md:h-56 rounded-lg border border-black/10 bg-white/90 flex items-center justify-center text-black/60 text-sm font-medium">
+                  QR non disponibile
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* QR CTA */}
           <div style={getPosition('qr_cta')} className="text-center w-full px-8">
