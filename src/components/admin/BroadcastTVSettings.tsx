@@ -433,11 +433,11 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                   const colors = ELEMENT_COLORS[element.id];
                   const isDragging = dragging === element.id;
 
-                  return (
+                    return (
                     <motion.div
                       key={element.id}
                       className={cn(
-                        "absolute flex items-center gap-1.5 px-2 py-1 rounded-lg",
+                        "absolute flex items-center gap-1.5 px-3 py-2 rounded-lg",
                         "cursor-grab active:cursor-grabbing backdrop-blur-md",
                         `bg-gradient-to-r ${colors.bg} border ${colors.border}`,
                         isDragging && "shadow-lg ring-2 ring-white/50"
@@ -447,12 +447,14 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                         top: `${pos.y}%`,
                         transform: 'translate(-50%, -50%)',
                         zIndex: isDragging ? 50 : 30,
+                        minWidth: 44,
+                        minHeight: 32,
                       }}
                       animate={{ scale: isDragging ? 1.1 : 1 }}
                       onPointerDown={(e) => handlePointerDown(e, element.id)}
                     >
                       <span className="text-white/90">{element.icon}</span>
-                      <span className="text-[10px] font-medium text-white">{element.label}</span>
+                      <span className="text-[11px] font-medium text-white whitespace-nowrap">{element.label}</span>
                     </motion.div>
                   );
                 })}
