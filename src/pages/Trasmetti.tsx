@@ -1472,56 +1472,50 @@ export default function Trasmetti() {
         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-purple-500/15 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '1s' }} />
       </div>
 
-      {/* Content container */}
-      <div className="relative z-10 min-h-screen w-full">
+      {/* Content - flex layout for natural spacing */}
+      <div className="relative z-10 min-h-screen w-full flex flex-col items-center justify-center gap-4 md:gap-6 py-8 px-8">
         {/* Logo */}
         {tvSettings.showLogo && (
-          <div style={getPosition('logo')}>
-            <img 
-              src={tvSettings.logoUrl || brandLogoText} 
-              alt="Logo" 
-              className="h-16 md:h-24 w-auto object-contain"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = brandLogoText;
-              }}
-            />
-          </div>
+          <img 
+            src={tvSettings.logoUrl || brandLogoText} 
+            alt="Logo" 
+            className="h-14 md:h-20 w-auto object-contain"
+            onError={(e) => {
+              (e.target as HTMLImageElement).src = brandLogoText;
+            }}
+          />
         )}
 
         {/* Title */}
         {tvSettings.showTitle && (
-          <div style={getPosition('title')} className="text-center w-full px-8">
-            <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tight">
-              <span className="bg-gradient-to-r from-primary via-purple-400 to-primary bg-clip-text text-transparent">
-                {tvSettings.title}
-              </span>
-            </h1>
-          </div>
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-center">
+            <span className="bg-gradient-to-r from-primary via-purple-400 to-primary bg-clip-text text-transparent">
+              {tvSettings.title}
+            </span>
+          </h1>
         )}
 
         {/* Subtitle */}
         {tvSettings.showSubtitle && (
-          <div style={getPosition('subtitle')} className="text-center w-full px-8">
-            <p className="text-xl md:text-2xl text-white/60 font-light">
-              {tvSettings.subtitle}
-            </p>
-          </div>
+          <p className="text-lg md:text-2xl text-white/60 font-light text-center">
+            {tvSettings.subtitle}
+          </p>
         )}
 
         {/* Status indicator */}
         {tvSettings.showStatus && (
-          <div style={getPosition('status')} className="flex justify-center">
+          <div className="flex justify-center">
             {session?.is_active ? (
-              <div className="flex items-center gap-3 px-6 py-3 bg-green-500/20 border border-green-500/30 rounded-full">
+              <div className="flex items-center gap-3 px-5 py-2.5 bg-green-500/20 border border-green-500/30 rounded-full">
                 <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-                <span className="text-green-400 font-medium text-lg">
+                <span className="text-green-400 font-medium text-base md:text-lg">
                   Evento in corso
                 </span>
               </div>
             ) : (
-              <div className="flex items-center gap-3 px-6 py-3 bg-yellow-500/20 border border-yellow-500/30 rounded-full">
+              <div className="flex items-center gap-3 px-5 py-2.5 bg-yellow-500/20 border border-yellow-500/30 rounded-full">
                 <div className="w-3 h-3 bg-yellow-500 rounded-full" />
-                <span className="text-yellow-400 font-medium text-lg">
+                <span className="text-yellow-400 font-medium text-base md:text-lg">
                   In attesa...
                 </span>
               </div>
@@ -1531,65 +1525,59 @@ export default function Trasmetti() {
 
         {/* QR Code */}
         {tvSettings.showQr && qrCodeDataUrl && (
-          <div style={getPosition('qr')} className="flex justify-center">
-            <div className="bg-white rounded-2xl p-4 shadow-2xl">
-              <img 
-                src={qrCodeDataUrl} 
-                alt="QR Code per prenotazione" 
-                className="w-40 h-40 md:w-56 md:h-56"
-              />
-            </div>
+          <div className="bg-white rounded-2xl p-3 md:p-4 shadow-2xl mt-2">
+            <img 
+              src={qrCodeDataUrl} 
+              alt="QR Code per prenotazione" 
+              className="w-32 h-32 md:w-44 md:h-44 lg:w-52 lg:h-52"
+            />
           </div>
         )}
 
         {/* QR CTA */}
         {tvSettings.showQr && (
-          <div style={getPosition('qr_cta')} className="text-center w-full px-8">
-            <p className="text-lg md:text-xl text-white/70">
-              {tvSettings.qrCta}
-            </p>
-          </div>
+          <p className="text-base md:text-lg text-white/70 text-center">
+            {tvSettings.qrCta}
+          </p>
         )}
 
         {/* Footer */}
         {tvSettings.showFooter && (
-          <div style={getPosition('footer')} className="text-center w-full px-8">
-            <p className="text-white/30 text-sm">
-              {tvSettings.footer}
-            </p>
-          </div>
+          <p className="text-white/30 text-sm text-center mt-auto pt-4">
+            {tvSettings.footer}
+          </p>
         )}
+      </div>
 
-        {/* Fullscreen + Back to Open Mic + Connection Settings */}
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
-          <Link to="/app/openmic">
-            <Button
-              variant="outline"
-              size="lg"
-              className="border-white/20 text-white hover:bg-white/10 backdrop-blur-sm"
-            >
-              <Mic2 className="w-5 h-5 mr-2" />
-              Prenota
-            </Button>
-          </Link>
-          <ConnectionSettings
-            mode={mode}
-            setMode={setMode}
-            localIP={localIP}
-            setLocalIP={setLocalIP}
-            isLocalConnected={localConnected}
-            localLatency={localLatency}
-          />
+      {/* Fullscreen + Back to Open Mic + Connection Settings */}
+      <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
+        <Link to="/app/openmic">
           <Button
             variant="outline"
             size="lg"
-            onClick={toggleFullscreen}
             className="border-white/20 text-white hover:bg-white/10 backdrop-blur-sm"
           >
-            <Maximize className="w-5 h-5 mr-2" />
-            {isFullscreen ? 'Esci' : 'Fullscreen'}
+            <Mic2 className="w-5 h-5 mr-2" />
+            Prenota
           </Button>
-        </div>
+        </Link>
+        <ConnectionSettings
+          mode={mode}
+          setMode={setMode}
+          localIP={localIP}
+          setLocalIP={setLocalIP}
+          isLocalConnected={localConnected}
+          localLatency={localLatency}
+        />
+        <Button
+          variant="outline"
+          size="lg"
+          onClick={toggleFullscreen}
+          className="border-white/20 text-white hover:bg-white/10 backdrop-blur-sm"
+        >
+          <Maximize className="w-5 h-5 mr-2" />
+          {isFullscreen ? 'Esci' : 'Fullscreen'}
+        </Button>
       </div>
     </div>
     <TVGameOverlay />
