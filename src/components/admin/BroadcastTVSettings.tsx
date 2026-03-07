@@ -152,30 +152,65 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
     setHasChanges(true);
   }, []);
 
+  const [optimisticStandbyMode, setOptimisticStandbyMode] = useState<StandbyMode | null>(null);
+
+  useEffect(() => {
+    setOptimisticStandbyMode(null);
+  }, [(session as any)?.tv_standby_mode]);
+
   const handleStandbyModeSelect = (mode: StandbyMode, label: string) => {
     if (!canManage) return;
+
+    setOptimisticStandbyMode(mode);
 
     const payload: Record<string, any> = { tv_standby_mode: mode };
 
     if (mode === 'furore_qr') {
+      const nextTitle = !settings.tv_title?.trim() || settings.tv_title === OPENMIC_DEFAULT_TITLE
+        ? "Non C'è Furore"
+        : settings.tv_title;
+      const nextSubtitle = !settings.tv_subtitle?.trim() || settings.tv_subtitle === OPENMIC_DEFAULT_SUBTITLE
+        ? 'Scansiona e apri la tua pulsantiera'
+        : settings.tv_subtitle;
+      const nextQrCta = !settings.tv_qr_cta?.trim() || settings.tv_qr_cta === OPENMIC_DEFAULT_QR_CTA
+        ? 'Scansiona e premi il buzzer!'
+        : settings.tv_qr_cta;
+
       payload.tv_show_logo = true;
       payload.tv_show_title = true;
       payload.tv_show_subtitle = true;
       payload.tv_show_qr = true;
       payload.tv_show_footer = true;
+      payload.tv_title = nextTitle;
+      payload.tv_subtitle = nextSubtitle;
+      payload.tv_qr_cta = nextQrCta;
 
-      payload.tv_title = !settings.tv_title?.trim() || settings.tv_title === OPENMIC_DEFAULT_TITLE
-        ? "Non C'è Furore"
-        : settings.tv_title;
-      payload.tv_subtitle = !settings.tv_subtitle?.trim() || settings.tv_subtitle === OPENMIC_DEFAULT_SUBTITLE
-        ? 'Scansiona e apri la tua pulsantiera'
-        : settings.tv_subtitle;
-      payload.tv_qr_cta = !settings.tv_qr_cta?.trim() || settings.tv_qr_cta === OPENMIC_DEFAULT_QR_CTA
-        ? 'Scansiona e premi il buzzer!'
-        : settings.tv_qr_cta;
+      setSettings(prev => ({
+        ...prev,
+        tv_show_logo: true,
+        tv_show_title: true,
+        tv_show_subtitle: true,
+        tv_show_qr: true,
+        tv_show_footer: true,
+        tv_title: nextTitle,
+        tv_subtitle: nextSubtitle,
+        tv_qr_cta: nextQrCta,
+      }));
+      setHasChanges(true);
     }
 
     syncUpdate(payload as any);
+
+    void supabase
+      .from('broadcast_sessions')
+      .update(payload as any)
+      .eq('sala_code', (session as any)?.sala_code ?? 'main')
+      .then(({ error }) => {
+        if (error) {
+          console.warn('[BroadcastTVSettings] standby mode persist fallback failed:', error.message);
+        }
+      });
+
     toast.success(`Standby: ${label}`);
   };
 
@@ -314,7 +349,12 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
   };
 
   // Determine which elements are available based on standby mode
-  const currentStandbyMode = normalizeStandbyMode((session as any)?.tv_standby_mode);
+  const currentStandbyMode = optimisticStandbyMode ?? resolveStandbyMode({
+    mode: (session as any)?.tv_standby_mode,
+    title: settings.tv_title,
+    subtitle: settings.tv_subtitle,
+    qrCta: settings.tv_qr_cta,
+  });
   
   const getAvailableElements = (): DraggableElement[] => {
     switch (currentStandbyMode) {
@@ -323,7 +363,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
       case 'furore':
         return DRAGGABLE_ELEMENTS.filter(el => ['logo', 'title', 'footer'].includes(el.id));
       case 'furore_qr':
-        return DRAGGABLE_ELEMENTS.filter(el => ['logo', 'title', 'subtitle', 'qr', 'qr_cta', 'footer'].includes(el.id));
+        return DRAGGABLE_ELEMENTS.filter(el => FURORE_QR_REQUIRED_ELEMENTS.includes(el.id as any));
       case 'openmic':
       default:
         return DRAGGABLE_ELEMENTS;
@@ -331,10 +371,10 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
   };
 
   const availableElements = getAvailableElements();
-  const requiredFuroreQrElements = ['logo', 'title', 'subtitle', 'qr', 'qr_cta', 'footer'];
+  const requiredFuroreQrElements = [...FURORE_QR_REQUIRED_ELEMENTS];
   const isElementVisibleInPreview = (element: DraggableElement) => {
     if (currentStandbyMode === 'furore_qr') {
-      return requiredFuroreQrElements.includes(element.id);
+      return requiredFuroreQrElements.includes(element.id as any);
     }
     return isElementVisible(element);
   };
