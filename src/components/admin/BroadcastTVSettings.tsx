@@ -31,8 +31,11 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import brandLogoText from '@/assets/brand-logo-text.png';
 import {
+  APP_REQUIRED_ELEMENTS,
   FURORE_QR_REQUIRED_ELEMENTS,
   STANDBY_MODE_OPTIONS,
+  STANDBY_DEFAULTS,
+  STANDBY_QR_URLS,
   StandbyMode,
   resolveStandbyMode,
 } from '@/lib/tvStandbyModes';
