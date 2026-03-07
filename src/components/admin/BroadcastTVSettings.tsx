@@ -391,7 +391,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                   "relative rounded-xl overflow-hidden",
                   "ring-1 ring-border/50 shadow-xl",
                   "touch-none select-none",
-                  "bg-gradient-to-br from-gray-900 via-black to-gray-900",
+                  currentStandbyMode === 'furore_qr' ? "bg-gradient-to-br from-orange-950 via-black to-red-950" : "bg-gradient-to-br from-gray-900 via-black to-gray-900",
                   dragging && "ring-2 ring-primary/50"
                 )}
                 style={{ width: 400, height: 225 }}
