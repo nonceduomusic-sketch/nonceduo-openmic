@@ -276,8 +276,26 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
     return settings[element.showKey] as boolean;
   };
 
-  const visibleElements = DRAGGABLE_ELEMENTS.filter(el => isElementVisible(el));
-  const hiddenElements = DRAGGABLE_ELEMENTS.filter(el => !isElementVisible(el));
+  // Determine which elements are available based on standby mode
+  const currentStandbyMode = (session as any)?.tv_standby_mode || 'openmic';
+  
+  const getAvailableElements = (): DraggableElement[] => {
+    switch (currentStandbyMode) {
+      case 'logo':
+        return DRAGGABLE_ELEMENTS.filter(el => ['logo', 'footer'].includes(el.id));
+      case 'furore':
+        return DRAGGABLE_ELEMENTS.filter(el => ['logo', 'title', 'footer'].includes(el.id));
+      case 'furore_qr':
+        return DRAGGABLE_ELEMENTS.filter(el => ['logo', 'title', 'subtitle', 'qr', 'qr_cta', 'footer'].includes(el.id));
+      case 'openmic':
+      default:
+        return DRAGGABLE_ELEMENTS;
+    }
+  };
+
+  const availableElements = getAvailableElements();
+  const visibleElements = availableElements.filter(el => isElementVisible(el));
+  const hiddenElements = availableElements.filter(el => !isElementVisible(el));
 
   return (
     <Card>
@@ -328,9 +346,20 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
 
           {/* Preview Tab */}
           <TabsContent value="preview" className="space-y-4">
+            {/* Current mode indicator */}
+            <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg px-3 py-2 text-center">
+              Anteprima per: <span className="font-medium text-foreground">
+                {currentStandbyMode === 'openmic' ? '🎤 Open Mic' : 
+                 currentStandbyMode === 'furore' ? '🔥 Non C\'è Furore' :
+                 currentStandbyMode === 'furore_qr' ? '🔥 Non C\'è Furore + QR' :
+                 '🎵 Solo Logo'}
+              </span>
+              <span className="ml-1 opacity-60">— Cambia in Contenuti</span>
+            </div>
+
             {/* Element visibility toggles */}
             <div className="flex flex-wrap gap-2">
-              {DRAGGABLE_ELEMENTS.filter(el => el.id !== 'qr_cta').map(element => (
+              {availableElements.filter(el => el.id !== 'qr_cta').map(element => (
                 <button
                   key={element.id}
                   onClick={() => updateSetting(element.showKey, !settings[element.showKey])}
@@ -362,7 +391,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                   "relative rounded-xl overflow-hidden",
                   "ring-1 ring-border/50 shadow-xl",
                   "touch-none select-none",
-                  "bg-gradient-to-br from-gray-900 via-black to-gray-900",
+                  currentStandbyMode === 'furore_qr' ? "bg-gradient-to-br from-orange-950 via-black to-red-950" : "bg-gradient-to-br from-gray-900 via-black to-gray-900",
                   dragging && "ring-2 ring-primary/50"
                 )}
                 style={{ width: 400, height: 225 }}
@@ -458,6 +487,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                     {[
                       { value: 'openmic', label: '🎤 Open Mic', desc: 'Schermata classica con QR code e info evento' },
                       { value: 'furore', label: '🔥 Non C\'è Furore', desc: 'Mostra la pulsantiera e la griglia giocatori' },
+                      { value: 'furore_qr', label: '🔥 Non C\'è Furore + QR', desc: 'Schermata Furore con QR code per la pulsantiera' },
                       { value: 'logo', label: '🎵 Solo Logo', desc: 'Logo grande centrato su sfondo scuro (ideale per LED wall)' },
                     ].map((opt) => {
                       const currentStandby = (session as any)?.tv_standby_mode || 'openmic';
@@ -723,6 +753,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                     {[
                       { value: 'openmic', label: '🎤 Open Mic', desc: 'QR code e info evento' },
                       { value: 'furore', label: '🔥 Non C\'è Furore', desc: 'Pulsantiera e classifica' },
+                      { value: 'furore_qr', label: '🔥 Furore + QR', desc: 'Furore con QR pulsantiera' },
                       { value: 'logo', label: '🎵 Solo Logo', desc: 'Logo grande su sfondo scuro' },
                     ].map(opt => {
                       const currentMode = (session as any)?.tv_standby_mode || 'openmic';
