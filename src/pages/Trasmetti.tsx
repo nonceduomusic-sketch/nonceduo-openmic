@@ -66,13 +66,24 @@ const getColorForSong = (id: string): string => {
 };
 
 const DEFAULT_POSITIONS: Record<string, ElementPosition> = {
-  logo: { x: 50, y: 12 },
-  title: { x: 50, y: 30 },
-  subtitle: { x: 50, y: 40 },
-  status: { x: 50, y: 50 },
-  qr: { x: 50, y: 65 },
-  qr_cta: { x: 50, y: 82 },
-  footer: { x: 50, y: 90 },
+  logo: { x: 50, y: 8 },
+  title: { x: 50, y: 24 },
+  subtitle: { x: 50, y: 33 },
+  status: { x: 50, y: 43 },
+  qr: { x: 50, y: 60 },
+  qr_cta: { x: 50, y: 80 },
+  footer: { x: 50, y: 92 },
+};
+
+/** Check if positions are at default (flex layout preferred) */
+const isDefaultPositions = (positions: Record<string, ElementPosition>): boolean => {
+  for (const [key, defaultPos] of Object.entries(DEFAULT_POSITIONS)) {
+    const pos = positions[key];
+    if (pos && (Math.abs(pos.x - defaultPos.x) > 1 || Math.abs(pos.y - defaultPos.y) > 1)) {
+      return false;
+    }
+  }
+  return true;
 };
 
 type LyricsViewMode = 'compact' | 'karaoke' | 'spotify' | 'chordpro';
