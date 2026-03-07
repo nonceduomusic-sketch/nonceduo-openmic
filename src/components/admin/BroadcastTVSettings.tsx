@@ -164,26 +164,20 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
     setOptimisticStandbyMode(mode);
 
     const payload: Record<string, any> = { tv_standby_mode: mode };
+    const defaults = STANDBY_DEFAULTS[mode];
+    const qrUrl = STANDBY_QR_URLS[mode];
 
-    if (mode === 'furore_qr') {
-      const nextTitle = !settings.tv_title?.trim() || settings.tv_title === OPENMIC_DEFAULT_TITLE
-        ? "Non C'è Furore"
-        : settings.tv_title;
-      const nextSubtitle = !settings.tv_subtitle?.trim() || settings.tv_subtitle === OPENMIC_DEFAULT_SUBTITLE
-        ? 'Scansiona e apri la tua pulsantiera'
-        : settings.tv_subtitle;
-      const nextQrCta = !settings.tv_qr_cta?.trim() || settings.tv_qr_cta === OPENMIC_DEFAULT_QR_CTA
-        ? 'Scansiona e premi il buzzer!'
-        : settings.tv_qr_cta;
-
+    // For modes that show QR + structured elements, force visibility and set defaults
+    if (mode === 'furore_qr' || mode === 'app' || mode === 'openmic') {
       payload.tv_show_logo = true;
       payload.tv_show_title = true;
       payload.tv_show_subtitle = true;
       payload.tv_show_qr = true;
       payload.tv_show_footer = true;
-      payload.tv_title = nextTitle;
-      payload.tv_subtitle = nextSubtitle;
-      payload.tv_qr_cta = nextQrCta;
+      payload.tv_title = defaults.title;
+      payload.tv_subtitle = defaults.subtitle;
+      payload.tv_qr_cta = defaults.qrCta;
+      if (qrUrl) payload.tv_qr_url = qrUrl;
 
       setSettings(prev => ({
         ...prev,
@@ -192,9 +186,10 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
         tv_show_subtitle: true,
         tv_show_qr: true,
         tv_show_footer: true,
-        tv_title: nextTitle,
-        tv_subtitle: nextSubtitle,
-        tv_qr_cta: nextQrCta,
+        tv_title: defaults.title,
+        tv_subtitle: defaults.subtitle,
+        tv_qr_cta: defaults.qrCta,
+        tv_qr_url: qrUrl || prev.tv_qr_url,
       }));
       setHasChanges(true);
     }
