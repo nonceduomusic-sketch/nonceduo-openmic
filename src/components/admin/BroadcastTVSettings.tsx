@@ -359,6 +359,8 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
         return DRAGGABLE_ELEMENTS.filter(el => ['logo', 'title', 'footer'].includes(el.id));
       case 'furore_qr':
         return DRAGGABLE_ELEMENTS.filter(el => FURORE_QR_REQUIRED_ELEMENTS.includes(el.id as any));
+      case 'app':
+        return DRAGGABLE_ELEMENTS.filter(el => APP_REQUIRED_ELEMENTS.includes(el.id as any));
       case 'openmic':
       default:
         return DRAGGABLE_ELEMENTS;
@@ -366,10 +368,10 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
   };
 
   const availableElements = getAvailableElements();
-  const requiredFuroreQrElements: string[] = [...FURORE_QR_REQUIRED_ELEMENTS];
+  const fixedElementIds: string[] = [...FURORE_QR_REQUIRED_ELEMENTS, ...APP_REQUIRED_ELEMENTS];
   const isElementVisibleInPreview = (element: DraggableElement) => {
-    if (currentStandbyMode === 'furore_qr') {
-      return requiredFuroreQrElements.includes(element.id);
+    if (currentStandbyMode === 'furore_qr' || currentStandbyMode === 'app') {
+      return fixedElementIds.includes(element.id);
     }
     return isElementVisible(element);
   };
