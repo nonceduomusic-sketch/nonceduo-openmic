@@ -1201,7 +1201,7 @@ export default function Trasmetti() {
   }
 
   // WAITING MODE - Determine standby screen based on tv_standby_mode
-  const standbyMode = (session as any)?.tv_standby_mode || 'openmic';
+  const standbyMode = normalizeStandbyMode((session as any)?.tv_standby_mode);
 
   // LOGO ONLY MODE - Big centered logo on dark background
   if (standbyMode === 'logo') {
