@@ -348,7 +348,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
           <TabsContent value="preview" className="space-y-4">
             {/* Element visibility toggles */}
             <div className="flex flex-wrap gap-2">
-              {DRAGGABLE_ELEMENTS.filter(el => el.id !== 'qr_cta').map(element => (
+              {availableElements.filter(el => el.id !== 'qr_cta').map(element => (
                 <button
                   key={element.id}
                   onClick={() => updateSetting(element.showKey, !settings[element.showKey])}
