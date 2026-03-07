@@ -30,6 +30,12 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import brandLogoText from '@/assets/brand-logo-text.png';
+import {
+  FURORE_QR_REQUIRED_ELEMENTS,
+  STANDBY_MODE_OPTIONS,
+  StandbyMode,
+  resolveStandbyMode,
+} from '@/lib/tvStandbyModes';
 
 interface ElementPosition {
   x: number;
@@ -77,23 +83,6 @@ const DEFAULT_POSITIONS: Record<string, ElementPosition> = {
   qr: { x: 50, y: 65 },
   qr_cta: { x: 50, y: 82 },
   footer: { x: 50, y: 90 },
-};
-
-type StandbyMode = 'openmic' | 'furore' | 'furore_qr' | 'logo';
-
-const STANDBY_MODE_OPTIONS: Array<{ value: StandbyMode; label: string; desc: string }> = [
-  { value: 'openmic', label: '🎤 Open Mic', desc: 'Schermata classica con QR code e info evento' },
-  { value: 'furore', label: '🔥 Non C\'è Furore', desc: 'Mostra la pulsantiera e la griglia giocatori' },
-  { value: 'furore_qr', label: '🔥 Non C\'è Furore + QR Code', desc: 'Logo, titolo, sottotitolo, QR, CTA QR e footer' },
-  { value: 'logo', label: '🎵 Solo Logo', desc: 'Logo grande centrato su sfondo scuro (ideale per LED wall)' },
-];
-
-const normalizeStandbyMode = (mode: string | null | undefined): StandbyMode => {
-  const value = (mode ?? '').toLowerCase().trim();
-  if (value === 'furore_qr' || (value.includes('furore') && value.includes('qr'))) return 'furore_qr';
-  if (value === 'furore') return 'furore';
-  if (value === 'logo') return 'logo';
-  return 'openmic';
 };
 
 const ELEMENT_COLORS: Record<string, { bg: string; border: string }> = {
