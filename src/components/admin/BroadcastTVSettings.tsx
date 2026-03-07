@@ -816,7 +816,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                           onClick={() => handleStandbyModeSelect(opt.value, opt.label)}
                           className={cn(
                             "p-3 rounded-lg border text-left text-sm transition-all",
-                            currentMode === opt.value
+                            isSelected
                               ? "border-primary bg-primary/10 font-medium"
                               : "border-border hover:border-primary/50"
                           )}
