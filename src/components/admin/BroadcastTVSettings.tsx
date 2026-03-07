@@ -247,8 +247,8 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
     if (!dragging || !previewRef.current) return;
     
     const rect = previewRef.current.getBoundingClientRect();
-    const x = Math.max(5, Math.min(95, ((e.clientX - rect.left) / rect.width) * 100));
-    const y = Math.max(5, Math.min(95, ((e.clientY - rect.top) / rect.height) * 100));
+    const x = Math.max(3, Math.min(97, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.max(3, Math.min(97, ((e.clientY - rect.top) / rect.height) * 100));
     
     const nearCenterH = Math.abs(x - 50) <= 3;
     const nearCenterV = Math.abs(y - 50) <= 3;
