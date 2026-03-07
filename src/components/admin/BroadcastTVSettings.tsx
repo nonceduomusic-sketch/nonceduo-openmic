@@ -724,6 +724,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                     {[
                       { value: 'openmic', label: '🎤 Open Mic', desc: 'QR code e info evento' },
                       { value: 'furore', label: '🔥 Non C\'è Furore', desc: 'Pulsantiera e classifica' },
+                      { value: 'furore_qr', label: '🔥 Furore + QR', desc: 'Furore con QR pulsantiera' },
                       { value: 'logo', label: '🎵 Solo Logo', desc: 'Logo grande su sfondo scuro' },
                     ].map(opt => {
                       const currentMode = (session as any)?.tv_standby_mode || 'openmic';
