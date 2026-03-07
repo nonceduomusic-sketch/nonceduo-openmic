@@ -163,7 +163,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
     setHasChanges(true);
   }, []);
 
-  const handleStandbyModeSelect = (mode: string, label: string) => {
+  const handleStandbyModeSelect = (mode: StandbyMode, label: string) => {
     if (!canManage) return;
 
     const payload: Record<string, any> = { tv_standby_mode: mode };
