@@ -548,11 +548,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                       return (
                         <button
                           key={opt.value}
-                          onClick={() => {
-                            if (!canManage) return;
-                            syncUpdate({ tv_standby_mode: opt.value } as any);
-                            toast.success(`Standby: ${opt.label}`);
-                          }}
+                          onClick={() => handleStandbyModeSelect(opt.value, opt.label)}
                           disabled={!canManage}
                           className={cn(
                             "flex items-start gap-3 p-3 rounded-lg border text-left transition-all",
