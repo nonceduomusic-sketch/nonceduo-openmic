@@ -483,7 +483,9 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                   "w-full max-w-[480px] aspect-video",
                   currentStandbyMode === 'furore' || currentStandbyMode === 'furore_qr' 
                     ? "bg-gradient-to-br from-orange-950 via-black to-red-950" 
-                    : "bg-gradient-to-br from-gray-900 via-black to-gray-900",
+                    : currentStandbyMode === 'app'
+                      ? "bg-gradient-to-br from-indigo-950 via-black to-violet-950"
+                      : "bg-gradient-to-br from-gray-900 via-black to-gray-900",
                   dragging && "ring-2 ring-primary/50"
                 )}
                 onPointerMove={handlePointerMove}
