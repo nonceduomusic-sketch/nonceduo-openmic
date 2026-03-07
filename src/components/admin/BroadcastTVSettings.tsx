@@ -439,7 +439,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
             {/* Element visibility toggles */}
             <div className="flex flex-wrap gap-2">
               {availableElements.filter(el => el.id !== 'qr_cta').map(element => {
-                const isLockedInMode = currentStandbyMode === 'furore_qr' && requiredFuroreQrElements.includes(element.id);
+                const isLockedInMode = (currentStandbyMode === 'furore_qr' || currentStandbyMode === 'app') && fixedElementIds.includes(element.id);
                 const isVisible = isElementVisibleInPreview(element);
 
                 return (
