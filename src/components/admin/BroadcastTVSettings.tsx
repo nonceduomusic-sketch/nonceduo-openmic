@@ -808,7 +808,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                   </p>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     {STANDBY_MODE_OPTIONS.map(opt => {
-                      const currentMode = (session as any)?.tv_standby_mode || 'openmic';
+                      const isSelected = currentStandbyMode === opt.value;
                       return (
                         <button
                           key={opt.value}
