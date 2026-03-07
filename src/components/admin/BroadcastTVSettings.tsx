@@ -458,6 +458,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                     {[
                       { value: 'openmic', label: '🎤 Open Mic', desc: 'Schermata classica con QR code e info evento' },
                       { value: 'furore', label: '🔥 Non C\'è Furore', desc: 'Mostra la pulsantiera e la griglia giocatori' },
+                      { value: 'furore_qr', label: '🔥 Non C\'è Furore + QR', desc: 'Schermata Furore con QR code per la pulsantiera' },
                       { value: 'logo', label: '🎵 Solo Logo', desc: 'Logo grande centrato su sfondo scuro (ideale per LED wall)' },
                     ].map((opt) => {
                       const currentStandby = (session as any)?.tv_standby_mode || 'openmic';
