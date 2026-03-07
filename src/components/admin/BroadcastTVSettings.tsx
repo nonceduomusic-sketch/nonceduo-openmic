@@ -137,10 +137,41 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
     }
   }, [session]);
 
+  const OPENMIC_DEFAULT_TITLE = 'Open Mic';
+  const OPENMIC_DEFAULT_SUBTITLE = 'NonceDuo Live Experience';
+  const OPENMIC_DEFAULT_QR_CTA = 'Scansiona per prenotare la tua canzone';
+
   const updateSetting = useCallback(<K extends keyof TVSettings>(key: K, value: TVSettings[K]) => {
     setSettings(prev => ({ ...prev, [key]: value }));
     setHasChanges(true);
   }, []);
+
+  const handleStandbyModeSelect = (mode: string, label: string) => {
+    if (!canManage) return;
+
+    const payload: Record<string, any> = { tv_standby_mode: mode };
+
+    if (mode === 'furore_qr') {
+      payload.tv_show_logo = true;
+      payload.tv_show_title = true;
+      payload.tv_show_subtitle = true;
+      payload.tv_show_qr = true;
+      payload.tv_show_footer = true;
+
+      payload.tv_title = !settings.tv_title?.trim() || settings.tv_title === OPENMIC_DEFAULT_TITLE
+        ? "Non C'è Furore"
+        : settings.tv_title;
+      payload.tv_subtitle = !settings.tv_subtitle?.trim() || settings.tv_subtitle === OPENMIC_DEFAULT_SUBTITLE
+        ? 'Scansiona e apri la tua pulsantiera'
+        : settings.tv_subtitle;
+      payload.tv_qr_cta = !settings.tv_qr_cta?.trim() || settings.tv_qr_cta === OPENMIC_DEFAULT_QR_CTA
+        ? 'Scansiona e premi il buzzer!'
+        : settings.tv_qr_cta;
+    }
+
+    syncUpdate(payload as any);
+    toast.success(`Standby: ${label}`);
+  };
 
   const updateElementPosition = useCallback((elementId: string, x: number, y: number) => {
     setSettings(prev => ({
@@ -294,8 +325,16 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
   };
 
   const availableElements = getAvailableElements();
-  const visibleElements = availableElements.filter(el => isElementVisible(el));
-  const hiddenElements = availableElements.filter(el => !isElementVisible(el));
+  const requiredFuroreQrElements = ['logo', 'title', 'subtitle', 'qr', 'qr_cta', 'footer'];
+  const isElementVisibleInPreview = (element: DraggableElement) => {
+    if (currentStandbyMode === 'furore_qr') {
+      return requiredFuroreQrElements.includes(element.id);
+    }
+    return isElementVisible(element);
+  };
+
+  const visibleElements = availableElements.filter(isElementVisibleInPreview);
+  const hiddenElements = availableElements.filter(el => !isElementVisibleInPreview(el));
 
   return (
     <Card>
@@ -359,22 +398,32 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
 
             {/* Element visibility toggles */}
             <div className="flex flex-wrap gap-2">
-              {availableElements.filter(el => el.id !== 'qr_cta').map(element => (
-                <button
-                  key={element.id}
-                  onClick={() => updateSetting(element.showKey, !settings[element.showKey])}
-                  disabled={!canManage}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
-                    settings[element.showKey]
-                      ? "bg-primary/10 text-primary border border-primary/30"
-                      : "bg-muted text-muted-foreground border border-transparent"
-                  )}
-                >
-                  {settings[element.showKey] ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                  {element.label}
-                </button>
-              ))}
+              {availableElements.filter(el => el.id !== 'qr_cta').map(element => {
+                const isLockedInMode = currentStandbyMode === 'furore_qr' && requiredFuroreQrElements.includes(element.id);
+                const isVisible = isElementVisibleInPreview(element);
+
+                return (
+                  <button
+                    key={element.id}
+                    onClick={() => {
+                      if (isLockedInMode) return;
+                      updateSetting(element.showKey, !settings[element.showKey]);
+                    }}
+                    disabled={!canManage || isLockedInMode}
+                    className={cn(
+                      "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                      isVisible
+                        ? "bg-primary/10 text-primary border border-primary/30"
+                        : "bg-muted text-muted-foreground border border-transparent",
+                      isLockedInMode && "opacity-70 cursor-not-allowed"
+                    )}
+                  >
+                    {isVisible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                    {element.label}
+                    {isLockedInMode && <span className="text-[10px] opacity-70">• fisso</span>}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Drag instruction */}
@@ -499,11 +548,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                       return (
                         <button
                           key={opt.value}
-                          onClick={() => {
-                            if (!canManage) return;
-                            syncUpdate({ tv_standby_mode: opt.value } as any);
-                            toast.success(`Standby: ${opt.label}`);
-                          }}
+                          onClick={() => handleStandbyModeSelect(opt.value, opt.label)}
                           disabled={!canManage}
                           className={cn(
                             "flex items-start gap-3 p-3 rounded-lg border text-left transition-all",
@@ -765,10 +810,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                         <button
                           key={opt.value}
                           disabled={!canManage}
-                          onClick={() => {
-                            syncUpdate({ tv_standby_mode: opt.value });
-                            toast.success(`Standby: ${opt.label}`);
-                          }}
+                          onClick={() => handleStandbyModeSelect(opt.value, opt.label)}
                           className={cn(
                             "p-3 rounded-lg border text-left text-sm transition-all",
                             currentMode === opt.value
