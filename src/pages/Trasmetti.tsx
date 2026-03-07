@@ -1194,8 +1194,8 @@ export default function Trasmetti() {
     );
   }
 
-  // WAITING MODE - Determine standby screen based on tv_standby_mode
-  const standbyMode = resolveStandbyMode((session as any)?.tv_standby_mode);
+  // WAITING MODE - use standby mode resolved earlier for QR
+  const standbyMode = currentStandbyMode;
 
   // LOGO ONLY MODE - Big centered logo on dark background
   if (standbyMode === 'logo') {
