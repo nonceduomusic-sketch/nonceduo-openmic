@@ -18,7 +18,7 @@ import { renderResponsiveChordLine } from '@/lib/chordproRenderer';
 import { usePedalScroll } from '@/hooks/usePedalControl';
 import { TVGameOverlay } from '@/components/broadcast/TVGameOverlay';
 import { TVFuroreOverlay } from '@/components/broadcast/TVFuroreOverlay';
-import { resolveStandbyMode } from '@/lib/tvStandbyModes';
+import { resolveStandbyMode, STANDBY_QR_URLS, STANDBY_DEFAULTS } from '@/lib/tvStandbyModes';
 
 interface Song {
   id: string;
