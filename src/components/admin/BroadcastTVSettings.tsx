@@ -578,7 +578,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                   </div>
 
                   {/* Logo scale slider - only visible when logo mode is selected */}
-                  {((session as any)?.tv_standby_mode || 'openmic') === 'logo' && (
+                  {currentStandbyMode === 'logo' && (
                     <div className="space-y-2 pt-2">
                       <div className="flex items-center justify-between">
                         <Label className="text-sm">Dimensione Logo</Label>
