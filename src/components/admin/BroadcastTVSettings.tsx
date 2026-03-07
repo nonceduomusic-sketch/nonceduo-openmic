@@ -137,10 +137,41 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
     }
   }, [session]);
 
+  const OPENMIC_DEFAULT_TITLE = 'Open Mic';
+  const OPENMIC_DEFAULT_SUBTITLE = 'NonceDuo Live Experience';
+  const OPENMIC_DEFAULT_QR_CTA = 'Scansiona per prenotare la tua canzone';
+
   const updateSetting = useCallback(<K extends keyof TVSettings>(key: K, value: TVSettings[K]) => {
     setSettings(prev => ({ ...prev, [key]: value }));
     setHasChanges(true);
   }, []);
+
+  const handleStandbyModeSelect = (mode: string, label: string) => {
+    if (!canManage) return;
+
+    const payload: Record<string, any> = { tv_standby_mode: mode };
+
+    if (mode === 'furore_qr') {
+      payload.tv_show_logo = true;
+      payload.tv_show_title = true;
+      payload.tv_show_subtitle = true;
+      payload.tv_show_qr = true;
+      payload.tv_show_footer = true;
+
+      payload.tv_title = !settings.tv_title?.trim() || settings.tv_title === OPENMIC_DEFAULT_TITLE
+        ? "Non C'è Furore"
+        : settings.tv_title;
+      payload.tv_subtitle = !settings.tv_subtitle?.trim() || settings.tv_subtitle === OPENMIC_DEFAULT_SUBTITLE
+        ? 'Scansiona e apri la tua pulsantiera'
+        : settings.tv_subtitle;
+      payload.tv_qr_cta = !settings.tv_qr_cta?.trim() || settings.tv_qr_cta === OPENMIC_DEFAULT_QR_CTA
+        ? 'Scansiona e premi il buzzer!'
+        : settings.tv_qr_cta;
+    }
+
+    syncUpdate(payload as any);
+    toast.success(`Standby: ${label}`);
+  };
 
   const updateElementPosition = useCallback((elementId: string, x: number, y: number) => {
     setSettings(prev => ({
