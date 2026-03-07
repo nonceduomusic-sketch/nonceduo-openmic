@@ -325,7 +325,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
   };
 
   // Determine which elements are available based on standby mode
-  const currentStandbyMode = (session as any)?.tv_standby_mode || 'openmic';
+  const currentStandbyMode = normalizeStandbyMode((session as any)?.tv_standby_mode);
   
   const getAvailableElements = (): DraggableElement[] => {
     switch (currentStandbyMode) {
