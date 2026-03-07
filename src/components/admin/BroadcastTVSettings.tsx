@@ -31,8 +31,11 @@ import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import brandLogoText from '@/assets/brand-logo-text.png';
 import {
+  APP_REQUIRED_ELEMENTS,
   FURORE_QR_REQUIRED_ELEMENTS,
   STANDBY_MODE_OPTIONS,
+  STANDBY_DEFAULTS,
+  STANDBY_QR_URLS,
   StandbyMode,
   resolveStandbyMode,
 } from '@/lib/tvStandbyModes';
@@ -164,26 +167,20 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
     setOptimisticStandbyMode(mode);
 
     const payload: Record<string, any> = { tv_standby_mode: mode };
+    const defaults = STANDBY_DEFAULTS[mode];
+    const qrUrl = STANDBY_QR_URLS[mode];
 
-    if (mode === 'furore_qr') {
-      const nextTitle = !settings.tv_title?.trim() || settings.tv_title === OPENMIC_DEFAULT_TITLE
-        ? "Non C'è Furore"
-        : settings.tv_title;
-      const nextSubtitle = !settings.tv_subtitle?.trim() || settings.tv_subtitle === OPENMIC_DEFAULT_SUBTITLE
-        ? 'Scansiona e apri la tua pulsantiera'
-        : settings.tv_subtitle;
-      const nextQrCta = !settings.tv_qr_cta?.trim() || settings.tv_qr_cta === OPENMIC_DEFAULT_QR_CTA
-        ? 'Scansiona e premi il buzzer!'
-        : settings.tv_qr_cta;
-
+    // For modes that show QR + structured elements, force visibility and set defaults
+    if (mode === 'furore_qr' || mode === 'app' || mode === 'openmic') {
       payload.tv_show_logo = true;
       payload.tv_show_title = true;
       payload.tv_show_subtitle = true;
       payload.tv_show_qr = true;
       payload.tv_show_footer = true;
-      payload.tv_title = nextTitle;
-      payload.tv_subtitle = nextSubtitle;
-      payload.tv_qr_cta = nextQrCta;
+      payload.tv_title = defaults.title;
+      payload.tv_subtitle = defaults.subtitle;
+      payload.tv_qr_cta = defaults.qrCta;
+      if (qrUrl) payload.tv_qr_url = qrUrl;
 
       setSettings(prev => ({
         ...prev,
@@ -192,9 +189,10 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
         tv_show_subtitle: true,
         tv_show_qr: true,
         tv_show_footer: true,
-        tv_title: nextTitle,
-        tv_subtitle: nextSubtitle,
-        tv_qr_cta: nextQrCta,
+        tv_title: defaults.title,
+        tv_subtitle: defaults.subtitle,
+        tv_qr_cta: defaults.qrCta,
+        tv_qr_url: qrUrl || prev.tv_qr_url,
       }));
       setHasChanges(true);
     }
@@ -349,12 +347,9 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
   };
 
   // Determine which elements are available based on standby mode
-  const currentStandbyMode = optimisticStandbyMode ?? resolveStandbyMode({
-    mode: (session as any)?.tv_standby_mode,
-    title: settings.tv_title,
-    subtitle: settings.tv_subtitle,
-    qrCta: settings.tv_qr_cta,
-  });
+  const currentStandbyMode = optimisticStandbyMode ?? resolveStandbyMode(
+    (session as any)?.tv_standby_mode
+  );
   
   const getAvailableElements = (): DraggableElement[] => {
     switch (currentStandbyMode) {
@@ -364,6 +359,8 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
         return DRAGGABLE_ELEMENTS.filter(el => ['logo', 'title', 'footer'].includes(el.id));
       case 'furore_qr':
         return DRAGGABLE_ELEMENTS.filter(el => FURORE_QR_REQUIRED_ELEMENTS.includes(el.id as any));
+      case 'app':
+        return DRAGGABLE_ELEMENTS.filter(el => APP_REQUIRED_ELEMENTS.includes(el.id as any));
       case 'openmic':
       default:
         return DRAGGABLE_ELEMENTS;
@@ -371,10 +368,10 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
   };
 
   const availableElements = getAvailableElements();
-  const requiredFuroreQrElements: string[] = [...FURORE_QR_REQUIRED_ELEMENTS];
+  const fixedElementIds: string[] = [...FURORE_QR_REQUIRED_ELEMENTS, ...APP_REQUIRED_ELEMENTS];
   const isElementVisibleInPreview = (element: DraggableElement) => {
-    if (currentStandbyMode === 'furore_qr') {
-      return requiredFuroreQrElements.includes(element.id);
+    if (currentStandbyMode === 'furore_qr' || currentStandbyMode === 'app') {
+      return fixedElementIds.includes(element.id);
     }
     return isElementVisible(element);
   };
@@ -442,7 +439,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
             {/* Element visibility toggles */}
             <div className="flex flex-wrap gap-2">
               {availableElements.filter(el => el.id !== 'qr_cta').map(element => {
-                const isLockedInMode = currentStandbyMode === 'furore_qr' && requiredFuroreQrElements.includes(element.id);
+                const isLockedInMode = (currentStandbyMode === 'furore_qr' || currentStandbyMode === 'app') && fixedElementIds.includes(element.id);
                 const isVisible = isElementVisibleInPreview(element);
 
                 return (
@@ -486,7 +483,9 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
                   "w-full max-w-[480px] aspect-video",
                   currentStandbyMode === 'furore' || currentStandbyMode === 'furore_qr' 
                     ? "bg-gradient-to-br from-orange-950 via-black to-red-950" 
-                    : "bg-gradient-to-br from-gray-900 via-black to-gray-900",
+                    : currentStandbyMode === 'app'
+                      ? "bg-gradient-to-br from-indigo-950 via-black to-violet-950"
+                      : "bg-gradient-to-br from-gray-900 via-black to-gray-900",
                   dragging && "ring-2 ring-primary/50"
                 )}
                 onPointerMove={handlePointerMove}
