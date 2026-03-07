@@ -1340,7 +1340,6 @@ export default function Trasmetti() {
         </div>
       </div>
       <TVGameOverlay />
-      <TVFuroreOverlay />
       </>
     );
   }
