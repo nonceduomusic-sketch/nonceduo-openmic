@@ -310,7 +310,10 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
     e.preventDefault();
     e.stopPropagation();
     setDragging(elementId);
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    // Capture pointer on the preview container so pointerMove fires even outside the element
+    if (previewRef.current) {
+      previewRef.current.setPointerCapture(e.pointerId);
+    }
   }, [canManage]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
@@ -333,9 +336,9 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
     setDragging(null);
     setCenteredH(false);
     setCenteredV(false);
-    try {
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch {}
+    if (previewRef.current) {
+      try { previewRef.current.releasePointerCapture(e.pointerId); } catch {}
+    }
   }, []);
 
   const getPosition = (elementId: string): ElementPosition => {
