@@ -336,9 +336,9 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
     setDragging(null);
     setCenteredH(false);
     setCenteredV(false);
-    try {
-      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-    } catch {}
+    if (previewRef.current) {
+      try { previewRef.current.releasePointerCapture(e.pointerId); } catch {}
+    }
   }, []);
 
   const getPosition = (elementId: string): ElementPosition => {
