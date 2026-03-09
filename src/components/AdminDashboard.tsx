@@ -194,14 +194,23 @@ export const AdminDashboard: React.FC = () => {
   }, []);
 
   // Listen for new chat messages (groups and private chats)
+  // Fetch conversation context on-demand instead of keeping useConversations() always active
   useEffect(() => {
-    const handleNewChatMessage = (event: CustomEvent<ChatMessage>) => {
+    const handleNewChatMessage = async (event: CustomEvent<ChatMessage>) => {
       const msg = event.detail;
       // Skip messages sent by admin
       if (msg.sender_type === 'admin') return;
       
-      // Find the conversation for context
-      const conv = conversations.find(c => c.id === msg.conversation_id);
+      // Fetch conversation context on-demand (lightweight single-row query)
+      let conv: Conversation | undefined;
+      try {
+        const { data } = await supabase
+          .from('conversations')
+          .select('id, name, is_group, section')
+          .eq('id', msg.conversation_id)
+          .single();
+        if (data) conv = data as unknown as Conversation;
+      } catch { /* ignore */ }
       
       setChatNotifications(prev => [...prev, { message: msg, conversation: conv }]);
 
@@ -220,7 +229,7 @@ export const AdminDashboard: React.FC = () => {
     return () => {
       window.removeEventListener('new-chat-message', handleNewChatMessage as EventListener);
     };
-  }, [conversations]);
+  }, []);
 
   // Listen for new assistant messages (from useAdminNotifications event)
   useEffect(() => {
