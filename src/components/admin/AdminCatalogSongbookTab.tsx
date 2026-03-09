@@ -47,6 +47,31 @@ import { cn } from "@/lib/utils";
 import { safeGetItem, safeSetItem } from "@/lib/safeStorage";
 import { BroadcastLinksCards } from "./LocalLinksCard";
 
+// ── Italian number-word map ──
+const IT_NUM_TO_WORD: Record<string, string> = {
+  '0': 'zero', '1': 'uno', '2': 'due', '3': 'tre', '4': 'quattro',
+  '5': 'cinque', '6': 'sei', '7': 'sette', '8': 'otto', '9': 'nove',
+  '10': 'dieci', '11': 'undici', '12': 'dodici', '13': 'tredici',
+  '14': 'quattordici', '15': 'quindici', '16': 'sedici', '17': 'diciassette',
+  '18': 'diciotto', '19': 'diciannove', '20': 'venti', '30': 'trenta',
+  '40': 'quaranta', '50': 'cinquanta', '60': 'sessanta', '70': 'settanta',
+  '80': 'ottanta', '90': 'novanta', '100': 'cento', '1000': 'mille',
+  '50000': 'cinquantamila',
+};
+const IT_WORD_TO_NUM = Object.fromEntries(Object.entries(IT_NUM_TO_WORD).map(([k, v]) => [v, k]));
+
+/** Replace all number tokens with their word equivalent and vice-versa, return both variants */
+function expandNumbers(s: string): string[] {
+  // Replace digits → words
+  let withWords = s.replace(/\d+/g, (m) => IT_NUM_TO_WORD[m] || m);
+  // Replace words → digits
+  let withDigits = s;
+  for (const [word, num] of Object.entries(IT_WORD_TO_NUM)) {
+    withDigits = withDigits.replace(new RegExp(`\\b${word}\\b`, 'gi'), num);
+  }
+  return [s, withWords, withDigits];
+}
+
 // ── Normalizzazione per matching ──
 function normalize(s: string): string {
   return s
@@ -60,10 +85,31 @@ function normalize(s: string): string {
     .trim();
 }
 
+/** Normalize and also produce a "spaceless" version for fuzzy comparison */
+function normalizeStrict(s: string): string {
+  return normalize(s).replace(/\s/g, "");
+}
+
 function matchScore(a: string, b: string): number {
   const na = normalize(a);
   const nb = normalize(b);
   if (na === nb) return 1;
+
+  // Spaceless exact match (handles "50Mila" vs "50 Mila")
+  if (normalizeStrict(a) === normalizeStrict(b)) return 0.98;
+
+  // Number expansion match (handles "10" vs "Dieci", "50000" vs "50Mila")
+  const aVariants = expandNumbers(na);
+  const bVariants = expandNumbers(nb);
+  for (const av of aVariants) {
+    for (const bv of bVariants) {
+      const nav = normalize(av);
+      const nbv = normalize(bv);
+      if (nav === nbv) return 0.96;
+      if (nav.replace(/\s/g, "") === nbv.replace(/\s/g, "")) return 0.94;
+    }
+  }
+
   if (na.length < 3 || nb.length < 3) {
     return na === nb ? 1 : 0;
   }
@@ -240,6 +286,7 @@ export function AdminCatalogSongbookTab() {
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [expandedSongId, setExpandedSongId] = useState<string | null>(null);
   const [autoMatchRunning, setAutoMatchRunning] = useState(false);
+  const [unlinkAllRunning, setUnlinkAllRunning] = useState(false);
   const [showLiveQueue, setShowLiveQueue] = useState(() => {
     const saved = safeGetItem('local', 'admin-catalog-live-queue-open');
     return saved !== null ? saved === 'true' : true;
@@ -418,12 +465,16 @@ export function AdminCatalogSongbookTab() {
       if (linksBySongId.has(song.id)) continue;
       const suggestions = getSuggestions(song);
       if (suggestions.length > 0 && suggestions[0].score >= 0.85) {
+        // Prefer underscore variant (filename ending with _) among top matches with similar scores
+        const topScore = suggestions[0].score;
+        const topCandidates = suggestions.filter(s => s.score >= topScore - 0.05);
+        const preferred = topCandidates.find(s => s.file.filename.replace(/\.cho$/i, '').endsWith('_')) || topCandidates[0];
         try {
           await supabase.from("catalog_songbook_links").insert({
             song_id: song.id,
-            songbook_file_id: suggestions[0].file.id,
+            songbook_file_id: preferred.file.id,
             is_primary: true,
-            match_confidence: suggestions[0].score,
+            match_confidence: preferred.score,
             linked_by: "auto",
           });
           created++;
@@ -433,6 +484,26 @@ export function AdminCatalogSongbookTab() {
     queryClient.invalidateQueries({ queryKey: ["catalog-songbook-links"] });
     setAutoMatchRunning(false);
     toast({ title: "Auto-match completato", description: `${created} nuovi collegamenti creati (soglia ≥ 85%).` });
+  };
+
+  // ── Unlink all ──
+  // (unlinkAllRunning state declared at top)
+  const handleUnlinkAll = async () => {
+    if (!confirm(`Sei sicuro di voler scollegare tutti i ${linkedCount} collegamenti? L'operazione è irreversibile.`)) return;
+    setUnlinkAllRunning(true);
+    try {
+      const { error } = await supabase
+        .from("catalog_songbook_links")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["catalog-songbook-links"] });
+      toast({ title: "Tutti i collegamenti rimossi", description: `${linkedCount} collegamenti eliminati.` });
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    } finally {
+      setUnlinkAllRunning(false);
+    }
   };
 
   const isLoading = songsLoading || filesLoading || linksLoading;
@@ -617,6 +688,17 @@ export function AdminCatalogSongbookTab() {
             {autoMatchRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
             <span className="hidden sm:inline">Auto-Match</span>
           </Button>
+          {linkedCount > 0 && (
+            <Button
+              variant="outline"
+              onClick={handleUnlinkAll}
+              disabled={unlinkAllRunning || autoMatchRunning}
+              className="gap-1.5 text-destructive hover:text-destructive"
+            >
+              {unlinkAllRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2Off className="w-4 h-4" />}
+              <span className="hidden sm:inline">Scollega tutto</span>
+            </Button>
+          )}
         </div>
       </div>
 
