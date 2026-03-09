@@ -14,10 +14,7 @@ import {
   HardDrive,
   Loader2,
   Upload,
-  Music,
-  BookOpen,
 } from 'lucide-react';
-import { CatalogSongbookCompare } from '@/components/admin/CatalogSongbookCompare';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
