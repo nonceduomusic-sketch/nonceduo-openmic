@@ -275,7 +275,7 @@ export const AdminSongsCatalogTab: React.FC = () => {
                 <Trash className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">Elimina tutte</span>
               </Button>
-              <Button onClick={handleExportCSV} variant="outline">
+              <Button onClick={() => setIsExportOpen(true)} variant="outline" disabled={songs.length === 0}>
                 <Download className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">Esporta CSV</span>
               </Button>
