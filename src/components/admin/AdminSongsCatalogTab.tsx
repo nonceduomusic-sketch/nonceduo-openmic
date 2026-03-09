@@ -70,6 +70,10 @@ export const AdminSongsCatalogTab: React.FC = () => {
   const [sortField, setSortField] = useState<SortField>('titolo');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   
+  // Export dialog state
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [exportCols, setExportCols] = useState({ titolo: true, artista: true, testo: true });
+
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
