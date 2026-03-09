@@ -36,6 +36,7 @@ import {
   Eye,
   Monitor,
   Guitar,
+  ChevronDown,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -64,6 +65,12 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -75,6 +82,7 @@ import { SongbookTab } from './SongbookTab';
 import { BroadcastRemoteSection } from './BroadcastRemoteSection';
 import { BroadcastLinksCards } from './LocalLinksCard';
 import { useBroadcastRemoteAdmin } from '@/hooks/useBroadcastRemote';
+import { STANDBY_MODE_OPTIONS, resolveStandbyMode, STANDBY_QR_URLS, STANDBY_DEFAULTS, type StandbyMode } from '@/lib/tvStandbyModes';
 
 interface AdminTrasmettiTabProps {
   canManage?: boolean;
