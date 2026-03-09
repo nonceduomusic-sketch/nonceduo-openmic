@@ -1291,38 +1291,38 @@ export default function Trasmetti() {
           <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-red-500/15 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '1s' }} />
         </div>
 
-        {/* Content - flex layout */}
-        <div className="relative z-10 min-h-screen w-full flex flex-col items-center justify-center gap-4 md:gap-6 py-8 px-8">
+        {/* Content - flex layout with safe spacing */}
+        <div className="relative z-10 min-h-screen w-full flex flex-col items-center justify-evenly py-[5vh] px-8">
           <img
             src={tvSettings.logoUrl || brandLogoText}
             alt="Logo"
-            className="h-14 md:h-20 w-auto object-contain"
+            className="h-14 md:h-20 w-auto object-contain shrink-0"
             onError={(e) => { (e.target as HTMLImageElement).src = brandLogoText; }}
           />
 
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-center">
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-center shrink-0">
             <span className="bg-gradient-to-r from-orange-400 via-red-400 to-orange-400 bg-clip-text text-transparent">
               {furoreQrTitle}
             </span>
           </h1>
 
-          <p className="text-lg md:text-2xl text-white/60 font-light text-center">
+          <p className="text-lg md:text-2xl text-white/60 font-light text-center shrink-0">
             {furoreQrSubtitle}
           </p>
 
-          <div className="bg-white rounded-2xl p-3 md:p-4 shadow-2xl shadow-orange-500/20 mt-2">
+          <div className="bg-white rounded-2xl p-3 md:p-4 shadow-2xl shadow-orange-500/20 shrink-0">
             {qrCodeDataUrl ? (
-              <img src={qrCodeDataUrl} alt="QR Code per pulsantiera" className="w-32 h-32 md:w-44 md:h-44 lg:w-52 lg:h-52" />
+              <img src={qrCodeDataUrl} alt="QR Code per pulsantiera" className="w-28 h-28 md:w-40 md:h-40 lg:w-48 lg:h-48" />
             ) : (
-              <div className="w-32 h-32 md:w-44 md:h-44 lg:w-52 lg:h-52 rounded-lg border border-black/10 bg-white/90 flex items-center justify-center text-black/60 text-sm font-medium">
+              <div className="w-28 h-28 md:w-40 md:h-40 lg:w-48 lg:h-48 rounded-lg border border-black/10 bg-white/90 flex items-center justify-center text-black/60 text-sm font-medium">
                 QR non disponibile
               </div>
             )}
           </div>
 
-          <p className="text-base md:text-lg text-orange-200/70 text-center">{furoreQrCta}</p>
+          <p className="text-base md:text-xl text-orange-200/70 text-center shrink-0">{furoreQrCta}</p>
 
-          <p className="text-white/30 text-sm text-center mt-auto pt-4">{furoreQrFooter}</p>
+          <p className="text-white/30 text-sm text-center shrink-0">{furoreQrFooter}</p>
         </div>
 
         {/* Fullscreen + Connection Settings */}
