@@ -209,11 +209,11 @@ export const useFreeModeSettings = () => {
       if (settings.is_active && (
         updates.end_mode !== undefined || 
         updates.duration_minutes !== undefined ||
-        updates.event_date !== undefined ||
+        updates.event_end_date !== undefined ||
         updates.event_end_time !== undefined
       )) {
         const newEndMode = (updates.end_mode ?? settings.end_mode) as 'manual' | 'scheduled' | 'duration';
-        const newEventDate = updates.event_date ?? settings.event_date;
+        const newEventEndDate = updates.event_end_date ?? settings.event_end_date ?? settings.event_date;
         const newEventEndTime = updates.event_end_time ?? settings.event_end_time;
         const newDurationMinutes = updates.duration_minutes ?? settings.duration_minutes;
         const startedAt = settings.started_at ? new Date(settings.started_at) : new Date();
