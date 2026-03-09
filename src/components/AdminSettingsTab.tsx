@@ -470,10 +470,7 @@ function ConnectionModeSection() {
       {/* Offline & Sync Section */}
       <OfflineDataSection localIP={localIP} />
 
-      {/* Confronto Catalogo ↔ SongBook */}
-      <div className="pt-6 border-t border-border">
-        <CatalogSongbookCompare />
-      </div>
+      {/* Confronto Catalogo ↔ SongBook — disponibile in Catalogo SB */}
     </div>
   );
 }
