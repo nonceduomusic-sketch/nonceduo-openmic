@@ -1360,38 +1360,38 @@ export default function Trasmetti() {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-cyan-500/8 rounded-full blur-[180px] animate-pulse" style={{ animationDelay: '2.5s' }} />
         </div>
 
-        {/* Content - flex layout */}
-        <div className="relative z-10 min-h-screen w-full flex flex-col items-center justify-center gap-4 md:gap-6 py-8 px-8">
+        {/* Content - flex layout with safe spacing */}
+        <div className="relative z-10 min-h-screen w-full flex flex-col items-center justify-evenly py-[5vh] px-8">
           <img
             src={tvSettings.logoUrl || brandLogoText}
             alt="Logo"
-            className="h-14 md:h-20 w-auto object-contain drop-shadow-lg"
+            className="h-14 md:h-20 w-auto object-contain drop-shadow-lg shrink-0"
             onError={(e) => { (e.target as HTMLImageElement).src = brandLogoText; }}
           />
 
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-center">
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-center shrink-0">
             <span className="bg-gradient-to-r from-cyan-400 via-indigo-400 to-violet-400 bg-clip-text text-transparent drop-shadow-lg">
               {appTitle}
             </span>
           </h1>
 
-          <p className="text-lg md:text-2xl text-white/60 font-light text-center">
+          <p className="text-lg md:text-2xl text-white/60 font-light text-center shrink-0">
             {appSubtitle}
           </p>
 
-          <div className="bg-white rounded-3xl p-4 md:p-5 shadow-2xl shadow-indigo-500/30 ring-2 ring-white/20 mt-2">
+          <div className="bg-white rounded-3xl p-4 md:p-5 shadow-2xl shadow-indigo-500/30 ring-2 ring-white/20 shrink-0">
             {qrCodeDataUrl ? (
-              <img src={qrCodeDataUrl} alt="QR Code per APP" className="w-36 h-36 md:w-48 md:h-48 lg:w-56 lg:h-56" />
+              <img src={qrCodeDataUrl} alt="QR Code per APP" className="w-32 h-32 md:w-44 md:h-44 lg:w-52 lg:h-52" />
             ) : (
-              <div className="w-36 h-36 md:w-48 md:h-48 lg:w-56 lg:h-56 rounded-lg border border-black/10 bg-white/90 flex items-center justify-center text-black/60 text-sm font-medium">
+              <div className="w-32 h-32 md:w-44 md:h-44 lg:w-52 lg:h-52 rounded-lg border border-black/10 bg-white/90 flex items-center justify-center text-black/60 text-sm font-medium">
                 QR non disponibile
               </div>
             )}
           </div>
 
-          <p className="text-base md:text-lg text-indigo-200/70 font-medium text-center">{appCta}</p>
+          <p className="text-base md:text-xl text-indigo-200/70 font-medium text-center shrink-0">{appCta}</p>
 
-          <p className="text-white/30 text-sm text-center mt-auto pt-4">{appFooter}</p>
+          <p className="text-white/30 text-sm text-center shrink-0">{appFooter}</p>
         </div>
 
         {/* Fullscreen + Connection Settings */}
