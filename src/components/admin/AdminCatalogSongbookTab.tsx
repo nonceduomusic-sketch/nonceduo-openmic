@@ -47,6 +47,31 @@ import { cn } from "@/lib/utils";
 import { safeGetItem, safeSetItem } from "@/lib/safeStorage";
 import { BroadcastLinksCards } from "./LocalLinksCard";
 
+// ── Italian number-word map ──
+const IT_NUM_TO_WORD: Record<string, string> = {
+  '0': 'zero', '1': 'uno', '2': 'due', '3': 'tre', '4': 'quattro',
+  '5': 'cinque', '6': 'sei', '7': 'sette', '8': 'otto', '9': 'nove',
+  '10': 'dieci', '11': 'undici', '12': 'dodici', '13': 'tredici',
+  '14': 'quattordici', '15': 'quindici', '16': 'sedici', '17': 'diciassette',
+  '18': 'diciotto', '19': 'diciannove', '20': 'venti', '30': 'trenta',
+  '40': 'quaranta', '50': 'cinquanta', '60': 'sessanta', '70': 'settanta',
+  '80': 'ottanta', '90': 'novanta', '100': 'cento', '1000': 'mille',
+  '50000': 'cinquantamila',
+};
+const IT_WORD_TO_NUM = Object.fromEntries(Object.entries(IT_NUM_TO_WORD).map(([k, v]) => [v, k]));
+
+/** Replace all number tokens with their word equivalent and vice-versa, return both variants */
+function expandNumbers(s: string): string[] {
+  // Replace digits → words
+  let withWords = s.replace(/\d+/g, (m) => IT_NUM_TO_WORD[m] || m);
+  // Replace words → digits
+  let withDigits = s;
+  for (const [word, num] of Object.entries(IT_WORD_TO_NUM)) {
+    withDigits = withDigits.replace(new RegExp(`\\b${word}\\b`, 'gi'), num);
+  }
+  return [s, withWords, withDigits];
+}
+
 // ── Normalizzazione per matching ──
 function normalize(s: string): string {
   return s
@@ -60,10 +85,31 @@ function normalize(s: string): string {
     .trim();
 }
 
+/** Normalize and also produce a "spaceless" version for fuzzy comparison */
+function normalizeStrict(s: string): string {
+  return normalize(s).replace(/\s/g, "");
+}
+
 function matchScore(a: string, b: string): number {
   const na = normalize(a);
   const nb = normalize(b);
   if (na === nb) return 1;
+
+  // Spaceless exact match (handles "50Mila" vs "50 Mila")
+  if (normalizeStrict(a) === normalizeStrict(b)) return 0.98;
+
+  // Number expansion match (handles "10" vs "Dieci", "50000" vs "50Mila")
+  const aVariants = expandNumbers(na);
+  const bVariants = expandNumbers(nb);
+  for (const av of aVariants) {
+    for (const bv of bVariants) {
+      const nav = normalize(av);
+      const nbv = normalize(bv);
+      if (nav === nbv) return 0.96;
+      if (nav.replace(/\s/g, "") === nbv.replace(/\s/g, "")) return 0.94;
+    }
+  }
+
   if (na.length < 3 || nb.length < 3) {
     return na === nb ? 1 : 0;
   }
