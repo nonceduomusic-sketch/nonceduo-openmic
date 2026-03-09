@@ -281,8 +281,7 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
     }
 
     // Polling interval for all notifications (backup for unreliable Realtime)
-    // Reduced from 5s to 30s to avoid saturating the connection
-    // (Realtime is the primary channel; polling is only a safety net)
+    // Only triggers when Realtime is disconnected
     const pollInterval = setInterval(() => {
       if (!isRealtimeConnected) {
         if (import.meta.env.DEV) console.log('[AdminNotifications] Polling fallback triggered (Realtime disconnected)');
@@ -291,10 +290,12 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
       }
     }, 30000);
 
-    // Dedicated polling for assistant messages — reduced from 3s to 15s
-    // Realtime INSERT subscription above handles instant notifications;
-    // this polling is only a safety net for missed events.
+    // Dedicated polling for assistant messages — ONLY when Realtime is disconnected.
+    // When Realtime is connected, the INSERT subscription handles instant notifications.
     const assistantPollInterval = setInterval(async () => {
+      // Skip if Realtime is connected — the INSERT handler above covers this case
+      if (isRealtimeConnected) return;
+
       try {
         const { data: latest, error } = await supabase
           .from('assistant_messages')
@@ -331,7 +332,7 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
       } catch (err) {
         console.error('[AdminNotifications] Assistant poll error:', err);
       }
-    }, 15000); // Poll every 15 seconds (was 3s — reduced to avoid connection saturation)
+    }, 30000); // Poll every 30s (only when Realtime is down)
 
     // Also refresh when page becomes visible (tab switch, screen on)
     const handleVisibilityChange = () => {
