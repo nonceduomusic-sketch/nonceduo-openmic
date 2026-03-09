@@ -58,8 +58,25 @@ function normalize(s: string): string {
     .trim();
 }
 
-function buildKey(title: string, artist: string): string {
-  return `${normalize(title)}|||${normalize(artist)}`;
+function titleKey(title: string): string {
+  return normalize(title);
+}
+
+function artistsOverlap(a: string, b: string): boolean {
+  const na = normalize(a);
+  const nb = normalize(b);
+  if (!na || !nb) return true; // if either is empty, don't penalize
+  if (na === nb) return true;
+  // Check if one contains the other (e.g. "mina" ⊂ "mina celentano")
+  if (na.includes(nb) || nb.includes(na)) return true;
+  // Check if any word of one appears in the other
+  const wordsA = na.split(' ').filter(w => w.length > 2);
+  const wordsB = nb.split(' ').filter(w => w.length > 2);
+  return wordsA.some(w => wordsB.includes(w));
+}
+
+function buildKey(title: string, _artist: string): string {
+  return titleKey(title);
 }
 
 export const CatalogSongbookCompare: React.FC = () => {
