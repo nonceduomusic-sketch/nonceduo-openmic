@@ -32,57 +32,15 @@ import { usePedalSettings, PedalPage, PedalMode } from '@/hooks/usePedalControl'
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 
-type SectionKey = 'openmic' | 'dediche' | 'community';
-
-interface SectionSettingRow {
-  id: string;
-  section_key: SectionKey;
-  display_name: string;
-  is_enabled: boolean | null;
-  description: string | null;
-  updated_at: string | null;
-  updated_by: string | null;
-}
-
 export const AdminSettingsTab: React.FC = () => {
   const { toast } = useToast();
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  const [sectionSettings, setSectionSettings] = useState<SectionSettingRow[]>([]);
-  const [sectionsLoading, setSectionsLoading] = useState(false);
   const [seeding, setSeeding] = useState(false);
 
   // Avoid hydration mismatch for theme
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  const fetchSectionSettings = async () => {
-    setSectionsLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('section_settings')
-        .select('id, section_key, display_name, is_enabled, description, updated_at, updated_by')
-        .order('display_name', { ascending: true });
-
-      if (error) throw error;
-      setSectionSettings((data as SectionSettingRow[]) || []);
-    } catch (e) {
-      console.error('Failed to load section settings:', e);
-      toast({
-        title: 'Errore',
-        description: 'Impossibile caricare i format (sezioni).',
-        variant: 'destructive',
-      });
-    } finally {
-      setSectionsLoading(false);
-    }
-  };
-
-  // Load section settings from backend
-  useEffect(() => {
-    fetchSectionSettings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleToggleSection = async (row: SectionSettingRow, enabled: boolean) => {
