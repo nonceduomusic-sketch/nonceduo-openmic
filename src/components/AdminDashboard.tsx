@@ -27,7 +27,7 @@ import { Button } from '@/components/ui/button';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useReservations, Reservation } from '@/hooks/useReservations';
 import { Message } from '@/hooks/useMessages';
-import { useConversations, ChatMessage, Conversation } from '@/hooks/useConversations';
+import type { ChatMessage, Conversation } from '@/hooks/useConversations';
 import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { ReservationCard } from './ReservationCard';
@@ -114,11 +114,11 @@ export const AdminDashboard: React.FC = () => {
     deleteReservation,
     deleteMultipleReservations,
     restoreReservation,
-  } = useReservations();
+   } = useReservations();
   
-  // Note: conversations hook is only used for notifications, not badge count
-  // The badge count comes from AdminMessagesTab via onUnreadCountChange callback
-  const { conversations } = useConversations();
+  // REMOVED: useConversations() was only used to find conversation context for
+  // chat notification popups — now we fetch on-demand in the event handler
+  // to avoid an entire extra Realtime channel + 10s polling loop.
 
   const [reservationNotifications, setReservationNotifications] = useState<Reservation[]>([]);
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
@@ -147,7 +147,7 @@ export const AdminDashboard: React.FC = () => {
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [resetOption, setResetOption] = useState<'openmic' | 'messages' | 'songs' | 'all' | null>(null);
   const [isResetting, setIsResetting] = useState(false);
-  // unreadConvCount is calculated via useMemo from conversations
+  
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   );
@@ -194,14 +194,23 @@ export const AdminDashboard: React.FC = () => {
   }, []);
 
   // Listen for new chat messages (groups and private chats)
+  // Fetch conversation context on-demand instead of keeping useConversations() always active
   useEffect(() => {
-    const handleNewChatMessage = (event: CustomEvent<ChatMessage>) => {
+    const handleNewChatMessage = async (event: CustomEvent<ChatMessage>) => {
       const msg = event.detail;
       // Skip messages sent by admin
       if (msg.sender_type === 'admin') return;
       
-      // Find the conversation for context
-      const conv = conversations.find(c => c.id === msg.conversation_id);
+      // Fetch conversation context on-demand (lightweight single-row query)
+      let conv: Conversation | undefined;
+      try {
+        const { data } = await supabase
+          .from('conversations')
+          .select('id, name, is_group, section')
+          .eq('id', msg.conversation_id)
+          .single();
+        if (data) conv = data as unknown as Conversation;
+      } catch { /* ignore */ }
       
       setChatNotifications(prev => [...prev, { message: msg, conversation: conv }]);
 
@@ -220,7 +229,7 @@ export const AdminDashboard: React.FC = () => {
     return () => {
       window.removeEventListener('new-chat-message', handleNewChatMessage as EventListener);
     };
-  }, [conversations]);
+  }, []);
 
   // Listen for new assistant messages (from useAdminNotifications event)
   useEffect(() => {
