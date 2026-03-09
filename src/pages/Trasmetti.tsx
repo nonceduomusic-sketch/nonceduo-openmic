@@ -1418,14 +1418,14 @@ export default function Trasmetti() {
         <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-purple-500/15 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '1s' }} />
       </div>
 
-      {/* Content - flex layout for natural spacing */}
-      <div className="relative z-10 min-h-screen w-full flex flex-col items-center justify-center gap-4 md:gap-6 py-8 px-8">
+      {/* Content - flex layout with safe spacing */}
+      <div className="relative z-10 min-h-screen w-full flex flex-col items-center justify-evenly py-[5vh] px-8">
         {/* Logo */}
         {tvSettings.showLogo && (
           <img 
             src={tvSettings.logoUrl || brandLogoText} 
             alt="Logo" 
-            className="h-14 md:h-20 w-auto object-contain"
+            className="h-14 md:h-20 w-auto object-contain shrink-0"
             onError={(e) => {
               (e.target as HTMLImageElement).src = brandLogoText;
             }}
@@ -1434,7 +1434,7 @@ export default function Trasmetti() {
 
         {/* Title */}
         {tvSettings.showTitle && (
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-center">
+          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight text-center shrink-0">
             <span className="bg-gradient-to-r from-primary via-purple-400 to-primary bg-clip-text text-transparent">
               {tvSettings.title}
             </span>
@@ -1443,14 +1443,14 @@ export default function Trasmetti() {
 
         {/* Subtitle */}
         {tvSettings.showSubtitle && (
-          <p className="text-lg md:text-2xl text-white/60 font-light text-center">
+          <p className="text-lg md:text-2xl text-white/60 font-light text-center shrink-0">
             {tvSettings.subtitle}
           </p>
         )}
 
         {/* Status indicator */}
         {tvSettings.showStatus && (
-          <div className="flex justify-center">
+          <div className="flex justify-center shrink-0">
             {session?.is_active ? (
               <div className="flex items-center gap-3 px-5 py-2.5 bg-green-500/20 border border-green-500/30 rounded-full">
                 <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
@@ -1471,25 +1471,25 @@ export default function Trasmetti() {
 
         {/* QR Code */}
         {tvSettings.showQr && qrCodeDataUrl && (
-          <div className="bg-white rounded-2xl p-3 md:p-4 shadow-2xl mt-2">
+          <div className="bg-white rounded-2xl p-3 md:p-4 shadow-2xl shrink-0">
             <img 
               src={qrCodeDataUrl} 
               alt="QR Code per prenotazione" 
-              className="w-32 h-32 md:w-44 md:h-44 lg:w-52 lg:h-52"
+              className="w-28 h-28 md:w-40 md:h-40 lg:w-48 lg:h-48"
             />
           </div>
         )}
 
         {/* QR CTA */}
         {tvSettings.showQr && (
-          <p className="text-base md:text-lg text-white/70 text-center">
+          <p className="text-base md:text-xl text-white/70 text-center shrink-0">
             {tvSettings.qrCta}
           </p>
         )}
 
         {/* Footer */}
         {tvSettings.showFooter && (
-          <p className="text-white/30 text-sm text-center mt-auto pt-4">
+          <p className="text-white/30 text-sm text-center shrink-0">
             {tvSettings.footer}
           </p>
         )}
