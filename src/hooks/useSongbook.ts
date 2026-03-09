@@ -112,11 +112,12 @@ export function useSongbookFiles() {
       if (!hadNetworkError) {
         setFiles(allData);
         import('@/lib/songbookCache').then(({ cacheSongbookFiles, clearSongbookCache }) => {
-          if (allData.length > 0) {
-            cacheSongbookFiles(allData).catch(() => {});
-          } else {
-            clearSongbookCache().catch(() => {});
-          }
+          // Always clear first to remove stale entries, then re-populate
+          clearSongbookCache().then(() => {
+            if (allData.length > 0) {
+              cacheSongbookFiles(allData).catch(() => {});
+            }
+          }).catch(() => {});
         });
       }
     } catch {
