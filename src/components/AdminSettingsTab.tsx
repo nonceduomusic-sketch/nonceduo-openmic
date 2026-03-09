@@ -193,43 +193,7 @@ export const AdminSettingsTab: React.FC = () => {
         )}
       </div>
 
-      {/* Format (Sections) */}
-      <div className="glass-card p-4 space-y-4">
-        <div>
-          <h3 className="font-medium text-foreground">Format (Sezioni)</h3>
-          <p className="text-xs text-muted-foreground">
-            Accendi/spegni Open Mic, Dediche e Community.
-          </p>
-        </div>
-
-        {sectionsLoading ? (
-          <div className="text-sm text-muted-foreground">Caricamento format...</div>
-        ) : sectionSettings.length === 0 ? (
-          <div className="text-sm text-muted-foreground">
-            Nessun format configurato nel backend.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {sectionSettings.map((row) => {
-              const enabled = row.is_enabled ?? true;
-              return (
-                <div key={row.id} className="flex items-center justify-between py-2 border-t border-border first:border-t-0">
-                  <div className="min-w-0">
-                    <Label className="text-foreground">{row.display_name}</Label>
-                    {row.description && (
-                      <p className="text-xs text-muted-foreground line-clamp-2">{row.description}</p>
-                    )}
-                  </div>
-                  <Switch
-                    checked={enabled}
-                    onCheckedChange={(checked) => handleToggleSection(row, checked)}
-                  />
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+      {/* Format (Sezioni) — gestiti in tab Formati */}
 
       {/* Demo Community Seed */}
       <div className="glass-card p-4 space-y-3">
