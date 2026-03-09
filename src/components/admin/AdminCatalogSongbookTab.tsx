@@ -688,6 +688,17 @@ export function AdminCatalogSongbookTab() {
             {autoMatchRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
             <span className="hidden sm:inline">Auto-Match</span>
           </Button>
+          {linkedCount > 0 && (
+            <Button
+              variant="outline"
+              onClick={handleUnlinkAll}
+              disabled={unlinkAllRunning || autoMatchRunning}
+              className="gap-1.5 text-destructive hover:text-destructive"
+            >
+              {unlinkAllRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <Link2Off className="w-4 h-4" />}
+              <span className="hidden sm:inline">Scollega tutto</span>
+            </Button>
+          )}
         </div>
       </div>
 
