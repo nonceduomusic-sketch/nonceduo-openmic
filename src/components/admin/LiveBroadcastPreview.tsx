@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { resolveStandbyMode, STANDBY_DEFAULTS, STANDBY_QR_URLS } from '@/lib/tvStandbyModes';
 import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
 import { useScrollPositionPublisher } from '@/hooks/useScrollPositionPublisher';
 import { useSongbookFiles } from '@/hooks/useSongbook';
