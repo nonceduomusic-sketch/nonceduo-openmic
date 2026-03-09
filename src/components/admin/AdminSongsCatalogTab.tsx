@@ -70,6 +70,10 @@ export const AdminSongsCatalogTab: React.FC = () => {
   const [sortField, setSortField] = useState<SortField>('titolo');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   
+  // Export dialog state
+  const [isExportOpen, setIsExportOpen] = useState(false);
+  const [exportCols, setExportCols] = useState({ titolo: true, artista: true, testo: true });
+
   // Modal states
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
@@ -193,30 +197,32 @@ export const AdminSongsCatalogTab: React.FC = () => {
     return text.substring(0, maxLength) + '…';
   };
 
-  // Export songs to CSV
+  // Export songs to CSV with selected columns
   const handleExportCSV = () => {
     if (songs.length === 0) {
       toast.error('Nessuna canzone da esportare');
       return;
     }
 
-    // Always quote and escape CSV fields for maximum compatibility
+    const selectedCols = Object.entries(exportCols).filter(([, v]) => v).map(([k]) => k);
+    if (selectedCols.length === 0) {
+      toast.error('Seleziona almeno una colonna');
+      return;
+    }
+
     const escapeCSV = (field: string | null): string => {
       if (!field) return '""';
-      // Always wrap in quotes and escape internal quotes by doubling them
       return '"' + field.replace(/"/g, '""') + '"';
     };
 
-    // Create CSV content with BOM for Excel compatibility
+    const labelMap: Record<string, string> = { titolo: 'Titolo', artista: 'Artista', testo: 'Testo' };
     const BOM = '\uFEFF';
-    const headers = ['Titolo', 'Artista', 'Testo'];
+    const headers = selectedCols.map(c => labelMap[c]);
     const rows = songs.map((song) => 
-      [escapeCSV(song.titolo), escapeCSV(song.artista), escapeCSV(song.testo)].join(';')
+      selectedCols.map(c => escapeCSV((song as any)[c])).join(';')
     );
 
     const csvContent = BOM + [headers.join(';'), ...rows].join('\n');
-
-    // Create and trigger download
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -227,7 +233,8 @@ export const AdminSongsCatalogTab: React.FC = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    toast.success(`Esportate ${songs.length} canzoni in CSV`);
+    toast.success(`Esportate ${songs.length} canzoni in CSV (${selectedCols.length} colonne)`);
+    setIsExportOpen(false);
   };
 
   if (loading) {
@@ -268,7 +275,7 @@ export const AdminSongsCatalogTab: React.FC = () => {
                 <Trash className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">Elimina tutte</span>
               </Button>
-              <Button onClick={handleExportCSV} variant="outline">
+              <Button onClick={() => setIsExportOpen(true)} variant="outline" disabled={songs.length === 0}>
                 <Download className="w-4 h-4 sm:mr-2" />
                 <span className="hidden sm:inline">Esporta CSV</span>
               </Button>
@@ -534,6 +541,49 @@ export const AdminSongsCatalogTab: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Export CSV Dialog */}
+      <Dialog open={isExportOpen} onOpenChange={setIsExportOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="w-5 h-5" />
+              Esporta CSV
+            </DialogTitle>
+            <DialogDescription>
+              Scegli quali colonne includere nel file CSV ({songs.length} canzoni)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            {([
+              { key: 'titolo' as const, label: 'Titolo' },
+              { key: 'artista' as const, label: 'Artista' },
+              { key: 'testo' as const, label: 'Testo' },
+            ]).map(({ key, label }) => (
+              <label key={key} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-muted/50">
+                <input
+                  type="checkbox"
+                  checked={exportCols[key]}
+                  onChange={(e) => setExportCols(prev => ({ ...prev, [key]: e.target.checked }))}
+                  className="h-4 w-4 rounded border-input accent-primary"
+                />
+                <span className="text-sm font-medium">{label}</span>
+              </label>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsExportOpen(false)}>Annulla</Button>
+            <Button
+              onClick={handleExportCSV}
+              disabled={!exportCols.titolo && !exportCols.artista && !exportCols.testo}
+              className="neon-button-pink"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Esporta
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
