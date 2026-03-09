@@ -14,6 +14,8 @@ import {
   HardDrive,
   Loader2,
   Upload,
+  Music,
+  BookOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
