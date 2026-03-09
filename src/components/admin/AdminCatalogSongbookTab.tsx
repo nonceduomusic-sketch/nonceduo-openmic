@@ -487,7 +487,7 @@ export function AdminCatalogSongbookTab() {
   };
 
   // ── Unlink all ──
-  const [unlinkAllRunning, setUnlinkAllRunning] = useState(false);
+  // (unlinkAllRunning state declared at top)
   const handleUnlinkAll = async () => {
     if (!confirm(`Sei sicuro di voler scollegare tutti i ${linkedCount} collegamenti? L'operazione è irreversibile.`)) return;
     setUnlinkAllRunning(true);
