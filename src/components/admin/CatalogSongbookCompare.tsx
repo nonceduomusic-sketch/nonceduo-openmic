@@ -51,8 +51,10 @@ interface ComparedItem {
 function normalize(s: string): string {
   return s
     .toLowerCase()
-    .replace(/['''`´]/g, "'")
-    .replace(/_+$/, '') // remove trailing underscores for matching
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // remove accents
+    .replace(/['''`´"""\-_\s]+/g, ' ') // collapse apostrophes, quotes, hyphens, underscores, whitespace into single space
+    .replace(/\(.*?\)/g, '') // remove parenthetical text
     .trim();
 }
 
