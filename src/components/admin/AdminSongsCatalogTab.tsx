@@ -541,6 +541,49 @@ export const AdminSongsCatalogTab: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Export CSV Dialog */}
+      <Dialog open={isExportOpen} onOpenChange={setIsExportOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Download className="w-5 h-5" />
+              Esporta CSV
+            </DialogTitle>
+            <DialogDescription>
+              Scegli quali colonne includere nel file CSV ({songs.length} canzoni)
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            {([
+              { key: 'titolo' as const, label: 'Titolo' },
+              { key: 'artista' as const, label: 'Artista' },
+              { key: 'testo' as const, label: 'Testo' },
+            ]).map(({ key, label }) => (
+              <label key={key} className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-muted/50">
+                <input
+                  type="checkbox"
+                  checked={exportCols[key]}
+                  onChange={(e) => setExportCols(prev => ({ ...prev, [key]: e.target.checked }))}
+                  className="h-4 w-4 rounded border-input accent-primary"
+                />
+                <span className="text-sm font-medium">{label}</span>
+              </label>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsExportOpen(false)}>Annulla</Button>
+            <Button
+              onClick={handleExportCSV}
+              disabled={!exportCols.titolo && !exportCols.artista && !exportCols.testo}
+              className="neon-button-pink"
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Esporta
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
