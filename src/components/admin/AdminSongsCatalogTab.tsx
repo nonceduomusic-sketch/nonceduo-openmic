@@ -197,30 +197,32 @@ export const AdminSongsCatalogTab: React.FC = () => {
     return text.substring(0, maxLength) + '…';
   };
 
-  // Export songs to CSV
+  // Export songs to CSV with selected columns
   const handleExportCSV = () => {
     if (songs.length === 0) {
       toast.error('Nessuna canzone da esportare');
       return;
     }
 
-    // Always quote and escape CSV fields for maximum compatibility
+    const selectedCols = Object.entries(exportCols).filter(([, v]) => v).map(([k]) => k);
+    if (selectedCols.length === 0) {
+      toast.error('Seleziona almeno una colonna');
+      return;
+    }
+
     const escapeCSV = (field: string | null): string => {
       if (!field) return '""';
-      // Always wrap in quotes and escape internal quotes by doubling them
       return '"' + field.replace(/"/g, '""') + '"';
     };
 
-    // Create CSV content with BOM for Excel compatibility
+    const labelMap: Record<string, string> = { titolo: 'Titolo', artista: 'Artista', testo: 'Testo' };
     const BOM = '\uFEFF';
-    const headers = ['Titolo', 'Artista', 'Testo'];
+    const headers = selectedCols.map(c => labelMap[c]);
     const rows = songs.map((song) => 
-      [escapeCSV(song.titolo), escapeCSV(song.artista), escapeCSV(song.testo)].join(';')
+      selectedCols.map(c => escapeCSV((song as any)[c])).join(';')
     );
 
     const csvContent = BOM + [headers.join(';'), ...rows].join('\n');
-
-    // Create and trigger download
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -231,7 +233,8 @@ export const AdminSongsCatalogTab: React.FC = () => {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 
-    toast.success(`Esportate ${songs.length} canzoni in CSV`);
+    toast.success(`Esportate ${songs.length} canzoni in CSV (${selectedCols.length} colonne)`);
+    setIsExportOpen(false);
   };
 
   if (loading) {
