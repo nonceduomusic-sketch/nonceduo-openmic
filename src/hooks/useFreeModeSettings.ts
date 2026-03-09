@@ -24,6 +24,7 @@ export interface FreeModeSettings {
   // Event timing
   event_date: string | null;
   event_start_time: string | null;
+  event_end_date: string | null;
   event_end_time: string | null;
   start_mode: 'manual' | 'scheduled';
   end_mode: 'manual' | 'scheduled' | 'duration';
@@ -208,11 +209,11 @@ export const useFreeModeSettings = () => {
       if (settings.is_active && (
         updates.end_mode !== undefined || 
         updates.duration_minutes !== undefined ||
-        updates.event_date !== undefined ||
+        updates.event_end_date !== undefined ||
         updates.event_end_time !== undefined
       )) {
         const newEndMode = (updates.end_mode ?? settings.end_mode) as 'manual' | 'scheduled' | 'duration';
-        const newEventDate = updates.event_date ?? settings.event_date;
+        const newEventEndDate = updates.event_end_date ?? settings.event_end_date ?? settings.event_date;
         const newEventEndTime = updates.event_end_time ?? settings.event_end_time;
         const newDurationMinutes = updates.duration_minutes ?? settings.duration_minutes;
         const startedAt = settings.started_at ? new Date(settings.started_at) : new Date();
@@ -220,8 +221,8 @@ export const useFreeModeSettings = () => {
         // Ricalcola expires_at
         if (newEndMode === 'manual') {
           finalUpdates.expires_at = null;
-        } else if (newEndMode === 'scheduled' && newEventDate && newEventEndTime) {
-          finalUpdates.expires_at = `${newEventDate}T${newEventEndTime}:00`;
+        } else if (newEndMode === 'scheduled' && newEventEndDate && newEventEndTime) {
+          finalUpdates.expires_at = `${newEventEndDate}T${newEventEndTime}:00`;
         } else if (newEndMode === 'duration' && newDurationMinutes) {
           finalUpdates.expires_at = new Date(startedAt.getTime() + newDurationMinutes * 60 * 1000).toISOString();
         } else {
@@ -249,14 +250,14 @@ export const useFreeModeSettings = () => {
   // Calcola expires_at in base a end_mode
   const calculateExpiresAt = (
     endMode: 'manual' | 'scheduled' | 'duration',
-    eventDate: string | null,
+    eventEndDate: string | null,
     eventEndTime: string | null,
     durationMinutes: number | null,
     startedAt: Date = new Date()
   ): string | null => {
-    if (endMode === 'scheduled' && eventDate && eventEndTime) {
+    if (endMode === 'scheduled' && eventEndDate && eventEndTime) {
       // Termine a orario specifico
-      return `${eventDate}T${eventEndTime}:00`;
+      return `${eventEndDate}T${eventEndTime}:00`;
     } else if (endMode === 'duration' && durationMinutes) {
       // Termine dopo X minuti dalla partenza
       return new Date(startedAt.getTime() + durationMinutes * 60 * 1000).toISOString();
@@ -286,7 +287,7 @@ export const useFreeModeSettings = () => {
     
     // Recupera le impostazioni di timing correnti
     const endMode = settings?.end_mode || 'manual';
-    const eventDate = settings?.event_date || null;
+    const eventEndDate = settings?.event_end_date || settings?.event_date || null;
     const eventEndTime = settings?.event_end_time || null;
     
     const updates: Partial<FreeModeSettings> = {
@@ -309,7 +310,7 @@ export const useFreeModeSettings = () => {
     
     // Calcola expires_at in base a end_mode
     const durationMins = config?.durationMinutes ?? settings?.duration_minutes ?? null;
-    updates.expires_at = calculateExpiresAt(endMode, eventDate, eventEndTime, durationMins, now);
+    updates.expires_at = calculateExpiresAt(endMode, eventEndDate, eventEndTime, durationMins, now);
     updates.duration_minutes = durationMins;
 
     if (config?.pinCode) {
