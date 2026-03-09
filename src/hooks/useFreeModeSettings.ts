@@ -221,8 +221,8 @@ export const useFreeModeSettings = () => {
         // Ricalcola expires_at
         if (newEndMode === 'manual') {
           finalUpdates.expires_at = null;
-        } else if (newEndMode === 'scheduled' && newEventDate && newEventEndTime) {
-          finalUpdates.expires_at = `${newEventDate}T${newEventEndTime}:00`;
+        } else if (newEndMode === 'scheduled' && newEventEndDate && newEventEndTime) {
+          finalUpdates.expires_at = `${newEventEndDate}T${newEventEndTime}:00`;
         } else if (newEndMode === 'duration' && newDurationMinutes) {
           finalUpdates.expires_at = new Date(startedAt.getTime() + newDurationMinutes * 60 * 1000).toISOString();
         } else {
