@@ -147,7 +147,7 @@ export const AdminDashboard: React.FC = () => {
   const [showResetDialog, setShowResetDialog] = useState(false);
   const [resetOption, setResetOption] = useState<'openmic' | 'messages' | 'songs' | 'all' | null>(null);
   const [isResetting, setIsResetting] = useState(false);
-  // unreadConvCount is calculated via useMemo from conversations
+  
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>(
     typeof Notification !== 'undefined' ? Notification.permission : 'default'
   );
