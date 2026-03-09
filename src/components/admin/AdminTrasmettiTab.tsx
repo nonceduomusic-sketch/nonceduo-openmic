@@ -298,11 +298,56 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
               </Button>
             </div>
           ) : (
-            <div className="flex items-center gap-3 p-4 bg-muted/50 rounded-xl">
-              <QrCode className="w-5 h-5 text-muted-foreground" />
-              <span className="text-muted-foreground">
-                Schermata di attesa con QR code attiva
-              </span>
+            <div className="flex items-center justify-between gap-3 p-4 bg-muted/50 rounded-xl flex-wrap">
+              <div className="flex items-center gap-3">
+                <QrCode className="w-5 h-5 text-muted-foreground" />
+                <span className="text-muted-foreground text-sm">
+                  Schermata di attesa attiva
+                </span>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <Monitor className="w-4 h-4" />
+                    <span className="hidden sm:inline">
+                      {STANDBY_MODE_OPTIONS.find(o => o.value === resolveStandbyMode((session as any)?.tv_standby_mode))?.label || 'Open Mic'}
+                    </span>
+                    <ChevronDown className="w-3 h-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  {STANDBY_MODE_OPTIONS.map((opt) => {
+                    const isActive = resolveStandbyMode((session as any)?.tv_standby_mode) === opt.value;
+                    return (
+                      <DropdownMenuItem
+                        key={opt.value}
+                        className={cn("flex flex-col items-start gap-0.5 py-2.5", isActive && "bg-primary/10")}
+                        onClick={async () => {
+                          const defaults = STANDBY_DEFAULTS[opt.value];
+                          const qrUrl = STANDBY_QR_URLS[opt.value];
+                          const updatePayload: Record<string, any> = {
+                            tv_standby_mode: opt.value,
+                            updated_at: new Date().toISOString(),
+                          };
+                          // Apply mode defaults for title/subtitle/qr
+                          if (defaults.title) updatePayload.tv_title = defaults.title;
+                          if (defaults.subtitle) updatePayload.tv_subtitle = defaults.subtitle;
+                          if (defaults.qrCta) updatePayload.tv_qr_cta = defaults.qrCta;
+                          if (qrUrl) updatePayload.tv_qr_url = qrUrl;
+                          // Toggle QR visibility
+                          updatePayload.tv_show_qr = !!qrUrl;
+
+                          await syncUpdate(updatePayload);
+                          toast.success(`Schermata: ${opt.label}`);
+                        }}
+                      >
+                        <span className="font-medium text-sm">{opt.label}</span>
+                        <span className="text-xs text-muted-foreground">{opt.desc}</span>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           )}
         </CardContent>
