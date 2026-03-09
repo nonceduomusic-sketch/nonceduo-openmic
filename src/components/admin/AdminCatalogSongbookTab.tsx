@@ -741,6 +741,10 @@ export function AdminCatalogSongbookTab() {
           </>
         )}
       </div>
+
+      {/* Confronto Catalogo ↔ SongBook */}
+      <Separator className="my-6" />
+      <CatalogSongbookCompare />
     </div>
   );
 }
