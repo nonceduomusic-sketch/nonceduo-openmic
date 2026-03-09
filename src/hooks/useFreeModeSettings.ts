@@ -287,7 +287,7 @@ export const useFreeModeSettings = () => {
     
     // Recupera le impostazioni di timing correnti
     const endMode = settings?.end_mode || 'manual';
-    const eventDate = settings?.event_date || null;
+    const eventEndDate = settings?.event_end_date || settings?.event_date || null;
     const eventEndTime = settings?.event_end_time || null;
     
     const updates: Partial<FreeModeSettings> = {
