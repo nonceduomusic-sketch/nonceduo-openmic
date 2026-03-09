@@ -281,20 +281,19 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
     }
 
     // Polling interval for all notifications (backup for unreliable Realtime)
+    // Reduced from 5s to 30s to avoid saturating the connection
+    // (Realtime is the primary channel; polling is only a safety net)
     const pollInterval = setInterval(() => {
-      // Always poll on mobile/Android as WebSocket can be unreliable
-      const isAndroid = /android/i.test(navigator.userAgent);
-      const isMobile = /mobile|tablet/i.test(navigator.userAgent);
-      
-      if (!isRealtimeConnected || isAndroid || isMobile) {
-        if (import.meta.env.DEV) console.log('[AdminNotifications] Polling fallback triggered');
+      if (!isRealtimeConnected) {
+        if (import.meta.env.DEV) console.log('[AdminNotifications] Polling fallback triggered (Realtime disconnected)');
         fetchJoinRequests();
         fetchCounts();
       }
-    }, 5000);
+    }, 30000);
 
-    // Dedicated polling for assistant messages (Realtime can be unreliable / throttled)
-    // NOTE: We use latest created_at (no fixed time window) to avoid missing messages when timers are throttled.
+    // Dedicated polling for assistant messages — reduced from 3s to 15s
+    // Realtime INSERT subscription above handles instant notifications;
+    // this polling is only a safety net for missed events.
     const assistantPollInterval = setInterval(async () => {
       try {
         const { data: latest, error } = await supabase
@@ -311,7 +310,7 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
         const lastSeenTime = lastAssistantMsgTimeRef.current;
         if (!lastSeenTime || latest.created_at > lastSeenTime) {
           if (import.meta.env.DEV) {
-            console.log('[AdminNotifications] Poll detected new assistant message:', latest.id, 'created_at:', latest.created_at);
+            console.log('[AdminNotifications] Poll detected new assistant message:', latest.id);
           }
 
           lastAssistantMsgTimeRef.current = latest.created_at;
@@ -332,7 +331,7 @@ export const useAdminNotifications = (options?: UseAdminNotificationsOptions) =>
       } catch (err) {
         console.error('[AdminNotifications] Assistant poll error:', err);
       }
-    }, 3000); // Poll every 3 seconds for assistant messages
+    }, 15000); // Poll every 15 seconds (was 3s — reduced to avoid connection saturation)
 
     // Also refresh when page becomes visible (tab switch, screen on)
     const handleVisibilityChange = () => {
