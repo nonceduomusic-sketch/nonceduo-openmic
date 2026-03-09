@@ -27,7 +27,7 @@ import { Button } from '@/components/ui/button';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useReservations, Reservation } from '@/hooks/useReservations';
 import { Message } from '@/hooks/useMessages';
-import { useConversations, ChatMessage, Conversation } from '@/hooks/useConversations';
+import type { ChatMessage, Conversation } from '@/hooks/useConversations';
 import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { ReservationCard } from './ReservationCard';
