@@ -75,8 +75,8 @@ function artistsOverlap(a: string, b: string): boolean {
   return wordsA.some(w => wordsB.includes(w));
 }
 
-function buildKey(title: string, _artist: string): string {
-  return titleKey(title);
+function buildKey(title: string, artist: string): string {
+  return `${titleKey(title)}|||${normalize(artist)}`;
 }
 
 export const CatalogSongbookCompare: React.FC = () => {
