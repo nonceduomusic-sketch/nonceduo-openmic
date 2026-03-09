@@ -179,18 +179,22 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
    // Use contentLines instead of lines for highlight navigation
    const lines = contentLines;
  
-   // Generate QR code
-   useEffect(() => {
-     const generateQR = async () => {
-       try {
-         const qrDestination = tvSettings.qrUrl || 'https://nonceduo.com';
-         const fullUrl = qrDestination.startsWith('http') ? qrDestination : `${window.location.origin}${qrDestination.startsWith('/') ? '' : '/'}${qrDestination}`;
-         const dataUrl = await QRCode.toDataURL(fullUrl, { width: 160, margin: 2, color: { dark: '#000000', light: '#ffffff' }, errorCorrectionLevel: 'M' });
-         setQrCodeDataUrl(dataUrl);
-       } catch (err) { console.error('QR generation error:', err); }
-     };
-     generateQR();
-   }, [tvSettings.qrUrl]);
+    // Resolve standby mode for preview
+    const currentStandbyMode = resolveStandbyMode((session as any)?.tv_standby_mode);
+    const modeQrUrl = STANDBY_QR_URLS[currentStandbyMode];
+
+    // Generate QR code — use per-mode URL like Trasmetti does
+    useEffect(() => {
+      const generateQR = async () => {
+        try {
+          const qrDestination = modeQrUrl || tvSettings.qrUrl || 'https://nonceduo.com';
+          const fullUrl = qrDestination.startsWith('http') ? qrDestination : `${window.location.origin}${qrDestination.startsWith('/') ? '' : '/'}${qrDestination}`;
+          const dataUrl = await QRCode.toDataURL(fullUrl, { width: 160, margin: 2, color: { dark: '#000000', light: '#ffffff' }, errorCorrectionLevel: 'M' });
+          setQrCodeDataUrl(dataUrl);
+        } catch (err) { console.error('QR generation error:', err); }
+      };
+      generateQR();
+    }, [modeQrUrl, tvSettings.qrUrl]);
  
    // Auto-switch to content when broadcasting (either lyrics or songbook)
    useEffect(() => {
