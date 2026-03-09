@@ -250,14 +250,14 @@ export const useFreeModeSettings = () => {
   // Calcola expires_at in base a end_mode
   const calculateExpiresAt = (
     endMode: 'manual' | 'scheduled' | 'duration',
-    eventDate: string | null,
+    eventEndDate: string | null,
     eventEndTime: string | null,
     durationMinutes: number | null,
     startedAt: Date = new Date()
   ): string | null => {
-    if (endMode === 'scheduled' && eventDate && eventEndTime) {
+    if (endMode === 'scheduled' && eventEndDate && eventEndTime) {
       // Termine a orario specifico
-      return `${eventDate}T${eventEndTime}:00`;
+      return `${eventEndDate}T${eventEndTime}:00`;
     } else if (endMode === 'duration' && durationMinutes) {
       // Termine dopo X minuti dalla partenza
       return new Date(startedAt.getTime() + durationMinutes * 60 * 1000).toISOString();
