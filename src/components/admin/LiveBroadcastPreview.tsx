@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { resolveStandbyMode, STANDBY_DEFAULTS, STANDBY_QR_URLS } from '@/lib/tvStandbyModes';
 import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
 import { useScrollPositionPublisher } from '@/hooks/useScrollPositionPublisher';
 import { useSongbookFiles } from '@/hooks/useSongbook';
@@ -178,18 +179,22 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
    // Use contentLines instead of lines for highlight navigation
    const lines = contentLines;
  
-   // Generate QR code
-   useEffect(() => {
-     const generateQR = async () => {
-       try {
-         const qrDestination = tvSettings.qrUrl || 'https://nonceduo.com';
-         const fullUrl = qrDestination.startsWith('http') ? qrDestination : `${window.location.origin}${qrDestination.startsWith('/') ? '' : '/'}${qrDestination}`;
-         const dataUrl = await QRCode.toDataURL(fullUrl, { width: 160, margin: 2, color: { dark: '#000000', light: '#ffffff' }, errorCorrectionLevel: 'M' });
-         setQrCodeDataUrl(dataUrl);
-       } catch (err) { console.error('QR generation error:', err); }
-     };
-     generateQR();
-   }, [tvSettings.qrUrl]);
+    // Resolve standby mode for preview
+    const currentStandbyMode = resolveStandbyMode((session as any)?.tv_standby_mode);
+    const modeQrUrl = STANDBY_QR_URLS[currentStandbyMode];
+
+    // Generate QR code — use per-mode URL like Trasmetti does
+    useEffect(() => {
+      const generateQR = async () => {
+        try {
+          const qrDestination = modeQrUrl || tvSettings.qrUrl || 'https://nonceduo.com';
+          const fullUrl = qrDestination.startsWith('http') ? qrDestination : `${window.location.origin}${qrDestination.startsWith('/') ? '' : '/'}${qrDestination}`;
+          const dataUrl = await QRCode.toDataURL(fullUrl, { width: 160, margin: 2, color: { dark: '#000000', light: '#ffffff' }, errorCorrectionLevel: 'M' });
+          setQrCodeDataUrl(dataUrl);
+        } catch (err) { console.error('QR generation error:', err); }
+      };
+      generateQR();
+    }, [modeQrUrl, tvSettings.qrUrl]);
  
    // Auto-switch to content when broadcasting (either lyrics or songbook)
    useEffect(() => {
@@ -482,29 +487,122 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
  
    const openTVPage = () => window.open('/trasmetti', '_blank');
  
-   // Waiting screen preview
-   const renderWaitingPreview = () => (
-     <div className="relative rounded-xl overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-900" style={{ minHeight: isExpanded ? (isMobile ? '50vh' : '60vh') : (isMobile ? '35vh' : '40vh') }}>
-       <div className="absolute inset-0 pointer-events-none">
-         <div className="absolute top-1/4 left-1/4 w-[150px] h-[150px] bg-primary/20 rounded-full blur-[80px] animate-pulse" />
-         <div className="absolute bottom-1/4 right-1/4 w-[120px] h-[120px] bg-purple-500/15 rounded-full blur-[60px] animate-pulse" style={{ animationDelay: '1s' }} />
-       </div>
-       <div className="relative z-10 flex flex-col items-center justify-center h-full py-6 px-4 text-center" style={{ minHeight: isExpanded ? (isMobile ? '50vh' : '60vh') : (isMobile ? '35vh' : '40vh') }}>
-         {tvSettings.showLogo && <img src={tvSettings.logoUrl || brandLogoText} alt="Logo" className="h-10 md:h-14 w-auto object-contain mb-4" onError={(e) => { (e.target as HTMLImageElement).src = brandLogoText; }} />}
-         {tvSettings.showTitle && <h1 className="text-2xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-primary via-purple-400 to-primary bg-clip-text text-transparent">{tvSettings.title}</h1>}
-         {tvSettings.showSubtitle && <p className="text-sm md:text-lg text-white/60 mb-4">{tvSettings.subtitle}</p>}
-         {tvSettings.showStatus && (
-           <div className="flex items-center gap-2 px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-full mb-4">
-             <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-             <span className="text-green-400 font-medium text-sm">Open Mic attivo – Prenota con QR</span>
-           </div>
-         )}
-         {tvSettings.showQr && qrCodeDataUrl && <div className="bg-white rounded-xl p-3 shadow-xl mb-3"><img src={qrCodeDataUrl} alt="QR Code" className="w-24 h-24 md:w-32 md:h-32" /></div>}
-         {tvSettings.showQr && <p className="text-xs md:text-sm text-white/60 mb-4 max-w-xs">{tvSettings.qrCta}</p>}
-         {tvSettings.showFooter && <p className="text-white/30 text-xs absolute bottom-4">{tvSettings.footer}</p>}
-       </div>
-     </div>
-   );
+    // Waiting screen preview — mode-aware to match Trasmetti.tsx
+    const renderWaitingPreview = () => {
+      const previewHeight = isExpanded ? (isMobile ? '50vh' : '60vh') : (isMobile ? '35vh' : '40vh');
+      const logoScale = (session as any)?.tv_logo_scale || 100;
+
+      // LOGO ONLY MODE
+      if (currentStandbyMode === 'logo') {
+        return (
+          <div className="relative rounded-xl overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-900" style={{ minHeight: previewHeight }}>
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute top-1/3 left-1/3 w-[200px] h-[200px] bg-primary/10 rounded-full blur-[100px] animate-pulse" />
+              <div className="absolute bottom-1/3 right-1/3 w-[150px] h-[150px] bg-purple-500/8 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '1.5s' }} />
+            </div>
+            <div className="relative z-10 flex flex-col items-center justify-center h-full gap-4" style={{ minHeight: previewHeight }}>
+              <img
+                src={tvSettings.logoUrl || brandLogoText}
+                alt="Logo"
+                className="w-auto object-contain drop-shadow-2xl"
+                style={{ height: `${Math.min(logoScale * 1.5, 200)}px` }}
+                onError={(e) => { (e.target as HTMLImageElement).src = brandLogoText; }}
+              />
+              {tvSettings.showFooter && <p className="text-white/20 text-xs">{tvSettings.footer}</p>}
+            </div>
+          </div>
+        );
+      }
+
+      // FURORE MODE (no QR)
+      if (currentStandbyMode === 'furore') {
+        return (
+          <div className="relative rounded-xl overflow-hidden bg-gradient-to-br from-orange-950 via-black to-red-950" style={{ minHeight: previewHeight }}>
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute top-1/4 left-1/4 w-[150px] h-[150px] bg-orange-500/20 rounded-full blur-[80px] animate-pulse" />
+              <div className="absolute bottom-1/4 right-1/4 w-[120px] h-[120px] bg-red-500/15 rounded-full blur-[60px] animate-pulse" style={{ animationDelay: '1s' }} />
+            </div>
+            <div className="relative z-10 flex flex-col items-center justify-center h-full py-6 px-4 text-center" style={{ minHeight: previewHeight }}>
+              <img src={tvSettings.logoUrl || brandLogoText} alt="Logo" className="h-10 md:h-14 w-auto object-contain mb-4" onError={(e) => { (e.target as HTMLImageElement).src = brandLogoText; }} />
+              <h1 className="text-2xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-orange-400 via-red-400 to-orange-400 bg-clip-text text-transparent">Non C'è Furore</h1>
+              <p className="text-xs text-white/30 absolute bottom-4">{tvSettings.footer}</p>
+            </div>
+          </div>
+        );
+      }
+
+      // FURORE + QR MODE
+      if (currentStandbyMode === 'furore_qr') {
+        const defaults = STANDBY_DEFAULTS.furore_qr;
+        const title = tvSettings.title?.trim() && tvSettings.title !== 'Open Mic' ? tvSettings.title : defaults.title;
+        const subtitle = tvSettings.subtitle?.trim() && tvSettings.subtitle !== 'NonceDuo Live Experience' ? tvSettings.subtitle : defaults.subtitle;
+        const cta = tvSettings.qrCta?.trim() && tvSettings.qrCta !== 'Scansiona per prenotare la tua canzone' ? tvSettings.qrCta : defaults.qrCta;
+        return (
+          <div className="relative rounded-xl overflow-hidden bg-gradient-to-br from-orange-950 via-black to-red-950" style={{ minHeight: previewHeight }}>
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute top-1/4 left-1/4 w-[150px] h-[150px] bg-orange-500/20 rounded-full blur-[80px] animate-pulse" />
+              <div className="absolute bottom-1/4 right-1/4 w-[120px] h-[120px] bg-red-500/15 rounded-full blur-[60px] animate-pulse" style={{ animationDelay: '1s' }} />
+            </div>
+            <div className="relative z-10 flex flex-col items-center justify-evenly h-full py-4 px-4 text-center" style={{ minHeight: previewHeight }}>
+              <img src={tvSettings.logoUrl || brandLogoText} alt="Logo" className="h-8 md:h-12 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).src = brandLogoText; }} />
+              <h1 className="text-xl md:text-3xl font-bold bg-gradient-to-r from-orange-400 via-red-400 to-orange-400 bg-clip-text text-transparent">{title}</h1>
+              <p className="text-xs md:text-sm text-white/60">{subtitle}</p>
+              {qrCodeDataUrl && <div className="bg-white rounded-xl p-2 shadow-xl shadow-orange-500/20"><img src={qrCodeDataUrl} alt="QR Code" className="w-20 h-20 md:w-28 md:h-28" /></div>}
+              <p className="text-xs text-orange-200/70">{cta}</p>
+              <p className="text-white/30 text-xs">{tvSettings.footer}</p>
+            </div>
+          </div>
+        );
+      }
+
+      // APP MODE
+      if (currentStandbyMode === 'app') {
+        const defaults = STANDBY_DEFAULTS.app;
+        const title = tvSettings.title?.trim() && tvSettings.title !== 'Open Mic' && tvSettings.title !== "Non C'è Furore" ? tvSettings.title : defaults.title;
+        const subtitle = tvSettings.subtitle?.trim() && tvSettings.subtitle !== 'NonceDuo Live Experience' && tvSettings.subtitle !== 'Scansiona e apri la tua pulsantiera' ? tvSettings.subtitle : defaults.subtitle;
+        const cta = tvSettings.qrCta?.trim() && tvSettings.qrCta !== 'Scansiona per prenotare la tua canzone' && tvSettings.qrCta !== 'Scansiona e premi il buzzer!' ? tvSettings.qrCta : defaults.qrCta;
+        return (
+          <div className="relative rounded-xl overflow-hidden bg-gradient-to-br from-indigo-950 via-black to-violet-950" style={{ minHeight: previewHeight }}>
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute top-1/4 left-1/3 w-[180px] h-[180px] bg-indigo-500/15 rounded-full blur-[100px] animate-pulse" />
+              <div className="absolute bottom-1/4 right-1/4 w-[150px] h-[150px] bg-violet-500/15 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '1.2s' }} />
+            </div>
+            <div className="relative z-10 flex flex-col items-center justify-evenly h-full py-4 px-4 text-center" style={{ minHeight: previewHeight }}>
+              <img src={tvSettings.logoUrl || brandLogoText} alt="Logo" className="h-8 md:h-12 w-auto object-contain drop-shadow-lg" onError={(e) => { (e.target as HTMLImageElement).src = brandLogoText; }} />
+              <h1 className="text-xl md:text-3xl font-bold bg-gradient-to-r from-cyan-400 via-indigo-400 to-violet-400 bg-clip-text text-transparent">{title}</h1>
+              <p className="text-xs md:text-sm text-white/60">{subtitle}</p>
+              {qrCodeDataUrl && <div className="bg-white rounded-2xl p-2 shadow-2xl shadow-indigo-500/30 ring-2 ring-white/20"><img src={qrCodeDataUrl} alt="QR Code" className="w-20 h-20 md:w-28 md:h-28" /></div>}
+              <p className="text-xs text-indigo-200/70 font-medium">{cta}</p>
+              <p className="text-white/30 text-xs">{tvSettings.footer}</p>
+            </div>
+          </div>
+        );
+      }
+
+      // OPEN MIC MODE (default)
+      return (
+        <div className="relative rounded-xl overflow-hidden bg-gradient-to-br from-gray-900 via-black to-gray-900" style={{ minHeight: previewHeight }}>
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-1/4 left-1/4 w-[150px] h-[150px] bg-primary/20 rounded-full blur-[80px] animate-pulse" />
+            <div className="absolute bottom-1/4 right-1/4 w-[120px] h-[120px] bg-purple-500/15 rounded-full blur-[60px] animate-pulse" style={{ animationDelay: '1s' }} />
+          </div>
+          <div className="relative z-10 flex flex-col items-center justify-center h-full py-6 px-4 text-center" style={{ minHeight: previewHeight }}>
+            {tvSettings.showLogo && <img src={tvSettings.logoUrl || brandLogoText} alt="Logo" className="h-10 md:h-14 w-auto object-contain mb-4" onError={(e) => { (e.target as HTMLImageElement).src = brandLogoText; }} />}
+            {tvSettings.showTitle && <h1 className="text-2xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-primary via-purple-400 to-primary bg-clip-text text-transparent">{tvSettings.title}</h1>}
+            {tvSettings.showSubtitle && <p className="text-sm md:text-lg text-white/60 mb-4">{tvSettings.subtitle}</p>}
+            {tvSettings.showStatus && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-full mb-4">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-green-400 font-medium text-sm">Open Mic attivo – Prenota con QR</span>
+              </div>
+            )}
+            {tvSettings.showQr && qrCodeDataUrl && <div className="bg-white rounded-xl p-3 shadow-xl mb-3"><img src={qrCodeDataUrl} alt="QR Code" className="w-24 h-24 md:w-32 md:h-32" /></div>}
+            {tvSettings.showQr && <p className="text-xs md:text-sm text-white/60 mb-4 max-w-xs">{tvSettings.qrCta}</p>}
+            {tvSettings.showFooter && <p className="text-white/30 text-xs absolute bottom-4">{tvSettings.footer}</p>}
+          </div>
+        </div>
+      );
+    };
  
    // Lyrics preview (works for both normal songs and SongBook)
    const renderLyricsPreview = () => {

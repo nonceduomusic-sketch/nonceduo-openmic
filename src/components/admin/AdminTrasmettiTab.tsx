@@ -337,6 +337,20 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                           // Toggle QR visibility
                           updatePayload.tv_show_qr = !!qrUrl;
 
+                          // For logo mode: hide title/subtitle/status since it's logo-only
+                          if (opt.value === 'logo') {
+                            updatePayload.tv_show_title = false;
+                            updatePayload.tv_show_subtitle = false;
+                            updatePayload.tv_show_status = false;
+                          }
+                          // For modes with QR: ensure all elements are visible
+                          if (opt.value === 'openmic' || opt.value === 'furore_qr' || opt.value === 'app') {
+                            updatePayload.tv_show_logo = true;
+                            updatePayload.tv_show_title = true;
+                            updatePayload.tv_show_subtitle = true;
+                            updatePayload.tv_show_footer = true;
+                          }
+
                           await syncUpdate(updatePayload);
                           toast.success(`Schermata: ${opt.label}`);
                         }}

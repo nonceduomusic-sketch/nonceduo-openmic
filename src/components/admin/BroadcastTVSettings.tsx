@@ -197,6 +197,23 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
       setHasChanges(true);
     }
 
+    // For logo mode: hide everything except logo and footer
+    if (mode === 'logo') {
+      payload.tv_show_title = false;
+      payload.tv_show_subtitle = false;
+      payload.tv_show_qr = false;
+      payload.tv_show_status = false;
+
+      setSettings(prev => ({
+        ...prev,
+        tv_show_title: false,
+        tv_show_subtitle: false,
+        tv_show_qr: false,
+        tv_show_status: false,
+      }));
+      setHasChanges(true);
+    }
+
     syncUpdate(payload as any);
 
     void supabase
