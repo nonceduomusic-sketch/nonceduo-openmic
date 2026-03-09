@@ -114,11 +114,11 @@ export const AdminDashboard: React.FC = () => {
     deleteReservation,
     deleteMultipleReservations,
     restoreReservation,
-  } = useReservations();
+   } = useReservations();
   
-  // Note: conversations hook is only used for notifications, not badge count
-  // The badge count comes from AdminMessagesTab via onUnreadCountChange callback
-  const { conversations } = useConversations();
+  // REMOVED: useConversations() was only used to find conversation context for
+  // chat notification popups — now we fetch on-demand in the event handler
+  // to avoid an entire extra Realtime channel + 10s polling loop.
 
   const [reservationNotifications, setReservationNotifications] = useState<Reservation[]>([]);
   const [messageNotifications, setMessageNotifications] = useState<Message[]>([]);
