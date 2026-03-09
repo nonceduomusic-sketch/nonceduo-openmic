@@ -51,6 +51,13 @@ import {
   UserCheck,
   ClipboardList,
   Hash,
+  Gamepad2,
+  Guitar,
+  Link2,
+  Send,
+  Mail,
+  SlidersHorizontal,
+  Tv,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -173,9 +180,8 @@ const handleDownloadTxt = (sectionId: string, title: string) => {
   const content = document.getElementById(sectionId);
   if (!content) return;
 
-  // Extract text content, cleaning up whitespace
   const textContent = content.innerText
-    .replace(/\n{3,}/g, '\n\n') // collapse multiple blank lines
+    .replace(/\n{3,}/g, '\n\n')
     .trim();
 
   const header = `🎵 Non C'è Duo — ${title}\nGenerato il ${new Date().toLocaleDateString('it-IT')}\n${'='.repeat(50)}\n\n`;
@@ -192,6 +198,56 @@ const handleDownloadTxt = (sectionId: string, title: string) => {
   URL.revokeObjectURL(url);
 };
 
+// Word (.doc) Download helper
+const handleDownloadWord = (sectionId: string, title: string) => {
+  const content = document.getElementById(sectionId);
+  if (!content) return;
+
+  const html = `
+    <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+    <head><meta charset="utf-8"><title>${title}</title>
+    <style>
+      body { font-family: Calibri, Arial, sans-serif; padding: 20px; color: #1a1a1a; font-size: 11pt; }
+      h1 { font-size: 20pt; color: #2563eb; margin-bottom: 4pt; }
+      h2 { font-size: 14pt; color: #1e40af; margin-top: 18pt; }
+      h3 { font-size: 12pt; margin-top: 12pt; }
+      p, li { font-size: 11pt; line-height: 1.5; }
+      ul, ol { padding-left: 18pt; }
+      table { border-collapse: collapse; width: 100%; margin: 8pt 0; }
+      td, th { border: 1px solid #d1d5db; padding: 4pt 8pt; font-size: 10pt; }
+      th { background: #f3f4f6; font-weight: bold; }
+      .section { page-break-inside: avoid; margin-bottom: 12pt; }
+    </style>
+    </head><body>
+    <h1>🎵 Non C'è Duo — ${title}</h1>
+    <p style="color:#666;margin-bottom:18pt">Generato il ${new Date().toLocaleDateString('it-IT')}</p>
+    ${content.innerHTML}
+    <p style="margin-top:30pt;text-align:center;color:#888;font-size:9pt;">Non C'è Duo — Manuale Operativo</p>
+    </body></html>
+  `;
+
+  const blob = new Blob(['\ufeff' + html], { type: 'application/msword' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${title.replace(/\s+/g, '-').toLowerCase()}-nonceduo.doc`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+};
+
+// All section IDs
+const USER_SECTION_IDS = ['user-intro','user-openmic','user-dediche','user-community','user-states','user-install'];
+const ADMIN_SECTION_IDS = [
+  // Live
+  'admin-overview','admin-centro','admin-events','admin-freemode','admin-formati','admin-trasmetti','admin-songbook','admin-dual','admin-catalogo-sb','admin-notifiche-live','admin-grafiche','admin-qrcodes',
+  // Operativo
+  'admin-openmic-ops','admin-catalogo','admin-furore','admin-dediche','admin-quiz','admin-giochi','admin-community-admin','admin-assistente','admin-gamification','admin-user-limits',
+  // Gestione
+  'admin-impostazioni','admin-local-wifi','admin-pedal','admin-operators','admin-staff','admin-permissions','admin-audit','admin-block','admin-reset',
+];
+
 const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false }) => {
   const { isLoggedIn, isLoading } = useAdmin();
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['user-intro']));
@@ -206,9 +262,7 @@ const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false
   };
 
   const expandAll = useCallback((prefix: string) => {
-    const allIds = prefix === 'user' 
-      ? ['user-intro','user-openmic','user-dediche','user-community','user-states','user-install']
-      : ['admin-overview','admin-freemode','admin-events','admin-centro','admin-notifications','admin-dediche','admin-trasmetti','admin-songbook','admin-dual','admin-telecomando','admin-catalogo','admin-local-wifi','admin-pedal','admin-community-admin','admin-assistente','admin-grafiche','admin-qrcodes','admin-gamification','admin-user-limits','admin-staff','admin-operators','admin-block','admin-audit','admin-reset','admin-impostazioni'];
+    const allIds = prefix === 'user' ? USER_SECTION_IDS : ADMIN_SECTION_IDS;
     setOpenSections(prev => {
       const next = new Set(prev);
       allIds.forEach(id => next.add(id));
@@ -230,7 +284,7 @@ const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false
 
   const manualContent = (
     <main className={embedded ? "px-2 py-4 pb-24" : "max-w-4xl mx-auto px-4 py-6 pb-24"}>
-      {/* PDF Download Header */}
+      {/* Download Header */}
       <Card className="mb-6 border-primary/30 bg-primary/5">
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
@@ -238,91 +292,49 @@ const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false
             Scarica il Manuale
           </CardTitle>
           <CardDescription className="text-xs">
-            Stampa o salva come PDF le guide per consultarle offline
+            Stampa come PDF, scarica come Word o TXT
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div>
             <p className="text-xs font-medium text-muted-foreground mb-2">📄 Salva come PDF (stampa)</p>
             <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => {
-                  expandAll('user');
-                  setTimeout(() => handlePrintSection('manual-user-content', 'Guida Utente'), 400);
-                }}
-              >
-                <FileText className="w-4 h-4" />
-                Guida Utente
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => { expandAll('user'); setTimeout(() => handlePrintSection('manual-user-content', 'Guida Utente'), 400); }}>
+                <FileText className="w-4 h-4" />Guida Utente
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => {
-                  expandAll('admin');
-                  setTimeout(() => handlePrintSection('manual-admin-content', 'Guida Admin'), 400);
-                }}
-              >
-                <Shield className="w-4 h-4" />
-                Guida Admin
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => { expandAll('admin'); setTimeout(() => handlePrintSection('manual-admin-content', 'Guida Admin'), 400); }}>
+                <Shield className="w-4 h-4" />Guida Admin
               </Button>
-              <Button
-                variant="default"
-                size="sm"
-                className="gap-2"
-                onClick={() => {
-                  expandAll('user');
-                  expandAll('admin');
-                  setTimeout(() => handlePrintSection('manual-full-content', 'Manuale Completo'), 400);
-                }}
-              >
-                <Book className="w-4 h-4" />
-                Manuale Completo
+              <Button variant="default" size="sm" className="gap-2" onClick={() => { expandAll('user'); expandAll('admin'); setTimeout(() => handlePrintSection('manual-full-content', 'Manuale Completo'), 400); }}>
+                <Book className="w-4 h-4" />Manuale Completo
               </Button>
             </div>
           </div>
           <div>
-            <p className="text-xs font-medium text-muted-foreground mb-2">📝 Scarica come TXT</p>
+            <p className="text-xs font-medium text-muted-foreground mb-2">📝 Scarica come Word (.doc)</p>
             <div className="flex flex-wrap gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => {
-                  expandAll('user');
-                  setTimeout(() => handleDownloadTxt('manual-user-content', 'Guida Utente'), 400);
-                }}
-              >
-                <Download className="w-4 h-4" />
-                Guida Utente
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => { expandAll('user'); setTimeout(() => handleDownloadWord('manual-user-content', 'Guida Utente'), 400); }}>
+                <FileText className="w-4 h-4" />Guida Utente
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => {
-                  expandAll('admin');
-                  setTimeout(() => handleDownloadTxt('manual-admin-content', 'Guida Admin'), 400);
-                }}
-              >
-                <Download className="w-4 h-4" />
-                Guida Admin
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => { expandAll('admin'); setTimeout(() => handleDownloadWord('manual-admin-content', 'Guida Admin'), 400); }}>
+                <Shield className="w-4 h-4" />Guida Admin
               </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                className="gap-2"
-                onClick={() => {
-                  expandAll('user');
-                  expandAll('admin');
-                  setTimeout(() => handleDownloadTxt('manual-full-content', 'Manuale Completo'), 400);
-                }}
-              >
-                <Download className="w-4 h-4" />
-                Manuale Completo
+              <Button variant="secondary" size="sm" className="gap-2" onClick={() => { expandAll('user'); expandAll('admin'); setTimeout(() => handleDownloadWord('manual-full-content', 'Manuale Completo'), 400); }}>
+                <FileText className="w-4 h-4" />Manuale Completo
+              </Button>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-muted-foreground mb-2">📋 Scarica come TXT</p>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => { expandAll('user'); setTimeout(() => handleDownloadTxt('manual-user-content', 'Guida Utente'), 400); }}>
+                <Download className="w-4 h-4" />Guida Utente
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => { expandAll('admin'); setTimeout(() => handleDownloadTxt('manual-admin-content', 'Guida Admin'), 400); }}>
+                <Download className="w-4 h-4" />Guida Admin
+              </Button>
+              <Button variant="secondary" size="sm" className="gap-2" onClick={() => { expandAll('user'); expandAll('admin'); setTimeout(() => handleDownloadTxt('manual-full-content', 'Manuale Completo'), 400); }}>
+                <Download className="w-4 h-4" />Manuale Completo
               </Button>
             </div>
           </div>
@@ -364,7 +376,9 @@ const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false
                   <div className="grid gap-3">
                     <FeatureCard icon={<Music className="w-5 h-5 text-primary" />} title="Open Mic 🎤" description="Prenota una canzone da cantare durante la serata" />
                     <FeatureCard icon={<MessageSquare className="w-5 h-5 text-secondary" />} title="Dediche 💌" description="Invia un messaggio o una dedica alla band" />
+                    <FeatureCard icon={<Zap className="w-5 h-5 text-amber-500" />} title="Non C'è Furore ⚡" description="Gioco buzzer live: prenota e schiaccia!" />
                     <FeatureCard icon={<Users className="w-5 h-5 text-accent" />} title="Community 👥" description="Gruppi di chat, bacheca sociale e amicizie" />
+                    <FeatureCard icon={<Gamepad2 className="w-5 h-5 text-emerald-500" />} title="Giochi 🎮" description="Quiz musicali e giochi passatempo" />
                     <FeatureCard icon={<Trophy className="w-5 h-5 text-amber-500" />} title="Gamification 🏆" description="Guadagna punti e sali in classifica partecipando" />
                   </div>
                   <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
@@ -499,53 +513,123 @@ const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false
                 <CardHeader className="pb-3">
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Shield className="w-5 h-5 text-primary" />
-                    Pannello Admin
+                    Pannello Admin — Guida Completa
                   </CardTitle>
-                  <CardDescription>Gestisci eventi, formati, broadcast e il tuo team</CardDescription>
+                  <CardDescription>Ogni sezione, ogni pulsante, ogni funzione documentata</CardDescription>
                 </CardHeader>
               </Card>
 
-              {/* Panoramica */}
+              {/* ===== PANORAMICA ===== */}
               <ManualCollapsible id="admin-overview" title="Panoramica del pannello" icon={<Settings className="w-5 h-5 text-muted-foreground" />} isOpen={openSections.has('admin-overview')} onToggle={() => toggleSection('admin-overview')}>
                 <div className="space-y-4 text-sm">
-                  <p>Il pannello è organizzato in tre aree principali:</p>
+                  <p>Il pannello è organizzato in <strong>tre aree</strong> principali nella sidebar:</p>
                   <div className="space-y-3">
                     <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                      <p className="font-bold text-primary mb-2">🔴 LIVE</p>
-                      <ul className="space-y-1 text-muted-foreground">
+                      <p className="font-bold text-primary mb-2">🔴 LIVE (8 sezioni)</p>
+                      <ul className="space-y-1 text-muted-foreground text-xs">
                         <li><strong>Centro:</strong> Dashboard in tempo reale con notifiche</li>
-                        <li><strong>Evento:</strong> Gestione eventi programmati</li>
-                        <li><strong>Formati:</strong> Toggle rapidi e notifiche</li>
-                        <li><strong>Trasmetti:</strong> Broadcast TV, SongBook e partiture</li>
-                        <li><strong>Notifiche Live:</strong> Email e Telegram</li>
+                        <li><strong>Eventi:</strong> Gestione eventi programmati e liberi</li>
+                        <li><strong>Formati:</strong> Toggle visibilità, votazioni, community, giochi</li>
+                        <li><strong>Trasmetti:</strong> Broadcast TV, standby, QR e personalizzazione</li>
+                        <li><strong>SongBook Live:</strong> Console ChordPro per il leader</li>
+                        <li><strong>Catalogo ↔ SB:</strong> Collegamento brani catalogo ↔ file .cho</li>
+                        <li><strong>Notifiche Live:</strong> Email e Telegram automatiche</li>
                         <li><strong>Grafiche:</strong> Locandine e storie social</li>
                       </ul>
                     </div>
                     <div className="p-3 rounded-lg bg-secondary/10 border border-secondary/20">
-                      <p className="font-bold text-secondary mb-2">📋 OPERATIVO</p>
-                      <ul className="space-y-1 text-muted-foreground">
+                      <p className="font-bold text-secondary mb-2">📋 OPERATIVO (8 sezioni)</p>
+                      <ul className="space-y-1 text-muted-foreground text-xs">
                         <li><strong>Open Mic:</strong> Lista prenotazioni canzoni</li>
                         <li><strong>Canzoni:</strong> Catalogo brani + SongBook (.cho)</li>
+                        <li><strong>Non C'è Furore:</strong> Pulsantiera live buzzer</li>
                         <li><strong>Dediche:</strong> Messaggi e chat con utenti</li>
+                        <li><strong>Quiz:</strong> Elenchi domande, set e filtri</li>
+                        <li><strong>Giochi:</strong> Impostazioni e classifiche passatempo</li>
                         <li><strong>Community:</strong> Gruppi, bacheca e moderazione</li>
                         <li><strong>Assistente:</strong> Chat automatica e gestione lead</li>
                       </ul>
                     </div>
                     <div className="p-3 rounded-lg bg-muted border">
-                      <p className="font-bold mb-2">⚙️ GESTIONE</p>
-                      <ul className="space-y-1 text-muted-foreground">
-                        <li><strong>Impostazioni:</strong> Connessione, pedale, temi</li>
+                      <p className="font-bold mb-2">⚙️ GESTIONE (5 sezioni, Owner-only)</p>
+                      <ul className="space-y-1 text-muted-foreground text-xs">
+                        <li><strong>Impostazioni:</strong> Connessione, pedale, temi, credenziali</li>
                         <li><strong>Operatori:</strong> Account con accesso limitato</li>
-                        <li><strong>Staff:</strong> Gestione team (solo Owner)</li>
-                        <li><strong>Permessi:</strong> Controllo accessi (solo Owner)</li>
-                        <li><strong>Audit:</strong> Log attività (solo Owner)</li>
+                        <li><strong>Staff:</strong> Gestione team</li>
+                        <li><strong>Permessi:</strong> Controllo accessi granulare</li>
+                        <li><strong>Audit:</strong> Log attività completo</li>
                         <li><strong>Manuale:</strong> Questa guida</li>
                       </ul>
                     </div>
                   </div>
                   <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
                     <p className="font-medium text-accent mb-1">📱 Navigazione mobile</p>
-                    <p className="text-muted-foreground text-xs">Da telefono, le 5 sezioni principali sono nella barra in basso. Tutto il resto è nel <strong>menu hamburger</strong> in alto a sinistra.</p>
+                    <p className="text-muted-foreground text-xs">Da telefono, le 5 sezioni principali sono nella barra in basso. Tutto il resto è nel <strong>menu hamburger</strong> in alto a sinistra. Su tablet e computer la sidebar è sempre visibile.</p>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* ===== SEZIONE LIVE ===== */}
+              <div className="pt-2">
+                <h3 className="text-sm font-bold text-primary uppercase tracking-wider flex items-center gap-2 mb-3">
+                  🔴 Sezione LIVE
+                </h3>
+              </div>
+
+              {/* Centro Notifiche */}
+              <ManualCollapsible id="admin-centro" title="Centro Notifiche" icon={<Bell className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-centro')} onToggle={() => toggleSection('admin-centro')}>
+                <div className="space-y-4 text-sm">
+                  <p>Il <strong>Centro</strong> è la dashboard operativa principale per gestire tutto in tempo reale.</p>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Elementi della schermata:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Feed unificato:</strong> Canzoni e dediche in un'unica lista cronologica</li>
+                      <li>• <strong>Filtri tab:</strong> In coda, Canzoni, Dediche, Tutte</li>
+                      <li>• <strong>Swipe:</strong> Scorri a destra per completare, a sinistra per eliminare</li>
+                      <li>• <strong>Tap canzone:</strong> Tocca per vedere il testo/accordi</li>
+                      <li>• <strong>Contatore serate:</strong> Quante canzoni hai completato stasera</li>
+                      <li>• <strong>Utenti connessi:</strong> Numero di dispositivi collegati in tempo reale</li>
+                      <li>• <strong>Badge LIVE:</strong> Indica se c'è un evento attivo</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
+                    <p className="font-medium text-accent mb-1">⚡ Realtime</p>
+                    <p className="text-muted-foreground text-xs">Le prenotazioni e dediche arrivano istantaneamente via Realtime. Nessun refresh necessario.</p>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* Eventi Programmati */}
+              <ManualCollapsible id="admin-events" title="Eventi" icon={<Calendar className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-events')} onToggle={() => toggleSection('admin-events')}>
+                <div className="space-y-4 text-sm">
+                  <p>Gli eventi hanno 4 stati:</p>
+                  <div className="grid gap-2">
+                    <StatusBadge status="draft" label="Bozza" description="In lavorazione, non visibile agli utenti" />
+                    <StatusBadge status="ready" label="Pronto" description="Configurato, visibile come 'prossimamente'" />
+                    <StatusBadge status="live" label="LIVE" description="Attivo, le regole sono applicate" />
+                    <StatusBadge status="closed" label="Chiuso" description="Terminato, archivio" />
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Pulsanti e opzioni:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Tipo evento:</strong> Selettore tra diversi formati (Open Mic, Party, ecc.)</li>
+                      <li>• <strong>Data e orari:</strong> Data evento, ora inizio/fine</li>
+                      <li>• <strong>Formati attivi:</strong> Toggle per Open Mic e/o Dediche</li>
+                      <li>• <strong>Limite canzoni:</strong> Max prenotazioni totali Open Mic</li>
+                      <li>• <strong>Limite dediche:</strong> Max dediche totali</li>
+                      <li>• <strong>PIN:</strong> Toggle + campo per il codice d'accesso</li>
+                      <li>• <strong>Finestra prenotazione:</strong> Apertura/chiusura automatica</li>
+                      <li>• <strong>Chiusura automatica:</strong> X minuti prima della fine evento</li>
+                      <li>• <strong>Countdown:</strong> Mostra/nascondi timer finale per gli utenti</li>
+                      <li>• <strong>Limite finale:</strong> Riduce gli slot disponibili negli ultimi minuti</li>
+                      <li>• <strong>Modalità consultabile:</strong> Gli utenti vedono il catalogo ma non prenotano</li>
+                      <li>• <strong>Protezione repertorio:</strong> Nascondi brani non nel repertorio</li>
+                      <li>• <strong>Votazioni:</strong> Abilita/disabilita i voti del pubblico</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
+                    <p className="font-medium text-accent mb-1">🔄 Riapertura evento</p>
+                    <p className="text-muted-foreground text-xs">Dopo la chiusura puoi riaprire temporaneamente con slot extra. Modalità: timer (si richiude dopo X minuti) o manuale (chiudi quando vuoi).</p>
                   </div>
                 </div>
               </ManualCollapsible>
@@ -553,84 +637,353 @@ const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false
               {/* Serata Aperta */}
               <ManualCollapsible id="admin-freemode" title="Serata Aperta (Free Mode)" icon={<Zap className="w-5 h-5 text-accent" />} isOpen={openSections.has('admin-freemode')} onToggle={() => toggleSection('admin-freemode')}>
                 <div className="space-y-4 text-sm">
-                  <p>La <strong>Serata Aperta</strong> attiva i formati senza evento programmato. Perfetta per serate improvvisate e test.</p>
+                  <p>La <strong>Serata Aperta</strong> attiva i formati senza evento programmato. Perfetta per serate improvvisate.</p>
                   <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
                     <p className="font-medium text-accent mb-2">Come attivare:</p>
                     <ol className="list-decimal list-inside space-y-1 text-muted-foreground">
-                      <li>Vai su <strong>Formati</strong></li>
+                      <li>Vai su <strong>Eventi</strong></li>
                       <li>Usa la card <strong>"Serata Aperta"</strong></li>
                       <li>Attiva Open Mic, Dediche o entrambi</li>
                     </ol>
                   </div>
                   <div className="p-3 rounded-lg bg-muted border">
-                    <p className="font-medium mb-1">⚠️ Nota</p>
+                    <p className="font-medium mb-1">⚠️ Priorità</p>
                     <p className="text-muted-foreground">Se c'è un evento LIVE, la Serata Aperta viene ignorata. L'evento LIVE ha sempre priorità!</p>
                   </div>
                 </div>
               </ManualCollapsible>
 
-              {/* Eventi Programmati */}
-              <ManualCollapsible id="admin-events" title="Eventi Programmati" icon={<Calendar className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-events')} onToggle={() => toggleSection('admin-events')}>
+              {/* Formati */}
+              <ManualCollapsible id="admin-formati" title="Formati & Notifiche" icon={<SlidersHorizontal className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-formati')} onToggle={() => toggleSection('admin-formati')}>
                 <div className="space-y-4 text-sm">
-                  <p>Gli eventi hanno 4 stati:</p>
-                  <div className="grid gap-2">
-                    <StatusBadge status="draft" label="Bozza" description="In lavorazione, non visibile" />
-                    <StatusBadge status="ready" label="Pronto" description="Configurato, visibile come 'prossimamente'" />
-                    <StatusBadge status="live" label="LIVE" description="Attivo, le regole sono applicate" />
-                    <StatusBadge status="closed" label="Chiuso" description="Terminato, archivio" />
+                  <p>La sezione <strong>Formati</strong> gestisce la visibilità globale delle funzionalità e le notifiche admin.</p>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Toggle Visibilità Sito:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Mostra Open Mic nel menu:</strong> Visibilità della voce Open Mic nel menu principale</li>
+                      <li>• <strong>Mostra Dediche nel menu:</strong> Visibilità della voce Dediche nel menu</li>
+                      <li>• <strong>Mostra Community nel menu:</strong> Visibilità della voce Community</li>
+                      <li>• <strong>Mostra Furore nel menu:</strong> Visibilità di Non C'è Furore</li>
+                      <li>• <strong>Mostra Giochi nel menu:</strong> Visibilità dei giochi passatempo</li>
+                    </ul>
                   </div>
-                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                    <p className="font-medium text-primary mb-2">Configurazioni disponibili:</p>
-                    <ul className="space-y-1 text-muted-foreground">
-                      <li>• <strong>Tipo evento:</strong> Open Mic, Dediche o entrambi</li>
-                      <li>• <strong>Finestra temporale:</strong> Quando aprono/chiudono le prenotazioni</li>
-                      <li>• <strong>Limiti globali:</strong> Max canzoni e dediche totali</li>
-                      <li>• <strong>Limiti per utente:</strong> Max per persona, cooldown, consecutivi</li>
-                      <li>• <strong>PIN:</strong> Codice d'accesso opzionale</li>
-                      <li>• <strong>Riapertura:</strong> Slot extra temporanei dopo la chiusura</li>
-                      <li>• <strong>Chiusura automatica:</strong> Minuti prima della fine evento</li>
-                      <li>• <strong>Countdown:</strong> Timer visibile agli utenti</li>
-                      <li>• <strong>Modalità consultabile:</strong> Catalogo visibile ma non prenotabile</li>
-                      <li>• <strong>Anteprima catalogo:</strong> Mostra i brani prima dell'apertura</li>
-                      <li>• <strong>Protezione repertorio:</strong> Nascondi brani non disponibili</li>
-                      <li>• <strong>Votazioni:</strong> Abilita i voti sulla scaletta</li>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Toggle Visibilità App:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Mostra nell'app:</strong> Toggle separati per ogni formato nella pagina /app</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Funzionalità:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Scaletta Live:</strong> Mostra/nascondi la scaletta in coda agli utenti</li>
+                      <li>• <strong>Votazioni Pubblico:</strong> Abilita/disabilita i voti sulle canzoni in coda</li>
+                      <li>• <strong>Giochi singoli:</strong> Toggle individuale per ogni gioco (Quiz, ecc.)</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                    <p className="font-bold mb-2">🔔 Notifiche Admin Push:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Attiva:</strong> Abilita le notifiche push sul dispositivo</li>
+                      <li>• <strong>Background:</strong> Ricevi notifiche anche a app chiusa</li>
+                      <li>• <strong>Test ritardato:</strong> Invia una notifica di prova dopo 5 secondi</li>
                     </ul>
                   </div>
                   <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
-                    <p className="font-medium text-accent mb-1">🔄 Riapertura evento</p>
-                    <p className="text-muted-foreground text-xs">Dopo la chiusura puoi riaprire temporaneamente con slot extra. Modalità disponibili: timer (si richiude dopo X minuti) o manuale (chiudi quando vuoi).</p>
+                    <p className="font-medium text-accent mb-1">💡 Nota</p>
+                    <p className="text-muted-foreground text-xs">Open Mic e Dediche come formati attivi si gestiscono dalla sezione <strong>Eventi</strong>. Qui si controlla solo la visibilità nel menu e le votazioni.</p>
                   </div>
                 </div>
               </ManualCollapsible>
 
-              {/* Centro Notifiche */}
-              <ManualCollapsible id="admin-centro" title="Centro Notifiche" icon={<Bell className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-centro')} onToggle={() => toggleSection('admin-centro')}>
+              {/* Trasmetti (Broadcast TV) */}
+              <ManualCollapsible id="admin-trasmetti" title="Trasmetti (Broadcast TV)" icon={<Tv className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-trasmetti')} onToggle={() => toggleSection('admin-trasmetti')}>
                 <div className="space-y-4 text-sm">
-                  <p>Il <strong>Centro</strong> è la dashboard operativa per gestire le richieste in tempo reale.</p>
+                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                    <p className="font-medium text-primary mb-1">📺 A cosa serve?</p>
+                    <p className="text-muted-foreground">Proietta i testi delle canzoni sulla TV del locale in tempo reale.</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Modalità Standby TV:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Solo Logo:</strong> Mostra solo il logo della band centrato su sfondo scuro</li>
+                      <li>• <strong>Open Mic:</strong> Titolo "Open Mic" con QR che punta a /app/openmic</li>
+                      <li>• <strong>Non C'è Furore:</strong> Schermata gioco standard</li>
+                      <li>• <strong>Non C'è Furore + QR:</strong> Tema Furore con QR verso /app/furore</li>
+                      <li>• <strong>Pagina APP:</strong> Tema indaco/viola con QR verso /app</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Modalità di visualizzazione testo:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Compatta:</strong> Testo puro, massima leggibilità</li>
+                      <li>• <strong>Karaoke:</strong> Con evidenziazione riga attiva</li>
+                      <li>• <strong>Spotify:</strong> Stile moderno con sfondo colorato</li>
+                      <li>• <strong>ChordPro:</strong> Testo con accordi sopra le parole</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Personalizzazione elementi TV:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Logo:</strong> Upload del logo della band, visibile sulla TV con scala regolabile</li>
+                      <li>• <strong>QR Code:</strong> Toggle mostra/nascondi, URL e testo CTA personalizzabili</li>
+                      <li>• <strong>Titolo / Sottotitolo:</strong> Testi personalizzati per la schermata di attesa</li>
+                      <li>• <strong>Footer:</strong> Testo in basso nella schermata di attesa</li>
+                      <li>• <strong>Dimensione font TV:</strong> Slider 50%–300% per calibrare la leggibilità</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Telecomandi:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Crea telecomando:</strong> Genera un nuovo accesso remoto con PIN</li>
+                      <li>• <strong>PIN:</strong> Codice per proteggere l'accesso al telecomando</li>
+                      <li>• <strong>Attiva/disattiva:</strong> Controlla quali telecomandi sono validi</li>
+                      <li>• <strong>Link online e locali:</strong> URL da dare allo staff per il controllo remoto</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
+                    <p className="font-medium text-accent mb-2">🔗 Destinazioni broadcast:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>/trasmetti</strong> — Vista TV (testo grande, evidenziazione)</li>
+                      <li>• <strong>/partiture</strong> — Vista musicisti (accordi, trasposizione)</li>
+                      <li>• <strong>/telecomando</strong> — Controllo remoto per lo staff</li>
+                      <li>• <strong>/songbook-live</strong> — Console leader per gestire tutto</li>
+                    </ul>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* SongBook Live */}
+              <ManualCollapsible id="admin-songbook" title="SongBook Live (Console Leader)" icon={<Guitar className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-songbook')} onToggle={() => toggleSection('admin-songbook')}>
+                <div className="space-y-4 text-sm">
+                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                    <p className="font-medium text-primary mb-1">🎸 A cosa serve?</p>
+                    <p className="text-muted-foreground">Console principale per il leader. Controlla quale brano viene trasmesso, scorri il testo e sincronizzi tutti i dispositivi.</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Pulsanti e funzionalità:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Catalogo completo:</strong> Cerca e seleziona tra tutti i file .cho</li>
+                      <li>• <strong>File .cho:</strong> Visualizza accordi con formato ChordPro</li>
+                      <li>• <strong>Trasposizione:</strong> Cambia tonalità (+/- semitoni), sincronizzata su tutti</li>
+                      <li>• <strong>Evidenziazione:</strong> Toggle on/off per la riga attiva, muovibile con frecce/pedale</li>
+                      <li>• <strong>Trasmetti/Interrompi:</strong> Avvia o ferma la trasmissione del brano corrente</li>
+                      <li>• <strong>Banner LIVE:</strong> Quando un brano è in trasmissione, un banner permette di rientrare o interrompere</li>
+                      <li>• <strong>Drawer impostazioni:</strong> Pannello laterale con controlli avanzati (font, scroll, duale)</li>
+                      <li>• <strong>Setlist:</strong> Seleziona e naviga tra le scalette</li>
+                    </ul>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* Trasmissione Duale */}
+              <ManualCollapsible id="admin-dual" title="Trasmissione Duale" icon={<Layers className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-dual')} onToggle={() => toggleSection('admin-dual')}>
+                <div className="space-y-4 text-sm">
+                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                    <p className="font-medium text-primary mb-1">🔀 Cos'è?</p>
+                    <p className="text-muted-foreground">Invia contemporaneamente il <strong>testo pulito</strong> (dal Catalogo) alla TV e il <strong>file .cho con accordi</strong> ai musicisti su /partiture.</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Come funziona:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• I brani del Catalogo devono essere <strong>collegati</strong> ai file SongBook tramite Catalogo ↔ SB</li>
+                      <li>• Quando trasmetti un brano collegato, la duale si attiva automaticamente</li>
+                      <li>• La TV mostra il testo senza accordi (scroll proporzionale)</li>
+                      <li>• Le partiture mostrano il file .cho con accordi (sync riga-per-riga)</li>
+                    </ul>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* Catalogo ↔ SB */}
+              <ManualCollapsible id="admin-catalogo-sb" title="Catalogo ↔ SongBook" icon={<Link2 className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-catalogo-sb')} onToggle={() => toggleSection('admin-catalogo-sb')}>
+                <div className="space-y-4 text-sm">
+                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                    <p className="font-medium text-primary mb-1">🔗 A cosa serve?</p>
+                    <p className="text-muted-foreground">Collega ogni brano del catalogo al suo file .cho nel SongBook. Questo abilita la trasmissione duale automatica.</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Pulsanti e funzionalità:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Vista affiancata:</strong> Catalogo a sinistra, SongBook a destra</li>
+                      <li>• <strong>Ricerca:</strong> Cerca per titolo/artista in entrambe le colonne</li>
+                      <li>• <strong>Filtro stato:</strong> Tutti, Collegati, Non collegati</li>
+                      <li>• <strong>Collega:</strong> Seleziona un brano catalogo e un file .cho per collegarli</li>
+                      <li>• <strong>Scollega:</strong> Rimuovi un collegamento esistente</li>
+                      <li>• <strong>Auto-match:</strong> Suggerimenti automatici basati su titolo/artista</li>
+                      <li>• <strong>Trasmetti da qui:</strong> Avvia la trasmissione direttamente dalla vista collegamento</li>
+                      <li>• <strong>Anteprima:</strong> Visualizza il testo del brano o del file .cho</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
+                    <p className="font-medium text-accent mb-1">📱 Mobile</p>
+                    <p className="text-muted-foreground text-xs">Su telefono la vista è impilata (catalogo sopra, songbook sotto). Su tablet/desktop è affiancata.</p>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* Notifiche Live */}
+              <ManualCollapsible id="admin-notifiche-live" title="Notifiche Live (Email e Telegram)" icon={<Send className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-notifiche-live')} onToggle={() => toggleSection('admin-notifiche-live')}>
+                <div className="space-y-4 text-sm">
+                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
+                    <p className="font-medium text-primary mb-1">📩 A cosa serve?</p>
+                    <p className="text-muted-foreground">Ricevi notifiche automatiche via email e/o Telegram quando arrivano prenotazioni o dediche.</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Configurazione Email:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Abilita email:</strong> Toggle generale per le notifiche email</li>
+                      <li>• <strong>Destinatario:</strong> Indirizzo email dove ricevere le notifiche</li>
+                      <li>• <strong>Open Mic:</strong> Toggle per notifiche su nuove prenotazioni</li>
+                      <li>• <strong>Dediche:</strong> Toggle per notifiche su nuove dediche</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Configurazione Telegram:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Abilita Telegram:</strong> Toggle generale per Telegram</li>
+                      <li>• <strong>Chat ID Open Mic:</strong> ID del gruppo/canale per le prenotazioni</li>
+                      <li>• <strong>Chat ID Dediche:</strong> ID del gruppo/canale per le dediche</li>
+                      <li>• <strong>Open Mic:</strong> Toggle per notifiche Telegram su prenotazioni</li>
+                      <li>• <strong>Dediche:</strong> Toggle per notifiche Telegram su dediche</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Log notifiche:</p>
+                    <p className="text-muted-foreground text-xs">In basso vedrai lo storico delle notifiche inviate con stato (inviato/fallito), canale e orario.</p>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* Grafiche */}
+              <ManualCollapsible id="admin-grafiche" title="Grafiche (Locandine e Storie)" icon={<Image className="w-5 h-5 text-accent" />} isOpen={openSections.has('admin-grafiche')} onToggle={() => toggleSection('admin-grafiche')}>
+                <div className="space-y-4 text-sm">
+                  <p>Genera automaticamente materiale promozionale:</p>
                   <ul className="space-y-1 text-muted-foreground">
-                    <li>• <strong>Feed unificato:</strong> Canzoni e dediche in un'unica lista</li>
-                    <li>• <strong>Filtri:</strong> In coda, Canzoni, Dediche, Tutte</li>
-                    <li>• <strong>Swipe:</strong> Scorri per completare o eliminare</li>
-                    <li>• <strong>Tap:</strong> Tocca per vedere i testi delle canzoni</li>
-                    <li>• <strong>Contatore:</strong> Quante canzoni hai fatto nella serata</li>
-                    <li>• <strong>Utenti connessi:</strong> Numero di dispositivi collegati</li>
+                    <li>• <strong>Locandine evento:</strong> Poster con data, luogo e QR code</li>
+                    <li>• <strong>Storie social:</strong> Formato verticale per Instagram/WhatsApp</li>
+                    <li>• <strong>Personalizzazione:</strong> Scegli foto, colori e testi</li>
+                    <li>• <strong>Download diretto:</strong> Scarica l'immagine generata</li>
                   </ul>
                 </div>
               </ManualCollapsible>
 
-              {/* Notifiche Push */}
-              <ManualCollapsible id="admin-notifications" title="Notifiche Push" icon={<Smartphone className="w-5 h-5 text-blue-500" />} isOpen={openSections.has('admin-notifications')} onToggle={() => toggleSection('admin-notifications')}>
+              {/* QR Codes */}
+              <ManualCollapsible id="admin-qrcodes" title="QR Codes Evento" icon={<QrCode className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-qrcodes')} onToggle={() => toggleSection('admin-qrcodes')}>
                 <div className="space-y-4 text-sm">
-                  <p>Ricevi notifiche anche quando l'app è chiusa:</p>
-                  <ol className="list-decimal list-inside space-y-2">
-                    <li>Vai su <strong>Formati → Notifiche</strong></li>
-                    <li>Clicca <strong>"Attiva"</strong></li>
-                    <li>Attiva <strong>"Notifiche Background"</strong> per riceverle a app chiusa</li>
-                    <li>Usa <strong>"Test ritardato"</strong> per verificare</li>
-                  </ol>
-                  <div className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20">
-                    <p className="font-medium text-blue-500 mb-1">📱 Android + iOS</p>
-                    <p className="text-muted-foreground text-xs">Le notifiche background funzionano meglio su Android. Su iOS, aggiungi l'app alla schermata home.</p>
+                  <ul className="space-y-1 text-muted-foreground">
+                    <li>• <strong>QR con PIN integrato:</strong> Scansiona e accedi direttamente</li>
+                    <li>• <strong>Multipli QR:</strong> Crea QR diversi per tavoli o zone</li>
+                    <li>• <strong>Statistiche:</strong> Quante volte è stato usato ogni QR</li>
+                    <li>• <strong>Attiva/disattiva:</strong> Controlla quali QR sono validi</li>
+                    <li>• <strong>Stampa:</strong> Scarica e stampa per i tavoli del locale</li>
+                  </ul>
+                </div>
+              </ManualCollapsible>
+
+              {/* ===== SEZIONE OPERATIVO ===== */}
+              <div className="pt-4">
+                <h3 className="text-sm font-bold text-secondary uppercase tracking-wider flex items-center gap-2 mb-3">
+                  📋 Sezione OPERATIVO
+                </h3>
+              </div>
+
+              {/* Open Mic (Operativo) */}
+              <ManualCollapsible id="admin-openmic-ops" title="Open Mic (Gestione Prenotazioni)" icon={<Music className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-openmic-ops')} onToggle={() => toggleSection('admin-openmic-ops')}>
+                <div className="space-y-4 text-sm">
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Pulsanti e azioni:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Lista prenotazioni:</strong> Tutte le canzoni prenotate in ordine cronologico</li>
+                      <li>• <strong>Completa (✓):</strong> Segna una canzone come cantata</li>
+                      <li>• <strong>Elimina (✕):</strong> Rimuovi una prenotazione dalla coda</li>
+                      <li>• <strong>Undo (↩):</strong> Annulla l'ultima azione (8-10 secondi)</li>
+                      <li>• <strong>Reset Open Mic:</strong> Elimina tutte le prenotazioni (con conferma)</li>
+                      <li>• <strong>Seleziona multipli:</strong> Checkbox per azioni in blocco</li>
+                      <li>• <strong>Filtro artista:</strong> Filtra per artista dinamico dalla coda</li>
+                      <li>• <strong>Cerca:</strong> Cerca per nome partecipante o canzone</li>
+                    </ul>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* Catalogo Brani */}
+              <ManualCollapsible id="admin-catalogo" title="Canzoni (Catalogo & SongBook)" icon={<Music className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-catalogo')} onToggle={() => toggleSection('admin-catalogo')}>
+                <div className="space-y-4 text-sm">
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Catalogo Brani:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Aggiungi brani:</strong> Manualmente o importa da CSV</li>
+                      <li>• <strong>Campi:</strong> Titolo, artista, testo, lingua, genere</li>
+                      <li>• <strong>Ricerca:</strong> Per titolo, artista o contenuto</li>
+                      <li>• <strong>Testi:</strong> Cerca automaticamente i testi online</li>
+                      <li>• <strong>Modifica/Elimina:</strong> Modifica ogni campo o elimina brani</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">SongBook (file .cho):</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Importa file .cho:</strong> Singoli o cartelle intere (.zip)</li>
+                      <li>• <strong>Formato ChordPro:</strong> Accordi sopra le parole</li>
+                      <li>• <strong>Duplicati:</strong> Rilevamento automatico tramite hash</li>
+                      <li>• <strong>Versioni:</strong> Stesso brano, arrangiamenti diversi → conserva entrambi</li>
+                      <li>• <strong>Master:</strong> Segna la versione preferita con ⭐</li>
+                      <li>• <strong>Export:</strong> Scarica file .cho singoli o in blocco (.zip)</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Setlist:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Crea scalette:</strong> Ordina i brani per la serata</li>
+                      <li>• <strong>Drag & drop:</strong> Riordina trascinando</li>
+                      <li>• <strong>Note:</strong> Aggiungi note per ogni brano</li>
+                      <li>• <strong>Default:</strong> Segna una setlist come predefinita</li>
+                    </ul>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* Non C'è Furore */}
+              <ManualCollapsible id="admin-furore" title="Non C'è Furore (Buzzer Live)" icon={<Zap className="w-5 h-5 text-amber-500" />} isOpen={openSections.has('admin-furore')} onToggle={() => toggleSection('admin-furore')}>
+                <div className="space-y-4 text-sm">
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <p className="font-medium text-amber-600 dark:text-amber-400 mb-1">⚡ A cosa serve?</p>
+                    <p className="text-muted-foreground">Gioco live con pulsantiera buzzer. I giocatori entrano con il telefono e schiacciano per primo!</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Pannello Admin:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Stato sessione:</strong> Aperta / In attesa / In corso / Chiusa</li>
+                      <li>• <strong>Apri sessione:</strong> Crea una nuova sessione di gioco</li>
+                      <li>• <strong>Chiudi sessione:</strong> Termina il gioco corrente</li>
+                      <li>• <strong>Reset sessione:</strong> Azzera punteggi e giocatori</li>
+                      <li>• <strong>Max giocatori:</strong> Imposta il limite massimo di partecipanti</li>
+                      <li>• <strong>Suono buzzer:</strong> Scegli tra diversi suoni (synth, classici)</li>
+                      <li>• <strong>Auto-scoring:</strong> Punti assegnati automaticamente al primo che schiaccia</li>
+                      <li>• <strong>Mostra classifica:</strong> Toggle per rendere visibile la classifica ai giocatori</li>
+                      <li>• <strong>Mostra prenotazioni:</strong> Mostra l'ordine di prenotazione ai giocatori</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Gestione giocatori:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Lista giocatori:</strong> Vedi tutti con nickname, colore e punteggio</li>
+                      <li>• <strong>Modifica punteggio:</strong> Assegna o sottrai punti manualmente</li>
+                      <li>• <strong>Espelli giocatore:</strong> Rimuovi un giocatore dalla sessione</li>
+                      <li>• <strong>Ordine prenotazione:</strong> Chi ha prenotato il buzzer per primo</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Regole punteggio:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>1° posto:</strong> Punti configurabili (default: 3)</li>
+                      <li>• <strong>2° posto:</strong> Punti configurabili (default: 2)</li>
+                      <li>• <strong>3° posto:</strong> Punti configurabili (default: 1)</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
+                    <p className="font-medium text-accent mb-1">📺 TV e Remoto</p>
+                    <p className="text-muted-foreground text-xs">Il gioco può essere trasmesso sulla TV (standby "Furore + QR"). Il link remoto permette di controllare la sessione da un altro dispositivo.</p>
                   </div>
                 </div>
               </ManualCollapsible>
@@ -653,165 +1006,159 @@ const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false
                       <div><p className="font-medium">Solo Autore</p><p className="text-xs text-muted-foreground">Visibile solo a chi l'ha inviata</p></div>
                     </div>
                   </div>
-                  <p className="text-muted-foreground text-xs">Dalla sezione Dediche puoi anche espandere ogni messaggio, rispondere via chat e gestire le conversazioni.</p>
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Azioni:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Espandi:</strong> Vedi il testo completo della dedica</li>
+                      <li>• <strong>Rispondi:</strong> Invia una risposta via chat</li>
+                      <li>• <strong>Elimina:</strong> Rimuovi la dedica</li>
+                      <li>• <strong>Reset Dediche:</strong> Elimina tutti i messaggi (con conferma)</li>
+                    </ul>
+                  </div>
                 </div>
               </ManualCollapsible>
 
-              {/* Trasmetti (Broadcast TV) */}
-              <ManualCollapsible id="admin-trasmetti" title="Trasmetti (Broadcast TV)" icon={<Monitor className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-trasmetti')} onToggle={() => toggleSection('admin-trasmetti')}>
+              {/* Quiz */}
+              <ManualCollapsible id="admin-quiz" title="Quiz Musicale" icon={<HelpCircle className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-quiz')} onToggle={() => toggleSection('admin-quiz')}>
                 <div className="space-y-4 text-sm">
                   <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                    <p className="font-medium text-primary mb-1">📺 A cosa serve?</p>
-                    <p className="text-muted-foreground">Proietta i testi delle canzoni sulla TV del locale in tempo reale.</p>
+                    <p className="font-medium text-primary mb-1">❓ A cosa serve?</p>
+                    <p className="text-muted-foreground">Gestisci le domande del quiz musicale: crea set tematici, importa da CSV, e configura le opzioni di gioco.</p>
                   </div>
                   <div className="p-3 rounded-lg bg-muted border">
-                    <p className="font-bold mb-2">Modalità di visualizzazione TV:</p>
+                    <p className="font-bold mb-2">Tab "Set di domande":</p>
                     <ul className="space-y-1 text-muted-foreground text-xs">
-                      <li>• <strong>Compatta:</strong> Testo puro, massima leggibilità</li>
-                      <li>• <strong>Karaoke:</strong> Con evidenziazione riga attiva</li>
-                      <li>• <strong>Spotify:</strong> Stile moderno con sfondo colorato</li>
-                      <li>• <strong>ChordPro:</strong> Testo con accordi sopra le parole</li>
+                      <li>• <strong>Crea set:</strong> Nuovo set tematico (es. "Anni 80", "Rock", "Italiano")</li>
+                      <li>• <strong>Modifica nome:</strong> Rinomina un set esistente</li>
+                      <li>• <strong>Elimina set:</strong> Rimuovi un set e tutte le sue domande</li>
                     </ul>
                   </div>
                   <div className="p-3 rounded-lg bg-muted border">
-                    <p className="font-bold mb-2">Personalizzazione TV:</p>
+                    <p className="font-bold mb-2">Tab "Domande":</p>
                     <ul className="space-y-1 text-muted-foreground text-xs">
-                      <li>• <strong>Logo:</strong> Carica il logo della band visibile sulla TV</li>
-                      <li>• <strong>QR Code:</strong> Mostra un QR sulla TV per far prenotare</li>
-                      <li>• <strong>Titolo / Sottotitolo:</strong> Testi personalizzati</li>
-                      <li>• <strong>Footer:</strong> Testo in basso nella schermata di attesa</li>
-                      <li>• <strong>Posizioni elementi:</strong> Sposta logo, QR e titolo a piacere</li>
+                      <li>• <strong>Aggiungi domanda:</strong> Testo, 4 opzioni, risposta corretta, difficoltà</li>
+                      <li>• <strong>Filtro per set:</strong> Visualizza domande di un set specifico</li>
+                      <li>• <strong>Filtro per decade:</strong> Filtra per epoca musicale</li>
+                      <li>• <strong>Modifica:</strong> Modifica qualsiasi campo della domanda</li>
+                      <li>• <strong>Elimina:</strong> Rimuovi singole domande</li>
+                      <li>• <strong>Importa CSV:</strong> Carica domande in blocco da file CSV</li>
+                      <li>• <strong>Esporta CSV:</strong> Scarica tutte le domande come CSV</li>
                     </ul>
                   </div>
                   <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
-                    <p className="font-medium text-accent mb-2">🔗 Link rapidi</p>
+                    <p className="font-medium text-accent mb-1">📋 Formato CSV</p>
+                    <p className="text-muted-foreground text-xs">Colonne: domanda, opzione1, opzione2, opzione3, opzione4, risposta_corretta (1-4), difficoltà, decade, set_id</p>
+                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* Giochi */}
+              <ManualCollapsible id="admin-giochi" title="Giochi Passatempo" icon={<Gamepad2 className="w-5 h-5 text-emerald-500" />} isOpen={openSections.has('admin-giochi')} onToggle={() => toggleSection('admin-giochi')}>
+                <div className="space-y-4 text-sm">
+                  <div className="p-3 rounded-lg bg-muted border">
+                    <p className="font-bold mb-2">Tab "Impostazioni":</p>
                     <ul className="space-y-1 text-muted-foreground text-xs">
-                      <li>• <strong>🌐 Link Online (Cloud):</strong> Per dispositivi con internet</li>
-                      <li>• <strong>📡 Link Locali (LAN):</strong> Per rete WiFi locale senza internet</li>
+                      <li>• <strong>Giochi abilitati:</strong> Toggle globale per attivare/disattivare i giochi</li>
+                      <li>• <strong>Mostra su app:</strong> Visibilità nella pagina app</li>
+                      <li>• <strong>Mostra su TV:</strong> Visualizzazione sulla schermata TV</li>
+                      <li>• <strong>Disponibile quando chiuso:</strong> Giochi accessibili anche senza evento live</li>
+                      <li>• <strong>Disponibile in consultabile:</strong> Giochi in modalità solo consultazione</li>
+                      <li>• <strong>Giochi singoli:</strong> Toggle individuale per ogni gioco (Quiz, ecc.)</li>
+                      <li>• <strong>Sorgente quiz:</strong> Generale, per set specifici, o random</li>
+                      <li>• <strong>Ordine domande:</strong> Sequenziale o casuale</li>
                     </ul>
                   </div>
                   <div className="p-3 rounded-lg bg-muted border">
-                    <p className="font-bold mb-2">Destinazioni broadcast:</p>
+                    <p className="font-bold mb-2">Tab "Classifiche":</p>
                     <ul className="space-y-1 text-muted-foreground text-xs">
-                      <li>• <strong>/trasmetti</strong> — Vista TV (testo grande, evidenziazione)</li>
-                      <li>• <strong>/partiture</strong> — Vista musicisti (accordi, trasposizione)</li>
-                      <li>• <strong>/telecomando</strong> — Controllo remoto per lo staff</li>
-                      <li>• <strong>/songbook-live</strong> — Console leader per gestire tutto</li>
+                      <li>• <strong>Leaderboard:</strong> Classifica per ogni gioco con nickname e punteggio</li>
+                      <li>• <strong>Filtra per gioco:</strong> Seleziona quale classifica visualizzare</li>
+                      <li>• <strong>Reset classifica:</strong> Azzera i punteggi di un gioco specifico</li>
                     </ul>
                   </div>
                 </div>
               </ManualCollapsible>
 
-              {/* SongBook Live */}
-              <ManualCollapsible id="admin-songbook" title="SongBook Live (Console Leader)" icon={<BookOpen className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-songbook')} onToggle={() => toggleSection('admin-songbook')}>
+              {/* Community Admin */}
+              <ManualCollapsible id="admin-community-admin" title="Community (Admin)" icon={<Users className="w-5 h-5 text-accent" />} isOpen={openSections.has('admin-community-admin')} onToggle={() => toggleSection('admin-community-admin')}>
                 <div className="space-y-4 text-sm">
-                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                    <p className="font-medium text-primary mb-1">🎸 A cosa serve?</p>
-                    <p className="text-muted-foreground">SongBook Live è la console principale per il leader del gruppo. Da qui controlli quale brano viene trasmesso, scorri il testo e sincronizzi tutti i dispositivi.</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-muted border">
-                    <p className="font-bold mb-2">Funzionalità:</p>
-                    <ul className="space-y-1 text-muted-foreground text-xs">
-                      <li>• <strong>Catalogo completo:</strong> Cerca e seleziona tra tutti i brani</li>
-                      <li>• <strong>File .cho:</strong> Visualizza accordi con formato ChordPro</li>
-                      <li>• <strong>Trasposizione:</strong> Cambia tonalità al volo, sincronizzata</li>
-                      <li>• <strong>Evidenziazione:</strong> Muovi la riga attiva (toggle on/off)</li>
-                      <li>• <strong>Trasmissione persistente:</strong> Uscendo dalla vista brano, la trasmissione resta attiva</li>
-                      <li>• <strong>Banner LIVE:</strong> Quando un brano è in trasmissione, un banner ti permette di rientrare o interrompere</li>
-                      <li>• <strong>Impostazioni rapide:</strong> Drawer laterale con tutti i controlli</li>
-                    </ul>
-                  </div>
-                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
-                    <p className="font-medium text-accent mb-1">💡 Pro Mode</p>
-                    <p className="text-muted-foreground text-xs">Il design è ottimizzato per l'uso dal vivo. L'interfaccia è pulita, i pulsanti sono grandi e la lista brani è virtualizzata per gestire cataloghi con migliaia di file.</p>
-                  </div>
-                </div>
-              </ManualCollapsible>
-
-              {/* Dual Broadcast */}
-              <ManualCollapsible id="admin-dual" title="Trasmissione Duale" icon={<Layers className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-dual')} onToggle={() => toggleSection('admin-dual')}>
-                <div className="space-y-4 text-sm">
-                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                    <p className="font-medium text-primary mb-1">🔀 Cos'è la modalità duale?</p>
-                    <p className="text-muted-foreground">Invia contemporaneamente il <strong>testo pulito</strong> (dal Catalogo) alla TV e il <strong>file .cho con accordi</strong> ai musicisti su /partiture.</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-muted border">
-                    <p className="font-bold mb-2">Come funziona:</p>
-                    <ul className="space-y-1 text-muted-foreground text-xs">
-                      <li>• I brani del Catalogo devono essere <strong>collegati</strong> ai file SongBook</li>
-                      <li>• Il collegamento si fa da <strong>Canzoni → Catalogo & SongBook</strong></li>
-                      <li>• Quando trasmetti un brano collegato, la duale si attiva automaticamente</li>
-                      <li>• La TV mostra il testo senza accordi (scroll proporzionale)</li>
-                      <li>• Le partiture mostrano il file .cho con accordi (sync riga-per-riga)</li>
-                    </ul>
-                  </div>
-                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
-                    <p className="font-medium text-accent mb-1">📏 Allineamento</p>
-                    <p className="text-muted-foreground text-xs">La TV usa scroll proporzionale (0-100%) perché il numero di righe del catalogo e del file .cho possono differire. L'allineamento è approssimativo ma efficace. Le partiture usano sync riga-per-riga preciso.</p>
-                  </div>
-                </div>
-              </ManualCollapsible>
-
-              {/* Telecomando */}
-              <ManualCollapsible id="admin-telecomando" title="Telecomando" icon={<Smartphone className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-telecomando')} onToggle={() => toggleSection('admin-telecomando')}>
-                <div className="space-y-4 text-sm">
-                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/20">
-                    <p className="font-medium text-primary mb-1">📱 A cosa serve?</p>
-                    <p className="text-muted-foreground">Il telecomando permette allo staff di controllare lo scorrimento del testo sulla TV e sulle partiture dal proprio smartphone.</p>
-                  </div>
                   <ul className="space-y-1 text-muted-foreground">
-                    <li>• <strong>Frecce su/giù:</strong> Muovi la riga evidenziata</li>
-                    <li>• <strong>Testo visibile:</strong> Vedi il testo corrente con evidenziazione</li>
-                    <li>• <strong>PIN protetto:</strong> Ogni telecomando ha il suo PIN</li>
-                    <li>• <strong>Dual mode:</strong> In modalità duale, il telecomando muove sia le partiture che la TV</li>
+                    <li>• <strong>Bacheca sociale:</strong> Modera post e commenti</li>
+                    <li>• <strong>Gruppi:</strong> Crea, gestisci e modera gruppi di chat</li>
+                    <li>• <strong>Inviti:</strong> Genera link d'invito con scadenza e max utilizzi</li>
+                    <li>• <strong>Blocco utenti:</strong> Blocca utenti dalla community (temporaneo o permanente)</li>
+                    <li>• <strong>Approvazioni:</strong> Approva richieste di accesso a gruppi privati</li>
                   </ul>
-                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
-                    <p className="font-medium text-accent mb-1">⚙️ Impostazione Dual Mode</p>
-                    <p className="text-muted-foreground text-xs">In SongBook Live → Impostazioni → "Controllo TV in Duale" puoi scegliere se il telecomando controlla anche la TV in modalità duale (default: attivo).</p>
-                  </div>
+                </div>
+              </ManualCollapsible>
+
+              {/* Assistente */}
+              <ManualCollapsible id="admin-assistente" title="Assistente Virtuale" icon={<Bot className="w-5 h-5 text-accent" />} isOpen={openSections.has('admin-assistente')} onToggle={() => toggleSection('admin-assistente')}>
+                <div className="space-y-4 text-sm">
+                  <p>L'assistente virtuale è un chatbot che aiuta i visitatori del sito:</p>
+                  <ul className="space-y-1 text-muted-foreground">
+                    <li>• <strong>Flussi guidati:</strong> Risposte automatiche per domande frequenti</li>
+                    <li>• <strong>Lead generation:</strong> Raccoglie contatti e li classifica</li>
+                    <li>• <strong>Sezioni configurabili:</strong> Attiva/disattiva per Sito, Open Mic, Dediche, Community</li>
+                    <li>• <strong>Messaggio di benvenuto:</strong> Personalizzabile per ogni sezione</li>
+                    <li>• <strong>Notifiche Telegram:</strong> Ricevi alert quando qualcuno scrive</li>
+                    <li>• <strong>Gestione conversazioni:</strong> Vedi tutte le chat, rispondi, chiudi</li>
+                  </ul>
+                </div>
+              </ManualCollapsible>
+
+              {/* Gamification */}
+              <ManualCollapsible id="admin-gamification" title="Gamification e Classifiche" icon={<Trophy className="w-5 h-5 text-amber-500" />} isOpen={openSections.has('admin-gamification')} onToggle={() => toggleSection('admin-gamification')}>
+                <div className="space-y-4 text-sm">
+                  <ul className="space-y-1 text-muted-foreground">
+                    <li>• <strong>Punti:</strong> Guadagna punti per prenotazioni, dediche e partecipazione</li>
+                    <li>• <strong>Badge:</strong> Sbloccati al raggiungimento di traguardi</li>
+                    <li>• <strong>Classifiche:</strong> Leaderboard con i partecipanti più attivi</li>
+                    <li>• <strong>Statistiche personali:</strong> Ogni utente vede i suoi progressi</li>
+                  </ul>
+                </div>
+              </ManualCollapsible>
+
+              {/* Limiti per utente */}
+              <ManualCollapsible id="admin-user-limits" title="Limiti per Utente" icon={<UserCheck className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-user-limits')} onToggle={() => toggleSection('admin-user-limits')}>
+                <div className="space-y-4 text-sm">
+                  <p>Controlla quante prenotazioni può fare ogni persona:</p>
                   <div className="p-3 rounded-lg bg-muted border">
-                    <p className="font-medium mb-1">Creare telecomandi:</p>
-                    <p className="text-muted-foreground text-xs">Vai in Admin → Trasmetti → sezione Telecomandi. Puoi creare più telecomandi con PIN diversi, attivarli/disattivarli e vederne i link (online e locali).</p>
+                    <p className="font-bold mb-2">Tipologie di limite:</p>
+                    <ul className="space-y-1 text-muted-foreground text-xs">
+                      <li>• <strong>Limite totale:</strong> Max canzoni per serata per utente</li>
+                      <li>• <strong>Limite dediche:</strong> Max dediche per serata per utente</li>
+                      <li>• <strong>Intervallo:</strong> Max N canzoni ogni X minuti</li>
+                      <li>• <strong>Consecutivo:</strong> Max N canzoni di fila, poi aspetta il turno</li>
+                      <li>• <strong>Cooldown:</strong> Messaggio personalizzato quando l'utente raggiunge il limite</li>
+                    </ul>
+                  </div>
+                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
+                    <p className="font-medium text-accent mb-1">💡 Sblocco consecutivo</p>
+                    <p className="text-muted-foreground text-xs">Quando un brano consecutivo viene completato, l'utente in attesa riceve una notifica che lo sblocca.</p>
                   </div>
                 </div>
               </ManualCollapsible>
 
-              {/* Catalogo Brani */}
-              <ManualCollapsible id="admin-catalogo" title="Catalogo Brani & SongBook" icon={<Music className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-catalogo')} onToggle={() => toggleSection('admin-catalogo')}>
+              {/* ===== SEZIONE GESTIONE ===== */}
+              <div className="pt-4">
+                <h3 className="text-sm font-bold uppercase tracking-wider flex items-center gap-2 mb-3">
+                  ⚙️ Sezione GESTIONE
+                </h3>
+              </div>
+
+              {/* Impostazioni */}
+              <ManualCollapsible id="admin-impostazioni" title="Impostazioni" icon={<Settings className="w-5 h-5 text-muted-foreground" />} isOpen={openSections.has('admin-impostazioni')} onToggle={() => toggleSection('admin-impostazioni')}>
                 <div className="space-y-4 text-sm">
-                  <div className="p-3 rounded-lg bg-muted border">
-                    <p className="font-bold mb-2">Catalogo Brani:</p>
-                    <ul className="space-y-1 text-muted-foreground text-xs">
-                      <li>• <strong>Aggiungi brani:</strong> Manualmente o importa da CSV</li>
-                      <li>• <strong>Campi:</strong> Titolo, artista, testo, lingua, genere</li>
-                      <li>• <strong>Ricerca:</strong> Per titolo, artista o contenuto</li>
-                      <li>• <strong>Testi:</strong> Cerca automaticamente i testi online</li>
-                    </ul>
-                  </div>
-                  <div className="p-3 rounded-lg bg-muted border">
-                    <p className="font-bold mb-2">SongBook (file .cho):</p>
-                    <ul className="space-y-1 text-muted-foreground text-xs">
-                      <li>• <strong>Importa file .cho:</strong> Singoli o cartelle intere</li>
-                      <li>• <strong>Formato ChordPro:</strong> Accordi sopra le parole</li>
-                      <li>• <strong>Duplicati:</strong> Rilevamento automatico tramite hash</li>
-                      <li>• <strong>Versioni:</strong> Stesso brano, arrangiamenti diversi → conserva entrambi</li>
-                      <li>• <strong>Master:</strong> Segna la versione preferita con ⭐</li>
-                      <li>• <strong>Export:</strong> Scarica file .cho singoli o in blocco</li>
-                    </ul>
-                  </div>
-                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
-                    <p className="font-medium text-accent mb-1">🔗 Collegamento Catalogo ↔ SongBook</p>
-                    <p className="text-muted-foreground text-xs">Nella tab "Catalogo & SongBook" puoi collegare ogni brano del catalogo al suo file .cho. Questo abilita la trasmissione duale automatica.</p>
-                  </div>
-                  <div className="p-3 rounded-lg bg-muted border">
-                    <p className="font-bold mb-2">Setlist:</p>
-                    <ul className="space-y-1 text-muted-foreground text-xs">
-                      <li>• <strong>Crea scalette:</strong> Ordina i brani per la serata</li>
-                      <li>• <strong>Drag & drop:</strong> Riordina trascinando</li>
-                      <li>• <strong>Note:</strong> Aggiungi note per ogni brano</li>
-                      <li>• <strong>Default:</strong> Segna una setlist come predefinita</li>
-                    </ul>
-                  </div>
+                  <p>Tutte le configurazioni globali del sistema:</p>
+                  <ul className="space-y-1 text-muted-foreground">
+                    <li>• <strong>Connessione trasmissione:</strong> Cloud o Locale (WiFi)</li>
+                    <li>• <strong>IP server locale:</strong> Per la modalità offline</li>
+                    <li>• <strong>Pedale Bluetooth:</strong> Configurazione completa del pedale</li>
+                    <li>• <strong>Sincronizzazione catalogo:</strong> Sync brani con il server locale</li>
+                    <li>• <strong>Sincronizzazione SongBook:</strong> Sync file .cho con il server locale</li>
+                    <li>• <strong>Credenziali admin:</strong> Cambio username e password</li>
+                  </ul>
                 </div>
               </ManualCollapsible>
 
@@ -885,92 +1232,16 @@ const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false
                 </div>
               </ManualCollapsible>
 
-              {/* Community Admin */}
-              <ManualCollapsible id="admin-community-admin" title="Community (Admin)" icon={<Users className="w-5 h-5 text-accent" />} isOpen={openSections.has('admin-community-admin')} onToggle={() => toggleSection('admin-community-admin')}>
+              {/* Operatori */}
+              <ManualCollapsible id="admin-operators" title="Operatori" icon={<UserCheck className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-operators')} onToggle={() => toggleSection('admin-operators')}>
                 <div className="space-y-4 text-sm">
+                  <p>Gli operatori sono utenti della Community con permessi speciali nell'admin:</p>
                   <ul className="space-y-1 text-muted-foreground">
-                    <li>• <strong>Bacheca sociale:</strong> Modera post e commenti</li>
-                    <li>• <strong>Gruppi:</strong> Crea, gestisci e modera gruppi di chat</li>
-                    <li>• <strong>Inviti:</strong> Genera link d'invito con scadenza e max utilizzi</li>
-                    <li>• <strong>Blocco utenti:</strong> Blocca utenti dalla community (temporaneo o permanente)</li>
-                    <li>• <strong>Approvazioni:</strong> Approva richieste di accesso a gruppi privati</li>
+                    <li>• <strong>Accesso limitato:</strong> Vedono solo le sezioni assegnate (Centro, Open Mic, Dediche, Assistente, Trasmetti)</li>
+                    <li>• <strong>Login social:</strong> Accedono con il loro account Community</li>
+                    <li>• <strong>Ruolo "operator":</strong> Non possono modificare impostazioni sensibili</li>
+                    <li>• <strong>Assegnazione:</strong> L'Owner promuove utenti dalla sezione Operatori</li>
                   </ul>
-                </div>
-              </ManualCollapsible>
-
-              {/* Assistente */}
-              <ManualCollapsible id="admin-assistente" title="Assistente Virtuale" icon={<Bot className="w-5 h-5 text-accent" />} isOpen={openSections.has('admin-assistente')} onToggle={() => toggleSection('admin-assistente')}>
-                <div className="space-y-4 text-sm">
-                  <p>L'assistente virtuale è un chatbot che aiuta i visitatori del sito:</p>
-                  <ul className="space-y-1 text-muted-foreground">
-                    <li>• <strong>Flussi guidati:</strong> Risposte automatiche per domande frequenti</li>
-                    <li>• <strong>Lead generation:</strong> Raccoglie contatti e li classifica</li>
-                    <li>• <strong>Sezioni configurabili:</strong> Attiva/disattiva per Sito, Open Mic, Dediche, Community</li>
-                    <li>• <strong>Messaggio di benvenuto:</strong> Personalizzabile per ogni sezione</li>
-                    <li>• <strong>Notifiche Telegram:</strong> Ricevi alert quando qualcuno scrive</li>
-                    <li>• <strong>Gestione conversazioni:</strong> Vedi tutte le chat, rispondi, chiudi</li>
-                  </ul>
-                </div>
-              </ManualCollapsible>
-
-              {/* Grafiche */}
-              <ManualCollapsible id="admin-grafiche" title="Grafiche (Locandine e Storie)" icon={<Image className="w-5 h-5 text-accent" />} isOpen={openSections.has('admin-grafiche')} onToggle={() => toggleSection('admin-grafiche')}>
-                <div className="space-y-4 text-sm">
-                  <p>Genera automaticamente materiale promozionale:</p>
-                  <ul className="space-y-1 text-muted-foreground">
-                    <li>• <strong>Locandine evento:</strong> Poster con data, luogo e QR code</li>
-                    <li>• <strong>Storie social:</strong> Formato verticale per Instagram/WhatsApp</li>
-                    <li>• <strong>Personalizzazione:</strong> Scegli foto, colori e testi</li>
-                    <li>• <strong>Download diretto:</strong> Scarica l'immagine generata</li>
-                  </ul>
-                </div>
-              </ManualCollapsible>
-
-              {/* QR Codes */}
-              <ManualCollapsible id="admin-qrcodes" title="QR Codes Evento" icon={<QrCode className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-qrcodes')} onToggle={() => toggleSection('admin-qrcodes')}>
-                <div className="space-y-4 text-sm">
-                  <p>Genera QR code per far accedere velocemente i partecipanti:</p>
-                  <ul className="space-y-1 text-muted-foreground">
-                    <li>• <strong>QR con PIN integrato:</strong> Scansiona e accedi direttamente</li>
-                    <li>• <strong>Multipli QR:</strong> Crea QR diversi per tavoli o zone</li>
-                    <li>• <strong>Statistiche:</strong> Quante volte è stato usato ogni QR</li>
-                    <li>• <strong>Attiva/disattiva:</strong> Controlla quali QR sono validi</li>
-                    <li>• <strong>Stampa:</strong> Scarica e stampa per i tavoli del locale</li>
-                  </ul>
-                </div>
-              </ManualCollapsible>
-
-              {/* Gamification */}
-              <ManualCollapsible id="admin-gamification" title="Gamification e Classifiche" icon={<Trophy className="w-5 h-5 text-amber-500" />} isOpen={openSections.has('admin-gamification')} onToggle={() => toggleSection('admin-gamification')}>
-                <div className="space-y-4 text-sm">
-                  <p>Il sistema di gamification premia la partecipazione:</p>
-                  <ul className="space-y-1 text-muted-foreground">
-                    <li>• <strong>Punti:</strong> Guadagna punti per prenotazioni, dediche e partecipazione</li>
-                    <li>• <strong>Badge:</strong> Sbloccati al raggiungimento di traguardi</li>
-                    <li>• <strong>Classifiche:</strong> Leaderboard con i partecipanti più attivi</li>
-                    <li>• <strong>Statistiche personali:</strong> Ogni utente vede i suoi progressi</li>
-                  </ul>
-                </div>
-              </ManualCollapsible>
-
-              {/* Limiti per utente */}
-              <ManualCollapsible id="admin-user-limits" title="Limiti per Utente" icon={<UserCheck className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-user-limits')} onToggle={() => toggleSection('admin-user-limits')}>
-                <div className="space-y-4 text-sm">
-                  <p>Controlla quante prenotazioni può fare ogni persona:</p>
-                  <div className="p-3 rounded-lg bg-muted border">
-                    <p className="font-bold mb-2">Tipologie di limite:</p>
-                    <ul className="space-y-1 text-muted-foreground text-xs">
-                      <li>• <strong>Limite totale:</strong> Max canzoni per serata per utente</li>
-                      <li>• <strong>Limite dediche:</strong> Max dediche per serata per utente</li>
-                      <li>• <strong>Intervallo:</strong> Max N canzoni ogni X minuti</li>
-                      <li>• <strong>Consecutivo:</strong> Max N canzoni di fila, poi aspetta il turno</li>
-                      <li>• <strong>Cooldown:</strong> Messaggio personalizzato quando l'utente raggiunge il limite</li>
-                    </ul>
-                  </div>
-                  <div className="p-3 rounded-lg bg-accent/10 border border-accent/20">
-                    <p className="font-medium text-accent mb-1">💡 Sblocco consecutivo</p>
-                    <p className="text-muted-foreground text-xs">Quando un brano consecutivo viene completato, l'utente in attesa riceve una notifica che lo sblocca.</p>
-                  </div>
                 </div>
               </ManualCollapsible>
 
@@ -987,37 +1258,21 @@ const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false
                     <li>• Modificare password</li>
                     <li>• Eliminare account</li>
                   </ul>
-                  <p>Dalla sezione <strong>Permessi</strong>:</p>
+                </div>
+              </ManualCollapsible>
+
+              {/* Permessi */}
+              <ManualCollapsible id="admin-permissions" title="Permessi (Owner)" icon={<Shield className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-permissions')} onToggle={() => toggleSection('admin-permissions')}>
+                <div className="space-y-4 text-sm">
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <p className="font-medium text-amber-600 dark:text-amber-400"><Lock className="w-4 h-4 inline mr-1" />Solo Owner</p>
+                  </div>
                   <ul className="space-y-1 text-muted-foreground">
                     <li>• Decidere quali sezioni può vedere ogni ruolo</li>
-                    <li>• Abilitare/disabilitare singole funzionalità</li>
+                    <li>• Abilitare/disabilitare singole funzionalità per ruolo</li>
                     <li>• Preset "Consigliato" o "Completo"</li>
+                    <li>• Gerarchia a 4 livelli per i moduli core</li>
                   </ul>
-                </div>
-              </ManualCollapsible>
-
-              {/* Operatori */}
-              <ManualCollapsible id="admin-operators" title="Operatori" icon={<UserCheck className="w-5 h-5 text-primary" />} isOpen={openSections.has('admin-operators')} onToggle={() => toggleSection('admin-operators')}>
-                <div className="space-y-4 text-sm">
-                  <p>Gli operatori sono utenti della Community con permessi speciali nell'admin:</p>
-                  <ul className="space-y-1 text-muted-foreground">
-                    <li>• <strong>Accesso limitato:</strong> Vedono solo le sezioni assegnate</li>
-                    <li>• <strong>Login social:</strong> Accedono con il loro account Community</li>
-                    <li>• <strong>Ruolo "operator":</strong> Non possono modificare impostazioni sensibili</li>
-                    <li>• <strong>Assegnazione:</strong> L'Owner promuove utenti dalla sezione Operatori</li>
-                  </ul>
-                </div>
-              </ManualCollapsible>
-
-              {/* Blocco Utenti */}
-              <ManualCollapsible id="admin-block" title="Blocco Utenti" icon={<Ban className="w-5 h-5 text-destructive" />} isOpen={openSections.has('admin-block')} onToggle={() => toggleSection('admin-block')}>
-                <div className="space-y-4 text-sm">
-                  <ul className="space-y-2">
-                    <li className="flex items-center gap-2"><Ban className="w-4 h-4 text-destructive" /><span><strong>Blocco temporaneo:</strong> 1 ora, 24 ore, ecc.</span></li>
-                    <li className="flex items-center gap-2"><Ban className="w-4 h-4 text-destructive" /><span><strong>Blocco permanente:</strong> Senza scadenza</span></li>
-                    <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-emerald-500" /><span><strong>Sblocco:</strong> Riabilita immediatamente</span></li>
-                  </ul>
-                  <p className="text-muted-foreground text-xs">Il blocco funziona sia per gli utenti anonimi (Open Mic/Dediche) basato su session ID, sia per utenti registrati (Community) basato su user ID.</p>
                 </div>
               </ManualCollapsible>
 
@@ -1035,16 +1290,28 @@ const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false
                 </div>
               </ManualCollapsible>
 
+              {/* Blocco Utenti */}
+              <ManualCollapsible id="admin-block" title="Blocco Utenti" icon={<Ban className="w-5 h-5 text-destructive" />} isOpen={openSections.has('admin-block')} onToggle={() => toggleSection('admin-block')}>
+                <div className="space-y-4 text-sm">
+                  <ul className="space-y-2">
+                    <li className="flex items-center gap-2"><Ban className="w-4 h-4 text-destructive" /><span><strong>Blocco temporaneo:</strong> 1 ora, 24 ore, ecc.</span></li>
+                    <li className="flex items-center gap-2"><Ban className="w-4 h-4 text-destructive" /><span><strong>Blocco permanente:</strong> Senza scadenza</span></li>
+                    <li className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-emerald-500" /><span><strong>Sblocco:</strong> Riabilita immediatamente</span></li>
+                  </ul>
+                  <p className="text-muted-foreground text-xs">Il blocco funziona sia per utenti anonimi (session ID) sia per utenti registrati (user ID).</p>
+                </div>
+              </ManualCollapsible>
+
               {/* Reset e Undo */}
-              <ManualCollapsible id="admin-reset" title="Reset e Undo" icon={<Undo2 className="w-5 h-5 text-warning" />} isOpen={openSections.has('admin-reset')} onToggle={() => toggleSection('admin-reset')}>
+              <ManualCollapsible id="admin-reset" title="Reset e Undo" icon={<Undo2 className="w-5 h-5 text-amber-600" />} isOpen={openSections.has('admin-reset')} onToggle={() => toggleSection('admin-reset')}>
                 <div className="space-y-4 text-sm">
                   <ul className="space-y-2">
                     <li className="flex items-center gap-2"><Music className="w-4 h-4 text-primary" /><span><strong>Reset Open Mic:</strong> Elimina tutte le prenotazioni</span></li>
                     <li className="flex items-center gap-2"><MessageSquare className="w-4 h-4 text-secondary" /><span><strong>Reset Dediche:</strong> Elimina tutti i messaggi</span></li>
                     <li className="flex items-center gap-2"><RefreshCw className="w-4 h-4 text-destructive" /><span><strong>Reset Totale:</strong> Pulisce tutto</span></li>
                   </ul>
-                  <div className="p-3 rounded-lg bg-warning/10 border border-warning/20">
-                    <p className="font-medium text-warning">⏱️ Sistema Undo</p>
+                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                    <p className="font-medium text-amber-600 dark:text-amber-400">⏱️ Sistema Undo</p>
                     <p className="text-muted-foreground mt-1">Ogni azione ha un pulsante "Annulla" (8-10 secondi). Non aver paura di sbagliare!</p>
                   </div>
                   <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
@@ -1053,41 +1320,28 @@ const AdminManualContent: React.FC<{ embedded?: boolean }> = ({ embedded = false
                   </div>
                 </div>
               </ManualCollapsible>
-
-              {/* Impostazioni */}
-              <ManualCollapsible id="admin-impostazioni" title="Impostazioni" icon={<Settings className="w-5 h-5 text-muted-foreground" />} isOpen={openSections.has('admin-impostazioni')} onToggle={() => toggleSection('admin-impostazioni')}>
-                <div className="space-y-4 text-sm">
-                  <p>La sezione Impostazioni racchiude tutte le configurazioni globali:</p>
-                  <ul className="space-y-1 text-muted-foreground">
-                    <li>• <strong>Connessione trasmissione:</strong> Cloud o Locale (WiFi)</li>
-                    <li>• <strong>IP server locale:</strong> Per la modalità offline</li>
-                    <li>• <strong>Pedale Bluetooth:</strong> Configurazione completa del pedale</li>
-                    <li>• <strong>Sincronizzazione catalogo:</strong> Sync brani con il server locale</li>
-                    <li>• <strong>Sincronizzazione SongBook:</strong> Sync file .cho con il server locale</li>
-                    <li>• <strong>Credenziali admin:</strong> Cambio username e password</li>
-                  </ul>
-                </div>
-              </ManualCollapsible>
             </div>
           </TabsContent>
         </Tabs>
       </div>
 
       {/* Tips Footer */}
-      <Card className="mt-6 border-warning/50">
+      <Card className="mt-6 border-amber-500/50">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2 text-warning">
+          <CardTitle className="text-sm flex items-center gap-2 text-amber-600 dark:text-amber-400">
             <Bell className="w-4 h-4" />
             Suggerimenti Rapidi
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>🔄 <strong>Ogni azione ha Undo</strong> - non aver paura di sbagliare!</p>
-          <p>📱 <strong>Mobile-first</strong> - tutto è ottimizzato per telefono.</p>
-          <p>🔔 <strong>Attiva notifiche</strong> - non perderti prenotazioni o messaggi.</p>
-          <p>👥 <strong>Delega con permessi</strong> - usa i ruoli per dividere il lavoro.</p>
-          <p>📺 <strong>Dual mode</strong> - testo alla TV, accordi ai musicisti, tutto sincronizzato.</p>
-          <p>🦶 <strong>Pedale Bluetooth</strong> - scorri con i piedi mentre suoni.</p>
+          <p>🔄 <strong>Ogni azione ha Undo</strong> — non aver paura di sbagliare!</p>
+          <p>📱 <strong>Mobile-first</strong> — tutto funziona su telefono, tablet e computer.</p>
+          <p>🔔 <strong>Attiva notifiche</strong> — non perderti prenotazioni o messaggi.</p>
+          <p>👥 <strong>Delega con permessi</strong> — usa i ruoli per dividere il lavoro.</p>
+          <p>📺 <strong>Dual mode</strong> — testo alla TV, accordi ai musicisti, tutto sincronizzato.</p>
+          <p>🦶 <strong>Pedale Bluetooth</strong> — scorri con i piedi mentre suoni.</p>
+          <p>⚡ <strong>Non C'è Furore</strong> — gioco buzzer live per animare la serata.</p>
+          <p>❓ <strong>Quiz</strong> — crea domande personalizzate per sfidare il pubblico.</p>
         </CardContent>
       </Card>
     </main>
