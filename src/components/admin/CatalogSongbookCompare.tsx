@@ -75,8 +75,8 @@ function artistsOverlap(a: string, b: string): boolean {
   return wordsA.some(w => wordsB.includes(w));
 }
 
-function buildKey(title: string, _artist: string): string {
-  return titleKey(title);
+function buildKey(title: string, artist: string): string {
+  return `${titleKey(title)}|||${normalize(artist)}`;
 }
 
 export const CatalogSongbookCompare: React.FC = () => {
@@ -114,9 +114,10 @@ export const CatalogSongbookCompare: React.FC = () => {
       const tKey = titleKey(file.title);
       const sbArtist = file.artist || '';
       
-      // Find best matching catalog entry by title key
+      // Find best matching catalog entry by title key + artist overlap
       let matchedKey: string | null = null;
       for (const [key, item] of map) {
+        if (!item.inCatalog) continue; // only match against catalog entries
         if (titleKey(item.title) === tKey && artistsOverlap(item.artist, sbArtist)) {
           matchedKey = key;
           break;
