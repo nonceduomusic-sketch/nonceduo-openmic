@@ -310,7 +310,7 @@ export const useFreeModeSettings = () => {
     
     // Calcola expires_at in base a end_mode
     const durationMins = config?.durationMinutes ?? settings?.duration_minutes ?? null;
-    updates.expires_at = calculateExpiresAt(endMode, eventDate, eventEndTime, durationMins, now);
+    updates.expires_at = calculateExpiresAt(endMode, eventEndDate, eventEndTime, durationMins, now);
     updates.duration_minutes = durationMins;
 
     if (config?.pinCode) {
