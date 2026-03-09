@@ -109,15 +109,6 @@ export const CatalogSongbookCompare: React.FC = () => {
       });
     }
 
-    // Match songbook files
-    // Group songbook files by normalized key
-    const songbookByKey = new Map<string, SongbookFile[]>();
-    for (const file of files) {
-      const key = buildKey(file.title, file.artist || '');
-      if (!songbookByKey.has(key)) songbookByKey.set(key, []);
-      songbookByKey.get(key)!.push(file);
-    }
-
     // Match songbook files to catalog using title-first matching with artist overlap
     for (const file of files) {
       const tKey = titleKey(file.title);
