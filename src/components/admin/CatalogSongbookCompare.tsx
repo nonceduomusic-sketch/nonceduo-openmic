@@ -58,8 +58,25 @@ function normalize(s: string): string {
     .trim();
 }
 
-function buildKey(title: string, artist: string): string {
-  return `${normalize(title)}|||${normalize(artist)}`;
+function titleKey(title: string): string {
+  return normalize(title);
+}
+
+function artistsOverlap(a: string, b: string): boolean {
+  const na = normalize(a);
+  const nb = normalize(b);
+  if (!na || !nb) return true; // if either is empty, don't penalize
+  if (na === nb) return true;
+  // Check if one contains the other (e.g. "mina" ⊂ "mina celentano")
+  if (na.includes(nb) || nb.includes(na)) return true;
+  // Check if any word of one appears in the other
+  const wordsA = na.split(' ').filter(w => w.length > 2);
+  const wordsB = nb.split(' ').filter(w => w.length > 2);
+  return wordsA.some(w => wordsB.includes(w));
+}
+
+function buildKey(title: string, _artist: string): string {
+  return titleKey(title);
 }
 
 export const CatalogSongbookCompare: React.FC = () => {
@@ -92,35 +109,46 @@ export const CatalogSongbookCompare: React.FC = () => {
       });
     }
 
-    // Match songbook files
-    // Group songbook files by normalized key
-    const songbookByKey = new Map<string, SongbookFile[]>();
+    // Match songbook files to catalog using title-first matching with artist overlap
     for (const file of files) {
-      const key = buildKey(file.title, file.artist || '');
-      if (!songbookByKey.has(key)) songbookByKey.set(key, []);
-      songbookByKey.get(key)!.push(file);
-    }
+      const tKey = titleKey(file.title);
+      const sbArtist = file.artist || '';
+      
+      // Find best matching catalog entry by title key
+      let matchedKey: string | null = null;
+      for (const [key, item] of map) {
+        if (titleKey(item.title) === tKey && artistsOverlap(item.artist, sbArtist)) {
+          matchedKey = key;
+          break;
+        }
+      }
 
-    for (const [key, sbFiles] of songbookByKey) {
-      const existing = map.get(key);
-      const primaryFile = sbFiles.find(f => !f.is_variant) || sbFiles[0];
-
-      if (existing) {
-        existing.inSongbook = true;
-        existing.songbookFile = primaryFile;
-        existing.hasMultipleSongbookVersions = sbFiles.length > 1;
-        existing.isVariant = sbFiles.some(f => f.is_variant);
+      if (matchedKey) {
+        const existing = map.get(matchedKey)!;
+        if (!existing.inSongbook) {
+          existing.inSongbook = true;
+          existing.songbookFile = file;
+        }
+        existing.hasMultipleSongbookVersions = true;
+        if (file.is_variant) existing.isVariant = true;
       } else {
-        map.set(key, {
-          key,
-          title: primaryFile.title.replace(/_+$/, ''),
-          artist: primaryFile.artist || '',
-          inCatalog: false,
-          inSongbook: true,
-          songbookFile: primaryFile,
-          isVariant: primaryFile.is_variant,
-          hasMultipleSongbookVersions: sbFiles.length > 1,
-        });
+        const key = `sb_${tKey}_${normalize(sbArtist)}`;
+        const existingSb = map.get(key);
+        if (existingSb) {
+          existingSb.hasMultipleSongbookVersions = true;
+          if (file.is_variant) existingSb.isVariant = true;
+        } else {
+          map.set(key, {
+            key,
+            title: file.title.replace(/_+$/, ''),
+            artist: sbArtist,
+            inCatalog: false,
+            inSongbook: true,
+            songbookFile: file,
+            isVariant: file.is_variant,
+            hasMultipleSongbookVersions: false,
+          });
+        }
       }
     }
 
