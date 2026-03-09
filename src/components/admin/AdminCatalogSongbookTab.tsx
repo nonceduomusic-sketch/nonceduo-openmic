@@ -464,12 +464,16 @@ export function AdminCatalogSongbookTab() {
       if (linksBySongId.has(song.id)) continue;
       const suggestions = getSuggestions(song);
       if (suggestions.length > 0 && suggestions[0].score >= 0.85) {
+        // Prefer underscore variant (filename ending with _) among top matches with similar scores
+        const topScore = suggestions[0].score;
+        const topCandidates = suggestions.filter(s => s.score >= topScore - 0.05);
+        const preferred = topCandidates.find(s => s.file.filename.replace(/\.cho$/i, '').endsWith('_')) || topCandidates[0];
         try {
           await supabase.from("catalog_songbook_links").insert({
             song_id: song.id,
-            songbook_file_id: suggestions[0].file.id,
+            songbook_file_id: preferred.file.id,
             is_primary: true,
-            match_confidence: suggestions[0].score,
+            match_confidence: preferred.score,
             linked_by: "auto",
           });
           created++;
@@ -479,6 +483,26 @@ export function AdminCatalogSongbookTab() {
     queryClient.invalidateQueries({ queryKey: ["catalog-songbook-links"] });
     setAutoMatchRunning(false);
     toast({ title: "Auto-match completato", description: `${created} nuovi collegamenti creati (soglia ≥ 85%).` });
+  };
+
+  // ── Unlink all ──
+  const [unlinkAllRunning, setUnlinkAllRunning] = useState(false);
+  const handleUnlinkAll = async () => {
+    if (!confirm(`Sei sicuro di voler scollegare tutti i ${linkedCount} collegamenti? L'operazione è irreversibile.`)) return;
+    setUnlinkAllRunning(true);
+    try {
+      const { error } = await supabase
+        .from("catalog_songbook_links")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ["catalog-songbook-links"] });
+      toast({ title: "Tutti i collegamenti rimossi", description: `${linkedCount} collegamenti eliminati.` });
+    } catch (err: any) {
+      toast({ title: "Errore", description: err.message, variant: "destructive" });
+    } finally {
+      setUnlinkAllRunning(false);
+    }
   };
 
   const isLoading = songsLoading || filesLoading || linksLoading;
