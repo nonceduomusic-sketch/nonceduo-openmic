@@ -43,39 +43,6 @@ export const AdminSettingsTab: React.FC = () => {
     setMounted(true);
   }, []);
 
-  const handleToggleSection = async (row: SectionSettingRow, enabled: boolean) => {
-    try {
-      const { error } = await supabase
-        .from('section_settings')
-        .update({ is_enabled: enabled })
-        .eq('id', row.id);
-
-      if (error) throw error;
-
-      setSectionSettings(prev => prev.map(r => (r.id === row.id ? { ...r, is_enabled: enabled } : r)));
-      toast({
-        title: 'Aggiornato',
-        description: `${row.display_name}: ${enabled ? 'attivo' : 'disattivo'}`,
-      });
-
-      adminAuditLog({
-        action: 'settings.section_toggle',
-        section: row.section_key,
-        entity: 'section_settings',
-        entity_id: row.id,
-        metadata: { enabled },
-      });
-    } catch (e: any) {
-      console.error('Failed to update section setting:', e);
-      toast({
-        title: 'Permessi insufficienti',
-        description: e?.message || 'Non puoi modificare questi format.',
-        variant: 'destructive',
-      });
-      // Re-sync from backend to avoid stale UI
-      fetchSectionSettings();
-    }
-  };
 
   const handleThemeChange = (newTheme: string) => {
     setTheme(newTheme);
