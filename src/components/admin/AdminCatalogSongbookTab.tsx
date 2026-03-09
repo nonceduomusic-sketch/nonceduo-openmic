@@ -286,6 +286,7 @@ export function AdminCatalogSongbookTab() {
   const [filterMode, setFilterMode] = useState<FilterMode>("all");
   const [expandedSongId, setExpandedSongId] = useState<string | null>(null);
   const [autoMatchRunning, setAutoMatchRunning] = useState(false);
+  const [unlinkAllRunning, setUnlinkAllRunning] = useState(false);
   const [showLiveQueue, setShowLiveQueue] = useState(() => {
     const saved = safeGetItem('local', 'admin-catalog-live-queue-open');
     return saved !== null ? saved === 'true' : true;
