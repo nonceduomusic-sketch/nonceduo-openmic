@@ -1,6 +1,6 @@
 import React, { forwardRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Music, FileText, Lock, CheckCircle } from 'lucide-react';
+import { Music, FileText, Lock, CheckCircle, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Song } from '@/data/songs';
 import { cn } from '@/lib/utils';
@@ -11,10 +11,12 @@ interface SongCardWithStatusProps {
   onBook: (song: Song) => void;
   isBooked?: boolean;
   isCompleted?: boolean;
+  isStaff?: boolean;
+  onBroadcast?: (song: Song) => void;
 }
 
 export const SongCardWithStatus = forwardRef<HTMLDivElement, SongCardWithStatusProps>(
-  ({ song, onBook, isBooked = false, isCompleted = false }, ref) => {
+  ({ song, onBook, isBooked = false, isCompleted = false, isStaff = false, onBroadcast }, ref) => {
     const navigate = useNavigate();
 
     const handleLyricsClick = useCallback(async () => {
@@ -74,47 +76,104 @@ export const SongCardWithStatus = forwardRef<HTMLDivElement, SongCardWithStatusP
             </div>
           </div>
 
-          {/* Buttons */}
-          <div className="flex gap-2">
-            {isBooked ? (
+          {/* Buttons - Staff mode: 3 buttons, User mode: 2 buttons */}
+          {isStaff ? (
+            <div className="flex gap-2">
+              {/* Testo/Accordi */}
               <Button
-                disabled
-                className="flex-1 h-10 sm:h-11 lg:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold bg-warning/20 text-warning border border-warning/40 cursor-not-allowed"
+                onClick={handleLyricsClick}
                 variant="outline"
-              >
-                <Lock className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 flex-shrink-0" />
-                <span>Prenotata</span>
-              </Button>
-            ) : isCompleted ? (
-              <Button
-                disabled
-                className="flex-1 h-10 sm:h-11 lg:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold bg-secondary/20 text-secondary border border-secondary/40 cursor-not-allowed"
-                variant="outline"
-              >
-                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 flex-shrink-0" />
-                <span>Cantata</span>
-              </Button>
-            ) : (
-              <Button
-                onClick={() => onBook(song)}
-                className="neon-button-pink flex-1 h-10 sm:h-11 lg:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold"
+                className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all"
                 size="default"
               >
-                <Music className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 flex-shrink-0" />
-                <span>Prenota</span>
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                <span className="hidden sm:inline">Testo</span>
+                <span className="sm:hidden">Testo</span>
               </Button>
-            )}
 
-            <Button
-              onClick={handleLyricsClick}
-              variant="outline"
-              className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground flex-1 h-10 sm:h-11 lg:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold transition-all"
-              size="default"
-            >
-              <FileText className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 flex-shrink-0" />
-              <span>Testo</span>
-            </Button>
-          </div>
+              {/* Trasmetti - Staff only */}
+              <Button
+                onClick={() => onBroadcast?.(song)}
+                variant="outline"
+                className="border-primary text-primary hover:bg-primary hover:text-primary-foreground flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all"
+                size="default"
+              >
+                <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                <span>Trasmetti</span>
+              </Button>
+
+              {/* Completa */}
+              {isBooked ? (
+                <Button
+                  disabled
+                  className="flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold bg-warning/20 text-warning border border-warning/40 cursor-not-allowed"
+                  variant="outline"
+                >
+                  <Lock className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                  <span>Prenotata</span>
+                </Button>
+              ) : isCompleted ? (
+                <Button
+                  disabled
+                  className="flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold bg-secondary/20 text-secondary border border-secondary/40 cursor-not-allowed"
+                  variant="outline"
+                >
+                  <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                  <span>Cantata</span>
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => onBook(song)}
+                  className="neon-button-pink flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold"
+                  size="default"
+                >
+                  <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                  <span>Completa</span>
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="flex gap-2">
+              {isBooked ? (
+                <Button
+                  disabled
+                  className="flex-1 h-10 sm:h-11 lg:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold bg-warning/20 text-warning border border-warning/40 cursor-not-allowed"
+                  variant="outline"
+                >
+                  <Lock className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 flex-shrink-0" />
+                  <span>Prenotata</span>
+                </Button>
+              ) : isCompleted ? (
+                <Button
+                  disabled
+                  className="flex-1 h-10 sm:h-11 lg:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold bg-secondary/20 text-secondary border border-secondary/40 cursor-not-allowed"
+                  variant="outline"
+                >
+                  <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 flex-shrink-0" />
+                  <span>Cantata</span>
+                </Button>
+              ) : (
+                <Button
+                  onClick={() => onBook(song)}
+                  className="neon-button-pink flex-1 h-10 sm:h-11 lg:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold"
+                  size="default"
+                >
+                  <Music className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 flex-shrink-0" />
+                  <span>Prenota</span>
+                </Button>
+              )}
+
+              <Button
+                onClick={handleLyricsClick}
+                variant="outline"
+                className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground flex-1 h-10 sm:h-11 lg:h-10 px-3 sm:px-4 text-xs sm:text-sm font-semibold transition-all"
+                size="default"
+              >
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 mr-1.5 sm:mr-2 flex-shrink-0" />
+                <span>Testo</span>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     );
