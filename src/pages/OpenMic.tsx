@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Mic2, Home, MessageCircle, Users, Music, Settings, ListMusic, Trophy, Sparkles, Monitor, ExternalLink } from 'lucide-react';
 import { Song } from '@/data/songs';
 import { useSongsCatalog, useFilteredSongs } from '@/hooks/useSongsCatalog';
@@ -22,6 +22,21 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { LeaderboardCard } from '@/components/gamification/LeaderboardCard';
 import { ConsecutiveUnlockListener } from '@/components/ConsecutiveUnlockListener';
 import { useAssistantContext } from '@/contexts/AssistantContext';
+import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
+import { useSongs } from '@/hooks/useSongs';
+import { toast } from 'sonner';
+
+interface OpenMicProps {
+  /**
+   * When true, this page is being used inside the /app (live) experience.
+   * We keep UX focused and avoid entry-points into Community.
+   */
+  appMode?: boolean;
+  /**
+   * When provided, shows the event context banner.
+   */
+  liveEvent?: LiveEvent | null;
+}
 
 interface OpenMicProps {
   /**
