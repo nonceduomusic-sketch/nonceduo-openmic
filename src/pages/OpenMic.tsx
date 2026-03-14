@@ -59,6 +59,12 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
   // Load songs from database
   const { songs, loading: songsLoading } = useSongsCatalog();
   
+  // Load songs from DB for broadcast lookup
+  const { songs: allSongsDb } = useSongs();
+  
+  // Broadcast hook for staff
+  const { broadcastSong } = useHybridBroadcast('main');
+  
   // Assistant context for triggering song request flow
   const { triggerFlow } = useAssistantContext();
   
@@ -84,6 +90,21 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
   const handleRequestSong = () => {
     triggerFlow('song_not_found', search.trim() || undefined);
   };
+
+  // Handler for broadcasting song (staff only)
+  const handleBroadcast = useCallback(async (song: Song) => {
+    const songDb = allSongsDb.find(
+      s => s.titolo === song.title && s.artista === song.artist
+    );
+    if (songDb) {
+      const success = await broadcastSong(songDb.id);
+      if (success) {
+        toast.success('Trasmissione avviata!');
+      }
+    } else {
+      toast.error('Canzone non trovata nel catalogo');
+    }
+  }, [allSongsDb, broadcastSong]);
 
   // Filter songs: exclude completed ones from the main list
   const filteredSongs = useMemo(() => {
