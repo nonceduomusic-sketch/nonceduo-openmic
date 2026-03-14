@@ -31,6 +31,8 @@ import { useAdminFontSize } from '@/hooks/useAdminFontSize';
 import { FontSizeControl } from '@/components/admin/FontSizeControl';
 import { DedicationExpandDialog } from '@/components/admin/DedicationExpandDialog';
 import { useAllVoteCounts } from '@/hooks/useAllVoteCounts';
+import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
+import { useSongs } from '@/hooks/useSongs';
 
 interface LiveCentroTabProps {
   onNavigate?: (tab: AdminMainTab, subTab?: string) => void;
