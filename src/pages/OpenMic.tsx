@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Mic2, Home, MessageCircle, Users, Music, Settings, ListMusic, Trophy, Sparkles, Monitor, ExternalLink } from 'lucide-react';
 import { Song } from '@/data/songs';
 import { useSongsCatalog, useFilteredSongs } from '@/hooks/useSongsCatalog';
@@ -22,6 +22,21 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { LeaderboardCard } from '@/components/gamification/LeaderboardCard';
 import { ConsecutiveUnlockListener } from '@/components/ConsecutiveUnlockListener';
 import { useAssistantContext } from '@/contexts/AssistantContext';
+import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
+import { useSongs } from '@/hooks/useSongs';
+import { toast } from 'sonner';
+
+interface OpenMicProps {
+  /**
+   * When true, this page is being used inside the /app (live) experience.
+   * We keep UX focused and avoid entry-points into Community.
+   */
+  appMode?: boolean;
+  /**
+   * When provided, shows the event context banner.
+   */
+  liveEvent?: LiveEvent | null;
+}
 
 interface OpenMicProps {
   /**
@@ -43,6 +58,12 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
   
   // Load songs from database
   const { songs, loading: songsLoading } = useSongsCatalog();
+  
+  // Load songs from DB for broadcast lookup
+  const { songs: allSongsDb } = useSongs();
+  
+  // Broadcast hook for staff
+  const { broadcastSong } = useHybridBroadcast('main');
   
   // Assistant context for triggering song request flow
   const { triggerFlow } = useAssistantContext();
@@ -69,6 +90,21 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
   const handleRequestSong = () => {
     triggerFlow('song_not_found', search.trim() || undefined);
   };
+
+  // Handler for broadcasting song (staff only)
+  const handleBroadcast = useCallback(async (song: Song) => {
+    const songDb = allSongsDb.find(
+      s => s.titolo === song.title && s.artista === song.artist
+    );
+    if (songDb) {
+      const success = await broadcastSong(songDb.id);
+      if (success) {
+        toast.success('Trasmissione avviata!');
+      }
+    } else {
+      toast.error('Canzone non trovata nel catalogo');
+    }
+  }, [allSongsDb, broadcastSong]);
 
   // Filter songs: exclude completed ones from the main list
   const filteredSongs = useMemo(() => {
@@ -322,6 +358,8 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
                   onBook={handleBookSong}
                   isBooked={isSongBooked(song.title, song.artist)}
                   isCompleted={isSongCompleted(song.title, song.artist)}
+                  isStaff={isStaff}
+                  onBroadcast={handleBroadcast}
                 />
               ))}
             </div>
