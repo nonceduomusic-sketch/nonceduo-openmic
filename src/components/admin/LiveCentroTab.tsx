@@ -236,6 +236,23 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
     // Keep swiped state for action
   };
 
+  // Broadcast action
+  const handleBroadcastItem = async (item: UnifiedItem) => {
+    if (item.type !== 'song') return;
+    const reservation = item.originalData as Reservation;
+    const songDb = allSongsDb.find(
+      s => s.titolo === reservation.song_title && s.artista === reservation.song_artist
+    );
+    if (songDb) {
+      const success = await broadcastSong(songDb.id, reservation.id);
+      if (success) {
+        toast.success('Trasmissione avviata!');
+      }
+    } else {
+      toast.error('Canzone non trovata nel catalogo');
+    }
+  };
+
   // Actions
   const handleComplete = async (item: UnifiedItem) => {
     if (item.type === 'song') {
