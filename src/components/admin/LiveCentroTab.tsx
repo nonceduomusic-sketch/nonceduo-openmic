@@ -13,6 +13,7 @@ import {
   Flame,
   ThumbsUp,
   Bot,
+  Play,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,8 @@ import { useAdminFontSize } from '@/hooks/useAdminFontSize';
 import { FontSizeControl } from '@/components/admin/FontSizeControl';
 import { DedicationExpandDialog } from '@/components/admin/DedicationExpandDialog';
 import { useAllVoteCounts } from '@/hooks/useAllVoteCounts';
+import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
+import { useSongs } from '@/hooks/useSongs';
 
 interface LiveCentroTabProps {
   onNavigate?: (tab: AdminMainTab, subTab?: string) => void;
@@ -73,6 +76,8 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
 
   const { conversations, loading: conversationsLoading } = useConversations();
   const { getVotesForReservation } = useAllVoteCounts();
+  const { broadcastSong } = useHybridBroadcast('main');
+  const { songs: allSongsDb } = useSongs();
   // Filter state - default to 'queue' so completed items are hidden by default
   const [activeFilter, setActiveFilter] = useState<FilterTab>('queue');
   const [showCompleted, setShowCompleted] = useState(false);
@@ -229,6 +234,23 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
 
   const handleTouchEnd = () => {
     // Keep swiped state for action
+  };
+
+  // Broadcast action
+  const handleBroadcastItem = async (item: UnifiedItem) => {
+    if (item.type !== 'song') return;
+    const reservation = item.originalData as Reservation;
+    const songDb = allSongsDb.find(
+      s => s.titolo === reservation.song_title && s.artista === reservation.song_artist
+    );
+    if (songDb) {
+      const success = await broadcastSong(songDb.id, reservation.id);
+      if (success) {
+        toast.success('Trasmissione avviata!');
+      }
+    } else {
+      toast.error('Canzone non trovata nel catalogo');
+    }
   };
 
   // Actions
@@ -602,8 +624,23 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                     )}
                   </div>
 
-                  {/* Arrow indicator */}
-                  <ChevronRight className="w-5 h-5 text-muted-foreground/50 flex-shrink-0" />
+                  {/* Trasmetti button for songs / Arrow for dediche */}
+                  {item.type === 'song' && item.status !== 'completed' ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleBroadcastItem(item);
+                      }}
+                      className="flex-shrink-0 h-9 px-2.5 border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
+                      title="Trasmetti"
+                    >
+                      <Play className="w-4 h-4" />
+                    </Button>
+                  ) : (
+                    <ChevronRight className="w-5 h-5 text-muted-foreground/50 flex-shrink-0" />
+                  )}
                 </div>
               </div>
             ))}
