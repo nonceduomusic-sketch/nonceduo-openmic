@@ -624,8 +624,23 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                     )}
                   </div>
 
-                  {/* Arrow indicator */}
-                  <ChevronRight className="w-5 h-5 text-muted-foreground/50 flex-shrink-0" />
+                  {/* Trasmetti button for songs / Arrow for dediche */}
+                  {item.type === 'song' && item.status !== 'completed' ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleBroadcastItem(item);
+                      }}
+                      className="flex-shrink-0 h-9 px-2.5 border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
+                      title="Trasmetti"
+                    >
+                      <Play className="w-4 h-4" />
+                    </Button>
+                  ) : (
+                    <ChevronRight className="w-5 h-5 text-muted-foreground/50 flex-shrink-0" />
+                  )}
                 </div>
               </div>
             ))}
