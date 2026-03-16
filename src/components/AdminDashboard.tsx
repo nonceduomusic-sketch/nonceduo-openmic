@@ -507,6 +507,7 @@ export const AdminDashboard: React.FC = () => {
   }, [dbSongs, broadcastSong]);
 
 
+  const handleComplete = async (id: string) => {
     const reservation = activeReservations.find(r => r.id === id);
     const success = await completeReservation(id);
     if (success && reservation) {
