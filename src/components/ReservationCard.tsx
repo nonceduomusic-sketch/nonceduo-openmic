@@ -190,17 +190,28 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
           </button>
         )}
 
-        {/* Lyrics/Chords button - always visible */}
-        <div className={compact ? 'mt-2' : 'mt-3'}>
+        {/* Testo/Accordi + Trasmetti buttons */}
+        <div className={cn(compact ? 'mt-2' : 'mt-3', 'flex gap-2')}>
           <Button
             onClick={() => setLyricsDialogOpen(true)}
             variant="outline"
             size="sm"
-            className="w-full border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
+            className="flex-1 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
           >
-            <FileText className="w-4 h-4 mr-2" />
+            <FileText className="w-4 h-4 mr-1.5" />
             Testo / Accordi
           </Button>
+          {onBroadcast && !isCompleted && (
+            <Button
+              onClick={() => onBroadcast(reservation)}
+              variant="outline"
+              size="sm"
+              className="flex-1 border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+            >
+              <Play className="w-4 h-4 mr-1.5" />
+              Trasmetti
+            </Button>
+          )}
         </div>
 
         {showActions && !selectionMode && (
