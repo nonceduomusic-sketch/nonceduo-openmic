@@ -898,6 +898,7 @@ export const AdminDashboard: React.FC = () => {
                     reservation={reservation}
                     onComplete={operatorPerms.canManageOpenmic ? handleComplete : undefined}
                     onDelete={operatorPerms.canDelete ? handleSingleDelete : undefined}
+                    onBroadcast={handleBroadcastReservation}
                     selectionMode={selectionMode}
                     isSelected={selectedIds.has(reservation.id)}
                     onSelect={handleSelect}
