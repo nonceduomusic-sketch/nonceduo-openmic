@@ -51,6 +51,22 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
   const { songs, loading: songsLoading } = useSongsCatalog();
   
   const { statuses, isSongBooked, isSongCompleted } = useReservationStatuses();
+  const { isStaff } = useStaffRole();
+  const { broadcastSong } = useHybridBroadcast('main');
+  const { songs: dbSongs } = useSongs();
+
+  const handleBroadcast = useCallback((song: Song) => {
+    const songDb = dbSongs.find(
+      s => s.title.toLowerCase() === song.title.toLowerCase() &&
+           s.artist.toLowerCase() === song.artist.toLowerCase()
+    );
+    if (!songDb) {
+      toast.error('Canzone non trovata nel database');
+      return;
+    }
+    broadcastSong(songDb.id);
+    toast.success(`Trasmissione: ${song.title}`);
+  }, [dbSongs, broadcastSong]);
   
   // Check if live queue should be shown to users
   const { isActive: showLiveQueue } = useFormatActiveCheck('show_live_queue');
