@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Mic2, Settings } from 'lucide-react';
 import { Song } from '@/data/songs';
 import { useSongsCatalog } from '@/hooks/useSongsCatalog';
@@ -10,6 +10,9 @@ import { Link } from 'react-router-dom';
 import { useStaffRole } from '@/hooks/useStaffRole';
 import { useReservationStatuses } from '@/hooks/useReservationStatuses';
 import { ConsecutiveUnlockListener } from '@/components/ConsecutiveUnlockListener';
+import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
+import { useSongs } from '@/hooks/useSongs';
+import { toast } from 'sonner';
 
 const Index: React.FC = () => {
   const { isStaff } = useStaffRole();
