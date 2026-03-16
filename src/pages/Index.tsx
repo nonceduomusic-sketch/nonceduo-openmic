@@ -128,6 +128,8 @@ const Index: React.FC = () => {
               onBook={handleBookSong}
               isBooked={isSongBooked(song.title, song.artist)}
               isCompleted={isSongCompleted(song.title, song.artist)}
+              isStaff={isStaff}
+              onBroadcast={handleBroadcast}
             />
           ))}
         </div>
