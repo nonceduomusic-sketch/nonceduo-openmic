@@ -54,7 +54,9 @@ import { AdminCatalogSongbookTab } from '@/components/admin/AdminCatalogSongbook
 import { AdminGamesTab } from '@/components/admin/AdminGamesTab';
 import { AdminQuizTab } from '@/components/admin/AdminQuizTab';
 import { AdminFuroreTab } from '@/components/admin/AdminFuroreTab';
-
+import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
+import { useSongs } from '@/hooks/useSongs';
+import { toast as sonnerToast } from 'sonner';
 import AdminManual from '@/pages/AdminManual';
 import { AdminSidebar, type AdminMainTab } from '@/components/admin/AdminSidebar';
 import {
