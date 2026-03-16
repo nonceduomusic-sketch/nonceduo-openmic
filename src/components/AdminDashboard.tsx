@@ -54,7 +54,9 @@ import { AdminCatalogSongbookTab } from '@/components/admin/AdminCatalogSongbook
 import { AdminGamesTab } from '@/components/admin/AdminGamesTab';
 import { AdminQuizTab } from '@/components/admin/AdminQuizTab';
 import { AdminFuroreTab } from '@/components/admin/AdminFuroreTab';
-
+import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
+import { useSongs } from '@/hooks/useSongs';
+import { toast as sonnerToast } from 'sonner';
 import AdminManual from '@/pages/AdminManual';
 import { AdminSidebar, type AdminMainTab } from '@/components/admin/AdminSidebar';
 import {
@@ -99,6 +101,8 @@ export const AdminDashboard: React.FC = () => {
   const { access, isLoading: isAccessLoading } = useAdminSectionAccess();
   const operatorPerms = useOperatorPermissions();
   const isMobile = useIsMobile();
+  const { broadcastSong } = useHybridBroadcast('main');
+  const { songs: dbSongs } = useSongs();
   const {
     activeReservations,
     completedReservations,
@@ -488,6 +492,20 @@ export const AdminDashboard: React.FC = () => {
       setLastAction(null);
     }
   };
+
+  const handleBroadcastReservation = useCallback((reservation: Reservation) => {
+    const songDb = dbSongs.find(
+      s => s.titolo?.toLowerCase() === reservation.song_title.toLowerCase() &&
+           s.artista?.toLowerCase() === reservation.song_artist.toLowerCase()
+    );
+    if (!songDb) {
+      sonnerToast.error('Canzone non trovata nel database');
+      return;
+    }
+    broadcastSong(songDb.id, reservation.id);
+    sonnerToast.success(`Trasmissione: ${reservation.song_title}`);
+  }, [dbSongs, broadcastSong]);
+
 
   const handleComplete = async (id: string) => {
     const reservation = activeReservations.find(r => r.id === id);
@@ -880,6 +898,7 @@ export const AdminDashboard: React.FC = () => {
                     reservation={reservation}
                     onComplete={operatorPerms.canManageOpenmic ? handleComplete : undefined}
                     onDelete={operatorPerms.canDelete ? handleSingleDelete : undefined}
+                    onBroadcast={handleBroadcastReservation}
                     selectionMode={selectionMode}
                     isSelected={selectedIds.has(reservation.id)}
                     onSelect={handleSelect}

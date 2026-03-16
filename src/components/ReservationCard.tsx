@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, RotateCcw, Music, Clock, Heart, Trash2, FileText, AlertTriangle, Maximize2, Flame, ThumbsUp } from 'lucide-react';
+import { Check, RotateCcw, Music, Clock, Heart, Trash2, FileText, AlertTriangle, Maximize2, Flame, ThumbsUp, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Reservation } from '@/hooks/useReservations';
@@ -25,6 +25,7 @@ interface ReservationCardProps {
   onComplete?: (id: string) => void;
   onReactivate?: (id: string) => void;
   onDelete?: (id: string) => void;
+  onBroadcast?: (reservation: Reservation) => void;
   showActions?: boolean;
   selectionMode?: boolean;
   isSelected?: boolean;
@@ -38,6 +39,7 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
   onComplete,
   onReactivate,
   onDelete,
+  onBroadcast,
   showActions = true,
   selectionMode = false,
   isSelected = false,
@@ -188,17 +190,28 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
           </button>
         )}
 
-        {/* Lyrics/Chords button - always visible */}
-        <div className={compact ? 'mt-2' : 'mt-3'}>
+        {/* Testo/Accordi + Trasmetti buttons */}
+        <div className={cn(compact ? 'mt-2' : 'mt-3', 'flex gap-2')}>
           <Button
             onClick={() => setLyricsDialogOpen(true)}
             variant="outline"
             size="sm"
-            className="w-full border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
+            className="flex-1 border-primary/50 text-primary hover:bg-primary hover:text-primary-foreground"
           >
-            <FileText className="w-4 h-4 mr-2" />
+            <FileText className="w-4 h-4 mr-1.5" />
             Testo / Accordi
           </Button>
+          {onBroadcast && !isCompleted && (
+            <Button
+              onClick={() => onBroadcast(reservation)}
+              variant="outline"
+              size="sm"
+              className="flex-1 border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+            >
+              <Play className="w-4 h-4 mr-1.5" />
+              Trasmetti
+            </Button>
+          )}
         </div>
 
         {showActions && !selectionMode && (
