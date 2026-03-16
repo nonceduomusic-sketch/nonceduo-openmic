@@ -493,7 +493,20 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const handleComplete = async (id: string) => {
+  const handleBroadcastReservation = useCallback((reservation: Reservation) => {
+    const songDb = dbSongs.find(
+      s => s.titolo?.toLowerCase() === reservation.song_title.toLowerCase() &&
+           s.artista?.toLowerCase() === reservation.song_artist.toLowerCase()
+    );
+    if (!songDb) {
+      sonnerToast.error('Canzone non trovata nel database');
+      return;
+    }
+    broadcastSong(songDb.id, reservation.id);
+    sonnerToast.success(`Trasmissione: ${reservation.song_title}`);
+  }, [dbSongs, broadcastSong]);
+
+
     const reservation = activeReservations.find(r => r.id === id);
     const success = await completeReservation(id);
     if (success && reservation) {
