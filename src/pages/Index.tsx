@@ -24,6 +24,23 @@ const Index: React.FC = () => {
   // Load songs from database
   const { songs, loading } = useSongsCatalog();
 
+  // Broadcast (staff only)
+  const { broadcastSong } = useHybridBroadcast('main');
+  const { songs: dbSongs } = useSongs();
+
+  const handleBroadcast = useCallback((song: Song) => {
+    const songDb = dbSongs.find(
+      s => s.title.toLowerCase() === song.title.toLowerCase() &&
+           s.artist.toLowerCase() === song.artist.toLowerCase()
+    );
+    if (!songDb) {
+      toast.error('Canzone non trovata nel database');
+      return;
+    }
+    broadcastSong(songDb.id);
+    toast.success(`Trasmissione: ${song.title}`);
+  }, [dbSongs, broadcastSong]);
+
   const handleBookSong = (song: Song) => {
     if (isSongBooked(song.title, song.artist)) {
       return; // Already booked, do nothing
