@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ChevronLeft, Music2, Zap, Users, ListMusic, AlertTriangle, Timer, Monitor, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,10 @@ import { FreeModeClosureOverlay, FreeModeClosureBanner } from "@/components/Free
 import { EventCountdownBanner } from "@/components/effects/EventCountdownBanner";
 import { differenceInSeconds, parseISO } from "date-fns";
 import { ConsecutiveUnlockListener } from '@/components/ConsecutiveUnlockListener';
+import { useStaffRole } from "@/hooks/useStaffRole";
+import { useHybridBroadcast } from "@/hooks/useHybridBroadcast";
+import { useSongs } from "@/hooks/useSongs";
+import { toast } from "sonner";
 
 interface FreeModeOpenMicProps {
   freeModeState: FreeModeState;
