@@ -39,6 +39,7 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
   onComplete,
   onReactivate,
   onDelete,
+  onBroadcast,
   showActions = true,
   selectionMode = false,
   isSelected = false,
