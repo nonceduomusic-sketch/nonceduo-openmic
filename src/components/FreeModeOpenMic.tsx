@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ChevronLeft, Music2, Zap, Users, ListMusic, AlertTriangle, Timer, Monitor, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,10 @@ import { FreeModeClosureOverlay, FreeModeClosureBanner } from "@/components/Free
 import { EventCountdownBanner } from "@/components/effects/EventCountdownBanner";
 import { differenceInSeconds, parseISO } from "date-fns";
 import { ConsecutiveUnlockListener } from '@/components/ConsecutiveUnlockListener';
+import { useStaffRole } from "@/hooks/useStaffRole";
+import { useHybridBroadcast } from "@/hooks/useHybridBroadcast";
+import { useSongs } from "@/hooks/useSongs";
+import { toast } from "sonner";
 
 interface FreeModeOpenMicProps {
   freeModeState: FreeModeState;
@@ -47,6 +51,22 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
   const { songs, loading: songsLoading } = useSongsCatalog();
   
   const { statuses, isSongBooked, isSongCompleted } = useReservationStatuses();
+  const { isStaff } = useStaffRole();
+  const { broadcastSong } = useHybridBroadcast('main');
+  const { songs: dbSongs } = useSongs();
+
+  const handleBroadcast = useCallback((song: Song) => {
+    const songDb = dbSongs.find(
+      s => s.titolo?.toLowerCase() === song.title.toLowerCase() &&
+           s.artista?.toLowerCase() === song.artist.toLowerCase()
+    );
+    if (!songDb) {
+      toast.error('Canzone non trovata nel database');
+      return;
+    }
+    broadcastSong(songDb.id);
+    toast.success(`Trasmissione: ${song.title}`);
+  }, [dbSongs, broadcastSong]);
   
   // Check if live queue should be shown to users
   const { isActive: showLiveQueue } = useFormatActiveCheck('show_live_queue');
@@ -426,6 +446,8 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
                     isBooked={isSongBooked(song.title, song.artist)}
                     isCompleted={isSongCompleted(song.title, song.artist)}
                     onBook={handleBookSong}
+                    isStaff={isStaff}
+                    onBroadcast={handleBroadcast}
                   />
                 ))}
               </div>
