@@ -30,8 +30,8 @@ const Index: React.FC = () => {
 
   const handleBroadcast = useCallback((song: Song) => {
     const songDb = dbSongs.find(
-      s => s.title.toLowerCase() === song.title.toLowerCase() &&
-           s.artist.toLowerCase() === song.artist.toLowerCase()
+      s => s.titolo?.toLowerCase() === song.title.toLowerCase() &&
+           s.artista?.toLowerCase() === song.artist.toLowerCase()
     );
     if (!songDb) {
       toast.error('Canzone non trovata nel database');
