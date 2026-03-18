@@ -102,10 +102,7 @@ export default function FuroreRemote() {
 
     const validate = async () => {
       const { data, error } = await supabase
-        .from('furore_remote_access')
-        .select('id, name, pin_required, pin_code, is_active')
-        .eq('access_token', token)
-        .eq('is_active', true)
+        .rpc('check_furore_remote_token', { p_token: token })
         .maybeSingle();
 
       if (error || !data) {
@@ -113,17 +110,14 @@ export default function FuroreRemote() {
         return;
       }
 
-      setAccessInfo({ id: data.id, name: data.name, pin_required: data.pin_required });
-
-      // Update last_used_at
-      supabase.from('furore_remote_access').update({ last_used_at: new Date().toISOString() }).eq('id', data.id).then(() => {});
+      setAccessInfo({ id: data.access_id, name: data.name, pin_required: data.pin_required });
 
       if (!data.pin_required) {
         setPhase('controls');
       } else {
         // Check if already validated in this session
-        const savedPin = sessionStorage.getItem(`furore_remote_pin_${data.id}`);
-        if (savedPin === data.pin_code) {
+        const savedValidated = sessionStorage.getItem(`furore_remote_validated_${data.access_id}`);
+        if (savedValidated === 'true') {
           setPhase('controls');
         } else {
           setPhase('pin');
