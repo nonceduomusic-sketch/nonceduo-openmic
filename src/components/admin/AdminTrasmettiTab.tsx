@@ -523,10 +523,6 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                             <span>Completata</span>
                           </Button>
                         </div>
-                            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
-                            <span>Fatto</span>
-                          </Button>
-                        </div>
                       </div>
                     </div>
                   ))}
