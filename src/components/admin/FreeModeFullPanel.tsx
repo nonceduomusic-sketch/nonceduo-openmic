@@ -185,6 +185,7 @@ export const FreeModeFullPanel: React.FC = () => {
     end_mode: settings?.end_mode || 'manual',
     event_date: settings?.event_date || null,
     event_start_time: settings?.event_start_time || null,
+    event_end_date: settings?.event_end_date || null,
     event_end_time: settings?.event_end_time || null,
     duration_minutes: settings?.duration_minutes || null,
     expires_at: settings?.expires_at || null,
