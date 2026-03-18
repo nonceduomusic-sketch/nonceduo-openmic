@@ -63,7 +63,8 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
   const { songs: allSongsDb } = useSongs();
   
   // Broadcast hook for staff
-  const { broadcastSong } = useHybridBroadcast('main');
+  const { broadcastSong, stopBroadcast, session: broadcastSession } = useHybridBroadcast('main');
+  const currentBroadcastSongId = broadcastSession?.current_song_id || null;
   
   // Assistant context for triggering song request flow
   const { triggerFlow } = useAssistantContext();
@@ -96,15 +97,20 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
     const songDb = allSongsDb.find(
       s => s.titolo === song.title && s.artista === song.artist
     );
-    if (songDb) {
+    if (!songDb) {
+      toast.error('Canzone non trovata nel catalogo');
+      return;
+    }
+    if (currentBroadcastSongId === songDb.id) {
+      await stopBroadcast();
+      toast.success('Trasmissione interrotta');
+    } else {
       const success = await broadcastSong(songDb.id);
       if (success) {
         toast.success('Trasmissione avviata!');
       }
-    } else {
-      toast.error('Canzone non trovata nel catalogo');
     }
-  }, [allSongsDb, broadcastSong]);
+  }, [allSongsDb, broadcastSong, stopBroadcast, currentBroadcastSongId]);
 
   // Filter songs: exclude completed ones from the main list
   const filteredSongs = useMemo(() => {
@@ -351,17 +357,21 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
           <>
             {/* Song grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-3">
-              {filteredSongs.map((song, index) => (
-                <SongCardWithStatus
-                  key={`${song.title}-${song.artist}-${index}`}
-                  song={song}
-                  onBook={handleBookSong}
-                  isBooked={isSongBooked(song.title, song.artist)}
-                  isCompleted={isSongCompleted(song.title, song.artist)}
-                  isStaff={isStaff}
-                  onBroadcast={handleBroadcast}
-                />
-              ))}
+              {filteredSongs.map((song, index) => {
+                const songDb = allSongsDb.find(s => s.titolo === song.title && s.artista === song.artist);
+                return (
+                  <SongCardWithStatus
+                    key={`${song.title}-${song.artist}-${index}`}
+                    song={song}
+                    onBook={handleBookSong}
+                    isBooked={isSongBooked(song.title, song.artist)}
+                    isCompleted={isSongCompleted(song.title, song.artist)}
+                    isStaff={isStaff}
+                    onBroadcast={handleBroadcast}
+                    isBroadcasting={!!songDb && currentBroadcastSongId === songDb.id}
+                  />
+                );
+              })}
             </div>
 
             {/* Leaderboard Section */}

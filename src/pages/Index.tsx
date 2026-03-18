@@ -24,8 +24,8 @@ const Index: React.FC = () => {
   // Load songs from database
   const { songs, loading } = useSongsCatalog();
 
-  // Broadcast (staff only)
-  const { broadcastSong } = useHybridBroadcast('main');
+  const { broadcastSong, stopBroadcast, session: broadcastSession } = useHybridBroadcast('main');
+  const currentBroadcastSongId = broadcastSession?.current_song_id || null;
   const { songs: dbSongs } = useSongs();
 
   const handleBroadcast = useCallback((song: Song) => {
@@ -37,9 +37,14 @@ const Index: React.FC = () => {
       toast.error('Canzone non trovata nel database');
       return;
     }
-    broadcastSong(songDb.id);
-    toast.success(`Trasmissione: ${song.title}`);
-  }, [dbSongs, broadcastSong]);
+    if (currentBroadcastSongId === songDb.id) {
+      stopBroadcast();
+      toast.success('Trasmissione interrotta');
+    } else {
+      broadcastSong(songDb.id);
+      toast.success(`Trasmissione: ${song.title}`);
+    }
+  }, [dbSongs, broadcastSong, stopBroadcast, currentBroadcastSongId]);
 
   const handleBookSong = (song: Song) => {
     if (isSongBooked(song.title, song.artist)) {
@@ -121,17 +126,21 @@ const Index: React.FC = () => {
 
         {/* Mobile: 1 col, Tablet: 2 cols with better spacing, Desktop: 3 cols */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-3">
-          {filteredSongs.map((song, index) => (
-            <SongCardWithStatus
-              key={`${song.title}-${song.artist}-${index}`}
-              song={song}
-              onBook={handleBookSong}
-              isBooked={isSongBooked(song.title, song.artist)}
-              isCompleted={isSongCompleted(song.title, song.artist)}
-              isStaff={isStaff}
-              onBroadcast={handleBroadcast}
-            />
-          ))}
+          {filteredSongs.map((song, index) => {
+            const songDb = dbSongs.find(s => s.titolo?.toLowerCase() === song.title.toLowerCase() && s.artista?.toLowerCase() === song.artist.toLowerCase());
+            return (
+              <SongCardWithStatus
+                key={`${song.title}-${song.artist}-${index}`}
+                song={song}
+                onBook={handleBookSong}
+                isBooked={isSongBooked(song.title, song.artist)}
+                isCompleted={isSongCompleted(song.title, song.artist)}
+                isStaff={isStaff}
+                onBroadcast={handleBroadcast}
+                isBroadcasting={!!songDb && currentBroadcastSongId === songDb.id}
+              />
+            );
+          })}
         </div>
 
         {filteredSongs.length === 0 && (

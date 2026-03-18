@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, RotateCcw, Music, Clock, Heart, Trash2, FileText, AlertTriangle, Maximize2, Flame, ThumbsUp, Play } from 'lucide-react';
+import { Check, RotateCcw, Music, Clock, Heart, Trash2, FileText, AlertTriangle, Maximize2, Flame, ThumbsUp, Play, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Reservation } from '@/hooks/useReservations';
@@ -26,6 +26,7 @@ interface ReservationCardProps {
   onReactivate?: (id: string) => void;
   onDelete?: (id: string) => void;
   onBroadcast?: (reservation: Reservation) => void;
+  isBroadcasting?: boolean;
   showActions?: boolean;
   selectionMode?: boolean;
   isSelected?: boolean;
@@ -40,6 +41,7 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
   onReactivate,
   onDelete,
   onBroadcast,
+  isBroadcasting = false,
   showActions = true,
   selectionMode = false,
   isSelected = false,
@@ -204,12 +206,21 @@ export const ReservationCard: React.FC<ReservationCardProps> = ({
           {onBroadcast && !isCompleted && (
             <Button
               onClick={() => onBroadcast(reservation)}
-              variant="outline"
+              variant={isBroadcasting ? "destructive" : "outline"}
               size="sm"
-              className="flex-1 border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+              className={cn(
+                "flex-1",
+                isBroadcasting
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : "border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+              )}
             >
-              <Play className="w-4 h-4 mr-1.5" />
-              Trasmetti
+              {isBroadcasting ? (
+                <Square className="w-4 h-4 mr-1.5" />
+              ) : (
+                <Play className="w-4 h-4 mr-1.5" />
+              )}
+              {isBroadcasting ? 'Stop' : 'Trasmetti'}
             </Button>
           )}
         </div>

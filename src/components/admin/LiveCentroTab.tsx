@@ -14,6 +14,7 @@ import {
   ThumbsUp,
   Bot,
   Play,
+  Square,
   FileText,
   RotateCcw,
 } from 'lucide-react';
@@ -78,7 +79,8 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
 
   const { conversations, loading: conversationsLoading } = useConversations();
   const { getVotesForReservation } = useAllVoteCounts();
-  const { broadcastSong } = useHybridBroadcast('main');
+  const { broadcastSong, stopBroadcast, session } = useHybridBroadcast('main');
+  const currentBroadcastSongId = session?.current_song_id || null;
   const { songs: allSongsDb } = useSongs();
   // Filter state - default to 'queue' so completed items are hidden by default
   const [activeFilter, setActiveFilter] = useState<FilterTab>('queue');
@@ -238,20 +240,26 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
     // Keep swiped state for action
   };
 
-  // Broadcast action
+  // Broadcast action (toggle: same song → stop, different song → switch)
   const handleBroadcastItem = async (item: UnifiedItem) => {
     if (item.type !== 'song') return;
     const reservation = item.originalData as Reservation;
     const songDb = allSongsDb.find(
       s => s.titolo === reservation.song_title && s.artista === reservation.song_artist
     );
-    if (songDb) {
+    if (!songDb) {
+      toast.error('Canzone non trovata nel catalogo');
+      return;
+    }
+    // If this song is already broadcasting → stop
+    if (currentBroadcastSongId === songDb.id) {
+      await stopBroadcast();
+      toast.success('Trasmissione interrotta');
+    } else {
       const success = await broadcastSong(songDb.id, reservation.id);
       if (success) {
         toast.success('Trasmissione avviata!');
       }
-    } else {
-      toast.error('Canzone non trovata nel catalogo');
     }
   };
 
@@ -645,22 +653,38 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                         <span className="hidden lg:inline">Testo</span>
                       </Button>
 
-                      {/* Trasmetti */}
-                      {item.status !== 'completed' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleBroadcastItem(item);
-                          }}
-                          className="h-8 sm:h-9 px-2 sm:px-2.5 text-xs border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
-                          title="Trasmetti"
-                        >
-                          <Play className="w-3.5 h-3.5 sm:mr-1" />
-                          <span className="hidden lg:inline">Trasmetti</span>
-                        </Button>
-                      )}
+                      {/* Trasmetti / Stop */}
+                      {item.status !== 'completed' && (() => {
+                        const reservation = item.originalData as Reservation;
+                        const songDb = allSongsDb.find(
+                          s => s.titolo === reservation.song_title && s.artista === reservation.song_artist
+                        );
+                        const isItemBroadcasting = songDb && currentBroadcastSongId === songDb.id;
+                        return (
+                          <Button
+                            size="sm"
+                            variant={isItemBroadcasting ? "destructive" : "outline"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleBroadcastItem(item);
+                            }}
+                            className={cn(
+                              "h-8 sm:h-9 px-2 sm:px-2.5 text-xs",
+                              isItemBroadcasting
+                                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                : "border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
+                            )}
+                            title={isItemBroadcasting ? "Stop" : "Trasmetti"}
+                          >
+                            {isItemBroadcasting ? (
+                              <Square className="w-3.5 h-3.5 sm:mr-1" />
+                            ) : (
+                              <Play className="w-3.5 h-3.5 sm:mr-1" />
+                            )}
+                            <span className="hidden lg:inline">{isItemBroadcasting ? 'Stop' : 'Trasmetti'}</span>
+                          </Button>
+                        );
+                      })()}
 
                       {/* Completa / Riattiva */}
                       {item.status === 'completed' ? (

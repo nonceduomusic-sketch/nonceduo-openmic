@@ -56,6 +56,7 @@ import { AdminQuizTab } from '@/components/admin/AdminQuizTab';
 import { AdminFuroreTab } from '@/components/admin/AdminFuroreTab';
 import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
 import { useSongs } from '@/hooks/useSongs';
+import type { Song as DbSong } from '@/hooks/useSongs';
 import { toast as sonnerToast } from 'sonner';
 import AdminManual from '@/pages/AdminManual';
 import { AdminSidebar, type AdminMainTab } from '@/components/admin/AdminSidebar';
@@ -101,7 +102,8 @@ export const AdminDashboard: React.FC = () => {
   const { access, isLoading: isAccessLoading } = useAdminSectionAccess();
   const operatorPerms = useOperatorPermissions();
   const isMobile = useIsMobile();
-  const { broadcastSong } = useHybridBroadcast('main');
+  const { broadcastSong, stopBroadcast, session: broadcastSession } = useHybridBroadcast('main');
+  const currentBroadcastSongId = broadcastSession?.current_song_id || null;
   const { songs: dbSongs } = useSongs();
   const {
     activeReservations,
@@ -502,9 +504,15 @@ export const AdminDashboard: React.FC = () => {
       sonnerToast.error('Canzone non trovata nel database');
       return;
     }
-    broadcastSong(songDb.id, reservation.id);
-    sonnerToast.success(`Trasmissione: ${reservation.song_title}`);
-  }, [dbSongs, broadcastSong]);
+    // Toggle: same song → stop, different song → switch
+    if (currentBroadcastSongId === songDb.id) {
+      stopBroadcast();
+      sonnerToast.success('Trasmissione interrotta');
+    } else {
+      broadcastSong(songDb.id, reservation.id);
+      sonnerToast.success(`Trasmissione: ${reservation.song_title}`);
+    }
+  }, [dbSongs, broadcastSong, stopBroadcast, currentBroadcastSongId]);
 
 
   const handleComplete = async (id: string) => {
@@ -892,19 +900,26 @@ export const AdminDashboard: React.FC = () => {
                   </p>
                 </div>
               ) : (
-                activeReservations.map((reservation) => (
-                  <ReservationCard
-                    key={reservation.id}
-                    reservation={reservation}
-                    onComplete={operatorPerms.canManageOpenmic ? handleComplete : undefined}
-                    onDelete={operatorPerms.canDelete ? handleSingleDelete : undefined}
-                    onBroadcast={handleBroadcastReservation}
-                    selectionMode={selectionMode}
-                    isSelected={selectedIds.has(reservation.id)}
-                    onSelect={handleSelect}
-                    compact={isMobile}
-                  />
-                ))
+                activeReservations.map((reservation) => {
+                  const songDb = dbSongs.find(
+                    s => s.titolo?.toLowerCase() === reservation.song_title.toLowerCase() &&
+                         s.artista?.toLowerCase() === reservation.song_artist.toLowerCase()
+                  );
+                  return (
+                    <ReservationCard
+                      key={reservation.id}
+                      reservation={reservation}
+                      onComplete={operatorPerms.canManageOpenmic ? handleComplete : undefined}
+                      onDelete={operatorPerms.canDelete ? handleSingleDelete : undefined}
+                      onBroadcast={handleBroadcastReservation}
+                      isBroadcasting={!!songDb && currentBroadcastSongId === songDb.id}
+                      selectionMode={selectionMode}
+                      isSelected={selectedIds.has(reservation.id)}
+                      onSelect={handleSelect}
+                      compact={isMobile}
+                    />
+                  );
+                })
               )}
             </div>
           ) : (
