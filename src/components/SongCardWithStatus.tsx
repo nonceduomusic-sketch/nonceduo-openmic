@@ -17,7 +17,7 @@ interface SongCardWithStatusProps {
 }
 
 export const SongCardWithStatus = forwardRef<HTMLDivElement, SongCardWithStatusProps>(
-  ({ song, onBook, isBooked = false, isCompleted = false, isStaff = false, onBroadcast }, ref) => {
+  ({ song, onBook, isBooked = false, isCompleted = false, isStaff = false, onBroadcast, isBroadcasting = false }, ref) => {
     const navigate = useNavigate();
 
     const handleLyricsClick = useCallback(async () => {
