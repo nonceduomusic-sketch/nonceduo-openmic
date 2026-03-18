@@ -653,22 +653,38 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                         <span className="hidden lg:inline">Testo</span>
                       </Button>
 
-                      {/* Trasmetti */}
-                      {item.status !== 'completed' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleBroadcastItem(item);
-                          }}
-                          className="h-8 sm:h-9 px-2 sm:px-2.5 text-xs border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
-                          title="Trasmetti"
-                        >
-                          <Play className="w-3.5 h-3.5 sm:mr-1" />
-                          <span className="hidden lg:inline">Trasmetti</span>
-                        </Button>
-                      )}
+                      {/* Trasmetti / Stop */}
+                      {item.status !== 'completed' && (() => {
+                        const reservation = item.originalData as Reservation;
+                        const songDb = allSongsDb.find(
+                          s => s.titolo === reservation.song_title && s.artista === reservation.song_artist
+                        );
+                        const isItemBroadcasting = songDb && currentBroadcastSongId === songDb.id;
+                        return (
+                          <Button
+                            size="sm"
+                            variant={isItemBroadcasting ? "destructive" : "outline"}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleBroadcastItem(item);
+                            }}
+                            className={cn(
+                              "h-8 sm:h-9 px-2 sm:px-2.5 text-xs",
+                              isItemBroadcasting
+                                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                : "border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
+                            )}
+                            title={isItemBroadcasting ? "Stop" : "Trasmetti"}
+                          >
+                            {isItemBroadcasting ? (
+                              <Square className="w-3.5 h-3.5 sm:mr-1" />
+                            ) : (
+                              <Play className="w-3.5 h-3.5 sm:mr-1" />
+                            )}
+                            <span className="hidden lg:inline">{isItemBroadcasting ? 'Stop' : 'Trasmetti'}</span>
+                          </Button>
+                        );
+                      })()}
 
                       {/* Completa / Riattiva */}
                       {item.status === 'completed' ? (
