@@ -63,7 +63,8 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
   const { songs: allSongsDb } = useSongs();
   
   // Broadcast hook for staff
-  const { broadcastSong } = useHybridBroadcast('main');
+  const { broadcastSong, stopBroadcast, session: broadcastSession } = useHybridBroadcast('main');
+  const currentBroadcastSongId = broadcastSession?.current_song_id || null;
   
   // Assistant context for triggering song request flow
   const { triggerFlow } = useAssistantContext();
