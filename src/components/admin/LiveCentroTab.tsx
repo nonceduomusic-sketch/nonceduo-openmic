@@ -627,19 +627,73 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                   </div>
 
                   {/* Trasmetti button for songs / Arrow for dediche */}
-                  {item.type === 'song' && item.status !== 'completed' ? (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleBroadcastItem(item);
-                      }}
-                      className="flex-shrink-0 h-9 px-2.5 border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
-                      title="Trasmetti"
-                    >
-                      <Play className="w-4 h-4" />
-                    </Button>
+                  {item.type === 'song' ? (
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                      {/* Testo / Accordi */}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedSong({ title: item.title, artist: item.subtitle });
+                          setLyricsOpen(true);
+                        }}
+                        className="h-8 sm:h-9 px-2 sm:px-2.5 text-xs border-secondary/40 text-secondary hover:bg-secondary hover:text-secondary-foreground"
+                        title="Testo / Accordi"
+                      >
+                        <FileText className="w-3.5 h-3.5 sm:mr-1" />
+                        <span className="hidden lg:inline">Testo</span>
+                      </Button>
+
+                      {/* Trasmetti */}
+                      {item.status !== 'completed' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleBroadcastItem(item);
+                          }}
+                          className="h-8 sm:h-9 px-2 sm:px-2.5 text-xs border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
+                          title="Trasmetti"
+                        >
+                          <Play className="w-3.5 h-3.5 sm:mr-1" />
+                          <span className="hidden lg:inline">Trasmetti</span>
+                        </Button>
+                      )}
+
+                      {/* Completa / Riattiva */}
+                      {item.status === 'completed' ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            reactivateReservation((item.originalData as Reservation).id);
+                            toast.success('Riattivata!');
+                          }}
+                          className="h-8 sm:h-9 px-2 sm:px-2.5 text-xs border-muted-foreground/30 text-muted-foreground hover:bg-muted"
+                          title="Riattiva"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5 sm:mr-1" />
+                          <span className="hidden lg:inline">Riattiva</span>
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleComplete(item);
+                          }}
+                          className="h-8 sm:h-9 px-2 sm:px-2.5 text-xs border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white"
+                          title="Completa"
+                        >
+                          <Check className="w-3.5 h-3.5 sm:mr-1" />
+                          <span className="hidden lg:inline">Completa</span>
+                        </Button>
+                      )}
+                    </div>
                   ) : (
                     <ChevronRight className="w-5 h-5 text-muted-foreground/50 flex-shrink-0" />
                   )}
