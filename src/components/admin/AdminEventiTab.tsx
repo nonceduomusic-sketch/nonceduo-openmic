@@ -112,6 +112,7 @@ export const AdminEventiTab: React.FC = () => {
     end_mode: rules?.event_end_time ? 'scheduled' as const : 'manual' as const,
     event_date: rules?.event_date || null,
     event_start_time: rules?.event_start_time || null,
+    event_end_date: rules?.event_end_date || null,
     event_end_time: rules?.event_end_time || null,
     duration_minutes: null,
     expires_at: null,
@@ -124,6 +125,7 @@ export const AdminEventiTab: React.FC = () => {
     return await updateRules({
       event_date: updates.event_date,
       event_start_time: updates.event_start_time,
+      event_end_date: updates.event_end_date,
       event_end_time: updates.event_end_time,
     });
   };

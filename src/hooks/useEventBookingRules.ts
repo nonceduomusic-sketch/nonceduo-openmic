@@ -9,6 +9,7 @@ export interface EventBookingRules {
   event_name: string | null;
   event_date: string | null;
   event_start_time: string | null;
+  event_end_date: string | null;
   event_end_time: string | null;
   event_type: EventType;
   event_status: EventStatus;
