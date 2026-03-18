@@ -239,20 +239,26 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
     // Keep swiped state for action
   };
 
-  // Broadcast action
+  // Broadcast action (toggle: same song → stop, different song → switch)
   const handleBroadcastItem = async (item: UnifiedItem) => {
     if (item.type !== 'song') return;
     const reservation = item.originalData as Reservation;
     const songDb = allSongsDb.find(
       s => s.titolo === reservation.song_title && s.artista === reservation.song_artist
     );
-    if (songDb) {
+    if (!songDb) {
+      toast.error('Canzone non trovata nel catalogo');
+      return;
+    }
+    // If this song is already broadcasting → stop
+    if (currentBroadcastSongId === songDb.id) {
+      await stopBroadcast();
+      toast.success('Trasmissione interrotta');
+    } else {
       const success = await broadcastSong(songDb.id, reservation.id);
       if (success) {
         toast.success('Trasmissione avviata!');
       }
-    } else {
-      toast.error('Canzone non trovata nel catalogo');
     }
   };
 
