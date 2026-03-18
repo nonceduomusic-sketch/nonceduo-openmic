@@ -92,15 +92,24 @@ export const SongCardWithStatus = forwardRef<HTMLDivElement, SongCardWithStatusP
                 <span className="sm:hidden">Testo</span>
               </Button>
 
-              {/* Trasmetti - Staff only */}
+              {/* Trasmetti / Stop - Staff only */}
               <Button
                 onClick={() => onBroadcast?.(song)}
-                variant="outline"
-                className="border-primary text-primary hover:bg-primary hover:text-primary-foreground flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all"
+                variant={isBroadcasting ? "destructive" : "outline"}
+                className={cn(
+                  "flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all",
+                  isBroadcasting
+                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    : "border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                )}
                 size="default"
               >
-                <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
-                <span>Trasmetti</span>
+                {isBroadcasting ? (
+                  <Square className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                ) : (
+                  <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                )}
+                <span>{isBroadcasting ? 'Stop' : 'Trasmetti'}</span>
               </Button>
 
               {/* Completa */}
