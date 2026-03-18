@@ -102,6 +102,8 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
   const { setlists, createSetlist, updateSetlist, deleteSetlist } = useBroadcastSetlists();
   const { accesses: remoteAccesses } = useBroadcastRemoteAdmin();
   const [furoreRemoteToken, setFuroreRemoteToken] = useState<string | null>(null);
+  const [lyricsDialogOpen, setLyricsDialogOpen] = useState(false);
+  const [lyricsDialogSong, setLyricsDialogSong] = useState<{ title: string; artist: string }>({ title: '', artist: '' });
 
   // Fetch furore remote token
   useEffect(() => {
