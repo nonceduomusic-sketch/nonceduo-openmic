@@ -94,9 +94,11 @@ interface AdminTrasmettiTabProps {
 }
 
 export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTrasmettiTabProps) {
+  const navigate = useNavigate();
   const { session, broadcastSong, stopBroadcast, toggleActive, syncUpdate } = useHybridBroadcast('main');
-  const { activeReservations } = useReservations();
+  const { activeReservations, completeReservation } = useReservations();
   const { songs } = useSongs();
+  const currentBroadcastSongId = session?.current_song_id || null;
   const { setlists, createSetlist, updateSetlist, deleteSetlist } = useBroadcastSetlists();
   const { accesses: remoteAccesses } = useBroadcastRemoteAdmin();
   const [furoreRemoteToken, setFuroreRemoteToken] = useState<string | null>(null);
