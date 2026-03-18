@@ -504,9 +504,15 @@ export const AdminDashboard: React.FC = () => {
       sonnerToast.error('Canzone non trovata nel database');
       return;
     }
-    broadcastSong(songDb.id, reservation.id);
-    sonnerToast.success(`Trasmissione: ${reservation.song_title}`);
-  }, [dbSongs, broadcastSong]);
+    // Toggle: same song → stop, different song → switch
+    if (currentBroadcastSongId === songDb.id) {
+      stopBroadcast();
+      sonnerToast.success('Trasmissione interrotta');
+    } else {
+      broadcastSong(songDb.id, reservation.id);
+      sonnerToast.success(`Trasmissione: ${reservation.song_title}`);
+    }
+  }, [dbSongs, broadcastSong, stopBroadcast, currentBroadcastSongId]);
 
 
   const handleComplete = async (id: string) => {
