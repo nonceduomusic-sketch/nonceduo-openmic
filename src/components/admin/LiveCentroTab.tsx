@@ -636,7 +636,7 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
 
                   {/* Trasmetti button for songs / Arrow for dediche */}
                   {item.type === 'song' ? (
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1 sm:gap-1.5 flex-shrink-0">
+                   <div className="flex flex-row items-center gap-1.5 flex-shrink-0">
                       {/* Testo / Accordi */}
                       <Button
                         size="sm"
@@ -646,11 +646,11 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                           setSelectedSong({ title: item.title, artist: item.subtitle });
                           setLyricsOpen(true);
                         }}
-                        className="h-8 sm:h-9 px-2 sm:px-2.5 text-xs border-secondary/40 text-secondary hover:bg-secondary hover:text-secondary-foreground"
+                        className="h-9 min-w-[44px] px-2 text-xs border-secondary/40 text-secondary hover:bg-secondary hover:text-secondary-foreground"
                         title="Testo / Accordi"
                       >
-                        <FileText className="w-3.5 h-3.5 sm:mr-1" />
-                        <span className="hidden lg:inline">Testo</span>
+                        <FileText className="w-4 h-4 mr-1" />
+                        <span>Testo</span>
                       </Button>
 
                       {/* Trasmetti / Stop */}
@@ -669,7 +669,7 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                               handleBroadcastItem(item);
                             }}
                             className={cn(
-                              "h-8 sm:h-9 px-2 sm:px-2.5 text-xs",
+                              "h-9 min-w-[44px] px-2 text-xs",
                               isItemBroadcasting
                                 ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 : "border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
@@ -677,11 +677,11 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                             title={isItemBroadcasting ? "Stop" : "Trasmetti"}
                           >
                             {isItemBroadcasting ? (
-                              <Square className="w-3.5 h-3.5 sm:mr-1" />
+                              <Square className="w-4 h-4 mr-1" />
                             ) : (
-                              <Play className="w-3.5 h-3.5 sm:mr-1" />
+                              <Play className="w-4 h-4 mr-1" />
                             )}
-                            <span className="hidden lg:inline">{isItemBroadcasting ? 'Stop' : 'Trasmetti'}</span>
+                            <span>{isItemBroadcasting ? 'Stop' : 'Live'}</span>
                           </Button>
                         );
                       })()}
@@ -696,11 +696,11 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                             reactivateReservation((item.originalData as Reservation).id);
                             toast.success('Riattivata!');
                           }}
-                          className="h-8 sm:h-9 px-2 sm:px-2.5 text-xs border-muted-foreground/30 text-muted-foreground hover:bg-muted"
+                          className="h-9 min-w-[44px] px-2 text-xs border-muted-foreground/30 text-muted-foreground hover:bg-muted"
                           title="Riattiva"
                         >
-                          <RotateCcw className="w-3.5 h-3.5 sm:mr-1" />
-                          <span className="hidden lg:inline">Riattiva</span>
+                          <RotateCcw className="w-4 h-4 mr-1" />
+                          <span>Riattiva</span>
                         </Button>
                       ) : (
                         <Button
@@ -710,11 +710,11 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                             e.stopPropagation();
                             handleComplete(item);
                           }}
-                          className="h-8 sm:h-9 px-2 sm:px-2.5 text-xs border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white"
+                          className="h-9 min-w-[44px] px-2 text-xs border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white"
                           title="Completa"
                         >
-                          <Check className="w-3.5 h-3.5 sm:mr-1" />
-                          <span className="hidden lg:inline">Completa</span>
+                          <Check className="w-4 h-4 mr-1" />
+                          <span>Fatto</span>
                         </Button>
                       )}
                     </div>
