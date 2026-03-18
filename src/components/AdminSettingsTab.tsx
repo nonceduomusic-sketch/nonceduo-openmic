@@ -743,8 +743,8 @@ function OfflineDataSection({ localIP: configIP }: { localIP: string }) {
       </p>
     </div>
 
-    {/* Guida Server Locale */}
     <LocalServerGuide />
+    </>
   );
 }
 
