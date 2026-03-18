@@ -285,7 +285,12 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
         {/* Trasmetti Banner */}
         {showTrasmettiBanner && (
           <div className="container mx-auto px-4 pt-2">
-            <Link to="/trasmetti">
+            <button
+              type="button"
+              onClick={openTrasmettiInNewTab}
+              className="block w-full text-left"
+              aria-label="Apri Trasmetti in una nuova scheda"
+            >
               <div className="relative overflow-hidden rounded-xl p-3 bg-gradient-to-r from-indigo-500/20 via-indigo-500/10 to-purple-500/10 border border-indigo-500/30 hover:border-indigo-500/50 transition-all group cursor-pointer">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center shrink-0">
@@ -298,7 +303,7 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
                   <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
                 </div>
               </div>
-            </Link>
+            </button>
           </div>
         )}
 
