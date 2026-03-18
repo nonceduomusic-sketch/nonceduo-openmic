@@ -450,63 +450,64 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                           </Badge>
                         </div>
 
-                        {/* Buttons — identical to Open Mic SongCardWithStatus */}
-                        <div className="flex gap-2">
-                          {/* Testo */}
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setLyricsDialogSong({ title: reservation.song_title, artist: reservation.song_artist });
-                              setLyricsDialogOpen(true);
-                            }}
-                            className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all"
-                            size="default"
-                          >
-                            <FileText className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
-                            <span>Testo</span>
-                          </Button>
+                        {/* Buttons — 2 rows: Testo+Trasmetti, then Completata */}
+                        <div className="flex flex-col gap-2">
+                          {/* Row 1: Testo + Trasmetti */}
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setLyricsDialogSong({ title: reservation.song_title, artist: reservation.song_artist });
+                                setLyricsDialogOpen(true);
+                              }}
+                              className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all"
+                              size="default"
+                            >
+                              <FileText className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                              <span>Testo</span>
+                            </Button>
 
-                          {/* Live / Stop */}
-                          {(() => {
-                            const song = songs.find(s => 
-                              s.titolo === reservation.song_title && s.artista === reservation.song_artist
-                            );
-                            const isBroadcasting = !!song && currentBroadcastSongId === song.id;
-                            return (
-                              <Button
-                                variant={isBroadcasting ? "destructive" : "outline"}
-                                onClick={() => {
-                                  if (song) {
-                                    if (isBroadcasting) {
-                                      stopBroadcast();
-                                      toast.success('Trasmissione interrotta');
+                            {(() => {
+                              const song = songs.find(s => 
+                                s.titolo === reservation.song_title && s.artista === reservation.song_artist
+                              );
+                              const isBroadcasting = !!song && currentBroadcastSongId === song.id;
+                              return (
+                                <Button
+                                  variant={isBroadcasting ? "destructive" : "outline"}
+                                  onClick={() => {
+                                    if (song) {
+                                      if (isBroadcasting) {
+                                        stopBroadcast();
+                                        toast.success('Trasmissione interrotta');
+                                      } else {
+                                        handleBroadcast(song.id, reservation.id);
+                                      }
                                     } else {
-                                      handleBroadcast(song.id, reservation.id);
+                                      toast.error('Canzone non trovata nel catalogo');
                                     }
-                                  } else {
-                                    toast.error('Canzone non trovata nel catalogo');
-                                  }
-                                }}
-                                disabled={!canManage}
-                                className={cn(
-                                  "flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all",
-                                  isBroadcasting
-                                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    : "border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-                                )}
-                                size="default"
-                              >
-                                {isBroadcasting ? (
-                                  <Square className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
-                                ) : (
-                                  <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
-                                )}
-                                <span>{isBroadcasting ? 'Stop' : 'Live'}</span>
-                              </Button>
-                            );
-                          })()}
+                                  }}
+                                  disabled={!canManage}
+                                  className={cn(
+                                    "flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all",
+                                    isBroadcasting
+                                      ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                      : "border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                                  )}
+                                  size="default"
+                                >
+                                  {isBroadcasting ? (
+                                    <Square className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                                  ) : (
+                                    <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                                  )}
+                                  <span>{isBroadcasting ? 'Stop' : 'Trasmetti'}</span>
+                                </Button>
+                              );
+                            })()}
+                          </div>
 
-                          {/* Fatto */}
+                          {/* Row 2: Completata (full width) */}
                           <Button
                             onClick={async () => {
                               const success = await completeReservation(reservation.id);
@@ -515,9 +516,13 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                               }
                             }}
                             disabled={!canManage}
-                            className="neon-button-pink flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold"
+                            className="neon-button-pink w-full h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold"
                             size="default"
                           >
+                            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                            <span>Completata</span>
+                          </Button>
+                        </div>
                             <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
                             <span>Fatto</span>
                           </Button>
