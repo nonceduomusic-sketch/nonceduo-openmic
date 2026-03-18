@@ -37,9 +37,14 @@ const Index: React.FC = () => {
       toast.error('Canzone non trovata nel database');
       return;
     }
-    broadcastSong(songDb.id);
-    toast.success(`Trasmissione: ${song.title}`);
-  }, [dbSongs, broadcastSong]);
+    if (currentBroadcastSongId === songDb.id) {
+      stopBroadcast();
+      toast.success('Trasmissione interrotta');
+    } else {
+      broadcastSong(songDb.id);
+      toast.success(`Trasmissione: ${song.title}`);
+    }
+  }, [dbSongs, broadcastSong, stopBroadcast, currentBroadcastSongId]);
 
   const handleBookSong = (song: Song) => {
     if (isSongBooked(song.title, song.artist)) {
