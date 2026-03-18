@@ -447,7 +447,10 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => openLyrics(reservation.song_title, reservation.song_artist, navigate)}
+                          onClick={() => {
+                            setLyricsDialogSong({ title: reservation.song_title, artist: reservation.song_artist });
+                            setLyricsDialogOpen(true);
+                          }}
                           className="h-9 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
                         >
                           <FileText className="w-4 h-4 sm:mr-1.5 flex-shrink-0" />
