@@ -14,6 +14,7 @@ import {
   ThumbsUp,
   Bot,
   Play,
+  Square,
   FileText,
   RotateCcw,
 } from 'lucide-react';
