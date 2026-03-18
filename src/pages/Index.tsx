@@ -24,8 +24,8 @@ const Index: React.FC = () => {
   // Load songs from database
   const { songs, loading } = useSongsCatalog();
 
-  // Broadcast (staff only)
-  const { broadcastSong } = useHybridBroadcast('main');
+  const { broadcastSong, stopBroadcast, session: broadcastSession } = useHybridBroadcast('main');
+  const currentBroadcastSongId = broadcastSession?.current_song_id || null;
   const { songs: dbSongs } = useSongs();
 
   const handleBroadcast = useCallback((song: Song) => {

@@ -357,17 +357,21 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
           <>
             {/* Song grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-3">
-              {filteredSongs.map((song, index) => (
-                <SongCardWithStatus
-                  key={`${song.title}-${song.artist}-${index}`}
-                  song={song}
-                  onBook={handleBookSong}
-                  isBooked={isSongBooked(song.title, song.artist)}
-                  isCompleted={isSongCompleted(song.title, song.artist)}
-                  isStaff={isStaff}
-                  onBroadcast={handleBroadcast}
-                />
-              ))}
+              {filteredSongs.map((song, index) => {
+                const songDb = allSongsDb.find(s => s.titolo === song.title && s.artista === song.artist);
+                return (
+                  <SongCardWithStatus
+                    key={`${song.title}-${song.artist}-${index}`}
+                    song={song}
+                    onBook={handleBookSong}
+                    isBooked={isSongBooked(song.title, song.artist)}
+                    isCompleted={isSongCompleted(song.title, song.artist)}
+                    isStaff={isStaff}
+                    onBroadcast={handleBroadcast}
+                    isBroadcasting={!!songDb && currentBroadcastSongId === songDb.id}
+                  />
+                );
+              })}
             </div>
 
             {/* Leaderboard Section */}

@@ -52,8 +52,8 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
   
   const { statuses, isSongBooked, isSongCompleted } = useReservationStatuses();
   const { isStaff } = useStaffRole();
-  const { broadcastSong } = useHybridBroadcast('main');
-  const { songs: dbSongs } = useSongs();
+  const { broadcastSong, stopBroadcast, session: broadcastSession } = useHybridBroadcast('main');
+  const currentBroadcastSongId = broadcastSession?.current_song_id || null;
 
   const handleBroadcast = useCallback((song: Song) => {
     const songDb = dbSongs.find(
