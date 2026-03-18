@@ -445,17 +445,21 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
 
               {/* Song Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                {filteredSongs.map((song) => (
-                  <SongCardWithStatus
-                    key={`${song.title}-${song.artist}`}
-                    song={song}
-                    isBooked={isSongBooked(song.title, song.artist)}
-                    isCompleted={isSongCompleted(song.title, song.artist)}
-                    onBook={handleBookSong}
-                    isStaff={isStaff}
-                    onBroadcast={handleBroadcast}
-                  />
-                ))}
+                {filteredSongs.map((song) => {
+                  const songDb = dbSongs.find(s => s.titolo?.toLowerCase() === song.title.toLowerCase() && s.artista?.toLowerCase() === song.artist.toLowerCase());
+                  return (
+                    <SongCardWithStatus
+                      key={`${song.title}-${song.artist}`}
+                      song={song}
+                      isBooked={isSongBooked(song.title, song.artist)}
+                      isCompleted={isSongCompleted(song.title, song.artist)}
+                      onBook={handleBookSong}
+                      isStaff={isStaff}
+                      onBroadcast={handleBroadcast}
+                      isBroadcasting={!!songDb && currentBroadcastSongId === songDb.id}
+                    />
+                  );
+                })}
               </div>
 
               {filteredSongs.length === 0 && (
