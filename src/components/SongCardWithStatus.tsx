@@ -77,46 +77,46 @@ export const SongCardWithStatus = forwardRef<HTMLDivElement, SongCardWithStatusP
             </div>
           </div>
 
-          {/* Buttons - Staff mode: 3 buttons, User mode: 2 buttons */}
+          {/* Buttons - Staff mode: 2 rows, User mode: 1 row */}
           {isStaff ? (
-            <div className="flex gap-2">
-              {/* Testo/Accordi */}
-              <Button
-                onClick={handleLyricsClick}
-                variant="outline"
-                className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all"
-                size="default"
-              >
-                <FileText className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
-                <span className="hidden sm:inline">Testo</span>
-                <span className="sm:hidden">Testo</span>
-              </Button>
+            <div className="flex flex-col gap-2">
+              {/* Row 1: Testo + Trasmetti */}
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleLyricsClick}
+                  variant="outline"
+                  className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all"
+                  size="default"
+                >
+                  <FileText className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                  <span>Testo</span>
+                </Button>
 
-              {/* Trasmetti / Stop - Staff only */}
-              <Button
-                onClick={() => onBroadcast?.(song)}
-                variant={isBroadcasting ? "destructive" : "outline"}
-                className={cn(
-                  "flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all",
-                  isBroadcasting
-                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                    : "border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-                )}
-                size="default"
-              >
-                {isBroadcasting ? (
-                  <Square className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
-                ) : (
-                  <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
-                )}
-                <span>{isBroadcasting ? 'Stop' : 'Trasmetti'}</span>
-              </Button>
+                <Button
+                  onClick={() => onBroadcast?.(song)}
+                  variant={isBroadcasting ? "destructive" : "outline"}
+                  className={cn(
+                    "flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all",
+                    isBroadcasting
+                      ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      : "border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                  )}
+                  size="default"
+                >
+                  {isBroadcasting ? (
+                    <Square className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                  ) : (
+                    <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                  )}
+                  <span>{isBroadcasting ? 'Stop' : 'Trasmetti'}</span>
+                </Button>
+              </div>
 
-              {/* Completa */}
+              {/* Row 2: Completata (full width) */}
               {isBooked ? (
                 <Button
                   disabled
-                  className="flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold bg-warning/20 text-warning border border-warning/40 cursor-not-allowed"
+                  className="w-full h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold bg-warning/20 text-warning border border-warning/40 cursor-not-allowed"
                   variant="outline"
                 >
                   <Lock className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
@@ -125,20 +125,20 @@ export const SongCardWithStatus = forwardRef<HTMLDivElement, SongCardWithStatusP
               ) : isCompleted ? (
                 <Button
                   disabled
-                  className="flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold bg-secondary/20 text-secondary border border-secondary/40 cursor-not-allowed"
+                  className="w-full h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold bg-secondary/20 text-secondary border border-secondary/40 cursor-not-allowed"
                   variant="outline"
                 >
                   <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
-                  <span>Cantata</span>
+                  <span>Completata</span>
                 </Button>
               ) : (
                 <Button
                   onClick={() => onBook(song)}
-                  className="neon-button-pink flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold"
+                  className="neon-button-pink w-full h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold"
                   size="default"
                 >
                   <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
-                  <span>Completa</span>
+                  <span>Completata</span>
                 </Button>
               )}
             </div>

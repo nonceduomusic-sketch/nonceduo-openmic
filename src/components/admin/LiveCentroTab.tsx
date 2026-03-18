@@ -637,57 +637,58 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                       )}
                     </div>
 
-                    {/* Buttons — identical style to Open Mic SongCardWithStatus */}
+                    {/* Buttons — 2 rows: Testo+Trasmetti, then Completata */}
                     {item.type === 'song' && (
-                      <div className="flex gap-2">
-                        {/* Testo */}
-                        <Button
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedSong({ title: item.title, artist: item.subtitle });
-                            setLyricsOpen(true);
-                          }}
-                          className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all"
-                          size="default"
-                        >
-                          <FileText className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
-                          <span>Testo</span>
-                        </Button>
+                      <div className="flex flex-col gap-2">
+                        {/* Row 1: Testo + Trasmetti */}
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedSong({ title: item.title, artist: item.subtitle });
+                              setLyricsOpen(true);
+                            }}
+                            className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all"
+                            size="default"
+                          >
+                            <FileText className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                            <span>Testo</span>
+                          </Button>
 
-                        {/* Live / Stop */}
-                        {item.status !== 'completed' && (() => {
-                          const reservation = item.originalData as Reservation;
-                          const songDb = allSongsDb.find(
-                            s => s.titolo === reservation.song_title && s.artista === reservation.song_artist
-                          );
-                          const isItemBroadcasting = songDb && currentBroadcastSongId === songDb.id;
-                          return (
-                            <Button
-                              variant={isItemBroadcasting ? "destructive" : "outline"}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleBroadcastItem(item);
-                              }}
-                              className={cn(
-                                "flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all",
-                                isItemBroadcasting
-                                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  : "border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-                              )}
-                              size="default"
-                            >
-                              {isItemBroadcasting ? (
-                                <Square className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
-                              ) : (
-                                <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
-                              )}
-                              <span>{isItemBroadcasting ? 'Stop' : 'Live'}</span>
-                            </Button>
-                          );
-                        })()}
+                          {item.status !== 'completed' && (() => {
+                            const reservation = item.originalData as Reservation;
+                            const songDb = allSongsDb.find(
+                              s => s.titolo === reservation.song_title && s.artista === reservation.song_artist
+                            );
+                            const isItemBroadcasting = songDb && currentBroadcastSongId === songDb.id;
+                            return (
+                              <Button
+                                variant={isItemBroadcasting ? "destructive" : "outline"}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleBroadcastItem(item);
+                                }}
+                                className={cn(
+                                  "flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all",
+                                  isItemBroadcasting
+                                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    : "border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                                )}
+                                size="default"
+                              >
+                                {isItemBroadcasting ? (
+                                  <Square className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                                ) : (
+                                  <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                                )}
+                                <span>{isItemBroadcasting ? 'Stop' : 'Trasmetti'}</span>
+                              </Button>
+                            );
+                          })()}
+                        </div>
 
-                        {/* Fatto / Riattiva */}
+                        {/* Row 2: Completata / Riattiva (full width) */}
                         {item.status === 'completed' ? (
                           <Button
                             variant="outline"
@@ -696,7 +697,7 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                               reactivateReservation((item.originalData as Reservation).id);
                               toast.success('Riattivata!');
                             }}
-                            className="flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold border-muted-foreground/40 text-muted-foreground hover:bg-muted transition-all"
+                            className="w-full h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold border-muted-foreground/40 text-muted-foreground hover:bg-muted transition-all"
                             size="default"
                           >
                             <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
@@ -708,11 +709,11 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                               e.stopPropagation();
                               handleComplete(item);
                             }}
-                            className="neon-button-pink flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold"
+                            className="neon-button-pink w-full h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold"
                             size="default"
                           >
                             <Check className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
-                            <span>Fatto</span>
+                            <span>Completata</span>
                           </Button>
                         )}
                       </div>
