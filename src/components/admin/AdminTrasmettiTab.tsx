@@ -85,7 +85,7 @@ import { SongbookTab } from './SongbookTab';
 import { BroadcastRemoteSection } from './BroadcastRemoteSection';
 import { BroadcastLinksCards } from './LocalLinksCard';
 import { useBroadcastRemoteAdmin } from '@/hooks/useBroadcastRemote';
-import { openLyrics } from '@/lib/lyricsLookup';
+import { LyricsDialog } from '@/components/LyricsDialog';
 import { STANDBY_MODE_OPTIONS, resolveStandbyMode, STANDBY_QR_URLS, STANDBY_DEFAULTS, type StandbyMode } from '@/lib/tvStandbyModes';
 
 interface AdminTrasmettiTabProps {
