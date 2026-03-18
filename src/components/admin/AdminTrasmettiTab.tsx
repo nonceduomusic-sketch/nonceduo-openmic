@@ -85,7 +85,7 @@ import { SongbookTab } from './SongbookTab';
 import { BroadcastRemoteSection } from './BroadcastRemoteSection';
 import { BroadcastLinksCards } from './LocalLinksCard';
 import { useBroadcastRemoteAdmin } from '@/hooks/useBroadcastRemote';
-import { openLyrics } from '@/lib/lyricsLookup';
+import { LyricsDialog } from '@/components/LyricsDialog';
 import { STANDBY_MODE_OPTIONS, resolveStandbyMode, STANDBY_QR_URLS, STANDBY_DEFAULTS, type StandbyMode } from '@/lib/tvStandbyModes';
 
 interface AdminTrasmettiTabProps {
@@ -102,6 +102,8 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
   const { setlists, createSetlist, updateSetlist, deleteSetlist } = useBroadcastSetlists();
   const { accesses: remoteAccesses } = useBroadcastRemoteAdmin();
   const [furoreRemoteToken, setFuroreRemoteToken] = useState<string | null>(null);
+  const [lyricsDialogOpen, setLyricsDialogOpen] = useState(false);
+  const [lyricsDialogSong, setLyricsDialogSong] = useState<{ title: string; artist: string }>({ title: '', artist: '' });
 
   // Fetch furore remote token
   useEffect(() => {
@@ -445,7 +447,10 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => openLyrics(reservation.song_title, reservation.song_artist, navigate)}
+                          onClick={() => {
+                            setLyricsDialogSong({ title: reservation.song_title, artist: reservation.song_artist });
+                            setLyricsDialogOpen(true);
+                          }}
                           className="h-9 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
                         >
                           <FileText className="w-4 h-4 sm:mr-1.5 flex-shrink-0" />
@@ -818,6 +823,14 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
         open={showPreview}
         onOpenChange={setShowPreview}
         previewSongId={previewSongId}
+      />
+
+      {/* Lyrics Dialog */}
+      <LyricsDialog
+        open={lyricsDialogOpen}
+        onOpenChange={setLyricsDialogOpen}
+        songTitle={lyricsDialogSong.title}
+        songArtist={lyricsDialogSong.artist}
       />
     </div>
   );
