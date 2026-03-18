@@ -26,6 +26,7 @@ interface ReservationCardProps {
   onReactivate?: (id: string) => void;
   onDelete?: (id: string) => void;
   onBroadcast?: (reservation: Reservation) => void;
+  isBroadcasting?: boolean;
   showActions?: boolean;
   selectionMode?: boolean;
   isSelected?: boolean;
