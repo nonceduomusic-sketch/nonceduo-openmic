@@ -79,8 +79,8 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
 
   const { conversations, loading: conversationsLoading } = useConversations();
   const { getVotesForReservation } = useAllVoteCounts();
-  const { broadcastSong } = useHybridBroadcast('main');
-  const { songs: allSongsDb } = useSongs();
+  const { broadcastSong, stopBroadcast, session } = useHybridBroadcast('main');
+  const currentBroadcastSongId = session?.current_song_id || null;
   // Filter state - default to 'queue' so completed items are hidden by default
   const [activeFilter, setActiveFilter] = useState<FilterTab>('queue');
   const [showCompleted, setShowCompleted] = useState(false);
