@@ -429,91 +429,99 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                   {pendingReservations.map((reservation, index) => (
                     <div
                       key={reservation.id}
-                      className="flex flex-col gap-2 p-3 sm:p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors"
+                      className="glass-card p-3 sm:p-4 transition-all duration-300 group relative"
                     >
-                      {/* Song info row */}
-                      <div className="flex items-center gap-3 min-w-0">
-                        <Badge variant="outline" className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full text-sm sm:text-base font-semibold shrink-0">
-                          {index + 1}
-                        </Badge>
-                        <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-sm sm:text-base truncate">{reservation.song_title}</p>
-                          <p className="text-xs sm:text-sm text-muted-foreground truncate">
-                            {reservation.song_artist} • {reservation.customer_name}
-                          </p>
+                      <div className="flex flex-col gap-3">
+                        {/* Icon and song info — same as Open Mic */}
+                        <div className="flex items-start gap-3">
+                          <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-lg flex items-center justify-center flex-shrink-0 bg-gradient-to-br from-primary/20 to-secondary/20">
+                            <Music className="w-5 h-5 sm:w-5 sm:h-5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0 py-0.5">
+                            <h3 className="font-display font-semibold text-foreground text-sm sm:text-base leading-snug break-words">
+                              {reservation.song_title}
+                            </h3>
+                            <p className="text-muted-foreground text-xs sm:text-sm leading-snug mt-1 break-words">
+                              {reservation.song_artist} • {reservation.customer_name}
+                            </p>
+                          </div>
+                          <Badge variant="outline" className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full text-sm sm:text-base font-semibold shrink-0">
+                            {index + 1}
+                          </Badge>
                         </div>
-                      </div>
 
-                      {/* Action buttons row — full width, always with text */}
-                      <div className="flex items-center gap-2 pt-2 border-t border-border/30">
-                        {/* Testo / Accordi */}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setLyricsDialogSong({ title: reservation.song_title, artist: reservation.song_artist });
-                            setLyricsDialogOpen(true);
-                          }}
-                          className="flex-1 h-10 text-sm border-secondary/40 text-secondary hover:bg-secondary hover:text-secondary-foreground"
-                        >
-                          <FileText className="w-4 h-4 mr-1.5 flex-shrink-0" />
-                          Testo
-                        </Button>
+                        {/* Buttons — identical to Open Mic SongCardWithStatus */}
+                        <div className="flex gap-2">
+                          {/* Testo */}
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setLyricsDialogSong({ title: reservation.song_title, artist: reservation.song_artist });
+                              setLyricsDialogOpen(true);
+                            }}
+                            className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all"
+                            size="default"
+                          >
+                            <FileText className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                            <span>Testo</span>
+                          </Button>
 
-                        {/* Trasmetti / Stop */}
-                        {(() => {
-                          const song = songs.find(s => 
-                            s.titolo === reservation.song_title && s.artista === reservation.song_artist
-                          );
-                          const isBroadcasting = !!song && currentBroadcastSongId === song.id;
-                          return (
-                            <Button
-                              size="sm"
-                              variant={isBroadcasting ? "destructive" : "default"}
-                              onClick={() => {
-                                if (song) {
-                                  if (isBroadcasting) {
-                                    stopBroadcast();
-                                    toast.success('Trasmissione interrotta');
+                          {/* Live / Stop */}
+                          {(() => {
+                            const song = songs.find(s => 
+                              s.titolo === reservation.song_title && s.artista === reservation.song_artist
+                            );
+                            const isBroadcasting = !!song && currentBroadcastSongId === song.id;
+                            return (
+                              <Button
+                                variant={isBroadcasting ? "destructive" : "outline"}
+                                onClick={() => {
+                                  if (song) {
+                                    if (isBroadcasting) {
+                                      stopBroadcast();
+                                      toast.success('Trasmissione interrotta');
+                                    } else {
+                                      handleBroadcast(song.id, reservation.id);
+                                    }
                                   } else {
-                                    handleBroadcast(song.id, reservation.id);
+                                    toast.error('Canzone non trovata nel catalogo');
                                   }
-                                } else {
-                                  toast.error('Canzone non trovata nel catalogo');
-                                }
-                              }}
-                              disabled={!canManage}
-                              className={cn(
-                                "flex-1 h-10 text-sm",
-                                !isBroadcasting && "bg-primary hover:bg-primary/90"
-                              )}
-                            >
-                              {isBroadcasting ? (
-                                <Square className="w-4 h-4 mr-1.5 flex-shrink-0" />
-                              ) : (
-                                <Play className="w-4 h-4 mr-1.5 flex-shrink-0" />
-                              )}
-                              {isBroadcasting ? 'Stop' : 'Live'}
-                            </Button>
-                          );
-                        })()}
+                                }}
+                                disabled={!canManage}
+                                className={cn(
+                                  "flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all",
+                                  isBroadcasting
+                                    ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    : "border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                                )}
+                                size="default"
+                              >
+                                {isBroadcasting ? (
+                                  <Square className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                                ) : (
+                                  <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                                )}
+                                <span>{isBroadcasting ? 'Stop' : 'Live'}</span>
+                              </Button>
+                            );
+                          })()}
 
-                        {/* Completa */}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={async () => {
-                            const success = await completeReservation(reservation.id);
-                            if (success) {
-                              toast.success(`${reservation.song_title} completata!`);
-                            }
-                          }}
-                          disabled={!canManage}
-                          className="flex-1 h-10 text-sm border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white"
-                        >
-                          <CheckCircle className="w-4 h-4 mr-1.5 flex-shrink-0" />
-                          Fatto
-                        </Button>
+                          {/* Fatto */}
+                          <Button
+                            onClick={async () => {
+                              const success = await completeReservation(reservation.id);
+                              if (success) {
+                                toast.success(`${reservation.song_title} completata!`);
+                              }
+                            }}
+                            disabled={!canManage}
+                            className="neon-button-pink flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold"
+                            size="default"
+                          >
+                            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                            <span>Fatto</span>
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}

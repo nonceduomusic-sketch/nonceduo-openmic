@@ -515,218 +515,209 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                   </button>
                 </div>
 
-                {/* Main card content */}
+                {/* Main card — same glass-card layout as Open Mic SongCardWithStatus */}
                 <div
                   className={cn(
-                    "relative flex flex-col bg-card border border-border/50 rounded-xl transition-all duration-200",
-                    "p-3",
-                    item.isNew && !showCompleted && "bg-gradient-to-r from-primary/5 to-transparent border-primary/30",
+                    "glass-card p-3 sm:p-4 transition-all duration-300 group relative",
+                    item.isNew && !showCompleted && "border-primary/30",
                     item.status === 'completed' && "opacity-60",
                     swipedId === item.id && "transform -translate-x-[140px]"
                   )}
                 >
-                  {/* Top row: icon + content + (desktop buttons / dediche arrow) */}
-                  <div className="flex items-center gap-3">
-                    {/* Icon */}
-                    <div className={cn(
-                      "flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center relative",
-                      item.type === 'song' 
-                        ? "bg-gradient-to-br from-amber-500/20 to-orange-500/20" 
-                        : "bg-gradient-to-br from-pink-500/20 to-rose-500/20"
-                    )}>
-                      {item.type === 'song' ? (
-                        <Music className="w-6 h-6 sm:w-7 sm:h-7 text-amber-400" />
-                      ) : (
-                        <Heart className="w-6 h-6 sm:w-7 sm:h-7 text-pink-400 fill-pink-400/30" />
-                      )}
-                      
-                      {/* New indicator */}
-                      {item.isNew && !showCompleted && (
-                        <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-destructive animate-pulse" />
-                      )}
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      {/* Name row */}
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className={cn("font-semibold text-foreground truncate", fontSizeClass === 'text-xs' ? 'text-sm' : fontSizeClass === 'text-base' ? 'text-lg' : 'text-base')}>
-                          {item.name}
-                        </span>
-                        {item.hasDedication && item.type === 'song' && (
-                          <Heart className="w-4 h-4 text-pink-400 fill-pink-400 flex-shrink-0" />
+                  <div className="flex flex-col gap-3">
+                    {/* Icon and song/dedica info */}
+                    <div className="flex items-start gap-3">
+                      <div className={cn(
+                        "w-10 h-10 sm:w-11 sm:h-11 rounded-lg flex items-center justify-center flex-shrink-0 transition-all relative",
+                        item.type === 'song' 
+                          ? "bg-gradient-to-br from-amber-500/20 to-orange-500/20" 
+                          : "bg-gradient-to-br from-pink-500/20 to-rose-500/20"
+                      )}>
+                        {item.type === 'song' ? (
+                          <Music className="w-5 h-5 text-amber-400" />
+                        ) : (
+                          <Heart className="w-5 h-5 text-pink-400 fill-pink-400/30" />
                         )}
-                        {item.status === 'completed' && (
-                          <Badge variant="secondary" className="text-xs h-5">
-                            <Check className="w-3 h-3 mr-0.5" /> Fatta
-                          </Badge>
+                        {item.isNew && !showCompleted && (
+                          <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-destructive animate-pulse" />
                         )}
                       </div>
 
-                      {/* Title */}
-                      <p className={cn("font-medium text-foreground truncate leading-snug", fontSizeClass)}>
-                        {item.title}
-                      </p>
+                      <div className="flex-1 min-w-0 py-0.5">
+                        {/* Name row */}
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className={cn("font-semibold text-foreground truncate", fontSizeClass === 'text-xs' ? 'text-sm' : fontSizeClass === 'text-base' ? 'text-lg' : 'text-base')}>
+                            {item.name}
+                          </span>
+                          {item.hasDedication && item.type === 'song' && (
+                            <Heart className="w-4 h-4 text-pink-400 fill-pink-400 flex-shrink-0" />
+                          )}
+                          {item.status === 'completed' && (
+                            <Badge variant="secondary" className="text-xs h-5">
+                              <Check className="w-3 h-3 mr-0.5" /> Fatta
+                            </Badge>
+                          )}
+                        </div>
 
-                      {/* Subtitle + time + votes */}
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <span className={cn("text-muted-foreground truncate", fontSizeClass === 'text-base' ? 'text-sm' : 'text-xs')}>
-                          {item.subtitle}
-                        </span>
-                        <span className="text-xs text-muted-foreground/60 flex-shrink-0 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {formatDistanceToNow(item.timestamp, { addSuffix: false, locale: it })}
-                        </span>
-                        
-                        {/* Vote counts for songs */}
-                        {item.type === 'song' && (() => {
-                          const votes = getVotesForReservation((item.originalData as Reservation).id);
-                          if (!votes || votes.total_votes === 0) return null;
-                          const upVotes = votes.total_votes - votes.fire_votes - votes.heart_votes;
-                          return (
-                            <div className="flex items-center gap-1.5 ml-auto">
-                              {upVotes > 0 && (
-                                <span className="flex items-center gap-0.5 text-xs text-secondary font-semibold">
-                                  <ThumbsUp className="w-3 h-3" />
-                                  {upVotes}
-                                </span>
-                              )}
-                              {votes.fire_votes > 0 && (
-                                <span className="flex items-center gap-0.5 text-xs text-orange-500">
-                                  <Flame className="w-3 h-3" />
-                                  {votes.fire_votes}
-                                </span>
-                              )}
-                              {votes.heart_votes > 0 && (
-                                <span className="flex items-center gap-0.5 text-xs text-pink-500">
-                                  <Heart className="w-3 h-3 fill-current" />
-                                  {votes.heart_votes}
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </div>
+                        {/* Title */}
+                        <h3 className={cn("font-display font-semibold text-foreground leading-snug break-words", fontSizeClass)}>
+                          {item.title}
+                        </h3>
 
-                      {/* Dedication preview for songs - clickable to expand */}
-                      {item.hasDedication && item.dedicationText && item.type === 'song' && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedDedication({
-                              text: item.dedicationText!,
-                              senderName: item.name,
-                              songTitle: item.title,
-                              songArtist: item.subtitle,
-                            });
-                            setDedicationDialogOpen(true);
-                          }}
-                          className="mt-2 w-full text-left px-2 py-1.5 rounded-lg bg-gradient-to-r from-primary/10 to-transparent border-l-2 border-primary hover:from-primary/20 transition-colors group"
-                        >
-                          <div className="flex items-center gap-1">
-                            <p className={cn(
-                              "text-foreground/80 italic line-clamp-2 flex-1",
-                              fontSizeClass
-                            )}>
-                              "{item.dedicationText}"
-                            </p>
-                            <Maximize2 className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary flex-shrink-0" />
-                          </div>
-                        </button>
-                      )}
-                    </div>
+                        {/* Subtitle + time + votes */}
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <p className={cn("text-muted-foreground leading-snug break-words", fontSizeClass === 'text-base' ? 'text-sm' : 'text-xs')}>
+                            {item.subtitle}
+                          </p>
+                          <span className="text-xs text-muted-foreground/60 flex-shrink-0 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {formatDistanceToNow(item.timestamp, { addSuffix: false, locale: it })}
+                          </span>
+                          
+                          {item.type === 'song' && (() => {
+                            const votes = getVotesForReservation((item.originalData as Reservation).id);
+                            if (!votes || votes.total_votes === 0) return null;
+                            const upVotes = votes.total_votes - votes.fire_votes - votes.heart_votes;
+                            return (
+                              <div className="flex items-center gap-1.5 ml-auto">
+                                {upVotes > 0 && (
+                                  <span className="flex items-center gap-0.5 text-xs text-secondary font-semibold">
+                                    <ThumbsUp className="w-3 h-3" />
+                                    {upVotes}
+                                  </span>
+                                )}
+                                {votes.fire_votes > 0 && (
+                                  <span className="flex items-center gap-0.5 text-xs text-orange-500">
+                                    <Flame className="w-3 h-3" />
+                                    {votes.fire_votes}
+                                  </span>
+                                )}
+                                {votes.heart_votes > 0 && (
+                                  <span className="flex items-center gap-0.5 text-xs text-pink-500">
+                                    <Heart className="w-3 h-3 fill-current" />
+                                    {votes.heart_votes}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
 
-                    {/* Dediche arrow (non-song) */}
-                    {item.type !== 'song' && (
-                      <ChevronRight className="w-5 h-5 text-muted-foreground/50 flex-shrink-0" />
-                    )}
-                  </div>
-
-                  {/* Bottom row: action buttons for songs — full width, always visible */}
-                  {item.type === 'song' && (
-                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/30">
-                      {/* Testo / Accordi */}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedSong({ title: item.title, artist: item.subtitle });
-                          setLyricsOpen(true);
-                        }}
-                        className="flex-1 h-10 text-sm border-secondary/40 text-secondary hover:bg-secondary hover:text-secondary-foreground"
-                        title="Testo / Accordi"
-                      >
-                        <FileText className="w-4 h-4 mr-1.5" />
-                        Testo
-                      </Button>
-
-                      {/* Trasmetti / Stop */}
-                      {item.status !== 'completed' && (() => {
-                        const reservation = item.originalData as Reservation;
-                        const songDb = allSongsDb.find(
-                          s => s.titolo === reservation.song_title && s.artista === reservation.song_artist
-                        );
-                        const isItemBroadcasting = songDb && currentBroadcastSongId === songDb.id;
-                        return (
-                          <Button
-                            size="sm"
-                            variant={isItemBroadcasting ? "destructive" : "outline"}
+                        {/* Dedication preview */}
+                        {item.hasDedication && item.dedicationText && item.type === 'song' && (
+                          <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleBroadcastItem(item);
+                              setSelectedDedication({
+                                text: item.dedicationText!,
+                                senderName: item.name,
+                                songTitle: item.title,
+                                songArtist: item.subtitle,
+                              });
+                              setDedicationDialogOpen(true);
                             }}
-                            className={cn(
-                              "flex-1 h-10 text-sm",
-                              isItemBroadcasting
-                                ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                : "border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
-                            )}
-                            title={isItemBroadcasting ? "Stop" : "Trasmetti"}
+                            className="mt-2 w-full text-left px-2 py-1.5 rounded-lg bg-gradient-to-r from-primary/10 to-transparent border-l-2 border-primary hover:from-primary/20 transition-colors group/ded"
                           >
-                            {isItemBroadcasting ? (
-                              <Square className="w-4 h-4 mr-1.5" />
-                            ) : (
-                              <Play className="w-4 h-4 mr-1.5" />
-                            )}
-                            {isItemBroadcasting ? 'Stop' : 'Live'}
-                          </Button>
-                        );
-                      })()}
+                            <div className="flex items-center gap-1">
+                              <p className={cn(
+                                "text-foreground/80 italic line-clamp-2 flex-1",
+                                fontSizeClass
+                              )}>
+                                "{item.dedicationText}"
+                              </p>
+                              <Maximize2 className="w-3.5 h-3.5 text-muted-foreground group-hover/ded:text-primary flex-shrink-0" />
+                            </div>
+                          </button>
+                        )}
+                      </div>
 
-                      {/* Completa / Riattiva */}
-                      {item.status === 'completed' ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            reactivateReservation((item.originalData as Reservation).id);
-                            toast.success('Riattivata!');
-                          }}
-                          className="flex-1 h-10 text-sm border-muted-foreground/30 text-muted-foreground hover:bg-muted"
-                          title="Riattiva"
-                        >
-                          <RotateCcw className="w-4 h-4 mr-1.5" />
-                          Riattiva
-                        </Button>
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleComplete(item);
-                          }}
-                          className="flex-1 h-10 text-sm border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white"
-                          title="Completa"
-                        >
-                          <Check className="w-4 h-4 mr-1.5" />
-                          Fatto
-                        </Button>
+                      {/* Dediche arrow */}
+                      {item.type !== 'song' && (
+                        <ChevronRight className="w-5 h-5 text-muted-foreground/50 flex-shrink-0 mt-2" />
                       )}
                     </div>
-                  )}
+
+                    {/* Buttons — identical style to Open Mic SongCardWithStatus */}
+                    {item.type === 'song' && (
+                      <div className="flex gap-2">
+                        {/* Testo */}
+                        <Button
+                          variant="outline"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedSong({ title: item.title, artist: item.subtitle });
+                            setLyricsOpen(true);
+                          }}
+                          className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all"
+                          size="default"
+                        >
+                          <FileText className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                          <span>Testo</span>
+                        </Button>
+
+                        {/* Live / Stop */}
+                        {item.status !== 'completed' && (() => {
+                          const reservation = item.originalData as Reservation;
+                          const songDb = allSongsDb.find(
+                            s => s.titolo === reservation.song_title && s.artista === reservation.song_artist
+                          );
+                          const isItemBroadcasting = songDb && currentBroadcastSongId === songDb.id;
+                          return (
+                            <Button
+                              variant={isItemBroadcasting ? "destructive" : "outline"}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleBroadcastItem(item);
+                              }}
+                              className={cn(
+                                "flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold transition-all",
+                                isItemBroadcasting
+                                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  : "border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+                              )}
+                              size="default"
+                            >
+                              {isItemBroadcasting ? (
+                                <Square className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                              ) : (
+                                <Play className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                              )}
+                              <span>{isItemBroadcasting ? 'Stop' : 'Live'}</span>
+                            </Button>
+                          );
+                        })()}
+
+                        {/* Fatto / Riattiva */}
+                        {item.status === 'completed' ? (
+                          <Button
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              reactivateReservation((item.originalData as Reservation).id);
+                              toast.success('Riattivata!');
+                            }}
+                            className="flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold border-muted-foreground/40 text-muted-foreground hover:bg-muted transition-all"
+                            size="default"
+                          >
+                            <RotateCcw className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                            <span>Riattiva</span>
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleComplete(item);
+                            }}
+                            className="neon-button-pink flex-1 h-10 sm:h-11 lg:h-10 px-2 sm:px-3 text-xs sm:text-sm font-semibold"
+                            size="default"
+                          >
+                            <Check className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2 flex-shrink-0" />
+                            <span>Fatto</span>
+                          </Button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
