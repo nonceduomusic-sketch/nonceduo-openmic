@@ -440,38 +440,71 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Button
-                          size="icon"
-                          variant="outline"
-                          onClick={() => {
-                            const song = songs.find(s => 
-                              s.titolo === reservation.song_title && s.artista === reservation.song_artist
-                            );
-                            if (song) openPreview(song.id);
-                          }}
-                          className="h-10 w-10 sm:h-11 sm:w-11"
-                        >
-                          <Eye className="w-4 h-4 sm:w-5 sm:h-5" />
-                        </Button>
+                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        {/* Testo / Accordi */}
                         <Button
                           size="sm"
+                          variant="outline"
+                          onClick={() => openLyrics(reservation.song_title, reservation.song_artist, navigate)}
+                          className="h-9 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+                        >
+                          <FileText className="w-4 h-4 sm:mr-1.5 flex-shrink-0" />
+                          <span className="hidden lg:inline">Testo</span>
+                        </Button>
+
+                        {/* Trasmetti / Stop */}
+                        {(() => {
+                          const song = songs.find(s => 
+                            s.titolo === reservation.song_title && s.artista === reservation.song_artist
+                          );
+                          const isBroadcasting = !!song && currentBroadcastSongId === song.id;
+                          return (
+                            <Button
+                              size="sm"
+                              variant={isBroadcasting ? "destructive" : "default"}
+                              onClick={() => {
+                                if (song) {
+                                  if (isBroadcasting) {
+                                    stopBroadcast();
+                                    toast.success('Trasmissione interrotta');
+                                  } else {
+                                    handleBroadcast(song.id, reservation.id);
+                                  }
+                                } else {
+                                  toast.error('Canzone non trovata nel catalogo');
+                                }
+                              }}
+                              disabled={!canManage}
+                              className={cn(
+                                "h-9 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm",
+                                !isBroadcasting && "bg-primary hover:bg-primary/90"
+                              )}
+                            >
+                              {isBroadcasting ? (
+                                <Square className="w-4 h-4 sm:mr-1.5 flex-shrink-0" />
+                              ) : (
+                                <Play className="w-4 h-4 sm:mr-1.5 flex-shrink-0" />
+                              )}
+                              <span className="hidden lg:inline">{isBroadcasting ? 'Stop' : 'Trasmetti'}</span>
+                            </Button>
+                          );
+                        })()}
+
+                        {/* Completa */}
+                        <Button
+                          size="sm"
+                          variant="outline"
                           onClick={async () => {
-                            const song = songs.find(s => 
-                              s.titolo === reservation.song_title && s.artista === reservation.song_artist
-                            );
-                            if (song) {
-                              handleBroadcast(song.id, reservation.id);
-                            } else {
-                              toast.error('Canzone non trovata nel catalogo');
+                            const success = await completeReservation(reservation.id);
+                            if (success) {
+                              toast.success(`${reservation.song_title} completata!`);
                             }
                           }}
                           disabled={!canManage}
-                          className="h-10 sm:h-11 px-3 sm:px-4 text-sm sm:text-base"
+                          className="h-9 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm border-accent text-accent hover:bg-accent hover:text-accent-foreground"
                         >
-                          <Play className="w-4 h-4 mr-1.5" />
-                          <span className="hidden sm:inline">Trasmetti</span>
-                          <span className="sm:hidden">Play</span>
+                          <CheckCircle className="w-4 h-4 sm:mr-1.5 flex-shrink-0" />
+                          <span className="hidden lg:inline">Completa</span>
                         </Button>
                       </div>
                     </div>
