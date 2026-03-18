@@ -130,6 +130,7 @@ const adaptToEventRules = (settings: FreeModeSettings | null): EventBookingRules
     close_minutes_before_end: settings.close_minutes_before_end ?? null,
     event_date: settings.event_date ?? null,
     event_start_time: settings.event_start_time ?? null,
+    event_end_date: settings.event_end_date ?? null,
     event_end_time: settings.event_end_time ?? null,
     // User limits
     user_limit_enabled: settings.user_limit_enabled ?? false,
