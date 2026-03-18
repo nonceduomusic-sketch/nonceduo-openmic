@@ -518,31 +518,33 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                 {/* Main card content */}
                 <div
                   className={cn(
-                    "relative flex items-center gap-3 p-3 bg-card border border-border/50 rounded-xl transition-all duration-200",
-                    "min-h-[88px]", // Touch-friendly height
+                    "relative flex flex-col bg-card border border-border/50 rounded-xl transition-all duration-200",
+                    "p-3",
                     item.isNew && !showCompleted && "bg-gradient-to-r from-primary/5 to-transparent border-primary/30",
                     item.status === 'completed' && "opacity-60",
                     swipedId === item.id && "transform -translate-x-[140px]"
                   )}
                 >
-                  {/* Icon */}
-                  <div className={cn(
-                    "flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center",
-                    item.type === 'song' 
-                      ? "bg-gradient-to-br from-amber-500/20 to-orange-500/20" 
-                      : "bg-gradient-to-br from-pink-500/20 to-rose-500/20"
-                  )}>
-                    {item.type === 'song' ? (
-                      <Music className="w-7 h-7 text-amber-400" />
-                    ) : (
-                      <Heart className="w-7 h-7 text-pink-400 fill-pink-400/30" />
-                    )}
-                    
-                    {/* New indicator */}
-                    {item.isNew && !showCompleted && (
-                      <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-destructive animate-pulse" />
-                    )}
-                  </div>
+                  {/* Top row: icon + content + (desktop buttons / dediche arrow) */}
+                  <div className="flex items-center gap-3">
+                    {/* Icon */}
+                    <div className={cn(
+                      "flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-xl flex items-center justify-center relative",
+                      item.type === 'song' 
+                        ? "bg-gradient-to-br from-amber-500/20 to-orange-500/20" 
+                        : "bg-gradient-to-br from-pink-500/20 to-rose-500/20"
+                    )}>
+                      {item.type === 'song' ? (
+                        <Music className="w-6 h-6 sm:w-7 sm:h-7 text-amber-400" />
+                      ) : (
+                        <Heart className="w-6 h-6 sm:w-7 sm:h-7 text-pink-400 fill-pink-400/30" />
+                      )}
+                      
+                      {/* New indicator */}
+                      {item.isNew && !showCompleted && (
+                        <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-destructive animate-pulse" />
+                      )}
+                    </div>
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
@@ -574,69 +576,75 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                         <span className="text-xs text-muted-foreground/60 flex-shrink-0 flex items-center gap-1">
                           <Clock className="w-3 h-3" />
                           {formatDistanceToNow(item.timestamp, { addSuffix: false, locale: it })}
-                      </span>
-                      
-                      {/* Vote counts for songs */}
-                      {item.type === 'song' && (() => {
-                        const votes = getVotesForReservation((item.originalData as Reservation).id);
-                        if (!votes || votes.total_votes === 0) return null;
-                        const upVotes = votes.total_votes - votes.fire_votes - votes.heart_votes;
-                        return (
-                          <div className="flex items-center gap-1.5 ml-auto">
-                            {upVotes > 0 && (
-                              <span className="flex items-center gap-0.5 text-xs text-secondary font-semibold">
-                                <ThumbsUp className="w-3 h-3" />
-                                {upVotes}
-                              </span>
-                            )}
-                            {votes.fire_votes > 0 && (
-                              <span className="flex items-center gap-0.5 text-xs text-orange-500">
-                                <Flame className="w-3 h-3" />
-                                {votes.fire_votes}
-                              </span>
-                            )}
-                            {votes.heart_votes > 0 && (
-                              <span className="flex items-center gap-0.5 text-xs text-pink-500">
-                                <Heart className="w-3 h-3 fill-current" />
-                                {votes.heart_votes}
-                              </span>
-                            )}
+                        </span>
+                        
+                        {/* Vote counts for songs */}
+                        {item.type === 'song' && (() => {
+                          const votes = getVotesForReservation((item.originalData as Reservation).id);
+                          if (!votes || votes.total_votes === 0) return null;
+                          const upVotes = votes.total_votes - votes.fire_votes - votes.heart_votes;
+                          return (
+                            <div className="flex items-center gap-1.5 ml-auto">
+                              {upVotes > 0 && (
+                                <span className="flex items-center gap-0.5 text-xs text-secondary font-semibold">
+                                  <ThumbsUp className="w-3 h-3" />
+                                  {upVotes}
+                                </span>
+                              )}
+                              {votes.fire_votes > 0 && (
+                                <span className="flex items-center gap-0.5 text-xs text-orange-500">
+                                  <Flame className="w-3 h-3" />
+                                  {votes.fire_votes}
+                                </span>
+                              )}
+                              {votes.heart_votes > 0 && (
+                                <span className="flex items-center gap-0.5 text-xs text-pink-500">
+                                  <Heart className="w-3 h-3 fill-current" />
+                                  {votes.heart_votes}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+
+                      {/* Dedication preview for songs - clickable to expand */}
+                      {item.hasDedication && item.dedicationText && item.type === 'song' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedDedication({
+                              text: item.dedicationText!,
+                              senderName: item.name,
+                              songTitle: item.title,
+                              songArtist: item.subtitle,
+                            });
+                            setDedicationDialogOpen(true);
+                          }}
+                          className="mt-2 w-full text-left px-2 py-1.5 rounded-lg bg-gradient-to-r from-primary/10 to-transparent border-l-2 border-primary hover:from-primary/20 transition-colors group"
+                        >
+                          <div className="flex items-center gap-1">
+                            <p className={cn(
+                              "text-foreground/80 italic line-clamp-2 flex-1",
+                              fontSizeClass
+                            )}>
+                              "{item.dedicationText}"
+                            </p>
+                            <Maximize2 className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary flex-shrink-0" />
                           </div>
-                        );
-                      })()}
+                        </button>
+                      )}
                     </div>
 
-                    {/* Dedication preview for songs - clickable to expand */}
-                    {item.hasDedication && item.dedicationText && item.type === 'song' && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedDedication({
-                            text: item.dedicationText!,
-                            senderName: item.name,
-                            songTitle: item.title,
-                            songArtist: item.subtitle,
-                          });
-                          setDedicationDialogOpen(true);
-                        }}
-                        className="mt-2 w-full text-left px-2 py-1.5 rounded-lg bg-gradient-to-r from-primary/10 to-transparent border-l-2 border-primary hover:from-primary/20 transition-colors group"
-                      >
-                        <div className="flex items-center gap-1">
-                          <p className={cn(
-                            "text-foreground/80 italic line-clamp-2 flex-1",
-                            fontSizeClass
-                          )}>
-                            "{item.dedicationText}"
-                          </p>
-                          <Maximize2 className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary flex-shrink-0" />
-                        </div>
-                      </button>
+                    {/* Dediche arrow (non-song) */}
+                    {item.type !== 'song' && (
+                      <ChevronRight className="w-5 h-5 text-muted-foreground/50 flex-shrink-0" />
                     )}
                   </div>
 
-                  {/* Trasmetti button for songs / Arrow for dediche */}
-                  {item.type === 'song' ? (
-                   <div className="flex flex-row items-center gap-1.5 flex-shrink-0">
+                  {/* Bottom row: action buttons for songs — full width, always visible */}
+                  {item.type === 'song' && (
+                    <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/30">
                       {/* Testo / Accordi */}
                       <Button
                         size="sm"
@@ -646,11 +654,11 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                           setSelectedSong({ title: item.title, artist: item.subtitle });
                           setLyricsOpen(true);
                         }}
-                        className="h-9 min-w-[44px] px-2 text-xs border-secondary/40 text-secondary hover:bg-secondary hover:text-secondary-foreground"
+                        className="flex-1 h-10 text-sm border-secondary/40 text-secondary hover:bg-secondary hover:text-secondary-foreground"
                         title="Testo / Accordi"
                       >
-                        <FileText className="w-4 h-4 mr-1" />
-                        <span>Testo</span>
+                        <FileText className="w-4 h-4 mr-1.5" />
+                        Testo
                       </Button>
 
                       {/* Trasmetti / Stop */}
@@ -669,7 +677,7 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                               handleBroadcastItem(item);
                             }}
                             className={cn(
-                              "h-9 min-w-[44px] px-2 text-xs",
+                              "flex-1 h-10 text-sm",
                               isItemBroadcasting
                                 ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 : "border-primary/40 text-primary hover:bg-primary hover:text-primary-foreground"
@@ -677,11 +685,11 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                             title={isItemBroadcasting ? "Stop" : "Trasmetti"}
                           >
                             {isItemBroadcasting ? (
-                              <Square className="w-4 h-4 mr-1" />
+                              <Square className="w-4 h-4 mr-1.5" />
                             ) : (
-                              <Play className="w-4 h-4 mr-1" />
+                              <Play className="w-4 h-4 mr-1.5" />
                             )}
-                            <span>{isItemBroadcasting ? 'Stop' : 'Live'}</span>
+                            {isItemBroadcasting ? 'Stop' : 'Live'}
                           </Button>
                         );
                       })()}
@@ -696,11 +704,11 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                             reactivateReservation((item.originalData as Reservation).id);
                             toast.success('Riattivata!');
                           }}
-                          className="h-9 min-w-[44px] px-2 text-xs border-muted-foreground/30 text-muted-foreground hover:bg-muted"
+                          className="flex-1 h-10 text-sm border-muted-foreground/30 text-muted-foreground hover:bg-muted"
                           title="Riattiva"
                         >
-                          <RotateCcw className="w-4 h-4 mr-1" />
-                          <span>Riattiva</span>
+                          <RotateCcw className="w-4 h-4 mr-1.5" />
+                          Riattiva
                         </Button>
                       ) : (
                         <Button
@@ -710,16 +718,14 @@ export const LiveCentroTab: React.FC<LiveCentroTabProps> = ({
                             e.stopPropagation();
                             handleComplete(item);
                           }}
-                          className="h-9 min-w-[44px] px-2 text-xs border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white"
+                          className="flex-1 h-10 text-sm border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white"
                           title="Completa"
                         >
-                          <Check className="w-4 h-4 mr-1" />
-                          <span>Fatto</span>
+                          <Check className="w-4 h-4 mr-1.5" />
+                          Fatto
                         </Button>
                       )}
                     </div>
-                  ) : (
-                    <ChevronRight className="w-5 h-5 text-muted-foreground/50 flex-shrink-0" />
                   )}
                 </div>
               </div>
