@@ -112,146 +112,27 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
     }
   }, [allSongsDb, broadcastSong, stopBroadcast, currentBroadcastSongId]);
 
-  // Filter songs: exclude completed ones from the main list
-  const filteredSongs = useMemo(() => {
-    return songs.filter((song) => {
-      const searchLower = search.toLowerCase().trim();
-      
-      if (!searchLower) {
-        const matchesArtist = artistFilter === 'all' || song.artist === artistFilter;
-        const isCompleted = isSongCompleted(song.title, song.artist);
-        return matchesArtist && !isCompleted;
-      }
-      
-      const matchesSearch =
-        song.title.toLowerCase().includes(searchLower) ||
-        song.artist.toLowerCase().includes(searchLower);
+  const openTrasmettiInNewTab = useCallback(() => {
+    const trasmettiUrl = `${window.location.origin}/trasmetti`;
+    const newWindow = window.open(trasmettiUrl, '_blank', 'noopener,noreferrer');
 
-      const matchesArtist =
-        artistFilter === 'all' || song.artist === artistFilter;
-
-      // Hide completed songs from the list
-      const isCompleted = isSongCompleted(song.title, song.artist);
-
-      return matchesSearch && matchesArtist && !isCompleted;
-    });
-  }, [songs, search, artistFilter, isSongCompleted]);
-
-  // Queue songs for display
-  const queueSongs = useMemo(() => {
-    return statuses
-      .filter(s => s.status === 'in_progress')
-      .map(s => ({
-        id: s.reservation_id,
-        song_key: s.song_key,
-        song_title: s.song_title,
-        song_artist: s.song_artist,
-        status: s.status,
-        created_at: s.created_at,
-      }));
-  }, [statuses]);
-
-  const handleBookSong = (song: Song) => {
-    // Check if song is already booked (use latest status from hook)
-    if (isSongBooked(song.title, song.artist)) {
-      return; // Don't open modal for booked songs
+    if (newWindow) {
+      newWindow.opener = null;
+      return;
     }
-    setSelectedSong(song);
-  };
 
-  return (
-    <div className="min-h-screen bg-background pb-20 md:pb-0">
-      <ConsecutiveUnlockListener />
-      <SEO 
-        title="Open Mic | Karaoke Live by Non C'è Duo"
-        description="Il karaoke live dove TU sei la star! Prenota la tua canzone e sali sul palco con la band."
-        image="/og-openmic.jpg"
-        url="/app/openmic"
-      />
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-card/90 backdrop-blur-md border-b border-border">
-        <div className="container py-4">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <Link to="/app">
-                <Button variant="ghost" size="icon" className="mr-1">
-                  <Home className="w-5 h-5" />
-                </Button>
-              </Link>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center animate-neon-pulse">
-                <Mic2 className="w-5 h-5 sm:w-6 sm:h-6 text-primary-foreground" />
-              </div>
-              <div>
-                <h1 className="font-display text-lg sm:text-xl md:text-2xl font-bold neon-text-pink">
-                  Open Mic
-                </h1>
-                <p className="text-xs sm:text-sm text-secondary font-medium">
-                  Non C'è Duo
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              {!appMode && <UserLoginIndicator compact />}
-              {/* Only show Chat button if dediche format is active */}
-              {isDedicheActive && (
-                <Link to="/app/dediche">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    className="border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
-                  >
-                    <MessageCircle className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Chat</span>
-                  </Button>
-                </Link>
-              )}
-              {isStaff && (
-                <Link to="/admin">
-                  <Button 
-                    variant="ghost" 
-                    size="icon"
-                    className="text-muted-foreground hover:text-foreground"
-                    title="Area Admin"
-                  >
-                    <Settings className="w-4 h-4" />
-                  </Button>
-                </Link>
-              )}
-            </div>
-          </div>
-
-          {/* Queue indicator */}
-          {activeCount > 0 && (
-            <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-accent/20 border border-accent/30">
-              <Users className="w-4 h-4 text-accent" />
-              <span className="text-sm text-foreground">
-                {activeCount === 1 
-                  ? 'C\'è 1 persona in coda' 
-                  : `Ci sono ${activeCount} persone in coda`}
-              </span>
-            </div>
-          )}
-
-          {/* Search & Filter */}
-          <div className="space-y-3">
-            <SearchBar value={search} onChange={setSearch} />
-            <ArtistFilterDynamic value={artistFilter} onChange={setArtistFilter} songs={songs} />
-          </div>
-
-          {/* Booked count only */}
-          {bookedSongKeys.size > 0 && (
-            <p className="text-xs text-warning mt-3">
-              {bookedSongKeys.size} canzoni prenotate
-            </p>
-          )}
-        </div>
-      </header>
-
+    toast.error('Il browser ha bloccato la nuova scheda. Riprova tenendo premuto sul banner.');
+  }, []);
+...
       {/* Trasmetti Banner */}
       {showTrasmettiBanner && (
         <div className="container pt-4">
-          <a href="/trasmetti" target="_blank" rel="noopener noreferrer">
+          <button
+            type="button"
+            onClick={openTrasmettiInNewTab}
+            className="block w-full text-left"
+            aria-label="Apri Trasmetti in una nuova scheda"
+          >
             <div className="relative overflow-hidden rounded-xl p-3 bg-gradient-to-r from-indigo-500/20 via-indigo-500/10 to-purple-500/10 border border-indigo-500/30 hover:border-indigo-500/50 transition-all group cursor-pointer">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-indigo-500/20 flex items-center justify-center shrink-0">
@@ -264,7 +145,7 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
                 <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
               </div>
             </div>
-          </a>
+          </button>
         </div>
       )}
 
