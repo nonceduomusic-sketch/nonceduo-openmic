@@ -675,6 +675,7 @@ function OfflineDataSection({ localIP: configIP }: { localIP: string }) {
   };
 
   return (
+    <>
     <div className="pt-4 border-t border-border space-y-5">
       <div className="flex items-center gap-3">
         <HardDrive className="w-5 h-5 text-primary" />
