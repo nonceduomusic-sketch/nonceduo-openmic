@@ -454,9 +454,6 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
                       isBooked={isSongBooked(song.title, song.artist)}
                       isCompleted={isSongCompleted(song.title, song.artist)}
                       onBook={handleBookSong}
-                      isStaff={isStaff}
-                      onBroadcast={handleBroadcast}
-                      isBroadcasting={!!songDb && currentBroadcastSongId === songDb.id}
                     />
                   );
                 })}
