@@ -768,11 +768,33 @@ const LocalServerGuide: React.FC = () => {
     'node server.js',
   ];
 
-  const copyToClipboard = (commands: string[]) => {
-    navigator.clipboard.writeText(commands.join('\n')).then(() => {
-      toast({ title: 'Copiato!', description: 'Comandi copiati negli appunti' });
+  const copySingle = (cmd: string) => {
+    navigator.clipboard.writeText(cmd).then(() => {
+      toast({ title: 'Copiato!', description: cmd.length > 40 ? cmd.slice(0, 40) + '…' : cmd });
     });
   };
+
+  const copyAll = (commands: string[]) => {
+    navigator.clipboard.writeText(commands.join('\n')).then(() => {
+      toast({ title: 'Copiato!', description: 'Tutti i comandi copiati negli appunti' });
+    });
+  };
+
+  const CommandLine: React.FC<{ cmd: string; index?: number }> = ({ cmd, index }) => (
+    <div className="flex items-center gap-1 group">
+      <div className="flex-1 text-foreground/80 truncate">
+        {index !== undefined && <span className="text-primary/60 mr-1">{index + 1}.</span>}
+        {cmd}
+      </div>
+      <button
+        onClick={() => copySingle(cmd)}
+        className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
+        title="Copia questo comando"
+      >
+        <Copy className="w-3 h-3 text-muted-foreground" />
+      </button>
+    </div>
+  );
 
   return (
     <div className="space-y-4 pt-6 border-t border-border">
@@ -789,15 +811,15 @@ const LocalServerGuide: React.FC = () => {
             variant="ghost"
             size="sm"
             className="h-6 px-2 text-xs"
-            onClick={() => copyToClipboard(startCommands)}
+            onClick={() => copyAll(startCommands)}
           >
             <Copy className="w-3 h-3 mr-1" />
-            Copia
+            Copia tutto
           </Button>
         </div>
         <div className="bg-muted/50 rounded-lg p-3 font-mono text-xs space-y-0.5 border border-border">
           {startCommands.map((cmd, i) => (
-            <div key={i} className="text-foreground/80">{cmd}</div>
+            <CommandLine key={i} cmd={cmd} />
           ))}
         </div>
       </div>
@@ -810,17 +832,15 @@ const LocalServerGuide: React.FC = () => {
             variant="ghost"
             size="sm"
             className="h-6 px-2 text-xs"
-            onClick={() => copyToClipboard(updateCommands)}
+            onClick={() => copyAll(updateCommands)}
           >
             <Copy className="w-3 h-3 mr-1" />
-            Copia
+            Copia tutto
           </Button>
         </div>
         <div className="bg-muted/50 rounded-lg p-3 font-mono text-xs space-y-0.5 border border-border">
           {updateCommands.map((cmd, i) => (
-            <div key={i} className="text-foreground/80">
-              <span className="text-primary/60 mr-1">{i + 1}.</span>{cmd}
-            </div>
+            <CommandLine key={i} cmd={cmd} index={i} />
           ))}
         </div>
       </div>
