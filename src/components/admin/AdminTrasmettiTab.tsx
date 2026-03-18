@@ -429,20 +429,23 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                   {pendingReservations.map((reservation, index) => (
                     <div
                       key={reservation.id}
-                      className="flex items-center justify-between p-3 sm:p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors gap-3"
+                      className="flex flex-col gap-2 p-3 sm:p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors"
                     >
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                      {/* Song info row */}
+                      <div className="flex items-center gap-3 min-w-0">
                         <Badge variant="outline" className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center rounded-full text-sm sm:text-base font-semibold shrink-0">
                           {index + 1}
                         </Badge>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <p className="font-semibold text-sm sm:text-base truncate">{reservation.song_title}</p>
                           <p className="text-xs sm:text-sm text-muted-foreground truncate">
                             {reservation.song_artist} • {reservation.customer_name}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+
+                      {/* Action buttons row — full width, always with text */}
+                      <div className="flex items-center gap-2 pt-2 border-t border-border/30">
                         {/* Testo / Accordi */}
                         <Button
                           size="sm"
@@ -451,10 +454,10 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                             setLyricsDialogSong({ title: reservation.song_title, artist: reservation.song_artist });
                             setLyricsDialogOpen(true);
                           }}
-                          className="h-9 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm border-secondary text-secondary hover:bg-secondary hover:text-secondary-foreground"
+                          className="flex-1 h-10 text-sm border-secondary/40 text-secondary hover:bg-secondary hover:text-secondary-foreground"
                         >
-                          <FileText className="w-4 h-4 sm:mr-1.5 flex-shrink-0" />
-                          <span className="hidden lg:inline">Testo</span>
+                          <FileText className="w-4 h-4 mr-1.5 flex-shrink-0" />
+                          Testo
                         </Button>
 
                         {/* Trasmetti / Stop */}
@@ -481,16 +484,16 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                               }}
                               disabled={!canManage}
                               className={cn(
-                                "h-9 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm",
+                                "flex-1 h-10 text-sm",
                                 !isBroadcasting && "bg-primary hover:bg-primary/90"
                               )}
                             >
                               {isBroadcasting ? (
-                                <Square className="w-4 h-4 sm:mr-1.5 flex-shrink-0" />
+                                <Square className="w-4 h-4 mr-1.5 flex-shrink-0" />
                               ) : (
-                                <Play className="w-4 h-4 sm:mr-1.5 flex-shrink-0" />
+                                <Play className="w-4 h-4 mr-1.5 flex-shrink-0" />
                               )}
-                              <span className="hidden lg:inline">{isBroadcasting ? 'Stop' : 'Trasmetti'}</span>
+                              {isBroadcasting ? 'Stop' : 'Live'}
                             </Button>
                           );
                         })()}
@@ -506,10 +509,10 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
                             }
                           }}
                           disabled={!canManage}
-                          className="h-9 sm:h-10 px-2 sm:px-3 text-xs sm:text-sm border-accent text-accent hover:bg-accent hover:text-accent-foreground"
+                          className="flex-1 h-10 text-sm border-emerald-500/40 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500 hover:text-white"
                         >
-                          <CheckCircle className="w-4 h-4 sm:mr-1.5 flex-shrink-0" />
-                          <span className="hidden lg:inline">Completa</span>
+                          <CheckCircle className="w-4 h-4 mr-1.5 flex-shrink-0" />
+                          Fatto
                         </Button>
                       </div>
                     </div>
