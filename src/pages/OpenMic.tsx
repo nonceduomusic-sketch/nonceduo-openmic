@@ -123,7 +123,7 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
 
     toast.error('Il browser ha bloccato la nuova scheda. Riprova tenendo premuto sul banner.');
   }, []);
-...
+
       {/* Trasmetti Banner */}
       {showTrasmettiBanner && (
         <div className="container pt-4">

@@ -85,7 +85,7 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
 
     toast.error('Il browser ha bloccato la nuova scheda. Riprova tenendo premuto sul banner.');
   }, []);
-...
+
         {/* Trasmetti Banner */}
         {showTrasmettiBanner && (
           <div className="container mx-auto px-4 pt-2">
