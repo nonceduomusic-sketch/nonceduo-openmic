@@ -134,15 +134,11 @@ export default function FuroreRemote() {
     setValidating(true);
     setPinError(null);
 
-    const { data } = await supabase
-      .from('furore_remote_access')
-      .select('pin_code')
-      .eq('id', accessInfo.id)
-      .eq('is_active', true)
-      .maybeSingle();
+    const { data, error } = await supabase
+      .rpc('validate_furore_remote_pin', { p_access_id: accessInfo.id, p_pin: pin.trim() });
 
-    if (data && data.pin_code === pin.trim().toUpperCase()) {
-      sessionStorage.setItem(`furore_remote_pin_${accessInfo.id}`, data.pin_code);
+    if (!error && data === true) {
+      sessionStorage.setItem(`furore_remote_validated_${accessInfo.id}`, 'true');
       setPhase('controls');
     } else {
       setPinError('PIN non valido');

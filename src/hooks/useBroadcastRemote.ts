@@ -386,38 +386,29 @@ export interface BroadcastRemoteAccess {
           return;
         }
 
-        // Online: try Cloud with timeout
+        // Online: try Cloud with timeout via secure RPC
         try {
           const controller = new AbortController();
           const timeout = setTimeout(() => controller.abort(), 5000);
           const { data, error } = await supabase
-            .from('broadcast_remote_access')
-            .select('id, sala_code, name, is_active, expires_at, pin_required')
-            .eq('access_token', token)
-            .eq('is_active', true)
+            .rpc('check_remote_token', { p_token: token })
             .abortSignal(controller.signal)
-            .single();
+            .maybeSingle();
           clearTimeout(timeout);
 
           if (!error && data) {
-            if (data.expires_at && new Date(data.expires_at) < new Date()) {
-              setLoading(false);
-              return;
-            }
-
-            const pinRequired = (data as any).pin_required ?? true;
             const info = {
-              accessId: data.id,
+              accessId: data.access_id,
               salaCode: data.sala_code,
               name: data.name,
-              pinRequired,
+              pinRequired: data.pin_required ?? true,
             };
 
             setAccessInfo(info);
             safeSetItem('local', `remote_access_${token}`, JSON.stringify(info));
 
-            if (!pinRequired) {
-              await createSessionDirect(data.id);
+            if (!info.pinRequired) {
+              await createSessionDirect(data.access_id);
             }
             setLoading(false);
             return;
