@@ -102,7 +102,8 @@ export const AdminDashboard: React.FC = () => {
   const { access, isLoading: isAccessLoading } = useAdminSectionAccess();
   const operatorPerms = useOperatorPermissions();
   const isMobile = useIsMobile();
-  const { broadcastSong } = useHybridBroadcast('main');
+  const { broadcastSong, stopBroadcast, session } = useHybridBroadcast('main');
+  const currentBroadcastSongId = session?.current_song_id || null;
   const { songs: dbSongs } = useSongs();
   const {
     activeReservations,
