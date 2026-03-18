@@ -1,6 +1,6 @@
 import React, { forwardRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Music, FileText, Lock, CheckCircle, Play } from 'lucide-react';
+import { Music, FileText, Lock, CheckCircle, Play, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Song } from '@/data/songs';
 import { cn } from '@/lib/utils';
@@ -13,6 +13,7 @@ interface SongCardWithStatusProps {
   isCompleted?: boolean;
   isStaff?: boolean;
   onBroadcast?: (song: Song) => void;
+  isBroadcasting?: boolean;
 }
 
 export const SongCardWithStatus = forwardRef<HTMLDivElement, SongCardWithStatusProps>(
