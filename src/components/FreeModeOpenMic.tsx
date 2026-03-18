@@ -54,6 +54,7 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
   const { isStaff } = useStaffRole();
   const { broadcastSong, stopBroadcast, session: broadcastSession } = useHybridBroadcast('main');
   const currentBroadcastSongId = broadcastSession?.current_song_id || null;
+  const { songs: dbSongs } = useSongs();
 
   const handleBroadcast = useCallback((song: Song) => {
     const songDb = dbSongs.find(
@@ -64,9 +65,14 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
       toast.error('Canzone non trovata nel database');
       return;
     }
-    broadcastSong(songDb.id);
-    toast.success(`Trasmissione: ${song.title}`);
-  }, [dbSongs, broadcastSong]);
+    if (currentBroadcastSongId === songDb.id) {
+      stopBroadcast();
+      toast.success('Trasmissione interrotta');
+    } else {
+      broadcastSong(songDb.id);
+      toast.success(`Trasmissione: ${song.title}`);
+    }
+  }, [dbSongs, broadcastSong, stopBroadcast, currentBroadcastSongId]);
   
   // Check if live queue should be shown to users
   const { isActive: showLiveQueue } = useFormatActiveCheck('show_live_queue');
