@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useCallback } from "react";
 import { Mic2, Settings } from "lucide-react";
 import { Song } from "@/data/songs";
 import { useSongsCatalog } from "@/hooks/useSongsCatalog";
@@ -10,20 +10,45 @@ import { Link } from "react-router-dom";
 import { useStaffRole } from "@/hooks/useStaffRole";
 import { useReservationStatuses } from "@/hooks/useReservationStatuses";
 import { ConsecutiveUnlockListener } from "@/components/ConsecutiveUnlockListener";
+import { useHybridBroadcast } from "@/hooks/useHybridBroadcast";
+import { useSongs } from "@/hooks/useSongs";
+import { toast } from "sonner";
 
 const Index: React.FC = () => {
   const { isStaff } = useStaffRole();
   const { isSongBooked, isSongCompleted } = useReservationStatuses();
-
   const [search, setSearch] = useState("");
   const [artistFilter, setArtistFilter] = useState("all");
   const [selectedSong, setSelectedSong] = useState<Song | null>(null);
 
-  // Load songs
-  const { songs } = useSongsCatalog();
+  // Load songs from database
+  const { songs, loading } = useSongsCatalog();
+
+  // Broadcast (staff only)
+  const { broadcastSong } = useHybridBroadcast("main");
+  const { songs: dbSongs } = useSongs();
+
+  const handleBroadcast = useCallback(
+    (song: Song) => {
+      const songDb = dbSongs.find(
+        (s) =>
+          s.titolo?.toLowerCase() === song.title.toLowerCase() &&
+          s.artista?.toLowerCase() === song.artist.toLowerCase(),
+      );
+      if (!songDb) {
+        toast.error("Canzone non trovata nel database");
+        return;
+      }
+      broadcastSong(songDb.id);
+      toast.success(`Trasmissione: ${song.title}`);
+    },
+    [dbSongs, broadcastSong],
+  );
 
   const handleBookSong = (song: Song) => {
-    if (isSongBooked(song.title, song.artist)) return;
+    if (isSongBooked(song.title, song.artist)) {
+      return; // Already booked, do nothing
+    }
     setSelectedSong(song);
   };
 
@@ -47,7 +72,6 @@ const Index: React.FC = () => {
   return (
     <div className="min-h-screen bg-background">
       <ConsecutiveUnlockListener />
-
       {/* Header */}
       <header className="sticky top-0 z-40 bg-card/90 backdrop-blur-md border-b border-border">
         <div className="container py-4">
@@ -90,7 +114,7 @@ const Index: React.FC = () => {
           </p>
         </div>
 
-        {/* Grid */}
+        {/* Mobile: 1 col, Tablet: 2 cols with better spacing, Desktop: 3 cols */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-3">
           {filteredSongs.map((song, index) => (
             <SongCardWithStatus
@@ -99,11 +123,8 @@ const Index: React.FC = () => {
               onBook={handleBookSong}
               isBooked={isSongBooked(song.title, song.artist)}
               isCompleted={isSongCompleted(song.title, song.artist)}
-              // 🔒 DISABILITA TRASMETTI
-              isStaff={false}
-              onBroadcast={undefined}
-              // ✅ SOLO QUESTI PULSANTI IN QUESTO ORDINE
-              actionsOrder={["book", "text"]}
+              isStaff={isStaff}
+              onBroadcast={handleBroadcast}
             />
           ))}
         </div>
