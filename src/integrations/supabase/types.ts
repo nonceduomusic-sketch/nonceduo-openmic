@@ -3160,6 +3160,23 @@ export type Database = {
         Args: { recipient: string; sender: string }
         Returns: boolean
       }
+      check_furore_remote_token: {
+        Args: { p_token: string }
+        Returns: {
+          access_id: string
+          name: string
+          pin_required: boolean
+        }[]
+      }
+      check_remote_token: {
+        Args: { p_token: string }
+        Returns: {
+          access_id: string
+          name: string
+          pin_required: boolean
+          sala_code: string
+        }[]
+      }
       cleanup_expired_typing_indicators: { Args: never; Returns: undefined }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
       cleanup_old_reactions: { Args: never; Returns: undefined }
@@ -3287,6 +3304,10 @@ export type Database = {
       }
       validate_format_pin: {
         Args: { p_format: string; p_pin: string }
+        Returns: boolean
+      }
+      validate_furore_remote_pin: {
+        Args: { p_access_id: string; p_pin: string }
         Returns: boolean
       }
       validate_live_session_pin: {
