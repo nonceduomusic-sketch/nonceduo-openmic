@@ -900,19 +900,26 @@ export const AdminDashboard: React.FC = () => {
                   </p>
                 </div>
               ) : (
-                activeReservations.map((reservation) => (
-                  <ReservationCard
-                    key={reservation.id}
-                    reservation={reservation}
-                    onComplete={operatorPerms.canManageOpenmic ? handleComplete : undefined}
-                    onDelete={operatorPerms.canDelete ? handleSingleDelete : undefined}
-                    onBroadcast={handleBroadcastReservation}
-                    selectionMode={selectionMode}
-                    isSelected={selectedIds.has(reservation.id)}
-                    onSelect={handleSelect}
-                    compact={isMobile}
-                  />
-                ))
+                activeReservations.map((reservation) => {
+                  const songDb = dbSongs.find(
+                    s => s.titolo?.toLowerCase() === reservation.song_title.toLowerCase() &&
+                         s.artista?.toLowerCase() === reservation.song_artist.toLowerCase()
+                  );
+                  return (
+                    <ReservationCard
+                      key={reservation.id}
+                      reservation={reservation}
+                      onComplete={operatorPerms.canManageOpenmic ? handleComplete : undefined}
+                      onDelete={operatorPerms.canDelete ? handleSingleDelete : undefined}
+                      onBroadcast={handleBroadcastReservation}
+                      isBroadcasting={!!songDb && currentBroadcastSongId === songDb.id}
+                      selectionMode={selectionMode}
+                      isSelected={selectedIds.has(reservation.id)}
+                      onSelect={handleSelect}
+                      compact={isMobile}
+                    />
+                  );
+                })
               )}
             </div>
           ) : (

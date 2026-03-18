@@ -97,15 +97,20 @@ const OpenMic: React.FC<OpenMicProps> = ({ appMode = false, liveEvent }) => {
     const songDb = allSongsDb.find(
       s => s.titolo === song.title && s.artista === song.artist
     );
-    if (songDb) {
+    if (!songDb) {
+      toast.error('Canzone non trovata nel catalogo');
+      return;
+    }
+    if (currentBroadcastSongId === songDb.id) {
+      await stopBroadcast();
+      toast.success('Trasmissione interrotta');
+    } else {
       const success = await broadcastSong(songDb.id);
       if (success) {
         toast.success('Trasmissione avviata!');
       }
-    } else {
-      toast.error('Canzone non trovata nel catalogo');
     }
-  }, [allSongsDb, broadcastSong]);
+  }, [allSongsDb, broadcastSong, stopBroadcast, currentBroadcastSongId]);
 
   // Filter songs: exclude completed ones from the main list
   const filteredSongs = useMemo(() => {
