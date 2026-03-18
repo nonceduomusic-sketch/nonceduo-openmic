@@ -824,6 +824,14 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
         onOpenChange={setShowPreview}
         previewSongId={previewSongId}
       />
+
+      {/* Lyrics Dialog */}
+      <LyricsDialog
+        open={lyricsDialogOpen}
+        onOpenChange={setLyricsDialogOpen}
+        songTitle={lyricsDialogSong.title}
+        songArtist={lyricsDialogSong.artist}
+      />
     </div>
   );
 }
