@@ -16,6 +16,8 @@ import {
   Upload,
   Music,
   BookOpen,
+  Terminal,
+  Copy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -673,6 +675,7 @@ function OfflineDataSection({ localIP: configIP }: { localIP: string }) {
   };
 
   return (
+    <>
     <div className="pt-4 border-t border-border space-y-5">
       <div className="flex items-center gap-3">
         <HardDrive className="w-5 h-5 text-primary" />
@@ -740,5 +743,91 @@ function OfflineDataSection({ localIP: configIP }: { localIP: string }) {
         💡 <strong>Browser</strong>: salva in questo dispositivo (IndexedDB). <strong>Server LAN</strong>: invia al mini-server locale (disponibile per tutti i dispositivi in rete).
       </p>
     </div>
+
+    <LocalServerGuide />
+    </>
   );
 }
+
+const LocalServerGuide: React.FC = () => {
+  const { toast } = useToast();
+
+  const updateCommands = [
+    'cd C:\\Users\\iaco_\\nonceduo-openmic-nuovo',
+    'git pull',
+    'npm install',
+    'npm run build',
+    'xcopy dist\\* ..\\nonceduo\\local-server\\public\\ /E /Y',
+    'Copy-Item ".\\local-server\\server.js" -Destination "..\\nonceduo\\local-server\\server.js" -Force',
+    'cd ..\\nonceduo\\local-server',
+    'node server.js',
+  ];
+
+  const startCommands = [
+    'cd C:\\Users\\iaco_\\nonceduo\\local-server',
+    'node server.js',
+  ];
+
+  const copyToClipboard = (commands: string[]) => {
+    navigator.clipboard.writeText(commands.join('\n')).then(() => {
+      toast({ title: 'Copiato!', description: 'Comandi copiati negli appunti' });
+    });
+  };
+
+  return (
+    <div className="space-y-4 pt-6 border-t border-border">
+      <div className="flex items-center gap-2">
+        <Terminal className="w-5 h-5 text-primary" />
+        <h3 className="font-semibold text-sm">Server Locale (PowerShell)</h3>
+      </div>
+
+      {/* Solo avvio */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-muted-foreground">🚀 Solo Avvio</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={() => copyToClipboard(startCommands)}
+          >
+            <Copy className="w-3 h-3 mr-1" />
+            Copia
+          </Button>
+        </div>
+        <div className="bg-muted/50 rounded-lg p-3 font-mono text-xs space-y-0.5 border border-border">
+          {startCommands.map((cmd, i) => (
+            <div key={i} className="text-foreground/80">{cmd}</div>
+          ))}
+        </div>
+      </div>
+
+      {/* Aggiornamento completo */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-muted-foreground">🔄 Aggiornamento + Avvio</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={() => copyToClipboard(updateCommands)}
+          >
+            <Copy className="w-3 h-3 mr-1" />
+            Copia
+          </Button>
+        </div>
+        <div className="bg-muted/50 rounded-lg p-3 font-mono text-xs space-y-0.5 border border-border">
+          {updateCommands.map((cmd, i) => (
+            <div key={i} className="text-foreground/80">
+              <span className="text-primary/60 mr-1">{i + 1}.</span>{cmd}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <p className="text-xs text-muted-foreground">
+        ⚠️ Se ricevi errore <strong>EADDRINUSE</strong>, esegui prima: <code className="bg-muted px-1 rounded text-foreground/80">taskkill /F /IM node.exe</code>
+      </p>
+    </div>
+  );
+};
