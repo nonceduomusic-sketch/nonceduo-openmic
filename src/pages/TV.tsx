@@ -568,6 +568,12 @@ export default function TV() {
             <img src={qrCodeDataUrl} alt="QR Code" className="w-28 h-28 md:w-40 md:h-40 lg:w-48 lg:h-48" />
           </div>
         )}
+        {pinToShow && tvSettings.showQr && (
+          <div className="flex items-center gap-3 px-6 py-2 bg-white/10 border border-white/20 rounded-full shrink-0">
+            <span className="text-white/60 text-sm md:text-base font-medium">PIN:</span>
+            <span className="text-white text-xl md:text-2xl font-mono font-bold tracking-[0.3em]">{pinToShow}</span>
+          </div>
+        )}
         {tvSettings.showQr && (
           <p className="text-base md:text-xl text-white/70 text-center shrink-0">{tvSettings.qrCta}</p>
         )}
