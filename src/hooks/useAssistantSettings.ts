@@ -47,7 +47,10 @@ export function useAssistantSettings() {
         return;
       }
 
-      setSettings(data);
+      setSettings({
+        ...data,
+        enabled_pages: (data.enabled_pages as Record<string, boolean>) || {},
+      } as AssistantSettings);
     } catch (err) {
       console.error('Error:', err);
     } finally {
