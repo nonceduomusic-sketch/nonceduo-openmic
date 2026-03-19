@@ -56,14 +56,35 @@ export const useSongs = () => {
 
     // 2) Fetch from network (with timeout to avoid hanging offline)
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 4000);
-      const { data, error } = await supabase
-        .from('songs')
-        .select('*')
-        .order('titolo', { ascending: true })
-        .abortSignal(controller.signal);
-      clearTimeout(timeout);
+      // Fetch all songs using pagination to bypass the 1000-row default limit
+      const allSongs: Song[] = [];
+      const PAGE_SIZE = 1000;
+      let from = 0;
+      let keepFetching = true;
+
+      while (keepFetching) {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 6000);
+        const { data: page, error: pageError } = await supabase
+          .from('songs')
+          .select('*')
+          .order('titolo', { ascending: true })
+          .range(from, from + PAGE_SIZE - 1)
+          .abortSignal(controller.signal);
+        clearTimeout(timeout);
+
+        if (pageError) throw pageError;
+        if (page && page.length > 0) {
+          allSongs.push(...(page as Song[]));
+          from += page.length;
+          if (page.length < PAGE_SIZE) keepFetching = false;
+        } else {
+          keepFetching = false;
+        }
+      }
+
+      const data = allSongs;
+      const error = null;
 
       if (error) {
         console.error('Error fetching songs:', error);
