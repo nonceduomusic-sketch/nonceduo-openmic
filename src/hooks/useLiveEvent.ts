@@ -208,6 +208,7 @@ export const useLiveEvent = () => {
           eventName: null,
           pinEnabled: false,
           pinCode: null,
+          showPinOnGate: false,
           openmicMaxSongs: null,
           openmicCurrentCount: 0,
           dedicheMaxTotal: null,
