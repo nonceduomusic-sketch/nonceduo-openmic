@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
@@ -47,7 +48,9 @@ import {
   Lock,
   Unlock,
   Download,
+  Eye,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { useUnifiedLiveSession, FormatType } from '@/hooks/useUnifiedLiveSession';
 import { useAdminPinSessionReset } from '@/hooks/usePinSession';
 import { useAdmin } from '@/contexts/AdminContext';
@@ -93,6 +96,73 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
   const [activeSessionsCount, setActiveSessionsCount] = useState<number>(0);
   const [isTogglingPin, setIsTogglingPin] = useState(false);
   const [loadingSessionCount, setLoadingSessionCount] = useState(false);
+  const [showPinOnGate, setShowPinOnGate] = useState(false);
+
+  // Load showPinOnGate from event_booking_rules or free_mode_settings
+  useEffect(() => {
+    const loadShowPinSetting = async () => {
+      // Try live event first
+      const { data: liveData } = await supabase
+        .from('event_booking_rules')
+        .select('show_pin_on_gate')
+        .eq('event_status', 'live')
+        .maybeSingle();
+      
+      if (liveData) {
+        setShowPinOnGate((liveData as any).show_pin_on_gate ?? false);
+        return;
+      }
+
+      // Try free mode
+      const { data: freeData } = await supabase
+        .from('free_mode_settings')
+        .select('show_pin_on_gate')
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      if (freeData) {
+        setShowPinOnGate((freeData as any).show_pin_on_gate ?? false);
+      }
+    };
+    
+    if (isPinActive) {
+      loadShowPinSetting();
+    }
+  }, [isPinActive]);
+
+  const handleToggleShowPin = async (checked: boolean) => {
+    setShowPinOnGate(checked);
+    
+    // Update in event_booking_rules (live event)
+    const { data: liveData } = await supabase
+      .from('event_booking_rules')
+      .select('id')
+      .eq('event_status', 'live')
+      .maybeSingle();
+    
+    if (liveData) {
+      await supabase
+        .from('event_booking_rules')
+        .update({ show_pin_on_gate: checked } as any)
+        .eq('id', liveData.id);
+    }
+
+    // Update in free_mode_settings
+    const { data: freeData } = await supabase
+      .from('free_mode_settings')
+      .select('id')
+      .eq('is_active', true)
+      .maybeSingle();
+    
+    if (freeData) {
+      await supabase
+        .from('free_mode_settings')
+        .update({ show_pin_on_gate: checked } as any)
+        .eq('id', freeData.id);
+    }
+
+    toast.success(checked ? 'PIN visibile nella pagina di accesso' : 'PIN nascosto dalla pagina di accesso');
+  };
 
   // Generate QR code when dialog opens
   const eventUrl = getEventUrl();
@@ -549,6 +619,25 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                 </div>
               </div>
             )}
+
+            {/* Show PIN on gate toggle */}
+            <Separator />
+            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
+              <div className="flex items-center gap-3">
+                <Eye className="w-4 h-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">Mostra PIN nella pagina di accesso</p>
+                  <p className="text-xs text-muted-foreground">
+                    Il PIN sarà visibile agli utenti sotto il campo di inserimento
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={showPinOnGate}
+                onCheckedChange={handleToggleShowPin}
+                className="scale-110 md:scale-100"
+              />
+            </div>
 
           </>
         )}

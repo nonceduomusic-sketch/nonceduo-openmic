@@ -91,6 +91,7 @@ const AppDediche: React.FC = () => {
           onPinValidated={handlePinValidated}
           backTo="/app"
           backLabel="Torna all'app"
+          displayPin={liveEvent.show_pin_on_gate ? liveEvent.pin_code : undefined}
         />
       );
     }
@@ -110,6 +111,7 @@ const AppDediche: React.FC = () => {
           onPinValidated={handlePinValidated}
           backTo="/app"
           backLabel="Torna all'app"
+          displayPin={freeMode.showPinOnGate ? freeMode.pinCode : undefined}
         />
       );
     }

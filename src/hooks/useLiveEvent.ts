@@ -14,6 +14,7 @@ export interface LiveEvent {
   event_end_time: string | null;
   pin_required: boolean;
   pin_code: string | null;
+  show_pin_on_gate: boolean;
   booking_opens_at: string | null;
   booking_closes_at: string | null;
   close_minutes_before_end: number | null;
@@ -50,6 +51,7 @@ export interface FreeModeState {
   eventName: string | null;
   pinEnabled: boolean;
   pinCode: string | null;
+  showPinOnGate: boolean;
   // Limits
   openmicMaxSongs: number | null;
   openmicCurrentCount: number;
@@ -123,6 +125,7 @@ export const useLiveEvent = () => {
     eventName: null,
     pinEnabled: false,
     pinCode: null,
+    showPinOnGate: false,
     openmicMaxSongs: null,
     openmicCurrentCount: 0,
     dedicheMaxTotal: null,
@@ -178,6 +181,7 @@ export const useLiveEvent = () => {
           event_end_time: liveData.event_end_time,
           pin_required: liveData.pin_required || false,
           pin_code: liveData.pin_code,
+          show_pin_on_gate: (liveData as any).show_pin_on_gate ?? false,
           booking_opens_at: liveData.booking_opens_at,
           booking_closes_at: liveData.booking_closes_at,
           close_minutes_before_end: liveData.close_minutes_before_end,
@@ -205,6 +209,7 @@ export const useLiveEvent = () => {
           eventName: null,
           pinEnabled: false,
           pinCode: null,
+          showPinOnGate: false,
           openmicMaxSongs: null,
           openmicCurrentCount: 0,
           dedicheMaxTotal: null,
@@ -258,6 +263,7 @@ export const useLiveEvent = () => {
           eventName: freeModeData?.event_name ?? null,
           pinEnabled: freeModeData?.pin_enabled ?? false,
           pinCode: freeModeData?.pin_code ?? null,
+          showPinOnGate: (freeModeData as any)?.show_pin_on_gate ?? false,
           openmicMaxSongs: freeModeData?.openmic_max_songs ?? null,
           openmicCurrentCount: freeModeData?.openmic_current_count ?? 0,
           dedicheMaxTotal: freeModeData?.dediche_max_total ?? null,

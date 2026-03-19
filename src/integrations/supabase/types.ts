@@ -979,6 +979,7 @@ export type Database = {
           reopen_mode: string | null
           reopen_songs_used: number | null
           reopen_until: string | null
+          show_pin_on_gate: boolean | null
           updated_at: string | null
           user_limit_consecutive_enabled: boolean | null
           user_limit_consecutive_songs: number | null
@@ -1043,6 +1044,7 @@ export type Database = {
           reopen_mode?: string | null
           reopen_songs_used?: number | null
           reopen_until?: string | null
+          show_pin_on_gate?: boolean | null
           updated_at?: string | null
           user_limit_consecutive_enabled?: boolean | null
           user_limit_consecutive_songs?: number | null
@@ -1107,6 +1109,7 @@ export type Database = {
           reopen_mode?: string | null
           reopen_songs_used?: number | null
           reopen_until?: string | null
+          show_pin_on_gate?: boolean | null
           updated_at?: string | null
           user_limit_consecutive_enabled?: boolean | null
           user_limit_consecutive_songs?: number | null
@@ -1217,6 +1220,7 @@ export type Database = {
           reopen_mode: string | null
           reopen_songs_used: number | null
           reopen_until: string | null
+          show_pin_on_gate: boolean | null
           start_mode: string | null
           started_at: string | null
           updated_at: string | null
@@ -1285,6 +1289,7 @@ export type Database = {
           reopen_mode?: string | null
           reopen_songs_used?: number | null
           reopen_until?: string | null
+          show_pin_on_gate?: boolean | null
           start_mode?: string | null
           started_at?: string | null
           updated_at?: string | null
@@ -1353,6 +1358,7 @@ export type Database = {
           reopen_mode?: string | null
           reopen_songs_used?: number | null
           reopen_until?: string | null
+          show_pin_on_gate?: boolean | null
           start_mode?: string | null
           started_at?: string | null
           updated_at?: string | null
