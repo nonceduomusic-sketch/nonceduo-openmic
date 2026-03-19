@@ -50,6 +50,7 @@ import {
   Download,
   Eye,
 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 import { useUnifiedLiveSession, FormatType } from '@/hooks/useUnifiedLiveSession';
 import { useAdminPinSessionReset } from '@/hooks/usePinSession';
 import { useAdmin } from '@/contexts/AdminContext';
