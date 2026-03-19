@@ -64,6 +64,7 @@ export default function TV() {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [currentSongbookFile, setCurrentSongbookFile] = useState<SongbookFile | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
+  const [pinToShow, setPinToShow] = useState<string | null>(null);
   const lyricsRef = useRef<HTMLDivElement>(null);
 
   // Fetch broadcast session + subscribe to realtime
