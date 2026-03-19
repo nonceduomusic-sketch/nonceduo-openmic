@@ -234,7 +234,7 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
         {showTrasmettiBanner && (
           <div className="container mx-auto px-4 pt-2">
             <a
-              href="/trasmetti"
+              href="/tv"
               target="_blank"
               rel="noopener noreferrer"
               onClick={handleTrasmettiClick}
