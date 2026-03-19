@@ -3,7 +3,7 @@
  * Two variants: LocalLinksCard and OnlineLinksCard, plus a combined BroadcastLinksCards.
  */
 import React from 'react';
-import { Server, ExternalLink, Tv, Guitar, Music, Smartphone, Copy, Wifi, Globe, Zap } from 'lucide-react';
+import { Server, ExternalLink, Tv, Guitar, Music, Smartphone, Copy, Wifi, Globe, Zap, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -52,7 +52,8 @@ function getLocalIP(): string {
 
 function buildLinks(telecomandoTokens?: { name: string; token: string }[], singleToken?: string, furoreRemoteToken?: string): LinkItem[] {
   const base: LinkItem[] = [
-    { key: 'tv', label: 'TV', path: '/trasmetti', icon: <Tv className="w-4 h-4" /> },
+    { key: 'tv', label: 'TV (Admin)', path: '/trasmetti', icon: <Tv className="w-4 h-4" /> },
+    { key: 'tv-public', label: 'TV (Pubblico)', path: '/tv', icon: <Monitor className="w-4 h-4" /> },
     { key: 'partiture', label: 'Partiture', path: '/partiture', icon: <Guitar className="w-4 h-4" /> },
     { key: 'songbook', label: 'SongBook', path: '/songbook-live', icon: <Music className="w-4 h-4" /> },
   ];
