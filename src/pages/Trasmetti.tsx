@@ -1519,6 +1519,14 @@ export default function Trasmetti() {
           </div>
         )}
 
+        {/* PIN Display */}
+        {pinToShow && tvSettings.showQr && (
+          <div className="flex items-center gap-3 px-6 py-2 bg-white/10 border border-white/20 rounded-full shrink-0">
+            <span className="text-white/60 text-sm md:text-base font-medium">PIN:</span>
+            <span className="text-white text-xl md:text-2xl font-mono font-bold tracking-[0.3em]">{pinToShow}</span>
+          </div>
+        )}
+
         {/* QR CTA */}
         {tvSettings.showQr && (
           <p className="text-base md:text-xl text-white/70 text-center shrink-0">
