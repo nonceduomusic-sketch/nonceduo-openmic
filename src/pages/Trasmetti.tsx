@@ -117,6 +117,7 @@ export default function Trasmetti() {
   const [currentSongbookFile, setCurrentSongbookFile] = useState<SongbookFile | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [pinToShow, setPinToShow] = useState<string | null>(null);
   
   // Screen share viewer hook
   const { remoteStream, isConnecting: screenShareConnecting, isActive: screenShareActive } = useScreenShareViewer({ salaCode });
