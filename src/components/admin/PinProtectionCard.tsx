@@ -48,6 +48,7 @@ import {
   Lock,
   Unlock,
   Download,
+  Eye,
 } from 'lucide-react';
 import { useUnifiedLiveSession, FormatType } from '@/hooks/useUnifiedLiveSession';
 import { useAdminPinSessionReset } from '@/hooks/usePinSession';
