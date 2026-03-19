@@ -52,7 +52,8 @@ function getLocalIP(): string {
 
 function buildLinks(telecomandoTokens?: { name: string; token: string }[], singleToken?: string, furoreRemoteToken?: string): LinkItem[] {
   const base: LinkItem[] = [
-    { key: 'tv', label: 'TV', path: '/trasmetti', icon: <Tv className="w-4 h-4" /> },
+    { key: 'tv', label: 'TV (Admin)', path: '/trasmetti', icon: <Tv className="w-4 h-4" /> },
+    { key: 'tv-public', label: 'TV (Pubblico)', path: '/tv', icon: <Monitor className="w-4 h-4" /> },
     { key: 'partiture', label: 'Partiture', path: '/partiture', icon: <Guitar className="w-4 h-4" /> },
     { key: 'songbook', label: 'SongBook', path: '/songbook-live', icon: <Music className="w-4 h-4" /> },
   ];
