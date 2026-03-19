@@ -141,13 +141,12 @@ export function AdminTrasmettiTab({ canManage = true, canFull = true }: AdminTra
     })
   );
 
-  // Filtered songs for search - show all if no query
+  // Filtered songs for search - show all songs so the catalog can scroll end-to-end
   const filteredSongs = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
-    const filtered = query 
-      ? songs.filter(s => s.titolo.toLowerCase().includes(query) || s.artista.toLowerCase().includes(query))
+    return query
+      ? songs.filter((s) => s.titolo.toLowerCase().includes(query) || s.artista.toLowerCase().includes(query))
       : songs;
-    return filtered.slice(0, 50); // Limit for performance
   }, [songs, searchQuery]);
 
   // Active reservations (not completed)
