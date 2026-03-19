@@ -14,6 +14,7 @@ export interface LiveEvent {
   event_end_time: string | null;
   pin_required: boolean;
   pin_code: string | null;
+  show_pin_on_gate: boolean;
   booking_opens_at: string | null;
   booking_closes_at: string | null;
   close_minutes_before_end: number | null;
