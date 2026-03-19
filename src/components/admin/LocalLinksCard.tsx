@@ -3,7 +3,7 @@
  * Two variants: LocalLinksCard and OnlineLinksCard, plus a combined BroadcastLinksCards.
  */
 import React from 'react';
-import { Server, ExternalLink, Tv, Guitar, Music, Smartphone, Copy, Wifi, Globe, Zap } from 'lucide-react';
+import { Server, ExternalLink, Tv, Guitar, Music, Smartphone, Copy, Wifi, Globe, Zap, Monitor } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
