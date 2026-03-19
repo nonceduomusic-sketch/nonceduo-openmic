@@ -47,6 +47,7 @@ import QuizGame from "./pages/QuizGame";
 import GameNotAvailable from "./pages/GameNotAvailable";
 import AppFurore from "./pages/AppFurore";
 import FuroreRemote from "./pages/FuroreRemote";
+import TV from "./pages/TV";
 
 const queryClient = new QueryClient();
 
