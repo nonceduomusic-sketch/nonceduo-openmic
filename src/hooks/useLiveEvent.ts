@@ -262,6 +262,7 @@ export const useLiveEvent = () => {
           eventName: freeModeData?.event_name ?? null,
           pinEnabled: freeModeData?.pin_enabled ?? false,
           pinCode: freeModeData?.pin_code ?? null,
+          showPinOnGate: (freeModeData as any)?.show_pin_on_gate ?? false,
           openmicMaxSongs: freeModeData?.openmic_max_songs ?? null,
           openmicCurrentCount: freeModeData?.openmic_current_count ?? 0,
           dedicheMaxTotal: freeModeData?.dediche_max_total ?? null,
