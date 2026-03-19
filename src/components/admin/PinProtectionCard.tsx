@@ -95,6 +95,73 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
   const [activeSessionsCount, setActiveSessionsCount] = useState<number>(0);
   const [isTogglingPin, setIsTogglingPin] = useState(false);
   const [loadingSessionCount, setLoadingSessionCount] = useState(false);
+  const [showPinOnGate, setShowPinOnGate] = useState(false);
+
+  // Load showPinOnGate from event_booking_rules or free_mode_settings
+  useEffect(() => {
+    const loadShowPinSetting = async () => {
+      // Try live event first
+      const { data: liveData } = await supabase
+        .from('event_booking_rules')
+        .select('show_pin_on_gate')
+        .eq('event_status', 'live')
+        .maybeSingle();
+      
+      if (liveData) {
+        setShowPinOnGate((liveData as any).show_pin_on_gate ?? false);
+        return;
+      }
+
+      // Try free mode
+      const { data: freeData } = await supabase
+        .from('free_mode_settings')
+        .select('show_pin_on_gate')
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      if (freeData) {
+        setShowPinOnGate((freeData as any).show_pin_on_gate ?? false);
+      }
+    };
+    
+    if (isPinActive) {
+      loadShowPinSetting();
+    }
+  }, [isPinActive]);
+
+  const handleToggleShowPin = async (checked: boolean) => {
+    setShowPinOnGate(checked);
+    
+    // Update in event_booking_rules (live event)
+    const { data: liveData } = await supabase
+      .from('event_booking_rules')
+      .select('id')
+      .eq('event_status', 'live')
+      .maybeSingle();
+    
+    if (liveData) {
+      await supabase
+        .from('event_booking_rules')
+        .update({ show_pin_on_gate: checked } as any)
+        .eq('id', liveData.id);
+    }
+
+    // Update in free_mode_settings
+    const { data: freeData } = await supabase
+      .from('free_mode_settings')
+      .select('id')
+      .eq('is_active', true)
+      .maybeSingle();
+    
+    if (freeData) {
+      await supabase
+        .from('free_mode_settings')
+        .update({ show_pin_on_gate: checked } as any)
+        .eq('id', freeData.id);
+    }
+
+    toast.success(checked ? 'PIN visibile nella pagina di accesso' : 'PIN nascosto dalla pagina di accesso');
+  };
 
   // Generate QR code when dialog opens
   const eventUrl = getEventUrl();
