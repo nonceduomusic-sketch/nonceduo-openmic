@@ -234,12 +234,12 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
         {showTrasmettiBanner && (
           <div className="container mx-auto px-4 pt-2">
             <a
-              href="/trasmetti"
+              href="/tv"
               target="_blank"
               rel="noopener noreferrer"
               onClick={handleTrasmettiClick}
               className="block"
-              aria-label="Apri Trasmetti in una nuova scheda"
+              aria-label="Apri TV in una nuova scheda"
             >
               <div className="relative overflow-hidden rounded-xl p-3 bg-gradient-to-r from-indigo-500/20 via-indigo-500/10 to-purple-500/10 border border-indigo-500/30 hover:border-indigo-500/50 transition-all group cursor-pointer">
                 <div className="flex items-center gap-3">
@@ -248,7 +248,7 @@ export const FreeModeOpenMic: React.FC<FreeModeOpenMicProps> = ({ freeModeState 
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm text-foreground">📺 Segui i testi dal vivo!</p>
-                    <p className="text-xs text-muted-foreground">Apri Trasmetti per vedere i testi che scorrono sul tuo schermo</p>
+                    <p className="text-xs text-muted-foreground">Apri la TV per vedere i testi che scorrono sul tuo schermo</p>
                   </div>
                   <ExternalLink className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors shrink-0" />
                 </div>
