@@ -200,16 +200,6 @@ export const FormatPinGate: React.FC<FormatPinGateProps> = ({
               </span>
             </div>
           </div>
-
-          {/* Display PIN hint if enabled by admin */}
-          {displayPin && (
-            <div className="mt-3 p-4 rounded-xl bg-primary/10 border border-primary/30 text-center">
-              <p className="text-xs text-muted-foreground mb-1">Il PIN di stasera è:</p>
-              <p className="text-3xl font-mono font-bold tracking-[0.3em] text-primary">
-                {displayPin}
-              </p>
-            </div>
-          )}
         </CardHeader>
         
         <CardContent className="space-y-6">
