@@ -47,6 +47,7 @@ import QuizGame from "./pages/QuizGame";
 import GameNotAvailable from "./pages/GameNotAvailable";
 import AppFurore from "./pages/AppFurore";
 import FuroreRemote from "./pages/FuroreRemote";
+import TV from "./pages/TV";
 
 const queryClient = new QueryClient();
 
@@ -101,6 +102,9 @@ const AppContent = () => (
       
       {/* Telecomando Furore - Remote control for Furore game */}
       <Route path="/furore-remote/:token" element={<FuroreRemote />} />
+      
+      {/* TV - Read-only lyrics viewer for public users */}
+      <Route path="/tv" element={<TV />} />
       
       {/* SongBook Live - ChordPro viewer with sync */}
       <Route path="/songbook-live" element={<SongbookLive />} />
