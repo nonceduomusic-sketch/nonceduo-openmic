@@ -180,6 +180,7 @@ export const useLiveEvent = () => {
           event_end_time: liveData.event_end_time,
           pin_required: liveData.pin_required || false,
           pin_code: liveData.pin_code,
+          show_pin_on_gate: (liveData as any).show_pin_on_gate ?? false,
           booking_opens_at: liveData.booking_opens_at,
           booking_closes_at: liveData.booking_closes_at,
           close_minutes_before_end: liveData.close_minutes_before_end,
