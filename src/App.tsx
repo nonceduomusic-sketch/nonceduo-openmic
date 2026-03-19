@@ -103,6 +103,9 @@ const AppContent = () => (
       {/* Telecomando Furore - Remote control for Furore game */}
       <Route path="/furore-remote/:token" element={<FuroreRemote />} />
       
+      {/* TV - Read-only lyrics viewer for public users */}
+      <Route path="/tv" element={<TV />} />
+      
       {/* SongBook Live - ChordPro viewer with sync */}
       <Route path="/songbook-live" element={<SongbookLive />} />
       <Route path="/partiture" element={<Partiture />} />
