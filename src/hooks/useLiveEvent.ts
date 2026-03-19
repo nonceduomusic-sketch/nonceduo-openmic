@@ -51,6 +51,7 @@ export interface FreeModeState {
   eventName: string | null;
   pinEnabled: boolean;
   pinCode: string | null;
+  showPinOnGate: boolean;
   // Limits
   openmicMaxSongs: number | null;
   openmicCurrentCount: number;
