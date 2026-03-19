@@ -15,7 +15,6 @@ interface FormatPinGateProps {
   onPinValidated: () => void;
   backTo?: string;
   backLabel?: string;
-  displayPin?: string | null;
 }
 
 export const FormatPinGate: React.FC<FormatPinGateProps> = ({
