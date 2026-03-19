@@ -23,7 +23,6 @@ export const FormatPinGate: React.FC<FormatPinGateProps> = ({
   onPinValidated,
   backTo = '/app',
   backLabel = 'Torna all\'app',
-  displayPin,
 }) => {
   const [pin, setPin] = useState('');
   const { validatePin, validating, isValid: pinIsValid } = useFormatPinValidator(format);
