@@ -129,6 +129,7 @@ const AppOpenMic: React.FC = () => {
           onPinValidated={handlePinValidated}
           backTo="/app"
           backLabel="Torna all'app"
+          displayPin={freeMode.showPinOnGate ? freeMode.pinCode : undefined}
         />
       );
     }
