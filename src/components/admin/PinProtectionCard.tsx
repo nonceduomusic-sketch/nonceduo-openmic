@@ -620,15 +620,15 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
               </div>
             )}
 
-            {/* Show PIN on gate toggle */}
+            {/* Show PIN on TV/Trasmetti toggle */}
             <Separator />
             <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
               <div className="flex items-center gap-3">
                 <Eye className="w-4 h-4 text-muted-foreground" />
                 <div>
-                  <p className="text-sm font-medium">Mostra PIN nella pagina di accesso</p>
+                  <p className="text-sm font-medium">Mostra PIN su TV e Trasmetti</p>
                   <p className="text-xs text-muted-foreground">
-                    Il PIN sarà visibile agli utenti sotto il campo di inserimento
+                    Il PIN sarà visibile sotto il QR code nelle pagine di proiezione
                   </p>
                 </div>
               </div>

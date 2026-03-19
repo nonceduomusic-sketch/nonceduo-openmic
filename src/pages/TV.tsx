@@ -64,6 +64,7 @@ export default function TV() {
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [currentSongbookFile, setCurrentSongbookFile] = useState<SongbookFile | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
+  const [pinToShow, setPinToShow] = useState<string | null>(null);
   const lyricsRef = useRef<HTMLDivElement>(null);
 
   // Fetch broadcast session + subscribe to realtime
@@ -261,6 +262,47 @@ export default function TV() {
     };
     generateQR();
   }, [modeQrUrl]);
+
+  // Fetch show_pin_on_gate setting
+  useEffect(() => {
+    const fetchPinSetting = async () => {
+      // Try live event first
+      const { data: liveData } = await supabase
+        .from('event_booking_rules')
+        .select('pin_required, pin_code, show_pin_on_gate')
+        .eq('event_status', 'live')
+        .maybeSingle();
+      
+      if (liveData && (liveData as any).pin_required && (liveData as any).show_pin_on_gate) {
+        setPinToShow((liveData as any).pin_code);
+        return;
+      }
+
+      // Try free mode
+      const { data: freeData } = await supabase
+        .from('free_mode_settings')
+        .select('pin_enabled, pin_code, show_pin_on_gate')
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      if (freeData && (freeData as any).pin_enabled && (freeData as any).show_pin_on_gate) {
+        setPinToShow((freeData as any).pin_code);
+        return;
+      }
+
+      setPinToShow(null);
+    };
+    fetchPinSetting();
+
+    // Subscribe to changes
+    const channel = supabase
+      .channel('tv-pin-display')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_booking_rules' }, () => fetchPinSetting())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'free_mode_settings' }, () => fetchPinSetting())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   // --- "Prenota" floating button (always visible) ---
   const PrenotaButton = () => (
@@ -524,6 +566,12 @@ export default function TV() {
         {tvSettings.showQr && qrCodeDataUrl && (
           <div className="bg-white rounded-2xl p-3 md:p-4 shadow-2xl shrink-0">
             <img src={qrCodeDataUrl} alt="QR Code" className="w-28 h-28 md:w-40 md:h-40 lg:w-48 lg:h-48" />
+          </div>
+        )}
+        {pinToShow && tvSettings.showQr && (
+          <div className="flex items-center gap-3 px-6 py-2 bg-white/10 border border-white/20 rounded-full shrink-0">
+            <span className="text-white/60 text-sm md:text-base font-medium">PIN:</span>
+            <span className="text-white text-xl md:text-2xl font-mono font-bold tracking-[0.3em]">{pinToShow}</span>
           </div>
         )}
         {tvSettings.showQr && (

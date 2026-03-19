@@ -117,7 +117,46 @@ export default function Trasmetti() {
   const [currentSongbookFile, setCurrentSongbookFile] = useState<SongbookFile | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [pinToShow, setPinToShow] = useState<string | null>(null);
   
+  // Fetch show_pin_on_gate setting
+  useEffect(() => {
+    const fetchPinSetting = async () => {
+      const { data: liveData } = await supabase
+        .from('event_booking_rules')
+        .select('pin_required, pin_code, show_pin_on_gate')
+        .eq('event_status', 'live')
+        .maybeSingle();
+      
+      if (liveData && (liveData as any).pin_required && (liveData as any).show_pin_on_gate) {
+        setPinToShow((liveData as any).pin_code);
+        return;
+      }
+
+      const { data: freeData } = await supabase
+        .from('free_mode_settings')
+        .select('pin_enabled, pin_code, show_pin_on_gate')
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      if (freeData && (freeData as any).pin_enabled && (freeData as any).show_pin_on_gate) {
+        setPinToShow((freeData as any).pin_code);
+        return;
+      }
+
+      setPinToShow(null);
+    };
+    fetchPinSetting();
+
+    const channel = supabase
+      .channel('trasmetti-pin-display')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_booking_rules' }, () => fetchPinSetting())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'free_mode_settings' }, () => fetchPinSetting())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   // Screen share viewer hook
   const { remoteStream, isConnecting: screenShareConnecting, isActive: screenShareActive } = useScreenShareViewer({ salaCode });
   
@@ -1477,6 +1516,14 @@ export default function Trasmetti() {
               alt="QR Code per prenotazione" 
               className="w-28 h-28 md:w-40 md:h-40 lg:w-48 lg:h-48"
             />
+          </div>
+        )}
+
+        {/* PIN Display */}
+        {pinToShow && tvSettings.showQr && (
+          <div className="flex items-center gap-3 px-6 py-2 bg-white/10 border border-white/20 rounded-full shrink-0">
+            <span className="text-white/60 text-sm md:text-base font-medium">PIN:</span>
+            <span className="text-white text-xl md:text-2xl font-mono font-bold tracking-[0.3em]">{pinToShow}</span>
           </div>
         )}
 
