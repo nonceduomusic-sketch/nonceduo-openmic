@@ -263,6 +263,47 @@ export default function TV() {
     generateQR();
   }, [modeQrUrl]);
 
+  // Fetch show_pin_on_gate setting
+  useEffect(() => {
+    const fetchPinSetting = async () => {
+      // Try live event first
+      const { data: liveData } = await supabase
+        .from('event_booking_rules')
+        .select('pin_required, pin_code, show_pin_on_gate')
+        .eq('event_status', 'live')
+        .maybeSingle();
+      
+      if (liveData && (liveData as any).pin_required && (liveData as any).show_pin_on_gate) {
+        setPinToShow((liveData as any).pin_code);
+        return;
+      }
+
+      // Try free mode
+      const { data: freeData } = await supabase
+        .from('free_mode_settings')
+        .select('pin_enabled, pin_code, show_pin_on_gate')
+        .eq('is_active', true)
+        .maybeSingle();
+      
+      if (freeData && (freeData as any).pin_enabled && (freeData as any).show_pin_on_gate) {
+        setPinToShow((freeData as any).pin_code);
+        return;
+      }
+
+      setPinToShow(null);
+    };
+    fetchPinSetting();
+
+    // Subscribe to changes
+    const channel = supabase
+      .channel('tv-pin-display')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'event_booking_rules' }, () => fetchPinSetting())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'free_mode_settings' }, () => fetchPinSetting())
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
+
   // --- "Prenota" floating button (always visible) ---
   const PrenotaButton = () => (
     <div className="fixed bottom-6 right-6 z-50">
