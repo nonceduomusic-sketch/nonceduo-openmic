@@ -512,37 +512,115 @@ const SettingsPanel: React.FC = () => {
         </CardHeader>
       </Card>
 
-      {/* Section toggles */}
+      {/* Section toggles - Per-page granular control */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Settings className="w-4 h-4" />
             Sezioni Abilitate
           </CardTitle>
-          <CardDescription>Scegli dove mostrare l'assistente</CardDescription>
+          <CardDescription>Scegli su quali pagine mostrare l'assistente (default: tutte OFF)</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {[
-            { key: 'enabled_on_site', label: '🌐 Sito Generale', desc: 'Homepage e pagine informative' },
-            { key: 'enabled_on_app', label: '📱 App (/app)', desc: 'App Launcher e pagine app' },
-            { key: 'enabled_on_openmic', label: '🎤 Open Mic', desc: 'Sezione prenotazione canzoni' },
-            { key: 'enabled_on_dediche', label: '💌 Dediche', desc: 'Sezione messaggi e dediche' },
-            { key: 'enabled_on_community', label: '👥 Community', desc: 'Gruppi e bacheca sociale' },
-            { key: 'enabled_on_giochi', label: '🎮 Giochi', desc: 'Sezione giochi interattivi' },
-            { key: 'enabled_on_furore', label: '🔥 Non C\'è Furore', desc: 'Pulsantiera live' },
-          ].map((item) => (
-            <div key={item.key} className="flex items-center justify-between py-2">
-              <div>
-                <Label className="font-medium">{item.label}</Label>
-                <p className="text-xs text-muted-foreground">{item.desc}</p>
+        <CardContent className="space-y-1">
+          {(() => {
+            const enabledPages = (settings.enabled_pages || {}) as Record<string, boolean>;
+            const togglePage = (pageKey: string, checked: boolean) => {
+              const updated = { ...enabledPages, [pageKey]: checked };
+              updateSettings({ enabled_pages: updated } as any);
+            };
+
+            const groups = [
+              {
+                title: '🌐 Sito (Vetrina)',
+                pages: [
+                  { key: '/', label: 'Homepage', desc: 'Pagina principale nonceduo.com' },
+                  { key: '/partyband', label: 'Party Band', desc: 'Pagina servizio Party Band' },
+                  { key: '/openmic', label: 'Open Mic (info)', desc: 'Pagina informativa Open Mic' },
+                  { key: '/messaggi', label: 'Dediche (info)', desc: 'Pagina informativa Dediche' },
+                  { key: '/furore', label: 'Furore (info)', desc: 'Pagina informativa Furore' },
+                  { key: '/giochi', label: 'Giochi (info)', desc: 'Pagina informativa Giochi' },
+                  { key: '/collabora', label: 'Collabora', desc: 'Pagina collaborazioni' },
+                ],
+              },
+              {
+                title: '📱 App (Interattiva)',
+                pages: [
+                  { key: '/app', label: 'App Launcher', desc: 'Schermata principale app' },
+                  { key: '/app/openmic', label: 'App Open Mic', desc: 'Prenotazione canzoni live' },
+                  { key: '/app/dediche', label: 'App Dediche', desc: 'Invio messaggi/dediche live' },
+                  { key: '/app/giochi', label: 'App Giochi', desc: 'Hub giochi interattivi' },
+                  { key: '/app/furore', label: 'App Furore', desc: 'Pulsantiera Furore live' },
+                ],
+              },
+              {
+                title: '👥 Community',
+                pages: [
+                  { key: '/social', label: 'Social', desc: 'Bacheca e gruppi' },
+                  { key: '/social/auth', label: 'Social Login', desc: 'Autenticazione community' },
+                  { key: '/social/dashboard', label: 'Social Dashboard', desc: 'Dashboard utente' },
+                  { key: '/join', label: 'Join Chat', desc: 'Ingresso tramite link invito' },
+                ],
+              },
+              {
+                title: '📢 Promo',
+                pages: [
+                  { key: '/promo/locali', label: 'Promo Locali', desc: 'Landing per locali' },
+                  { key: '/promo/eventi', label: 'Promo Eventi', desc: 'Landing per eventi' },
+                  { key: '/promo/matrimoni', label: 'Promo Matrimoni', desc: 'Landing per matrimoni' },
+                  { key: '/promo/feste-piazza', label: 'Promo Feste Piazza', desc: 'Landing per feste in piazza' },
+                ],
+              },
+              {
+                title: '🎤 Live (Legacy)',
+                pages: [
+                  { key: '/openmic/live', label: 'Open Mic Live', desc: 'Pagina live legacy' },
+                  { key: '/messaggi/live', label: 'Dediche Live', desc: 'Pagina dediche legacy' },
+                  { key: '/evento-live', label: 'Evento Live', desc: 'Accesso tramite link evento' },
+                ],
+              },
+              {
+                title: '📺 Strumenti Broadcast',
+                pages: [
+                  { key: '/trasmetti', label: 'Trasmetti (Admin)', desc: 'Proiezione TV con controlli' },
+                  { key: '/tv', label: 'TV (Pubblico)', desc: 'Visualizzazione testi read-only' },
+                  { key: '/partiture', label: 'Partiture', desc: 'Vista musicisti con accordi' },
+                  { key: '/songbook-live', label: 'SongBook Live', desc: 'Viewer ChordPro sincronizzato' },
+                  { key: '/telecomando', label: 'Telecomando', desc: 'Controllo remoto broadcast' },
+                  { key: '/furore-remote', label: 'Tel. Furore', desc: 'Telecomando gioco Furore' },
+                  { key: '/lyrics', label: 'Lyrics', desc: 'Pagina testo singolo brano' },
+                ],
+              },
+              {
+                title: '⚙️ Sistema',
+                pages: [
+                  { key: '/privacy', label: 'Privacy', desc: 'Informativa privacy GDPR' },
+                  { key: '/installa', label: 'Installa PWA', desc: 'Guida installazione app' },
+                  { key: '/admin', label: 'Admin', desc: 'Pannello amministrazione' },
+                ],
+              },
+            ];
+
+            return groups.map((group) => (
+              <div key={group.title} className="mb-4">
+                <p className="text-sm font-semibold text-muted-foreground mb-2">{group.title}</p>
+                <div className="space-y-1 pl-1">
+                  {group.pages.map((page) => (
+                    <div key={page.key} className="flex items-center justify-between py-1.5 px-3 rounded-md hover:bg-muted/50">
+                      <div className="min-w-0">
+                        <Label className="text-sm font-medium">{page.label}</Label>
+                        <p className="text-[11px] text-muted-foreground truncate">{page.desc} <span className="font-mono opacity-60">{page.key}</span></p>
+                      </div>
+                      <Switch
+                        checked={enabledPages[page.key] === true}
+                        onCheckedChange={(checked) => togglePage(page.key, checked)}
+                        disabled={!settings.is_enabled}
+                      />
+                    </div>
+                  ))}
+                </div>
               </div>
-              <Switch
-                checked={settings[item.key as keyof typeof settings] as boolean}
-                onCheckedChange={(checked) => updateSettings({ [item.key]: checked })}
-                disabled={!settings.is_enabled}
-              />
-            </div>
-          ))}
+            ));
+          })()}
         </CardContent>
       </Card>
 
