@@ -1,0 +1,1 @@
+ALTER TABLE public.assistant_settings ADD COLUMN IF NOT EXISTS enabled_pages jsonb NOT NULL DEFAULT '{}'::jsonb;

@@ -193,6 +193,7 @@ export type Database = {
           enabled_on_giochi: boolean
           enabled_on_openmic: boolean
           enabled_on_site: boolean
+          enabled_pages: Json
           id: string
           is_enabled: boolean
           notify_community: boolean | null
@@ -218,6 +219,7 @@ export type Database = {
           enabled_on_giochi?: boolean
           enabled_on_openmic?: boolean
           enabled_on_site?: boolean
+          enabled_pages?: Json
           id?: string
           is_enabled?: boolean
           notify_community?: boolean | null
@@ -243,6 +245,7 @@ export type Database = {
           enabled_on_giochi?: boolean
           enabled_on_openmic?: boolean
           enabled_on_site?: boolean
+          enabled_pages?: Json
           id?: string
           is_enabled?: boolean
           notify_community?: boolean | null

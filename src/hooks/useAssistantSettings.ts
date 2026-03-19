@@ -11,6 +11,7 @@ export interface AssistantSettings {
   enabled_on_dediche: boolean;
   enabled_on_community: boolean;
   enabled_on_giochi: boolean;
+  enabled_pages: Record<string, boolean>;
   proactive_delay_seconds: number;
   welcome_message: string;
   updated_at: string;
@@ -46,7 +47,10 @@ export function useAssistantSettings() {
         return;
       }
 
-      setSettings(data);
+      setSettings({
+        ...data,
+        enabled_pages: (data.enabled_pages as Record<string, boolean>) || {},
+      } as AssistantSettings);
     } catch (err) {
       console.error('Error:', err);
     } finally {
