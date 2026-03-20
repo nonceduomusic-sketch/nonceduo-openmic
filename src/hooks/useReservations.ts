@@ -290,6 +290,7 @@ export const useReservations = () => {
   const resetOpenMic = async () => {
     try {
       await callAdminApi('resetOpenMic');
+      await fetchReservations();
       toast.success('Prenotazioni Open Mic cancellate');
       return true;
     } catch (error) {
