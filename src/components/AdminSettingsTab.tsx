@@ -382,9 +382,9 @@ function ConnectionModeSection() {
               <p className="text-xs text-muted-foreground mt-1">
                 L'IP viene mostrato all'avvio del server locale
               </p>
-              {currentHostIsLocal && currentHost !== localIP && (
+              {detectedLocalHost && detectedLocalHost !== localIP && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  IP corretto rilevato automaticamente da questa pagina: <strong>{currentHost}</strong>
+                  IP corretto rilevato automaticamente da questa pagina: <strong>{detectedLocalHost}</strong>
                 </p>
               )}
             </div>
