@@ -753,19 +753,21 @@ const LocalServerGuide: React.FC = () => {
   const { toast } = useToast();
 
   const updateCommands = [
-    'cd C:\\Users\\iaco_\\nonceduo-openmic-nuovo',
-    'git pull',
-    'npm install',
-    'npm run build',
-    'xcopy dist\\* ..\\nonceduo\\local-server\\public\\ /E /Y',
-    'Copy-Item ".\\local-server\\server.js" -Destination "..\\nonceduo\\local-server\\server.js" -Force',
-    'cd ..\\nonceduo\\local-server',
-    'node server.js',
+    { cmd: 'taskkill /F /IM node.exe 2>$null', label: 'Ferma server vecchio' },
+    { cmd: 'cd C:\\Users\\iaco_\\nonceduo-openmic-nuovo', label: 'Vai nella cartella codice' },
+    { cmd: 'git pull', label: 'Scarica aggiornamenti' },
+    { cmd: 'npm install', label: 'Installa dipendenze' },
+    { cmd: 'npm run build', label: 'Compila l\'app' },
+    { cmd: 'xcopy dist\\* ..\\nonceduo\\local-server\\public\\ /E /Y', label: 'Copia file compilati' },
+    { cmd: 'Copy-Item ".\\local-server\\server.js" -Destination "..\\nonceduo\\local-server\\server.js" -Force', label: 'Copia server.js' },
+    { cmd: 'cd ..\\nonceduo\\local-server', label: 'Vai nella cartella server' },
+    { cmd: 'node server.js', label: 'Avvia il server' },
   ];
 
   const startCommands = [
-    'cd C:\\Users\\iaco_\\nonceduo\\local-server',
-    'node server.js',
+    { cmd: 'taskkill /F /IM node.exe 2>$null', label: 'Ferma server vecchio' },
+    { cmd: 'cd C:\\Users\\iaco_\\nonceduo\\local-server', label: 'Vai nella cartella server' },
+    { cmd: 'node server.js', label: 'Avvia il server' },
   ];
 
   const copySingle = (cmd: string) => {
@@ -774,25 +776,29 @@ const LocalServerGuide: React.FC = () => {
     });
   };
 
-  const copyAll = (commands: string[]) => {
-    navigator.clipboard.writeText(commands.join('\n')).then(() => {
+  const copyAll = (commands: { cmd: string }[]) => {
+    navigator.clipboard.writeText(commands.map(c => c.cmd).join('\n')).then(() => {
       toast({ title: 'Copiato!', description: 'Tutti i comandi copiati negli appunti' });
     });
   };
 
-  const CommandLine: React.FC<{ cmd: string; index?: number }> = ({ cmd, index }) => (
-    <div className="flex items-center gap-1 group">
-      <div className="flex-1 text-foreground/80 truncate">
-        {index !== undefined && <span className="text-primary/60 mr-1">{index + 1}.</span>}
-        {cmd}
+  const CommandLine: React.FC<{ cmd: string; label?: string; index?: number }> = ({ cmd, label, index }) => (
+    <div className="group">
+      {label && index !== undefined && (
+        <div className="text-muted-foreground text-[10px] mt-1 first:mt-0">
+          Passo {index + 1}: {label}
+        </div>
+      )}
+      <div className="flex items-center gap-1">
+        <div className="flex-1 text-foreground/80 truncate">{cmd}</div>
+        <button
+          onClick={() => copySingle(cmd)}
+          className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
+          title="Copia questo comando"
+        >
+          <Copy className="w-3 h-3 text-muted-foreground" />
+        </button>
       </div>
-      <button
-        onClick={() => copySingle(cmd)}
-        className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
-        title="Copia questo comando"
-      >
-        <Copy className="w-3 h-3 text-muted-foreground" />
-      </button>
     </div>
   );
 
@@ -818,8 +824,8 @@ const LocalServerGuide: React.FC = () => {
           </Button>
         </div>
         <div className="bg-muted/50 rounded-lg p-3 font-mono text-xs space-y-0.5 border border-border">
-          {startCommands.map((cmd, i) => (
-            <CommandLine key={i} cmd={cmd} />
+          {startCommands.map((item, i) => (
+            <CommandLine key={i} cmd={item.cmd} label={item.label} index={i} />
           ))}
         </div>
       </div>
@@ -839,14 +845,14 @@ const LocalServerGuide: React.FC = () => {
           </Button>
         </div>
         <div className="bg-muted/50 rounded-lg p-3 font-mono text-xs space-y-0.5 border border-border">
-          {updateCommands.map((cmd, i) => (
-            <CommandLine key={i} cmd={cmd} index={i} />
+          {updateCommands.map((item, i) => (
+            <CommandLine key={i} cmd={item.cmd} label={item.label} index={i} />
           ))}
         </div>
       </div>
 
       <p className="text-xs text-muted-foreground">
-        ⚠️ Se ricevi errore <strong>EADDRINUSE</strong>, esegui prima: <code className="bg-muted px-1 rounded text-foreground/80">taskkill /F /IM node.exe</code>
+        ⚠️ Dopo l'aggiornamento, fai <strong>Ctrl+Shift+R</strong> su ogni dispositivo (TV, tablet, telefono) per caricare la versione nuova.
       </p>
     </div>
   );
