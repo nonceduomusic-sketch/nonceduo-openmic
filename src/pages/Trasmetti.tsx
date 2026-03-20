@@ -112,15 +112,27 @@ function renderChordsLine(line: ChordProLine, textAlign: 'left' | 'center' | 'ri
 
 export default function Trasmetti() {
   const { salaCode = 'main' } = useParams();
-  const { session, loading, mode, setMode, localIP, setLocalIP, localConnected, localLatency } = useHybridBroadcast(salaCode);
+  const { session, loading, mode, setMode, localIP, setLocalIP, localConnected, localLatency, isLocalMode } = useHybridBroadcast(salaCode);
   const [currentSong, setCurrentSong] = useState<Song | null>(null);
   const [currentSongbookFile, setCurrentSongbookFile] = useState<SongbookFile | null>(null);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [pinToShow, setPinToShow] = useState<string | null>(null);
   
-  // Fetch show_pin_on_gate setting + current PIN from the active live session
+  // Fetch show_pin_on_gate setting + current PIN from the active live session,
+  // with LAN fallback for localhost/local server mode.
   useEffect(() => {
+    const localPinCode = typeof (session as any)?.pin_code === 'string'
+      ? (session as any).pin_code.trim().toUpperCase()
+      : '';
+    const localShowPin = Boolean((session as any)?.show_pin_on_gate);
+    const localPinRequired = Boolean((session as any)?.pin_required);
+
+    if (isLocalMode && localConnected && localPinRequired && localShowPin && localPinCode) {
+      setPinToShow(localPinCode);
+      return;
+    }
+
     const fetchPinSetting = async () => {
       const { data: activeSession } = await supabase
         .from('live_sessions')
@@ -159,7 +171,7 @@ export default function Trasmetti() {
 
       setPinToShow(null);
     };
-    fetchPinSetting();
+    void fetchPinSetting();
 
     const channel = supabase
       .channel('trasmetti-pin-display')
@@ -169,7 +181,7 @@ export default function Trasmetti() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [isLocalMode, localConnected, session]);
 
   // Screen share viewer hook
   const { remoteStream, isConnecting: screenShareConnecting, isActive: screenShareActive } = useScreenShareViewer({ salaCode });

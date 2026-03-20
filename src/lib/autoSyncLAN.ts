@@ -16,6 +16,12 @@ const inFlight: Record<string, boolean> = {};
 
 const DEBOUNCE_MS = 500;
 
+interface PinDisplaySyncPayload {
+  pinCode: string | null;
+  showPinOnGate: boolean;
+  pinRequired: boolean;
+}
+
 /** Public entry-point — debounced + deduped */
 export function autoSyncToLAN(scope: 'all' | 'catalog' | 'songbook' = 'all') {
   // Clear any existing timer for this scope (coalesce rapid calls)
@@ -27,6 +33,34 @@ export function autoSyncToLAN(scope: 'all' | 'catalog' | 'songbook' = 'all') {
     delete pendingTimers[scope];
     runSync(scope);
   }, DEBOUNCE_MS);
+}
+
+export async function syncPinDisplayToLAN({
+  pinCode,
+  showPinOnGate,
+  pinRequired,
+}: PinDisplaySyncPayload): Promise<boolean> {
+  const localIP = safeGetItem('local', 'broadcast_local_ip') || '';
+  if (!localIP) return false;
+
+  try {
+    const response = await fetch(`http://${localIP}:8080/api/pin-display/sync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        pin_code: pinCode?.trim().toUpperCase() || null,
+        show_pin_on_gate: showPinOnGate,
+        pin_required: pinRequired,
+      }),
+      signal: AbortSignal.timeout(2500),
+    });
+
+    return response.ok;
+  } catch {
+    return false;
+  }
 }
 
 /** Internal: perform the actual sync with retry */
