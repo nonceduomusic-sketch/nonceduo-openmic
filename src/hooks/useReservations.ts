@@ -245,6 +245,7 @@ export const useReservations = () => {
   const resetActiveReservations = async () => {
     try {
       await callAdminApi('resetActive');
+      await fetchReservations();
       toast.success('Prenotazioni in corso cancellate');
       return true;
     } catch (error) {
