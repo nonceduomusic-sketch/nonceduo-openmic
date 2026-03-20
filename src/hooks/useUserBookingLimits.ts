@@ -103,11 +103,17 @@ export const useUserBookingLimits = ({
         .maybeSingle();
 
       const mode = (settings.user_limit_mode || 'session') as 'session' | 'session_name';
-      const songsTotalLimit = settings.user_limit_songs_total;
-      const dedicheTotalLimit = settings.user_limit_dediche_total;
-      const songsIntervalLimit = settings.user_limit_songs_interval;
-      const intervalMinutes = settings.user_limit_interval_minutes;
-      const consecutiveSongsLimit = settings.user_limit_consecutive_songs;
+      
+      // Read individual enable flags
+      const totalEnabled = settings.user_limit_total_enabled ?? false;
+      const consecutiveEnabled = settings.user_limit_consecutive_enabled ?? false;
+      const intervalEnabled = settings.user_limit_interval_enabled ?? false;
+      
+      const songsTotalLimit = totalEnabled ? settings.user_limit_songs_total : null;
+      const dedicheTotalLimit = totalEnabled ? settings.user_limit_dediche_total : null;
+      const songsIntervalLimit = intervalEnabled ? settings.user_limit_songs_interval : null;
+      const intervalMinutes = intervalEnabled ? settings.user_limit_interval_minutes : null;
+      const consecutiveSongsLimit = consecutiveEnabled ? settings.user_limit_consecutive_songs : null;
       const cooldownMessage = settings.user_limit_cooldown_message || 
         'Hai superato il limite di prenotazioni.';
 
@@ -122,7 +128,7 @@ export const useUserBookingLimits = ({
       let blockedReason: string | null = null;
       let cooldownEndsAt: Date | null = null;
 
-      // Check total limit
+      // Check total limit (only if totalEnabled)
       if (songsTotalLimit && currentSongsCount >= songsTotalLimit) {
         canBookSong = false;
         blockedReason = `Hai raggiunto il limite di ${songsTotalLimit} canzoni per questa serata.`;
@@ -135,7 +141,7 @@ export const useUserBookingLimits = ({
         }
       }
 
-      // Check consecutive limit
+      // Check consecutive limit (only if consecutiveEnabled)
       if (canBookSong && consecutiveSongsLimit && currentConsecutive >= consecutiveSongsLimit) {
         canBookSong = false;
         blockedReason = `Hai prenotato ${consecutiveSongsLimit} canzoni consecutive. Lascia spazio agli altri!`;
