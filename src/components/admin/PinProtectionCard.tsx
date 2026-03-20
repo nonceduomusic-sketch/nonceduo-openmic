@@ -87,16 +87,15 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
   // Reset PIN sessions is allowed for Owner + Admin (matches backend policies)
   const canDisconnectAll = isOwner || staffRole === 'owner' || staffRole === 'admin';
 
-  const { resetAllSessions, countActiveSessions, resetting } = useAdminPinSessionReset();
+  const { resetAllSessions, resetting } = useAdminPinSessionReset();
+  const { count: activeSessionsCount, loading: loadingSessionCount, refresh: refreshSessionCount } = useConnectedUsersCount(session?.id || null);
 
   const [showQR, setShowQR] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState<'pin' | 'link' | null>(null);
   const [isEditingPin, setIsEditingPin] = useState(false);
   const [editPinValue, setEditPinValue] = useState('');
-  const [activeSessionsCount, setActiveSessionsCount] = useState<number>(0);
   const [isTogglingPin, setIsTogglingPin] = useState(false);
-  const [loadingSessionCount, setLoadingSessionCount] = useState(false);
   const [showPinOnGate, setShowPinOnGate] = useState(false);
 
   // Load showPinOnGate from event_booking_rules or free_mode_settings
