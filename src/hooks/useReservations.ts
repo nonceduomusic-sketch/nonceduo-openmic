@@ -230,6 +230,7 @@ export const useReservations = () => {
   const resetAllReservations = async () => {
     try {
       await callAdminApi('resetAll');
+      await fetchReservations();
       toast.success('Tutte le prenotazioni sono state cancellate');
       return true;
     } catch (error) {
@@ -244,6 +245,7 @@ export const useReservations = () => {
   const resetActiveReservations = async () => {
     try {
       await callAdminApi('resetActive');
+      await fetchReservations();
       toast.success('Prenotazioni in corso cancellate');
       return true;
     } catch (error) {
@@ -258,6 +260,7 @@ export const useReservations = () => {
   const resetCompletedReservations = async () => {
     try {
       await callAdminApi('resetCompleted');
+      await fetchReservations();
       toast.success('Prenotazioni completate cancellate');
       return true;
     } catch (error) {
@@ -272,6 +275,7 @@ export const useReservations = () => {
   const resetEverything = async () => {
     try {
       await callAdminApi('resetEverything');
+      await fetchReservations();
       toast.success('Reset completo effettuato! Pronto per la prossima serata');
       return true;
     } catch (error) {
@@ -286,6 +290,7 @@ export const useReservations = () => {
   const resetOpenMic = async () => {
     try {
       await callAdminApi('resetOpenMic');
+      await fetchReservations();
       toast.success('Prenotazioni Open Mic cancellate');
       return true;
     } catch (error) {
