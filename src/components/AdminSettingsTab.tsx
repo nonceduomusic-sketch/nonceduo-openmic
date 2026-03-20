@@ -792,9 +792,11 @@ const LocalServerGuide: React.FC = () => {
     { cmd: 'git pull', label: 'Scarica aggiornamenti' },
     { cmd: 'npm install', label: 'Installa dipendenze' },
     { cmd: 'npm run build', label: 'Compila l\'app' },
-    { cmd: 'if not exist "..\\nonceduo\\local-server\\public" mkdir "..\\nonceduo\\local-server\\public"', label: 'Crea cartella public se manca' },
-    { cmd: 'xcopy dist\\* ..\\nonceduo\\local-server\\public\\ /E /Y', label: 'Copia file compilati' },
+    { cmd: 'if (!(Test-Path "..\\nonceduo\\local-server\\public")) { New-Item -ItemType Directory -Path "..\\nonceduo\\local-server\\public" | Out-Null }', label: 'Crea cartella public se manca' },
+    { cmd: 'Remove-Item "..\\nonceduo\\local-server\\public\\assets" -Recurse -Force -ErrorAction SilentlyContinue', label: 'Rimuovi assets vecchi' },
+    { cmd: 'Copy-Item ".\\dist\\*" -Destination "..\\nonceduo\\local-server\\public" -Recurse -Force', label: 'Copia file compilati' },
     { cmd: 'Copy-Item ".\\local-server\\server.js" -Destination "..\\nonceduo\\local-server\\server.js" -Force', label: 'Copia server.js' },
+    { cmd: 'Get-Item "..\\nonceduo\\local-server\\public\\index.html" | Select-Object FullName, LastWriteTime', label: 'Verifica data index.html copiato' },
     { cmd: 'cd ..\\nonceduo\\local-server', label: 'Vai nella cartella server' },
     { cmd: 'node server.js', label: 'Avvia il server' },
   ];
