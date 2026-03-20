@@ -286,6 +286,8 @@ serve(async (req: Request): Promise<Response> => {
           console.error("Error resetting messages:", messagesError);
         }
 
+        // Reset counters in both tables
+        await resetEventCounters(supabase);
         console.log("Open Mic + Dediche reset completed (community preserved)");
         break;
       }
