@@ -16,15 +16,33 @@ C:\Users\iaco_\
 
 > Usa questo quando vuoi solo accendere il server. I brani sono già salvati.
 
-1. Apri **PowerShell**
-2. Scrivi:
+### Passo 1 — Apri PowerShell
+
+Clicca sul menu Start, scrivi **PowerShell**, clicca su **Windows PowerShell**.
+
+### Passo 2 — Ferma eventuali server vecchi
+
+```
+taskkill /F /IM node.exe 2>$null
+```
+
+> Se dice "nessun processo trovato" va bene, significa che non c'era niente da chiudere.
+
+### Passo 3 — Vai nella cartella del server
 
 ```
 cd C:\Users\iaco_\nonceduo\local-server
+```
+
+### Passo 4 — Avvia il server
+
+```
 node server.js
 ```
 
-3. Aspetta di vedere:
+### Passo 5 — Verifica
+
+Aspetta di vedere:
 
 ```
 🎵 NonceDuo Local Server
@@ -32,7 +50,7 @@ HTTP Server:     porta 8080
 WebSocket:       porta 3456
 ```
 
-4. ✅ **Fatto!** Il server è acceso. **NON chiudere questa finestra!**
+✅ **Fatto!** Il server è acceso. **NON chiudere questa finestra!**
 
 ---
 
@@ -55,11 +73,25 @@ Tutti i dispositivi devono essere sulla **stessa rete WiFi** del PC.
 
 > Fai questo SOLO se hai aggiunto, modificato o cancellato brani online.
 
-1. Il server deve essere **acceso** (vedi sopra)
-2. Apri Chrome su: `http://192.168.8.10:8080/admin`
-3. Vai nella sezione **Impostazioni** → **Connessione Server LAN**
-4. Premi **Sincronizza Catalogo** e **Sincronizza SongBook**
-5. Aspetta il messaggio verde di conferma ✅
+### Passo 1 — Il server deve essere acceso
+
+Se non l'hai già fatto, segui "AVVIARE IL SERVER" qui sopra.
+
+### Passo 2 — Apri l'admin locale
+
+Apri Chrome su: `http://192.168.8.10:8080/admin`
+
+### Passo 3 — Vai nelle Impostazioni
+
+Vai nella sezione **Impostazioni** → **Connessione Server LAN**.
+
+### Passo 4 — Sincronizza
+
+Premi **Sincronizza Catalogo** e poi **Sincronizza SongBook**.
+
+### Passo 5 — Aspetta la conferma
+
+Aspetta il messaggio verde di conferma ✅
 
 ---
 
@@ -70,49 +102,82 @@ Tutti i dispositivi devono essere sulla **stessa rete WiFi** del PC.
 Apri **PowerShell** e scrivi i comandi **uno alla volta**.
 **Aspetta che ogni comando finisca prima di scrivere il successivo!**
 
-### Passo 1 — Scarica gli aggiornamenti
+### Passo 1 — Ferma il server se è acceso
+
+Se il server è in esecuzione in un'altra finestra, chiudila con **Ctrl+C** oppure scrivi:
+
+```
+taskkill /F /IM node.exe 2>$null
+```
+
+### Passo 2 — Vai nella cartella del codice
 
 ```
 cd C:\Users\iaco_\nonceduo-openmic-nuovo
+```
+
+### Passo 3 — Scarica gli aggiornamenti
+
+```
 git pull
 ```
 
-### Passo 2 — Installa le dipendenze
+> Aspetta che finisca. Devi vedere i file aggiornati o "Already up to date."
+
+### Passo 4 — Installa le dipendenze
 
 ```
 npm install
 ```
 
-> Aspetta 1-3 minuti.
+> Aspetta 1-3 minuti. Finisce quando rivedi il cursore.
 
-### Passo 3 — Compila l'app
+### Passo 5 — Compila l'app
 
 ```
 npm run build
 ```
 
-> Aspetta di vedere "built in X.XXs".
+> Aspetta di vedere **"built in X.XXs"**. Se dà errore, ripeti `npm install` e poi `npm run build`.
 
-### Passo 4 — Copia i file nel server
+### Passo 6 — Copia i file compilati nel server
 
 ```
 xcopy dist\* ..\nonceduo\local-server\public\ /E /Y
 ```
 
-### Passo 5 — Copia anche il server.js aggiornato
+> Deve copiare tanti file. Aspetta che finisca.
+
+### Passo 7 — Copia anche il server.js aggiornato
 
 ```
-Copy-Item "C:\Users\iaco_\nonceduo-openmic-nuovo\local-server\server.js" -Destination "C:\Users\iaco_\nonceduo\local-server\server.js" -Force
+Copy-Item ".\local-server\server.js" -Destination "..\nonceduo\local-server\server.js" -Force
 ```
 
-### Passo 6 — Avvia il server
+### Passo 8 — Vai nella cartella del server
 
 ```
 cd ..\nonceduo\local-server
+```
+
+### Passo 9 — Avvia il server
+
+```
 node server.js
 ```
 
-✅ **Fatto!** Server aggiornato e attivo.
+> Aspetta di vedere il messaggio con le porte 8080 e 3456.
+
+### Passo 10 — Ricarica le pagine sui dispositivi
+
+Su **ogni** dispositivo collegato (TV, tablet, telefono):
+
+- **PC/TV**: premi **Ctrl + Shift + R** (hard refresh)
+- **Telefono/Tablet**: chiudi la scheda e riaprila
+
+> ⚠️ Il refresh normale (F5) potrebbe NON bastare! Usa sempre **Ctrl+Shift+R**.
+
+✅ **Fatto!** Server aggiornato e attivo con le ultime modifiche.
 
 ---
 
@@ -120,12 +185,12 @@ node server.js
 
 **Solo avviare la serata:**
 ```
-cd C:\Users\iaco_\nonceduo\local-server && node server.js
+taskkill /F /IM node.exe 2>$null; cd C:\Users\iaco_\nonceduo\local-server; node server.js
 ```
 
 **Aggiornare tutto + avviare (tutto in un colpo):**
 ```
-cd C:\Users\iaco_\nonceduo-openmic-nuovo && git pull && npm install && npm run build && xcopy dist\* ..\nonceduo\local-server\public\ /E /Y && Copy-Item "C:\Users\iaco_\nonceduo-openmic-nuovo\local-server\server.js" -Destination "C:\Users\iaco_\nonceduo\local-server\server.js" -Force && cd ..\nonceduo\local-server && node server.js
+taskkill /F /IM node.exe 2>$null; cd C:\Users\iaco_\nonceduo-openmic-nuovo; git pull; npm install; npm run build; xcopy dist\* ..\nonceduo\local-server\public\ /E /Y; Copy-Item ".\local-server\server.js" -Destination "..\nonceduo\local-server\server.js" -Force; cd ..\nonceduo\local-server; node server.js
 ```
 
 ---
@@ -141,6 +206,8 @@ cd C:\Users\iaco_\nonceduo-openmic-nuovo && git pull && npm install && npm run b
 | "HTML anziché JSON" nel sync | Il server non è acceso, avvialo prima |
 | Pagina non trovata (404) | Hai fatto `npm run build` + `xcopy`? |
 | Il ping non risponde | Il server non è acceso o la porta è bloccata dal firewall |
+| La pagina mostra la versione vecchia | Fai **Ctrl+Shift+R** (hard refresh) su ogni dispositivo |
+| La TV mostra ancora il vecchio contenuto | Chiudi Chrome, riaprilo, e riapri l'indirizzo |
 
 ---
 
