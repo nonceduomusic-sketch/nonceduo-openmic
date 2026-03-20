@@ -201,10 +201,10 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
         console.error('[PinProtectionCard] Error reading free mode for PIN sync:', freeResult.error);
       }
 
-      const updates: Promise<unknown>[] = [];
+      const updateQueries = [];
 
       if (liveResult.data?.id) {
-        updates.push(
+        updateQueries.push(
           supabase
             .from('event_booking_rules')
             .update({
@@ -216,7 +216,7 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
       }
 
       if (freeResult.data?.id) {
-        updates.push(
+        updateQueries.push(
           supabase
             .from('free_mode_settings')
             .update({
@@ -227,8 +227,8 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
         );
       }
 
-      if (updates.length > 0) {
-        await Promise.all(updates);
+      if (updateQueries.length > 0) {
+        await Promise.all(updateQueries);
       }
     } catch (error) {
       console.error('[PinProtectionCard] Error syncing public PIN state:', error);
