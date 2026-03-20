@@ -190,12 +190,8 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
   const handleResetSessions = async () => {
     if (!session) return;
     
-    // Re-check count before invalidating to give accurate feedback
-    const currentCount = await countActiveSessions(session.id);
-    
-    if (currentCount === 0) {
+    if (activeSessionsCount === 0) {
       toast.info('Nessuna sessione attiva da invalidare.');
-      setActiveSessionsCount(0);
       return;
     }
     
@@ -210,7 +206,6 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
     });
     
     toast.success(`${count} sessioni invalidate. Tutti gli utenti devono reinserire il PIN.`);
-    setActiveSessionsCount(0);
     
     // Refresh count after a short delay to confirm
     setTimeout(refreshSessionCount, 1000);
