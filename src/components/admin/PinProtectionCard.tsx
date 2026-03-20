@@ -98,6 +98,7 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
   const [editPinValue, setEditPinValue] = useState('');
   const [isTogglingPin, setIsTogglingPin] = useState(false);
   const [showPinOnGate, setShowPinOnGate] = useState(false);
+  const [showUsersDialog, setShowUsersDialog] = useState(false);
 
   // Load showPinOnGate from event_booking_rules or free_mode_settings
   useEffect(() => {
