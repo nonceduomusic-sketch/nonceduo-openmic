@@ -476,10 +476,7 @@ export const FreeModeFullPanel: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="pin" className="mt-4 space-y-4">
-              <EventPinConfig rules={rules} onUpdate={handleUpdate} generatePin={generatePin} />
-              {/* Gestione sessioni PIN: mostrala sempre quando l'evento è attivo.
-                  La card gestisce internamente stato PIN e permessi (incl. "Sconnetti tutti"). */}
-              {settings?.is_active && <PinProtectionCard title="Gestione Sessioni PIN" />}
+              <PinProtectionCard title="Protezione PIN" />
             </TabsContent>
 
             {/* QR CODE TAB - NUOVO */}
