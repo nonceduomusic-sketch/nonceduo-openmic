@@ -172,12 +172,62 @@ export const useEventBookingRules = () => {
       if (updateError) throw updateError;
       
       // Aggiorna lo stato locale immediatamente per una UI reattiva
-      setRules(prev => prev ? { ...prev, ...finalUpdates } : prev);
+      const mergedRules = { ...rules, ...finalUpdates };
+      setRules(mergedRules);
       
       // Aggiorna anche allRules se necessario
       setAllRules(prev => prev.map(r => 
         r.id === rules.id ? { ...r, ...finalUpdates } : r
       ));
+
+      // Se l'evento è LIVE e il PIN è stato modificato, sincronizza con live_sessions
+      if (mergedRules.event_status === 'live' && ('pin_code' in updates || 'pin_required' in updates)) {
+        try {
+          // Trova la live_session attiva
+          const { data: activeSession } = await supabase
+            .from('live_sessions')
+            .select('id')
+            .eq('is_active', true)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (activeSession?.id) {
+            if (mergedRules.pin_required && mergedRules.pin_code) {
+              // Aggiorna il PIN nella live_session
+              await supabase
+                .from('live_sessions')
+                .update({ pin_code: mergedRules.pin_code.toUpperCase().trim() })
+                .eq('id', activeSession.id);
+              console.log('[updateRules] Synced PIN to live_sessions');
+            } else if (!mergedRules.pin_required) {
+              // PIN disabilitato → disattiva la live_session
+              await supabase
+                .from('live_sessions')
+                .update({ is_active: false, deactivated_at: new Date().toISOString() })
+                .eq('id', activeSession.id);
+              console.log('[updateRules] PIN disabled → deactivated live_session');
+            }
+          } else if (mergedRules.pin_required && mergedRules.pin_code) {
+            // Nessuna live_session attiva ma PIN richiesto → creane una
+            const protectedFormats: string[] = [];
+            if (mergedRules.event_type === 'openmic' || mergedRules.event_type === 'both') protectedFormats.push('openmic');
+            if (mergedRules.event_type === 'dediche' || mergedRules.event_type === 'both') protectedFormats.push('dediche');
+            
+            await supabase
+              .from('live_sessions')
+              .insert({
+                section: 'global',
+                pin_code: mergedRules.pin_code.toUpperCase().trim(),
+                protected_formats: protectedFormats,
+                is_active: true,
+              });
+            console.log('[updateRules] Created live_session for PIN change during live event');
+          }
+        } catch (syncErr) {
+          console.error('[updateRules] Error syncing PIN to live_sessions:', syncErr);
+        }
+      }
       
       return true;
     } catch (err) {
