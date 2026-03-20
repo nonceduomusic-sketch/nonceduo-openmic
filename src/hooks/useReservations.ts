@@ -275,6 +275,7 @@ export const useReservations = () => {
   const resetEverything = async () => {
     try {
       await callAdminApi('resetEverything');
+      await fetchReservations();
       toast.success('Reset completo effettuato! Pronto per la prossima serata');
       return true;
     } catch (error) {
