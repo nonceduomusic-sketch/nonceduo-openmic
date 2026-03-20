@@ -222,7 +222,8 @@ export const useFreeModeSettings = () => {
         if (newEndMode === 'manual') {
           finalUpdates.expires_at = null;
         } else if (newEndMode === 'scheduled' && newEventEndDate && newEventEndTime) {
-          finalUpdates.expires_at = `${newEventEndDate}T${newEventEndTime}:00`;
+          const tp = newEventEndTime.length <= 5 ? `${newEventEndTime}:00` : newEventEndTime;
+          finalUpdates.expires_at = `${newEventEndDate}T${tp}`;
         } else if (newEndMode === 'duration' && newDurationMinutes) {
           finalUpdates.expires_at = new Date(startedAt.getTime() + newDurationMinutes * 60 * 1000).toISOString();
         } else {
@@ -256,8 +257,9 @@ export const useFreeModeSettings = () => {
     startedAt: Date = new Date()
   ): string | null => {
     if (endMode === 'scheduled' && eventEndDate && eventEndTime) {
-      // Termine a orario specifico
-      return `${eventEndDate}T${eventEndTime}:00`;
+      // Termine a orario specifico - eventEndTime può essere "HH:MM" o "HH:MM:SS"
+      const timePart = eventEndTime.length <= 5 ? `${eventEndTime}:00` : eventEndTime;
+      return `${eventEndDate}T${timePart}`;
     } else if (endMode === 'duration' && durationMinutes) {
       // Termine dopo X minuti dalla partenza
       return new Date(startedAt.getTime() + durationMinutes * 60 * 1000).toISOString();
