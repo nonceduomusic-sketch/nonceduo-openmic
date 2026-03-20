@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { FormatKey } from './useFormatGating';
 
 const PIN_SESSION_STORAGE_KEY = 'ncd_pin_sessions_v2';
+const PIN_SESSION_SYNC_EVENT = 'ncd-pin-session-sync';
 
 interface StoredSession {
   token: string;
@@ -25,6 +26,7 @@ export function usePinSession(format: FormatKey) {
   const [loading, setLoading] = useState(true);
   const [sessionInvalidated, setSessionInvalidated] = useState(false);
   const [invalidationReason, setInvalidationReason] = useState<string | null>(null);
+  const [sessionSyncKey, setSessionSyncKey] = useState(0);
 
   // Get stored global session from localStorage
   const getStoredSession = useCallback((): StoredSession | null => {
@@ -36,14 +38,24 @@ export function usePinSession(format: FormatKey) {
     }
   }, []);
 
+  const emitSessionSync = useCallback(() => {
+    window.dispatchEvent(new CustomEvent(PIN_SESSION_SYNC_EVENT));
+  }, []);
+
   // Save global session to localStorage
   const saveSession = useCallback((session: StoredSession) => {
     localStorage.setItem(PIN_SESSION_STORAGE_KEY, JSON.stringify(session));
-  }, []);
+    emitSessionSync();
+  }, [emitSessionSync]);
 
   // Remove session from localStorage
   const removeSession = useCallback(() => {
     localStorage.removeItem(PIN_SESSION_STORAGE_KEY);
+    emitSessionSync();
+  }, [emitSessionSync]);
+
+  const syncFromStorage = useCallback(() => {
+    setSessionSyncKey((prev) => prev + 1);
   }, []);
 
   // Simple hash function for PIN comparison
@@ -97,9 +109,7 @@ export function usePinSession(format: FormatKey) {
       // Check if this format is protected by the live session
       const protectedFormats = liveSession.protected_formats as string[] | null;
       if (!protectedFormats?.includes(format)) {
-        // Format is NOT protected by this session = doesn't need PIN = let through
         if (import.meta.env.DEV) console.log(`[PinSession] Format ${format} not protected, no PIN needed`);
-        // IMPORTANT: don't delete the stored session here, it may still be used for other formats.
         return false;
       }
 
@@ -111,7 +121,6 @@ export function usePinSession(format: FormatKey) {
 
       if (validationError) {
         if (import.meta.env.DEV) console.error('[PinSession] validate_pin_session error:', validationError);
-        // Transient failure: don't remove the session, just treat as not validated right now.
         return false;
       }
 
@@ -124,24 +133,27 @@ export function usePinSession(format: FormatKey) {
         return false;
       }
 
-      // Session is valid and format is protected - user has access!
       if (import.meta.env.DEV) console.log(`[PinSession] Valid global session for ${format}, live_session:`, liveSession.id);
       return true;
     } catch (error) {
       if (import.meta.env.DEV) console.error('[PinSession] Error validating session:', error);
-      // Don't remove session on transient errors - just return false
       return false;
     }
   }, [format, getStoredSession, removeSession]);
 
+  const invalidateLocally = useCallback((reason: string) => {
+    setHasValidSession(false);
+    setSessionInvalidated(true);
+    setInvalidationReason(reason);
+    removeSession();
+  }, [removeSession]);
+
   // Create new GLOBAL session after PIN validation (works for ALL formats with same PIN)
   const createSession = useCallback(async (liveSessionId: string, pinCode: string): Promise<boolean> => {
     try {
-      // Create session without format-specific binding
-      // The format is still passed for logging but session is global
       const { data: token, error } = await supabase.rpc('create_pin_session', {
         p_live_session_id: liveSessionId,
-        p_format: format, // Per logging/audit, ma sessione è globale
+        p_format: format,
         p_pin_code: pinCode.toUpperCase().trim(),
         p_device_fingerprint: navigator.userAgent.substring(0, 100)
       });
@@ -166,6 +178,8 @@ export function usePinSession(format: FormatKey) {
         };
         saveSession(session);
         setHasValidSession(true);
+        setSessionInvalidated(false);
+        setInvalidationReason(null);
         console.log('[PinSession] Global session created for live_session:', liveSessionId);
         return true;
       }
@@ -190,31 +204,62 @@ export function usePinSession(format: FormatKey) {
     setInvalidationReason(null);
   }, [removeSession]);
 
-  // Check session validity on mount
   useEffect(() => {
+    const handleSessionSync = () => {
+      syncFromStorage();
+    };
+
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === PIN_SESSION_STORAGE_KEY) {
+        syncFromStorage();
+      }
+    };
+
+    window.addEventListener(PIN_SESSION_SYNC_EVENT, handleSessionSync);
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener(PIN_SESSION_SYNC_EVENT, handleSessionSync);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, [syncFromStorage]);
+
+  // Check session validity on mount and whenever the stored session changes
+  useEffect(() => {
+    let cancelled = false;
+
     const checkSession = async () => {
       setLoading(true);
       const isValid = await validateStoredSession();
-      setHasValidSession(isValid);
-      setLoading(false);
+      if (!cancelled) {
+        setHasValidSession(isValid);
+        if (isValid) {
+          setSessionInvalidated(false);
+          setInvalidationReason(null);
+        }
+        setLoading(false);
+      }
     };
 
-    checkSession();
-  }, [validateStoredSession]);
+    void checkSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [validateStoredSession, sessionSyncKey]);
 
   // Subscribe to realtime session invalidation
   useEffect(() => {
     const stored = getStoredSession();
-    if (!stored) return;
+    if (!stored?.token || !stored.liveSessionId) return;
 
-    // Subscribe to pin_sessions changes for this token
     const channel = supabase
       .channel(`pin-session-global-${stored.token.substring(0, 8)}`)
       .on(
         'postgres_changes',
-        { 
-          event: 'UPDATE', 
-          schema: 'public', 
+        {
+          event: 'UPDATE',
+          schema: 'public',
           table: 'pin_sessions',
           filter: `session_token=eq.${stored.token}`
         },
@@ -222,76 +267,56 @@ export function usePinSession(format: FormatKey) {
           const newRecord = payload.new as { is_valid: boolean; invalidation_reason?: string };
           if (!newRecord.is_valid) {
             console.log('[PinSession] Global session invalidated:', newRecord.invalidation_reason);
-            setHasValidSession(false);
-            setSessionInvalidated(true);
-            setInvalidationReason(newRecord.invalidation_reason || 'unknown');
-            removeSession();
+            invalidateLocally(newRecord.invalidation_reason || 'unknown');
           }
         }
       )
       .subscribe();
 
-    // Also subscribe to live_sessions changes (PIN change, deactivation, mass invalidation)
     const liveChannel = supabase
       .channel(`live-session-change-global-${stored.liveSessionId.substring(0, 8)}-${Date.now()}`)
       .on(
         'postgres_changes',
-        { 
-          event: 'UPDATE', 
-          schema: 'public', 
+        {
+          event: 'UPDATE',
+          schema: 'public',
           table: 'live_sessions',
           filter: `id=eq.${stored.liveSessionId}`
         },
         (payload) => {
-          const prev = payload.old as { 
-            is_active?: boolean; 
+          const prev = payload.old as {
+            is_active?: boolean;
             sessions_invalidated_at?: string | null;
             pin_code?: string;
           };
-          const next = payload.new as { 
-            is_active?: boolean; 
+          const next = payload.new as {
+            is_active?: boolean;
             expires_at?: string | null;
             sessions_invalidated_at?: string | null;
             pin_code?: string;
           };
 
-          // Check if sessions were mass-invalidated (admin clicked "Sconnetti tutti")
-          if (next?.sessions_invalidated_at && 
-              next.sessions_invalidated_at !== prev?.sessions_invalidated_at) {
+          if (next?.sessions_invalidated_at && next.sessions_invalidated_at !== prev?.sessions_invalidated_at) {
             console.log('[PinSession] Admin invalidated all sessions -> forcing re-auth');
-            setHasValidSession(false);
-            setSessionInvalidated(true);
-            setInvalidationReason('admin_reset');
-            removeSession();
+            invalidateLocally('admin_reset');
             return;
           }
 
-          // Check if PIN was changed
           if (next?.pin_code && prev?.pin_code && next.pin_code !== prev.pin_code) {
             console.log('[PinSession] PIN changed -> invalidate');
-            setHasValidSession(false);
-            setSessionInvalidated(true);
-            setInvalidationReason('pin_changed');
-            removeSession();
+            invalidateLocally('pin_changed');
             return;
           }
 
           if (next?.is_active === false) {
             console.log('[PinSession] Live session deactivated -> invalidate');
-            setHasValidSession(false);
-            setSessionInvalidated(true);
-            setInvalidationReason('session_deactivated');
-            removeSession();
+            invalidateLocally('session_deactivated');
             return;
           }
 
           if (next?.expires_at && new Date(next.expires_at) < new Date()) {
             console.log('[PinSession] Live session expired -> invalidate');
-            setHasValidSession(false);
-            setSessionInvalidated(true);
-            setInvalidationReason('session_expired');
-            removeSession();
-            return;
+            invalidateLocally('session_expired');
           }
         }
       )
@@ -301,10 +326,7 @@ export function usePinSession(format: FormatKey) {
       supabase.removeChannel(channel);
       supabase.removeChannel(liveChannel);
     };
-    // IMPORTANT: Only depend on stable references, NOT on hasValidSession
-    // to prevent channel re-subscription which could miss invalidation events
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [getStoredSession, removeSession]);
+  }, [getStoredSession, invalidateLocally, sessionSyncKey]);
 
   // Fallback cross-device invalidation: some devices/tablets can miss realtime updates
   // when the browser is backgrounded or power-saving pauses the connection.
@@ -335,18 +357,13 @@ export function usePinSession(format: FormatKey) {
         if (validationError) {
           consecutiveErrors++;
           if (import.meta.env.DEV) console.error('[PinSession] Fallback validation error:', validationError, `(attempt ${consecutiveErrors})`);
-          // After 5 consecutive errors, treat as invalidated (connection likely broken)
           if (consecutiveErrors >= 5 && !cancelled) {
             console.warn('[PinSession] Too many consecutive errors, forcing invalidation');
-            setHasValidSession(false);
-            setSessionInvalidated(true);
-            setInvalidationReason('connection_lost');
-            removeSession();
+            invalidateLocally('connection_lost');
           }
           return;
         }
 
-        // Reset error counter on successful call
         consecutiveErrors = 0;
 
         const row = Array.isArray(validationRows) ? validationRows[0] : (validationRows as any);
@@ -354,19 +371,13 @@ export function usePinSession(format: FormatKey) {
 
         if (!isValid && !cancelled) {
           if (import.meta.env.DEV) console.warn('[PinSession] Fallback invalidation detected');
-          setHasValidSession(false);
-          setSessionInvalidated(true);
-          setInvalidationReason('admin_reset');
-          removeSession();
+          invalidateLocally('admin_reset');
         }
       } catch (error) {
         consecutiveErrors++;
         if (import.meta.env.DEV) console.error('[PinSession] Fallback revalidation error:', error);
         if (consecutiveErrors >= 5 && !cancelled) {
-          setHasValidSession(false);
-          setSessionInvalidated(true);
-          setInvalidationReason('connection_lost');
-          removeSession();
+          invalidateLocally('connection_lost');
         }
       }
     };
@@ -381,17 +392,14 @@ export function usePinSession(format: FormatKey) {
       }
     };
 
-    // Revalidate on user interaction (catches cases where setInterval is throttled on mobile)
     let lastInteractionCheck = 0;
     const handleUserInteraction = () => {
       const now = Date.now();
-      // Throttle to max once every 3 seconds
       if (now - lastInteractionCheck < 3000) return;
       lastInteractionCheck = now;
       void revalidateAccess();
     };
 
-    // Poll every 3 seconds (was 5s - more aggressive for reliability)
     const interval = window.setInterval(() => {
       void revalidateAccess();
     }, 3000);
@@ -399,7 +407,6 @@ export function usePinSession(format: FormatKey) {
     window.addEventListener('focus', handleFocus);
     window.addEventListener('pageshow', handleFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
-    // Touch/click events catch throttled intervals on mobile/tablet
     document.addEventListener('touchstart', handleUserInteraction, { passive: true });
     document.addEventListener('click', handleUserInteraction, { passive: true });
 
@@ -412,7 +419,7 @@ export function usePinSession(format: FormatKey) {
       document.removeEventListener('touchstart', handleUserInteraction);
       document.removeEventListener('click', handleUserInteraction);
     };
-  }, [format, getStoredSession, hasValidSession, removeSession]);
+  }, [format, getStoredSession, hasValidSession, invalidateLocally]);
 
   return {
     hasValidSession,
