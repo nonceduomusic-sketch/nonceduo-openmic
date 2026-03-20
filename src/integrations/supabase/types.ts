@@ -3254,6 +3254,10 @@ export type Database = {
         Args: { p_live_session_id: string; p_reason?: string }
         Returns: number
       }
+      invalidate_single_pin_session: {
+        Args: { p_reason?: string; p_session_id: string }
+        Returns: boolean
+      }
       is_conversation_participant: {
         Args: {
           p_conversation_id: string
@@ -3273,6 +3277,16 @@ export type Database = {
       kick_all_remote_sessions: {
         Args: { p_access_id: string }
         Returns: number
+      }
+      list_active_pin_sessions: {
+        Args: { p_live_session_id: string }
+        Returns: {
+          created_at: string
+          device_fingerprint: string
+          format: string
+          id: string
+          last_validated_at: string
+        }[]
       }
       normalize_song_text: { Args: { t: string }; Returns: string }
       remote_update_highlight_line: {
