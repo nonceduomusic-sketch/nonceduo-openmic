@@ -230,6 +230,7 @@ export const useReservations = () => {
   const resetAllReservations = async () => {
     try {
       await callAdminApi('resetAll');
+      await fetchReservations();
       toast.success('Tutte le prenotazioni sono state cancellate');
       return true;
     } catch (error) {
