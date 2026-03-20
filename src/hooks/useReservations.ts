@@ -259,6 +259,7 @@ export const useReservations = () => {
   const resetCompletedReservations = async () => {
     try {
       await callAdminApi('resetCompleted');
+      await fetchReservations();
       toast.success('Prenotazioni completate cancellate');
       return true;
     } catch (error) {
