@@ -41,15 +41,13 @@ const AppDediche: React.FC = () => {
   useEffect(() => {
     if (!sessionLoading && hasValidSession && !sessionInvalidated) {
       setPinValidated(true);
+      return;
     }
-  }, [sessionLoading, hasValidSession, sessionInvalidated]);
 
-  // Reset pin validation if session is invalidated (PIN changed, event closed, etc.)
-  useEffect(() => {
-    if (sessionInvalidated) {
+    if (!sessionLoading && !hasValidSession) {
       setPinValidated(false);
     }
-  }, [sessionInvalidated]);
+  }, [sessionLoading, hasValidSession, sessionInvalidated]);
 
   // Handler for pin validation from FormatPinGate
   const handlePinValidated = useCallback(() => {
