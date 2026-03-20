@@ -301,7 +301,10 @@ export function usePinSession(format: FormatKey) {
       supabase.removeChannel(channel);
       supabase.removeChannel(liveChannel);
     };
-  }, [getStoredSession, hasValidSession, removeSession, validateStoredSession]);
+    // IMPORTANT: Only depend on stable references, NOT on hasValidSession
+    // to prevent channel re-subscription which could miss invalidation events
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [getStoredSession, removeSession]);
 
   return {
     hasValidSession,

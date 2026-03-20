@@ -53,6 +53,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useUnifiedLiveSession, FormatType } from '@/hooks/useUnifiedLiveSession';
 import { useAdminPinSessionReset } from '@/hooks/usePinSession';
+import { useConnectedUsersCount } from '@/hooks/useConnectedUsersCount';
 import { useAdmin } from '@/contexts/AdminContext';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -86,16 +87,15 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
   // Reset PIN sessions is allowed for Owner + Admin (matches backend policies)
   const canDisconnectAll = isOwner || staffRole === 'owner' || staffRole === 'admin';
 
-  const { resetAllSessions, countActiveSessions, resetting } = useAdminPinSessionReset();
+  const { resetAllSessions, resetting } = useAdminPinSessionReset();
+  const { count: activeSessionsCount, loading: loadingSessionCount, refresh: refreshSessionCount } = useConnectedUsersCount(session?.id || null);
 
   const [showQR, setShowQR] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState<'pin' | 'link' | null>(null);
   const [isEditingPin, setIsEditingPin] = useState(false);
   const [editPinValue, setEditPinValue] = useState('');
-  const [activeSessionsCount, setActiveSessionsCount] = useState<number>(0);
   const [isTogglingPin, setIsTogglingPin] = useState(false);
-  const [loadingSessionCount, setLoadingSessionCount] = useState(false);
   const [showPinOnGate, setShowPinOnGate] = useState(false);
 
   // Load showPinOnGate from event_booking_rules or free_mode_settings
@@ -184,38 +184,14 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
     }
   }, [showQR, eventUrl]);
 
-  // Fetch active sessions count - refetch periodically and after actions
-  const refreshSessionCount = useCallback(async () => {
-    if (!session?.id || !isActive) {
-      setActiveSessionsCount(0);
-      return;
-    }
-    setLoadingSessionCount(true);
-    try {
-      const count = await countActiveSessions(session.id);
-      setActiveSessionsCount(count);
-    } finally {
-      setLoadingSessionCount(false);
-    }
-  }, [session?.id, isActive, countActiveSessions]);
-
-  useEffect(() => {
-    refreshSessionCount();
-    // Also refresh every 30 seconds while component is mounted
-    const interval = setInterval(refreshSessionCount, 30000);
-    return () => clearInterval(interval);
-  }, [refreshSessionCount]);
+  // Session count is now managed by useConnectedUsersCount (realtime + polling)
 
   // Handle reset all sessions
   const handleResetSessions = async () => {
     if (!session) return;
     
-    // Re-check count before invalidating to give accurate feedback
-    const currentCount = await countActiveSessions(session.id);
-    
-    if (currentCount === 0) {
+    if (activeSessionsCount === 0) {
       toast.info('Nessuna sessione attiva da invalidare.');
-      setActiveSessionsCount(0);
       return;
     }
     
@@ -230,7 +206,6 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
     });
     
     toast.success(`${count} sessioni invalidate. Tutti gli utenti devono reinserire il PIN.`);
-    setActiveSessionsCount(0);
     
     // Refresh count after a short delay to confirm
     setTimeout(refreshSessionCount, 1000);

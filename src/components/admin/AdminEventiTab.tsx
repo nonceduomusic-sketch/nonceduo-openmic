@@ -632,22 +632,21 @@ export const AdminEventiTab: React.FC = () => {
                   />
                 </TabsContent>
 
-                {/* PIN TAB */}
+                {/* PIN TAB - Unified single card */}
                 <TabsContent value="pin" className="mt-4 space-y-4">
-                  <EventPinConfig 
-                    rules={rules} 
-                  onUpdate={async (updates) => {
-                    // IMPORTANT: when changing PIN on a LIVE scheduled event we must also sync the active live_session,
-                    // otherwise user-side validation (which checks live_sessions) will fail.
-                    const nextPinRequired = updates.pin_required ?? rules.pin_required;
-                    const nextPinCode = (updates.pin_code ?? rules.pin_code) ?? null;
-                    return updatePin(nextPinRequired ? nextPinCode : null, nextPinRequired);
-                  }}
-                    generatePin={generatePin}
-                  />
-                  {/* Gestione sessioni PIN: mostrala sempre quando l'evento è LIVE.
-                      La card gestisce internamente stato PIN e permessi (incl. "Sconnetti tutti"). */}
-                  {rules.event_status === 'live' && <PinProtectionCard title="Gestione Sessioni PIN" />}
+                  {rules.event_status === 'live' ? (
+                    <PinProtectionCard title="Protezione PIN" />
+                  ) : (
+                    <EventPinConfig 
+                      rules={rules} 
+                      onUpdate={async (updates) => {
+                        const nextPinRequired = updates.pin_required ?? rules.pin_required;
+                        const nextPinCode = (updates.pin_code ?? rules.pin_code) ?? null;
+                        return updatePin(nextPinRequired ? nextPinCode : null, nextPinRequired);
+                      }}
+                      generatePin={generatePin}
+                    />
+                  )}
                 </TabsContent>
 
                 {/* QR CODE TAB - NUOVO */}
