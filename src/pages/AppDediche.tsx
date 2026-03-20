@@ -49,6 +49,40 @@ const AppDediche: React.FC = () => {
     }
   }, [sessionLoading, hasValidSession, sessionInvalidated]);
 
+  // React to PIN toggle changes in real-time
+  useEffect(() => {
+    if (eventState.type !== 'live') return;
+    
+    if (!liveEvent?.pin_required) {
+      if (!pinValidated) {
+        if (import.meta.env.DEV) console.log('[AppDediche] PIN disabled by admin, auto-entering');
+        setPinValidated(true);
+      }
+    } else if (liveEvent?.pin_required && !hasValidSession && !sessionLoading) {
+      if (pinValidated) {
+        if (import.meta.env.DEV) console.log('[AppDediche] PIN enabled by admin, requiring validation');
+        setPinValidated(false);
+      }
+    }
+  }, [eventState.type, liveEvent?.pin_required, hasValidSession, sessionLoading, pinValidated]);
+
+  // Same logic for Free Mode PIN
+  useEffect(() => {
+    if (eventState.type !== 'freemode' || !freeMode.dediche) return;
+    
+    if (!freeMode.pinEnabled || !freeMode.pinCode) {
+      if (!pinValidated) {
+        if (import.meta.env.DEV) console.log('[AppDediche] Free Mode PIN disabled, auto-entering');
+        setPinValidated(true);
+      }
+    } else if (freeMode.pinEnabled && freeMode.pinCode && !hasValidSession && !sessionLoading) {
+      if (pinValidated) {
+        if (import.meta.env.DEV) console.log('[AppDediche] Free Mode PIN enabled, requiring validation');
+        setPinValidated(false);
+      }
+    }
+  }, [eventState.type, freeMode.dediche, freeMode.pinEnabled, freeMode.pinCode, hasValidSession, sessionLoading, pinValidated]);
+
   // Handler for pin validation from FormatPinGate
   const handlePinValidated = useCallback(() => {
     setPinValidated(true);

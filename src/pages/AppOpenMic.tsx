@@ -53,6 +53,44 @@ const AppOpenMic: React.FC = () => {
     }
   }, [sessionLoading, hasValidSession, sessionInvalidated]);
 
+  // KEY: React to PIN toggle changes in real-time
+  // When admin disables PIN → auto-enter users who are stuck on the gate
+  // When admin enables PIN → force users back to the gate
+  useEffect(() => {
+    if (eventState.type !== 'live') return;
+    
+    if (!liveEvent?.pin_required) {
+      // PIN was disabled → auto-validate, let everyone in
+      if (!pinValidated) {
+        if (import.meta.env.DEV) console.log('[AppOpenMic] PIN disabled by admin, auto-entering');
+        setPinValidated(true);
+      }
+    } else if (liveEvent?.pin_required && !hasValidSession && !sessionLoading) {
+      // PIN was enabled → if user doesn't have a valid session, kick them back to gate
+      if (pinValidated) {
+        if (import.meta.env.DEV) console.log('[AppOpenMic] PIN enabled by admin, requiring validation');
+        setPinValidated(false);
+      }
+    }
+  }, [eventState.type, liveEvent?.pin_required, hasValidSession, sessionLoading, pinValidated]);
+
+  // Same logic for Free Mode PIN
+  useEffect(() => {
+    if (eventState.type !== 'freemode' || !freeMode.openmic) return;
+    
+    if (!freeMode.pinEnabled || !freeMode.pinCode) {
+      if (!pinValidated) {
+        if (import.meta.env.DEV) console.log('[AppOpenMic] Free Mode PIN disabled, auto-entering');
+        setPinValidated(true);
+      }
+    } else if (freeMode.pinEnabled && freeMode.pinCode && !hasValidSession && !sessionLoading) {
+      if (pinValidated) {
+        if (import.meta.env.DEV) console.log('[AppOpenMic] Free Mode PIN enabled, requiring validation');
+        setPinValidated(false);
+      }
+    }
+  }, [eventState.type, freeMode.openmic, freeMode.pinEnabled, freeMode.pinCode, hasValidSession, sessionLoading, pinValidated]);
+
   // Handler for pin validation from FormatPinGate
   const handlePinValidated = useCallback(() => {
     setPinValidated(true);
