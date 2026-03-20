@@ -35,6 +35,17 @@ import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { getCurrentLocalServerHost } from '@/lib/localServerHost';
 
+interface LocalServerVersionInfo {
+  ok: boolean;
+  ts?: number;
+  server_updated_at?: string | null;
+  public_dir_exists?: boolean;
+  public_index_exists?: boolean;
+  public_index_updated_at?: string | null;
+  public_assets_count?: number;
+  latest_asset_updated_at?: string | null;
+}
+
 export const AdminSettingsTab: React.FC = () => {
   const { toast } = useToast();
   const { theme, setTheme, resolvedTheme } = useTheme();
@@ -769,6 +780,11 @@ function OfflineDataSection({ localIP: configIP }: { localIP: string }) {
 
 const LocalServerGuide: React.FC = () => {
   const { toast } = useToast();
+  const detectedLocalHost = getCurrentLocalServerHost();
+  const [checkingVersion, setCheckingVersion] = useState(false);
+  const [versionInfo, setVersionInfo] = useState<LocalServerVersionInfo | null>(null);
+
+  const localBaseUrl = detectedLocalHost ? `http://${detectedLocalHost}:8080` : 'http://127.0.0.1:8080';
 
   const updateCommands = [
     { cmd: 'taskkill /F /IM node.exe 2>$null', label: 'Ferma server vecchio' },
@@ -776,6 +792,7 @@ const LocalServerGuide: React.FC = () => {
     { cmd: 'git pull', label: 'Scarica aggiornamenti' },
     { cmd: 'npm install', label: 'Installa dipendenze' },
     { cmd: 'npm run build', label: 'Compila l\'app' },
+    { cmd: 'if not exist "..\\nonceduo\\local-server\\public" mkdir "..\\nonceduo\\local-server\\public"', label: 'Crea cartella public se manca' },
     { cmd: 'xcopy dist\\* ..\\nonceduo\\local-server\\public\\ /E /Y', label: 'Copia file compilati' },
     { cmd: 'Copy-Item ".\\local-server\\server.js" -Destination "..\\nonceduo\\local-server\\server.js" -Force', label: 'Copia server.js' },
     { cmd: 'cd ..\\nonceduo\\local-server', label: 'Vai nella cartella server' },
@@ -798,6 +815,35 @@ const LocalServerGuide: React.FC = () => {
     navigator.clipboard.writeText(commands.map(c => c.cmd).join('\n')).then(() => {
       toast({ title: 'Copiato!', description: 'Tutti i comandi copiati negli appunti' });
     });
+  };
+
+  const checkLocalVersion = async () => {
+    setCheckingVersion(true);
+    try {
+      const response = await fetch(`${localBaseUrl}/api/version`, {
+        cache: 'no-store',
+      });
+
+      if (!response.ok) throw new Error('Endpoint non disponibile');
+
+      const data = await response.json();
+      setVersionInfo(data);
+      toast({
+        title: 'Server locale raggiunto',
+        description: data.public_index_updated_at
+          ? `Build locale presente: ${new Date(data.public_index_updated_at).toLocaleString('it-IT')}`
+          : 'Server acceso, ma build locale mancante.',
+      });
+    } catch {
+      setVersionInfo(null);
+      toast({
+        title: 'Server locale non raggiungibile',
+        description: `Controlla che ${localBaseUrl} sia acceso e raggiungibile.`,
+        variant: 'destructive',
+      });
+    } finally {
+      setCheckingVersion(false);
+    }
   };
 
   const CommandLine: React.FC<{ cmd: string; label?: string; index?: number }> = ({ cmd, label, index }) => (
@@ -825,6 +871,27 @@ const LocalServerGuide: React.FC = () => {
       <div className="flex items-center gap-2">
         <Terminal className="w-5 h-5 text-primary" />
         <h3 className="font-semibold text-sm">Server Locale (PowerShell)</h3>
+      </div>
+
+      <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-2">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium text-foreground">Verifica versione del server locale</p>
+            <p className="text-[11px] text-muted-foreground break-all">{localBaseUrl}/api/version</p>
+          </div>
+          <Button variant="outline" size="sm" onClick={checkLocalVersion} disabled={checkingVersion}>
+            {checkingVersion ? <><Loader2 className="w-3 h-3 mr-1 animate-spin" />Controllo...</> : 'Controlla'}
+          </Button>
+        </div>
+
+        {versionInfo && (
+          <div className="grid gap-1 text-[11px] text-muted-foreground">
+            <div>server.js: <span className="text-foreground">{versionInfo.server_updated_at ? new Date(versionInfo.server_updated_at).toLocaleString('it-IT') : 'n/d'}</span></div>
+            <div>public/index.html: <span className="text-foreground">{versionInfo.public_index_updated_at ? new Date(versionInfo.public_index_updated_at).toLocaleString('it-IT') : 'mancante'}</span></div>
+            <div>assets copiati: <span className="text-foreground">{versionInfo.public_assets_count ?? 0}</span></div>
+            <div>ultimo asset: <span className="text-foreground">{versionInfo.latest_asset_updated_at ? new Date(versionInfo.latest_asset_updated_at).toLocaleString('it-IT') : 'n/d'}</span></div>
+          </div>
+        )}
       </div>
 
       {/* Solo avvio */}
@@ -871,6 +938,9 @@ const LocalServerGuide: React.FC = () => {
 
       <p className="text-xs text-muted-foreground">
         ⚠️ Dopo l'aggiornamento, fai <strong>Ctrl+Shift+R</strong> su ogni dispositivo (TV, tablet, telefono) per caricare la versione nuova.
+      </p>
+      <p className="text-xs text-muted-foreground">
+        Se continui a vedere la UI vecchia, apri <strong>{localBaseUrl}/api/version</strong>: se la data non cambia, il problema è nella copia della build, non nel browser.
       </p>
     </div>
   );

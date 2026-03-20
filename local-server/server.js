@@ -24,6 +24,44 @@ const SONGBOOK_DIR = path.join(DATA_DIR, 'songbook');
 const CATALOG_FILE = path.join(DATA_DIR, 'catalog.json');
 const SONGBOOK_IDS_FILE = path.join(DATA_DIR, 'songbook-ids.json');
 
+function getFileMTimeISO(filePath) {
+  try {
+    if (!fs.existsSync(filePath)) return null;
+    return new Date(fs.statSync(filePath).mtimeMs).toISOString();
+  } catch {
+    return null;
+  }
+}
+
+function getLocalBuildInfo() {
+  const indexPath = path.join(PUBLIC_DIR, 'index.html');
+  const assetsDir = path.join(PUBLIC_DIR, 'assets');
+  let latestAssetUpdatedAt = null;
+  let assetCount = 0;
+
+  try {
+    if (fs.existsSync(assetsDir)) {
+      const files = fs.readdirSync(assetsDir).map((name) => path.join(assetsDir, name));
+      assetCount = files.length;
+      const latest = files
+        .filter((file) => fs.existsSync(file) && fs.statSync(file).isFile())
+        .map((file) => fs.statSync(file).mtimeMs)
+        .sort((a, b) => b - a)[0];
+
+      if (latest) latestAssetUpdatedAt = new Date(latest).toISOString();
+    }
+  } catch {}
+
+  return {
+    server_updated_at: getFileMTimeISO(__filename),
+    public_dir_exists: fs.existsSync(PUBLIC_DIR),
+    public_index_exists: fs.existsSync(indexPath),
+    public_index_updated_at: getFileMTimeISO(indexPath),
+    public_assets_count: assetCount,
+    latest_asset_updated_at: latestAssetUpdatedAt,
+  };
+}
+
 // Assicura che le cartelle dati esistano
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 if (!fs.existsSync(SONGBOOK_DIR)) fs.mkdirSync(SONGBOOK_DIR, { recursive: true });
@@ -183,6 +221,13 @@ const httpServer = http.createServer(async (req, res) => {
   // Ping endpoint (per auto-sync check)
   if (urlPath === '/api/ping' && req.method === 'GET') {
     return sendJSON(res, { ok: true, ts: Date.now() });
+  }
+
+  if (urlPath === '/api/version' && req.method === 'GET') {
+    return sendJSON(res, {
+      ok: true,
+      ...getLocalBuildInfo(),
+    });
   }
 
   // Sync PIN display state for local /trasmetti pages
@@ -488,6 +533,7 @@ httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
     ? fs.readdirSync(SONGBOOK_DIR).filter(f => f.endsWith('.cho')).length : 0;
   const catalogCount = fs.existsSync(CATALOG_FILE) 
     ? JSON.parse(fs.readFileSync(CATALOG_FILE, 'utf-8')).length : 0;
+  const buildInfo = getLocalBuildInfo();
 
   console.log('');
   console.log('  ╔════════════════════════════════════════════════╗');
@@ -498,6 +544,9 @@ httpServer.listen(HTTP_PORT, '0.0.0.0', () => {
   console.log(`  WebSocket:       porta ${WS_PORT}`);
   console.log(`  📚 SongBook:     ${songbookCount} file .cho`);
   console.log(`  📋 Catalogo:     ${catalogCount} brani`);
+  console.log(`  🧩 server.js:    ${buildInfo.server_updated_at || 'n/d'}`);
+  console.log(`  🏠 public/:      ${buildInfo.public_index_updated_at || 'mancante'}`);
+  console.log(`  📦 assets:       ${buildInfo.public_assets_count} file`);
   console.log('');
 
   if (!hasPublic) {
