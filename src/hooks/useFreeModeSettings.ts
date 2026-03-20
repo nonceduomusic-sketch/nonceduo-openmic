@@ -222,7 +222,8 @@ export const useFreeModeSettings = () => {
         if (newEndMode === 'manual') {
           finalUpdates.expires_at = null;
         } else if (newEndMode === 'scheduled' && newEventEndDate && newEventEndTime) {
-          finalUpdates.expires_at = `${newEventEndDate}T${newEventEndTime}:00`;
+          const tp = newEventEndTime.length <= 5 ? `${newEventEndTime}:00` : newEventEndTime;
+          finalUpdates.expires_at = `${newEventEndDate}T${tp}`;
         } else if (newEndMode === 'duration' && newDurationMinutes) {
           finalUpdates.expires_at = new Date(startedAt.getTime() + newDurationMinutes * 60 * 1000).toISOString();
         } else {
