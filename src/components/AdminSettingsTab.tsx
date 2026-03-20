@@ -299,7 +299,20 @@ function ConnectionModeSection() {
     serverUrl,
     onStateUpdate: () => {},
   });
-  const [ipInput, setIpInput] = useState(localIP);
+  const currentHost = window.location.hostname;
+  const currentHostIsLocal = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.|localhost|127\.|::1$)/.test(currentHost);
+  const effectiveLocalIP = currentHostIsLocal ? currentHost : localIP;
+  const [ipInput, setIpInput] = useState(effectiveLocalIP);
+
+  useEffect(() => {
+    setIpInput(effectiveLocalIP);
+  }, [effectiveLocalIP]);
+
+  useEffect(() => {
+    if (currentHostIsLocal && localIP !== currentHost) {
+      setLocalIP(currentHost);
+    }
+  }, [currentHost, currentHostIsLocal, localIP, setLocalIP]);
 
   const handleSaveIP = () => {
     const cleaned = ipInput.trim().replace(/^https?:\/\//, '').replace(/:\d+$/, '');
@@ -369,6 +382,11 @@ function ConnectionModeSection() {
               <p className="text-xs text-muted-foreground mt-1">
                 L'IP viene mostrato all'avvio del server locale
               </p>
+              {currentHostIsLocal && currentHost !== localIP && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  IP corretto rilevato automaticamente da questa pagina: <strong>{currentHost}</strong>
+                </p>
+              )}
             </div>
 
             <div className="flex items-center gap-2">
