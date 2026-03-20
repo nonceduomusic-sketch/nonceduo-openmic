@@ -20,7 +20,7 @@ const reservationSchema = z.object({
   customer_name: z.string().trim()
     .min(2, 'Nome troppo corto (minimo 2 caratteri)')
     .max(50, 'Nome troppo lungo (massimo 50 caratteri)')
-    .regex(/^[a-zA-ZÀ-ÿ\s'-]+$/, 'Il nome può contenere solo lettere, spazi e apostrofi'),
+    .regex(/^[a-zA-ZÀ-ÿ0-9\s'-]+$/, 'Il nome può contenere solo lettere, numeri, spazi e apostrofi'),
 });
 
 interface BookingConfirmationModalProps {
