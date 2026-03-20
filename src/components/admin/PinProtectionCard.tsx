@@ -178,6 +178,63 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
     toast.success(checked ? 'PIN visibile nella pagina di accesso' : 'PIN nascosto dalla pagina di accesso');
   };
 
+  const syncPublicPinState = useCallback(async (enabled: boolean, pinCode: string | null) => {
+    try {
+      const [liveResult, freeResult] = await Promise.all([
+        supabase
+          .from('event_booking_rules')
+          .select('id')
+          .eq('event_status', 'live')
+          .maybeSingle(),
+        supabase
+          .from('free_mode_settings')
+          .select('id')
+          .eq('is_active', true)
+          .maybeSingle(),
+      ]);
+
+      if (liveResult.error) {
+        console.error('[PinProtectionCard] Error reading live event for PIN sync:', liveResult.error);
+      }
+
+      if (freeResult.error) {
+        console.error('[PinProtectionCard] Error reading free mode for PIN sync:', freeResult.error);
+      }
+
+      const updateQueries = [];
+
+      if (liveResult.data?.id) {
+        updateQueries.push(
+          supabase
+            .from('event_booking_rules')
+            .update({
+              pin_required: enabled,
+              pin_code: pinCode,
+            } as any)
+            .eq('id', liveResult.data.id)
+        );
+      }
+
+      if (freeResult.data?.id) {
+        updateQueries.push(
+          supabase
+            .from('free_mode_settings')
+            .update({
+              pin_enabled: enabled,
+              pin_code: pinCode,
+            } as any)
+            .eq('id', freeResult.data.id)
+        );
+      }
+
+      if (updateQueries.length > 0) {
+        await Promise.all(updateQueries);
+      }
+    } catch (error) {
+      console.error('[PinProtectionCard] Error syncing public PIN state:', error);
+    }
+  }, []);
+
   // Generate QR code when dialog opens
   const eventUrl = getEventUrl();
   
@@ -257,22 +314,33 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
   const handleSavePin = async () => {
     const success = await updatePin(editPinValue);
     if (success) {
+      await syncPublicPinState(true, editPinValue.toUpperCase().trim());
       setIsEditingPin(false);
     }
   };
 
   const handleRegeneratePin = async () => {
-    await regeneratePin();
+    const newPin = await regeneratePin();
+    if (newPin) {
+      await syncPublicPinState(true, newPin);
+    }
   };
 
   const handleTogglePin = async (enabled: boolean) => {
+    if (!session) return;
+
     setIsTogglingPin(true);
     try {
-      if (enabled) {
-        await restorePin(['openmic', 'dediche']);
-      } else {
-        await removePin();
+      const currentPin = session.pin_code ?? null;
+      const success = enabled
+        ? await restorePin(['openmic', 'dediche'])
+        : await removePin();
+
+      if (!success) {
+        return;
       }
+
+      await syncPublicPinState(enabled, currentPin);
     } finally {
       setIsTogglingPin(false);
     }
