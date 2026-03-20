@@ -263,30 +263,41 @@ export default function TV() {
     generateQR();
   }, [modeQrUrl]);
 
-  // Fetch show_pin_on_gate setting
+  // Fetch show_pin_on_gate setting + current PIN from the active live session
   useEffect(() => {
     const fetchPinSetting = async () => {
-      // Try live event first
-      const { data: liveData } = await supabase
-        .from('event_booking_rules')
-        .select('pin_required, pin_code, show_pin_on_gate')
-        .eq('event_status', 'live')
+      const { data: activeSession } = await supabase
+        .from('live_sessions')
+        .select('pin_code, is_active')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
         .maybeSingle();
-      
-      if (liveData && (liveData as any).pin_required && (liveData as any).show_pin_on_gate) {
-        setPinToShow((liveData as any).pin_code);
+
+      if (!activeSession?.is_active || !activeSession.pin_code) {
+        setPinToShow(null);
         return;
       }
 
-      // Try free mode
+      const { data: liveData } = await supabase
+        .from('event_booking_rules')
+        .select('pin_required, show_pin_on_gate')
+        .eq('event_status', 'live')
+        .maybeSingle();
+
+      if (liveData && (liveData as any).pin_required && (liveData as any).show_pin_on_gate) {
+        setPinToShow(activeSession.pin_code);
+        return;
+      }
+
       const { data: freeData } = await supabase
         .from('free_mode_settings')
-        .select('pin_enabled, pin_code, show_pin_on_gate')
+        .select('pin_enabled, show_pin_on_gate')
         .eq('is_active', true)
         .maybeSingle();
-      
+
       if (freeData && (freeData as any).pin_enabled && (freeData as any).show_pin_on_gate) {
-        setPinToShow((freeData as any).pin_code);
+        setPinToShow(activeSession.pin_code);
         return;
       }
 
@@ -294,9 +305,9 @@ export default function TV() {
     };
     fetchPinSetting();
 
-    // Subscribe to changes
     const channel = supabase
       .channel('tv-pin-display')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_sessions' }, () => fetchPinSetting())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'event_booking_rules' }, () => fetchPinSetting())
       .on('postgres_changes', { event: '*', schema: 'public', table: 'free_mode_settings' }, () => fetchPinSetting())
       .subscribe();
