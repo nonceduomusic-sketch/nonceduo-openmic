@@ -362,9 +362,35 @@ export const useLiveEvent = () => {
       )
       .subscribe();
 
+    // Fallback: refetch on focus/visibility change (handles mobile browser backgrounding
+    // where the realtime websocket may silently disconnect)
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        if (import.meta.env.DEV) console.log('[useLiveEvent] Visibility restored, refetching');
+        fetchEvents();
+      }
+    };
+    const handleFocus = () => {
+      if (import.meta.env.DEV) console.log('[useLiveEvent] Window focus, refetching');
+      fetchEvents();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('pageshow', handleFocus);
+
+    // Polling fallback every 15s to catch any missed realtime events
+    const pollInterval = window.setInterval(() => {
+      fetchEvents();
+    }, 15_000);
+
     return () => {
       supabase.removeChannel(eventsChannel);
       supabase.removeChannel(freeModeChannel);
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('pageshow', handleFocus);
+      window.clearInterval(pollInterval);
     };
   }, [fetchEvents]);
 
