@@ -789,14 +789,13 @@ const LocalServerGuide: React.FC = () => {
   const updateCommands = [
     { cmd: 'taskkill /F /IM node.exe 2>$null', label: 'Ferma server vecchio' },
     { cmd: 'cd C:\\Users\\iaco_\\nonceduo-openmic-nuovo', label: 'Vai nella cartella codice' },
+    { cmd: 'git restore package-lock.json', label: 'Ripristina file lock (evita conflitti)' },
     { cmd: 'git pull', label: 'Scarica aggiornamenti' },
     { cmd: 'npm install', label: 'Installa dipendenze' },
     { cmd: 'npm run build', label: 'Compila l\'app' },
-    { cmd: 'if (!(Test-Path "..\\nonceduo\\local-server\\public")) { New-Item -ItemType Directory -Path "..\\nonceduo\\local-server\\public" | Out-Null }', label: 'Crea cartella public se manca' },
     { cmd: 'Remove-Item "..\\nonceduo\\local-server\\public\\assets" -Recurse -Force -ErrorAction SilentlyContinue', label: 'Rimuovi assets vecchi' },
     { cmd: 'Copy-Item ".\\dist\\*" -Destination "..\\nonceduo\\local-server\\public" -Recurse -Force', label: 'Copia file compilati' },
     { cmd: 'Copy-Item ".\\local-server\\server.js" -Destination "..\\nonceduo\\local-server\\server.js" -Force', label: 'Copia server.js' },
-    { cmd: 'Get-Item "..\\nonceduo\\local-server\\public\\index.html" | Select-Object FullName, LastWriteTime', label: 'Verifica data index.html copiato' },
     { cmd: 'cd ..\\nonceduo\\local-server', label: 'Vai nella cartella server' },
     { cmd: 'node server.js', label: 'Avvia il server' },
   ];
@@ -939,7 +938,7 @@ const LocalServerGuide: React.FC = () => {
       </div>
 
       <p className="text-xs text-muted-foreground">
-        ⚠️ Dopo l'aggiornamento, fai <strong>Ctrl+Shift+R</strong> su ogni dispositivo (TV, tablet, telefono) per caricare la versione nuova.
+        ⚠️ <strong>Esegui i comandi uno alla volta</strong> in PowerShell (non incollarli tutti insieme). Dopo l'aggiornamento, fai <strong>Ctrl+Shift+R</strong> su ogni dispositivo per caricare la versione nuova.
       </p>
       <p className="text-xs text-muted-foreground">
         Se continui a vedere la UI vecchia, apri <strong>{localBaseUrl}/api/version</strong>: se la data non cambia, il problema è nella copia della build, non nel browser.
