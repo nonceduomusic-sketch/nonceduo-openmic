@@ -184,27 +184,7 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
     }
   }, [showQR, eventUrl]);
 
-  // Fetch active sessions count - refetch periodically and after actions
-  const refreshSessionCount = useCallback(async () => {
-    if (!session?.id || !isActive) {
-      setActiveSessionsCount(0);
-      return;
-    }
-    setLoadingSessionCount(true);
-    try {
-      const count = await countActiveSessions(session.id);
-      setActiveSessionsCount(count);
-    } finally {
-      setLoadingSessionCount(false);
-    }
-  }, [session?.id, isActive, countActiveSessions]);
-
-  useEffect(() => {
-    refreshSessionCount();
-    // Also refresh every 30 seconds while component is mounted
-    const interval = setInterval(refreshSessionCount, 30000);
-    return () => clearInterval(interval);
-  }, [refreshSessionCount]);
+  // Session count is now managed by useConnectedUsersCount (realtime + polling)
 
   // Handle reset all sessions
   const handleResetSessions = async () => {
