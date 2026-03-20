@@ -55,6 +55,7 @@ import { useUnifiedLiveSession, FormatType } from '@/hooks/useUnifiedLiveSession
 import { useAdminPinSessionReset } from '@/hooks/usePinSession';
 import { useConnectedUsersCount } from '@/hooks/useConnectedUsersCount';
 import { useAdmin } from '@/contexts/AdminContext';
+import { ConnectedUsersDialog } from './ConnectedUsersDialog';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { adminAuditLog } from '@/lib/adminAudit';
