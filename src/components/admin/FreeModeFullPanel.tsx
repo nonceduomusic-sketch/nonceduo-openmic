@@ -834,9 +834,7 @@ export const FreeModeFullPanel: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="pin" className="mt-3 space-y-4">
-            <EventPinConfig rules={rules} onUpdate={handleUpdate} generatePin={generatePin} />
-            {/* Gestione sessioni PIN: mostra sempre quando evento attivo */}
-            <PinProtectionCard title="Gestione Sessioni PIN" />
+            <PinProtectionCard title="Protezione PIN" />
           </TabsContent>
 
           <TabsContent value="reopen" className="mt-3">
