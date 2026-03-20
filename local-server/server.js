@@ -164,6 +164,33 @@ const httpServer = http.createServer(async (req, res) => {
     return sendJSON(res, { ok: true, ts: Date.now() });
   }
 
+  // Sync PIN display state for local /trasmetti pages
+  if (urlPath === '/api/pin-display/sync' && req.method === 'POST') {
+    try {
+      const body = await readBody(req);
+      const updates = {
+        pin_code: typeof body.pin_code === 'string' && body.pin_code.trim()
+          ? body.pin_code.trim().toUpperCase()
+          : null,
+        show_pin_on_gate: Boolean(body.show_pin_on_gate),
+        pin_required: Boolean(body.pin_required),
+      };
+
+      Object.assign(broadcastState, updates);
+
+      const outMsg = JSON.stringify({ type: 'update', data: updates });
+      wss.clients.forEach((client) => {
+        if (client.readyState === 1) {
+          client.send(outMsg);
+        }
+      });
+
+      return sendJSON(res, { ok: true, ...updates });
+    } catch (e) {
+      return sendJSON(res, { error: 'JSON non valido' }, 400);
+    }
+  }
+
   // SongBook: lista brani
   if (urlPath === '/api/songbook/list' && req.method === 'GET') {
     return sendJSON(res, getSongbookList());
@@ -301,6 +328,9 @@ let broadcastState = {
   auto_scroll_bpm: 60,
   current_song_id: null,
   current_reservation_id: null,
+  pin_code: null,
+  show_pin_on_gate: false,
+  pin_required: false,
   cached_songs: {},
   // TV standby & display settings
   tv_standby_mode: 'openmic',

@@ -59,6 +59,7 @@ import { ConnectedUsersDialog } from './ConnectedUsersDialog';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { adminAuditLog } from '@/lib/adminAudit';
+import { syncPinDisplayToLAN } from '@/lib/autoSyncLAN';
 import QRCode from 'qrcode';
 
 interface PinProtectionCardProps {
@@ -129,8 +130,19 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
     
     if (isPinActive) {
       loadShowPinSetting();
+      return;
     }
+
+    setShowPinOnGate(false);
   }, [isPinActive]);
+
+  useEffect(() => {
+    void syncPinDisplayToLAN({
+      pinCode: isPinActive ? session?.pin_code ?? null : null,
+      showPinOnGate: isPinActive && showPinOnGate,
+      pinRequired: isPinActive,
+    });
+  }, [session?.pin_code, isPinActive, showPinOnGate]);
 
   const handleToggleShowPin = async (checked: boolean) => {
     setShowPinOnGate(checked);
