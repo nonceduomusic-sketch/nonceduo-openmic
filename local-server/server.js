@@ -80,6 +80,27 @@ function readBody(req) {
   });
 }
 
+function getStaticHeaders(urlPath, ext, isIndexFallback = false) {
+  const mime = MIME_TYPES[ext] || 'application/octet-stream';
+  const isHtml = ext === '.html' || isIndexFallback;
+  const isServiceWorker = urlPath === '/sw.js' || urlPath.startsWith('/workbox-');
+  const isManifest = ext === '.webmanifest';
+
+  if (isHtml || isServiceWorker || isManifest) {
+    return {
+      'Content-Type': mime,
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      Pragma: 'no-cache',
+      Expires: '0',
+    };
+  }
+
+  return {
+    'Content-Type': mime,
+    'Cache-Control': 'public, max-age=300',
+  };
+}
+
 // ═══════════════════════════════════════
 // SongBook API — file .cho nella cartella data/songbook/
 // ═══════════════════════════════════════
@@ -284,8 +305,7 @@ const httpServer = http.createServer(async (req, res) => {
   // Serve the file if it exists
   if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
     const ext = path.extname(filePath).toLowerCase();
-    const mime = MIME_TYPES[ext] || 'application/octet-stream';
-    res.writeHead(200, { 'Content-Type': mime });
+    res.writeHead(200, getStaticHeaders(urlPath, ext));
     fs.createReadStream(filePath).pipe(res);
     return;
   }
@@ -293,7 +313,7 @@ const httpServer = http.createServer(async (req, res) => {
   // SPA Fallback: serve index.html for any route (React Router handles it)
   const indexPath = path.join(PUBLIC_DIR, 'index.html');
   if (fs.existsSync(indexPath)) {
-    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.writeHead(200, getStaticHeaders('/index.html', '.html', true));
     fs.createReadStream(indexPath).pipe(res);
   } else {
     res.writeHead(404);
