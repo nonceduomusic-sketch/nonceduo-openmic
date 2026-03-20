@@ -308,11 +308,12 @@ export function usePinSession(format: FormatKey) {
 
   // Fallback cross-device invalidation: some devices/tablets can miss realtime updates
   // when the browser is backgrounded or power-saving pauses the connection.
-  // Revalidate on focus/visibility and on a short interval while access is active.
+  // Revalidate on focus/visibility, on user interactions, and on a short interval.
   useEffect(() => {
     if (!hasValidSession) return;
 
     let cancelled = false;
+    let consecutiveErrors = 0;
 
     const revalidateAccess = async () => {
       const stored = getStoredSession();
@@ -332,9 +333,21 @@ export function usePinSession(format: FormatKey) {
         });
 
         if (validationError) {
-          if (import.meta.env.DEV) console.error('[PinSession] Fallback validation error:', validationError);
+          consecutiveErrors++;
+          if (import.meta.env.DEV) console.error('[PinSession] Fallback validation error:', validationError, `(attempt ${consecutiveErrors})`);
+          // After 5 consecutive errors, treat as invalidated (connection likely broken)
+          if (consecutiveErrors >= 5 && !cancelled) {
+            console.warn('[PinSession] Too many consecutive errors, forcing invalidation');
+            setHasValidSession(false);
+            setSessionInvalidated(true);
+            setInvalidationReason('connection_lost');
+            removeSession();
+          }
           return;
         }
+
+        // Reset error counter on successful call
+        consecutiveErrors = 0;
 
         const row = Array.isArray(validationRows) ? validationRows[0] : (validationRows as any);
         const isValid = Boolean(row?.is_valid);
@@ -347,7 +360,14 @@ export function usePinSession(format: FormatKey) {
           removeSession();
         }
       } catch (error) {
+        consecutiveErrors++;
         if (import.meta.env.DEV) console.error('[PinSession] Fallback revalidation error:', error);
+        if (consecutiveErrors >= 5 && !cancelled) {
+          setHasValidSession(false);
+          setSessionInvalidated(true);
+          setInvalidationReason('connection_lost');
+          removeSession();
+        }
       }
     };
 
@@ -361,13 +381,27 @@ export function usePinSession(format: FormatKey) {
       }
     };
 
+    // Revalidate on user interaction (catches cases where setInterval is throttled on mobile)
+    let lastInteractionCheck = 0;
+    const handleUserInteraction = () => {
+      const now = Date.now();
+      // Throttle to max once every 3 seconds
+      if (now - lastInteractionCheck < 3000) return;
+      lastInteractionCheck = now;
+      void revalidateAccess();
+    };
+
+    // Poll every 3 seconds (was 5s - more aggressive for reliability)
     const interval = window.setInterval(() => {
       void revalidateAccess();
-    }, 5000);
+    }, 3000);
 
     window.addEventListener('focus', handleFocus);
     window.addEventListener('pageshow', handleFocus);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    // Touch/click events catch throttled intervals on mobile/tablet
+    document.addEventListener('touchstart', handleUserInteraction, { passive: true });
+    document.addEventListener('click', handleUserInteraction, { passive: true });
 
     return () => {
       cancelled = true;
@@ -375,6 +409,8 @@ export function usePinSession(format: FormatKey) {
       window.removeEventListener('focus', handleFocus);
       window.removeEventListener('pageshow', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('touchstart', handleUserInteraction);
+      document.removeEventListener('click', handleUserInteraction);
     };
   }, [format, getStoredSession, hasValidSession, removeSession]);
 
