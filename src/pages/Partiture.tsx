@@ -8,6 +8,7 @@ import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
 import { supabase } from '@/integrations/supabase/client';
 import { parseChordPro, transposeSong, ChordProSong } from '@/lib/chordpro';
 import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
+import { getPreferredLocalServerHost } from '@/lib/localServerHost';
 import { usePedalScroll } from '@/hooks/usePedalControl';
 import { cn } from '@/lib/utils';
 
@@ -90,7 +91,7 @@ export default function Partiture() {
     if (!fileId) { setFile(null); return; }
     
     const fetchFile = async () => {
-      const lip = safeGetItem('local', 'broadcast_local_ip') || '';
+      const lip = getPreferredLocalServerHost();
 
       const cloudPromise = (async (): Promise<SongbookFile | null> => {
         try {

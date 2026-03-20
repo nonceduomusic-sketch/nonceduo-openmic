@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getAllCachedSongs, cacheSongsCatalog } from '@/lib/songsCatalogCache';
-import { safeGetItem } from '@/lib/safeStorage';
+import { getPreferredLocalServerHost } from '@/lib/localServerHost';
 
 export interface CatalogSong {
   id: string;
@@ -11,7 +11,7 @@ export interface CatalogSong {
 
 /** Try fetching catalog from the LAN mini-server */
 async function fetchFromLocalServer(): Promise<CatalogSong[]> {
-  const localIP = safeGetItem('local', 'broadcast_local_ip') || '';
+  const localIP = getPreferredLocalServerHost();
   if (!localIP) return [];
   try {
     const resp = await fetch(`http://${localIP}:8080/api/catalog/list`, {

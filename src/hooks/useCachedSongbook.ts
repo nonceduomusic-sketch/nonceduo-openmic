@@ -14,12 +14,12 @@ import {
   setLastFullSync,
   getCacheStats,
 } from '@/lib/songbookCache';
-import { safeGetItem } from '@/lib/safeStorage';
+import { getPreferredLocalServerHost } from '@/lib/localServerHost';
 import { toast } from 'sonner';
 
 /** Try fetching songbook files from the LAN mini-server */
 async function fetchSongbookFromLAN(): Promise<SongbookFile[]> {
-  const localIP = safeGetItem('local', 'broadcast_local_ip') || '';
+  const localIP = getPreferredLocalServerHost();
   if (!localIP) return [];
   try {
     const resp = await fetch(`http://${localIP}:8080/api/songbook/all`, {

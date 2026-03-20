@@ -7,7 +7,7 @@
  * - Retry: one automatic retry on transient failure
  * - Non-blocking: runs entirely in background via dynamic imports
  */
-import { safeGetItem } from '@/lib/safeStorage';
+import { getPreferredLocalServerHost } from '@/lib/localServerHost';
 
 /** Pending debounce timers keyed by scope */
 const pendingTimers: Record<string, ReturnType<typeof setTimeout>> = {};
@@ -40,7 +40,7 @@ export async function syncPinDisplayToLAN({
   showPinOnGate,
   pinRequired,
 }: PinDisplaySyncPayload): Promise<boolean> {
-  const localIP = safeGetItem('local', 'broadcast_local_ip') || '';
+  const localIP = getPreferredLocalServerHost();
   if (!localIP) return false;
 
   try {
@@ -68,7 +68,7 @@ async function runSync(scope: string, attempt = 1) {
   // Skip if a sync for the same scope is already running
   if (inFlight[scope]) return;
 
-  const localIP = safeGetItem('local', 'broadcast_local_ip') || '';
+  const localIP = getPreferredLocalServerHost();
   if (!localIP) return;
 
   // Quick reachability check
