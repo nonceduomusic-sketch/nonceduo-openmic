@@ -256,8 +256,9 @@ export const useFreeModeSettings = () => {
     startedAt: Date = new Date()
   ): string | null => {
     if (endMode === 'scheduled' && eventEndDate && eventEndTime) {
-      // Termine a orario specifico
-      return `${eventEndDate}T${eventEndTime}:00`;
+      // Termine a orario specifico - eventEndTime può essere "HH:MM" o "HH:MM:SS"
+      const timePart = eventEndTime.length <= 5 ? `${eventEndTime}:00` : eventEndTime;
+      return `${eventEndDate}T${timePart}`;
     } else if (endMode === 'duration' && durationMinutes) {
       // Termine dopo X minuti dalla partenza
       return new Date(startedAt.getTime() + durationMinutes * 60 * 1000).toISOString();
