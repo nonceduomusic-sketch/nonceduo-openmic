@@ -306,6 +306,78 @@ export function usePinSession(format: FormatKey) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [getStoredSession, removeSession]);
 
+  // Fallback cross-device invalidation: some devices/tablets can miss realtime updates
+  // when the browser is backgrounded or power-saving pauses the connection.
+  // Revalidate on focus/visibility and on a short interval while access is active.
+  useEffect(() => {
+    if (!hasValidSession) return;
+
+    let cancelled = false;
+
+    const revalidateAccess = async () => {
+      const stored = getStoredSession();
+      if (!stored) {
+        if (!cancelled) {
+          setHasValidSession(false);
+          setSessionInvalidated(true);
+          setInvalidationReason('session_missing');
+        }
+        return;
+      }
+
+      try {
+        const { data: validationRows, error: validationError } = await supabase.rpc('validate_pin_session', {
+          p_token: stored.token,
+          p_format: format,
+        });
+
+        if (validationError) {
+          if (import.meta.env.DEV) console.error('[PinSession] Fallback validation error:', validationError);
+          return;
+        }
+
+        const row = Array.isArray(validationRows) ? validationRows[0] : (validationRows as any);
+        const isValid = Boolean(row?.is_valid);
+
+        if (!isValid && !cancelled) {
+          if (import.meta.env.DEV) console.warn('[PinSession] Fallback invalidation detected');
+          setHasValidSession(false);
+          setSessionInvalidated(true);
+          setInvalidationReason('admin_reset');
+          removeSession();
+        }
+      } catch (error) {
+        if (import.meta.env.DEV) console.error('[PinSession] Fallback revalidation error:', error);
+      }
+    };
+
+    const handleFocus = () => {
+      void revalidateAccess();
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void revalidateAccess();
+      }
+    };
+
+    const interval = window.setInterval(() => {
+      void revalidateAccess();
+    }, 5000);
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('pageshow', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('pageshow', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [format, getStoredSession, hasValidSession, removeSession]);
+
   return {
     hasValidSession,
     loading,
