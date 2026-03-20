@@ -6,16 +6,17 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { SEO } from '@/components/SEO';
-import { 
-  Mic2, 
+import {
+  Mic2,
   MessageSquare,
-  Music, 
-  AlertCircle, 
-  CheckCircle2, 
+  Music,
+  AlertCircle,
+  CheckCircle2,
   Loader2,
   Home,
   Radio,
-  Clock
+  Clock,
+  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { LiveReactionBar } from '@/components/live/LiveReactionBar';
@@ -23,11 +24,20 @@ import { toast } from 'sonner';
 
 interface EventSession {
   id: string;
-  // pin_code removed for security - validation done via RPC
   protected_formats: string[];
   expires_at: string | null;
   is_active: boolean;
 }
+
+interface StoredPinSession {
+  token: string;
+  liveSessionId: string;
+  pinCodeHash: string;
+  createdAt: string;
+}
+
+const PIN_SESSION_STORAGE_KEY = 'ncd_pin_sessions_v2';
+const PIN_SESSION_SYNC_EVENT = 'ncd-pin-session-sync';
 
 // Same lightweight hash strategy used by usePinSession (client-side matching only)
 const hashPinLight = (pin: string): string => {
@@ -45,7 +55,7 @@ const EventoLive: React.FC = () => {
   const { linkCode } = useParams<{ linkCode: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  
+
   const [session, setSession] = useState<EventSession | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
@@ -55,9 +65,44 @@ const EventoLive: React.FC = () => {
   const [isValid, setIsValid] = useState(false);
   const [validatedFormats, setValidatedFormats] = useState<string[]>([]);
   const [autoValidating, setAutoValidating] = useState(false);
+  const [sessionInvalidated, setSessionInvalidated] = useState(false);
+  const [invalidationReason, setInvalidationReason] = useState<string | null>(null);
+  const [sessionSyncKey, setSessionSyncKey] = useState(0);
 
-  // Get PIN from URL query param for auto-login
   const urlPin = searchParams.get('pin');
+
+  const emitSessionSync = useCallback(() => {
+    window.dispatchEvent(new CustomEvent(PIN_SESSION_SYNC_EVENT));
+  }, []);
+
+  const getStoredSession = useCallback((): StoredPinSession | null => {
+    try {
+      const raw = localStorage.getItem(PIN_SESSION_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const saveStoredSession = useCallback((storedSession: StoredPinSession) => {
+    localStorage.setItem(PIN_SESSION_STORAGE_KEY, JSON.stringify(storedSession));
+    emitSessionSync();
+    setSessionSyncKey((prev) => prev + 1);
+  }, [emitSessionSync]);
+
+  const clearStoredSession = useCallback(() => {
+    localStorage.removeItem(PIN_SESSION_STORAGE_KEY);
+    emitSessionSync();
+    setSessionSyncKey((prev) => prev + 1);
+  }, [emitSessionSync]);
+
+  const invalidateAccess = useCallback((reason: string) => {
+    clearStoredSession();
+    setIsValid(false);
+    setValidatedFormats([]);
+    setSessionInvalidated(true);
+    setInvalidationReason(reason);
+  }, [clearStoredSession]);
 
   const fetchSession = useCallback(async () => {
     if (!linkCode) {
@@ -67,8 +112,6 @@ const EventoLive: React.FC = () => {
     }
 
     try {
-      // First check if there's ANY session with this link code (active or not)
-      // Note: pin_code is NOT selected - validation is done via secure RPC
       const { data: anySession, error: anyError } = await supabase
         .from('live_sessions')
         .select('id, protected_formats, expires_at, is_active')
@@ -80,22 +123,21 @@ const EventoLive: React.FC = () => {
       if (anyError) throw anyError;
 
       if (!anySession) {
-        // No session with this link code exists at all
         setNotFound(true);
       } else if (!anySession.is_active) {
-        // Session exists but is not active
         setNotActive(true);
       } else if (anySession.expires_at && new Date(anySession.expires_at) < new Date()) {
-        // Session is expired
         setNotActive(true);
       } else {
-        // Session is active and valid
         setSession(anySession as EventSession);
-        
-        // Check if formats are protected - if no formats are protected, go directly to app
+        setNotFound(false);
+        setNotActive(false);
+
         if (!anySession.protected_formats || anySession.protected_formats.length === 0) {
           setIsValid(true);
-          setValidatedFormats(['openmic', 'dediche']); // All formats accessible
+          setValidatedFormats(['openmic', 'dediche']);
+          setSessionInvalidated(false);
+          setInvalidationReason(null);
         }
       }
     } catch (error) {
@@ -109,14 +151,13 @@ const EventoLive: React.FC = () => {
   useEffect(() => {
     fetchSession();
 
-    // Subscribe to realtime updates
     const channel = supabase
       .channel(`evento-live-${linkCode}`)
       .on(
         'postgres_changes',
-        { 
-          event: '*', 
-          schema: 'public', 
+        {
+          event: '*',
+          schema: 'public',
           table: 'live_sessions',
         },
         () => {
@@ -130,35 +171,250 @@ const EventoLive: React.FC = () => {
     };
   }, [linkCode, fetchSession]);
 
-  // Core PIN validation logic (used by both manual and auto-login)
+  useEffect(() => {
+    const handleSessionSync = () => setSessionSyncKey((prev) => prev + 1);
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === PIN_SESSION_STORAGE_KEY) {
+        setSessionSyncKey((prev) => prev + 1);
+      }
+    };
+
+    window.addEventListener(PIN_SESSION_SYNC_EVENT, handleSessionSync);
+    window.addEventListener('storage', handleStorage);
+
+    return () => {
+      window.removeEventListener(PIN_SESSION_SYNC_EVENT, handleSessionSync);
+      window.removeEventListener('storage', handleStorage);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!session?.id) return;
+
+    let cancelled = false;
+
+    const validateExistingAccess = async () => {
+      const stored = getStoredSession();
+      if (!stored || stored.liveSessionId !== session.id) {
+        if (!cancelled) {
+          setIsValid(false);
+          setValidatedFormats([]);
+        }
+        return;
+      }
+
+      const protectedFormats = session.protected_formats || [];
+      const targetFormat = protectedFormats[0] || 'openmic';
+
+      try {
+        const { data, error } = await supabase.rpc('validate_pin_session', {
+          p_token: stored.token,
+          p_format: targetFormat,
+        });
+
+        const row = Array.isArray(data) ? data[0] : (data as any);
+        const hasAccess = !error && Boolean(row?.is_valid);
+
+        if (!cancelled) {
+          setIsValid(hasAccess);
+          setValidatedFormats(hasAccess ? protectedFormats : []);
+          if (hasAccess) {
+            setSessionInvalidated(false);
+            setInvalidationReason(null);
+          }
+        }
+      } catch (error) {
+        if (import.meta.env.DEV) console.error('[EventoLive] validate existing access error:', error);
+      }
+    };
+
+    void validateExistingAccess();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [getStoredSession, session?.id, session?.protected_formats, sessionSyncKey]);
+
+  useEffect(() => {
+    const stored = getStoredSession();
+    if (!stored?.token || !stored.liveSessionId || !session || stored.liveSessionId !== session.id) {
+      return;
+    }
+
+    const pinChannel = supabase
+      .channel(`evento-live-pin-${stored.token.substring(0, 8)}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'pin_sessions',
+          filter: `session_token=eq.${stored.token}`,
+        },
+        (payload) => {
+          const next = payload.new as { is_valid: boolean; invalidation_reason?: string };
+          if (!next.is_valid) {
+            invalidateAccess(next.invalidation_reason || 'admin_reset');
+          }
+        }
+      )
+      .subscribe();
+
+    const liveChannel = supabase
+      .channel(`evento-live-session-${stored.liveSessionId.substring(0, 8)}-${Date.now()}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'live_sessions',
+          filter: `id=eq.${stored.liveSessionId}`,
+        },
+        (payload) => {
+          const prev = payload.old as {
+            sessions_invalidated_at?: string | null;
+            pin_code?: string;
+            is_active?: boolean;
+          };
+          const next = payload.new as {
+            sessions_invalidated_at?: string | null;
+            pin_code?: string;
+            is_active?: boolean;
+            expires_at?: string | null;
+          };
+
+          if (next?.sessions_invalidated_at && next.sessions_invalidated_at !== prev?.sessions_invalidated_at) {
+            invalidateAccess('admin_reset');
+            return;
+          }
+
+          if (next?.pin_code && prev?.pin_code && next.pin_code !== prev.pin_code) {
+            invalidateAccess('pin_changed');
+            return;
+          }
+
+          if (next?.is_active === false) {
+            invalidateAccess('session_deactivated');
+            return;
+          }
+
+          if (next?.expires_at && new Date(next.expires_at) < new Date()) {
+            invalidateAccess('session_expired');
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(pinChannel);
+      supabase.removeChannel(liveChannel);
+    };
+  }, [getStoredSession, invalidateAccess, session, sessionSyncKey]);
+
+  useEffect(() => {
+    if (!isValid || !session?.protected_formats?.length) return;
+
+    let cancelled = false;
+    let consecutiveErrors = 0;
+
+    const revalidateAccess = async () => {
+      const stored = getStoredSession();
+      if (!stored || stored.liveSessionId !== session.id) {
+        if (!cancelled) {
+          invalidateAccess('session_missing');
+        }
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase.rpc('validate_pin_session', {
+          p_token: stored.token,
+          p_format: session.protected_formats[0] || 'openmic',
+        });
+
+        if (error) {
+          consecutiveErrors++;
+          if (consecutiveErrors >= 5 && !cancelled) {
+            invalidateAccess('connection_lost');
+          }
+          return;
+        }
+
+        consecutiveErrors = 0;
+        const row = Array.isArray(data) ? data[0] : (data as any);
+        if (!row?.is_valid && !cancelled) {
+          invalidateAccess('admin_reset');
+        }
+      } catch (error) {
+        consecutiveErrors++;
+        if (consecutiveErrors >= 5 && !cancelled) {
+          invalidateAccess('connection_lost');
+        }
+      }
+    };
+
+    const handleFocus = () => void revalidateAccess();
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        void revalidateAccess();
+      }
+    };
+
+    let lastInteractionCheck = 0;
+    const handleUserInteraction = () => {
+      const now = Date.now();
+      if (now - lastInteractionCheck < 3000) return;
+      lastInteractionCheck = now;
+      void revalidateAccess();
+    };
+
+    const interval = window.setInterval(() => void revalidateAccess(), 3000);
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('pageshow', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    document.addEventListener('touchstart', handleUserInteraction, { passive: true });
+    document.addEventListener('click', handleUserInteraction, { passive: true });
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('pageshow', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      document.removeEventListener('touchstart', handleUserInteraction);
+      document.removeEventListener('click', handleUserInteraction);
+    };
+  }, [getStoredSession, invalidateAccess, isValid, session]);
+
   const validatePinAndCreateSession = async (inputPin: string): Promise<boolean> => {
     if (!session) return false;
-    
+
     const cleanPin = inputPin.toUpperCase().trim();
-    
+
     try {
-      // Use secure RPC to validate PIN - this also creates the session if valid
       const { data: token, error } = await supabase.rpc('create_pin_session', {
         p_live_session_id: session.id,
         p_format: session.protected_formats?.[0] || 'openmic',
         p_pin_code: cleanPin,
         p_device_fingerprint: navigator.userAgent.substring(0, 100),
       });
-      
+
       const isCorrect = !!token && !error;
-      
+
       if (isCorrect) {
-        // Store session locally for persistence
         const storedSession = {
           token: token as string,
           liveSessionId: session.id,
           pinCodeHash: hashPinLight(cleanPin),
           createdAt: new Date().toISOString(),
         };
-        localStorage.setItem('ncd_pin_sessions_v2', JSON.stringify(storedSession));
+        saveStoredSession(storedSession);
 
         setIsValid(true);
         setValidatedFormats(session.protected_formats);
+        setSessionInvalidated(false);
+        setInvalidationReason(null);
         return true;
       }
       return false;
@@ -168,17 +424,15 @@ const EventoLive: React.FC = () => {
     }
   };
 
-  // Auto-login with PIN from URL
   useEffect(() => {
     if (!urlPin || !session || isValid || autoValidating) return;
-    
+
     const autoLogin = async () => {
       setAutoValidating(true);
       const success = await validatePinAndCreateSession(urlPin);
-      
+
       if (success) {
         toast.success('Accesso automatico riuscito!');
-        // Clean URL by removing pin param
         const newParams = new URLSearchParams(searchParams);
         newParams.delete('pin');
         const newSearch = newParams.toString();
@@ -187,13 +441,12 @@ const EventoLive: React.FC = () => {
           { replace: true }
         );
       } else {
-        // PIN from URL was invalid, show manual entry
         toast.error('PIN non valido - inseriscilo manualmente');
       }
       setAutoValidating(false);
     };
-    
-    autoLogin();
+
+    void autoLogin();
   }, [urlPin, session, isValid, autoValidating, searchParams, navigate]);
 
   const handleValidatePin = async () => {
@@ -201,7 +454,7 @@ const EventoLive: React.FC = () => {
 
     setIsValidating(true);
     const success = await validatePinAndCreateSession(pin);
-    
+
     if (success) {
       toast.success('PIN corretto! Ora puoi accedere.');
     } else {
@@ -216,6 +469,28 @@ const EventoLive: React.FC = () => {
     }
   };
 
+  const handleRetry = () => {
+    setPin('');
+    setSessionInvalidated(false);
+    setInvalidationReason(null);
+  };
+
+  const getInvalidationMessage = () => {
+    switch (invalidationReason) {
+      case 'pin_changed':
+        return 'Il PIN è stato aggiornato. Reinserisci il nuovo codice.';
+      case 'session_deactivated':
+        return 'L’evento live è terminato.';
+      case 'admin_reset':
+      case 'admin_kick':
+        return 'Sei stato disconnesso dallo staff. Reinserisci il PIN per rientrare.';
+      case 'session_expired':
+        return 'La sessione è scaduta.';
+      default:
+        return 'L’accesso è stato invalidato. Reinserisci il PIN per continuare.';
+    }
+  };
+
   if (loading || autoValidating) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center flex-col gap-4">
@@ -227,11 +502,10 @@ const EventoLive: React.FC = () => {
     );
   }
 
-  // Event not found (link code doesn't exist)
   if (notFound) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <SEO 
+        <SEO
           title="Evento non trovato | Non C'è Duo"
           description="L'evento live non è più attivo o il link non è valido."
         />
@@ -261,11 +535,10 @@ const EventoLive: React.FC = () => {
     );
   }
 
-  // Event exists but not currently active
   if (notActive) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
-        <SEO 
+        <SEO
           title="Evento non attivo | Non C'è Duo"
           description="L'evento live non è attualmente in corso."
         />
@@ -299,12 +572,11 @@ const EventoLive: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5">
-      <SEO 
+      <SEO
         title="Evento Live | Non C'è Duo"
         description="Partecipa all'evento live di Non C'è Duo - Prenota canzoni e dediche!"
       />
-      
-      {/* Header */}
+
       <header className="sticky top-0 z-40 bg-card/90 backdrop-blur-md border-b border-border">
         <div className="container py-4">
           <div className="flex items-center justify-between">
@@ -328,12 +600,33 @@ const EventoLive: React.FC = () => {
         </div>
       </header>
 
-      {/* Live Reactions Floating Bar */}
       {isValid && <LiveReactionBar />}
 
-      {/* Main Content */}
       <main className="container py-8 max-w-lg mx-auto">
-        {!isValid ? (
+        {sessionInvalidated ? (
+          <Card className="glass-card border-accent/30">
+            <CardHeader className="text-center">
+              <div className="w-20 h-20 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-4">
+                <RefreshCw className="w-10 h-10 text-accent" />
+              </div>
+              <CardTitle className="text-2xl">Accesso terminato</CardTitle>
+              <CardDescription className="text-base">
+                {getInvalidationMessage()}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button onClick={handleRetry} className="w-full h-12 text-lg gap-2">
+                <RefreshCw className="w-5 h-5" />
+                Reinserisci il PIN
+              </Button>
+              <Link to="/">
+                <Button variant="outline" className="w-full">
+                  Torna al sito
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        ) : !isValid ? (
           <Card className="glass-card border-primary/30">
             <CardHeader className="text-center">
               <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center mx-auto mb-4">
@@ -347,7 +640,6 @@ const EventoLive: React.FC = () => {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* PIN Input */}
               <div className="space-y-2">
                 <Input
                   type="text"
@@ -361,7 +653,7 @@ const EventoLive: React.FC = () => {
                 />
               </div>
 
-              <Button 
+              <Button
                 onClick={handleValidatePin}
                 disabled={!pin.trim() || isValidating}
                 className="w-full h-12 text-lg gap-2"
@@ -380,7 +672,6 @@ const EventoLive: React.FC = () => {
                 Non hai il PIN? Chiedilo al performer o al locale.
               </p>
 
-              {/* Back to site link */}
               <div className="pt-4 border-t border-border">
                 <Link to="/" className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center justify-center gap-2">
                   <Home className="w-4 h-4" />
@@ -403,13 +694,12 @@ const EventoLive: React.FC = () => {
               </CardContent>
             </Card>
 
-            {/* Format Cards */}
             <div className="grid gap-4">
               {validatedFormats.includes('openmic') && (
                 <Link to="/app/openmic">
                   <Card className={cn(
-                    "glass-card border-primary/30 hover:border-primary/60 transition-all cursor-pointer group",
-                    "hover:bg-primary/5"
+                    'glass-card border-primary/30 hover:border-primary/60 transition-all cursor-pointer group',
+                    'hover:bg-primary/5'
                   )}>
                     <CardContent className="pt-6 flex items-center gap-4">
                       <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-primary/50 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -429,8 +719,8 @@ const EventoLive: React.FC = () => {
               {validatedFormats.includes('dediche') && (
                 <Link to="/app/dediche">
                   <Card className={cn(
-                    "glass-card border-secondary/30 hover:border-secondary/60 transition-all cursor-pointer group",
-                    "hover:bg-secondary/5"
+                    'glass-card border-secondary/30 hover:border-secondary/60 transition-all cursor-pointer group',
+                    'hover:bg-secondary/5'
                   )}>
                     <CardContent className="pt-6 flex items-center gap-4">
                       <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-secondary to-secondary/50 flex items-center justify-center group-hover:scale-110 transition-transform">
