@@ -309,6 +309,8 @@ serve(async (req: Request): Promise<Response> => {
           );
         }
         
+        // Reset counters in both tables
+        await resetEventCounters(supabase);
         console.log("Open Mic reset completed");
         break;
       }
