@@ -1,6 +1,18 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+/** Reset openmic/dediche counters in both event tables */
+async function resetEventCounters(supabase: any) {
+  const counterReset = { openmic_current_count: 0, dediche_current_count: 0 };
+  const [freeRes, eventRes] = await Promise.all([
+    supabase.from("free_mode_settings").update(counterReset).gte("id", "00000000-0000-0000-0000-000000000000"),
+    supabase.from("event_booking_rules").update(counterReset).gte("id", "00000000-0000-0000-0000-000000000000"),
+  ]);
+  if (freeRes.error) console.error("Error resetting free_mode counters:", freeRes.error);
+  if (eventRes.error) console.error("Error resetting event counters:", eventRes.error);
+  console.log("[resetEventCounters] Counters reset to 0");
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
