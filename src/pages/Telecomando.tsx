@@ -5,7 +5,7 @@ import { useHybridBroadcast } from "@/hooks/useHybridBroadcast";
 import { useScrollPositionPublisher } from "@/hooks/useScrollPositionPublisher";
 import { supabase } from "@/integrations/supabase/client";
 import { getCachedSongById } from "@/lib/songsCatalogCache";
-import { safeGetItem } from "@/lib/safeStorage";
+import { getPreferredLocalServerHost } from "@/lib/localServerHost";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -268,7 +268,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
     }
     const fetchSong = async () => {
       // Try Cloud and LAN in parallel
-      const lip = safeGetItem('local', 'broadcast_local_ip') || '';
+      const lip = getPreferredLocalServerHost();
 
       const cloudPromise = (async () => {
         try {
@@ -338,7 +338,7 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
     }
     const fetchFile = async () => {
       // Try Cloud and LAN in parallel
-      const lip = safeGetItem('local', 'broadcast_local_ip') || '';
+      const lip = getPreferredLocalServerHost();
 
       const cloudPromise = (async () => {
         try {

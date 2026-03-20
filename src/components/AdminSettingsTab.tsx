@@ -33,6 +33,7 @@ import { useConnectionMode, useLocalBroadcast } from '@/hooks/useLocalBroadcast'
 import { usePedalSettings, PedalPage, PedalMode } from '@/hooks/usePedalControl';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
+import { getCurrentLocalServerHost } from '@/lib/localServerHost';
 
 export const AdminSettingsTab: React.FC = () => {
   const { toast } = useToast();
@@ -299,9 +300,8 @@ function ConnectionModeSection() {
     serverUrl,
     onStateUpdate: () => {},
   });
-  const currentHost = window.location.hostname;
-  const currentHostIsLocal = /^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.|localhost|127\.|::1$)/.test(currentHost);
-  const effectiveLocalIP = currentHostIsLocal ? currentHost : localIP;
+  const detectedLocalHost = getCurrentLocalServerHost();
+  const effectiveLocalIP = detectedLocalHost || localIP;
   const [ipInput, setIpInput] = useState(effectiveLocalIP);
 
   useEffect(() => {
@@ -309,10 +309,10 @@ function ConnectionModeSection() {
   }, [effectiveLocalIP]);
 
   useEffect(() => {
-    if (currentHostIsLocal && localIP !== currentHost) {
-      setLocalIP(currentHost);
+    if (detectedLocalHost && localIP !== detectedLocalHost) {
+      setLocalIP(detectedLocalHost);
     }
-  }, [currentHost, currentHostIsLocal, localIP, setLocalIP]);
+  }, [detectedLocalHost, localIP, setLocalIP]);
 
   const handleSaveIP = () => {
     const cleaned = ipInput.trim().replace(/^https?:\/\//, '').replace(/:\d+$/, '');
@@ -382,9 +382,9 @@ function ConnectionModeSection() {
               <p className="text-xs text-muted-foreground mt-1">
                 L'IP viene mostrato all'avvio del server locale
               </p>
-              {currentHostIsLocal && currentHost !== localIP && (
+              {detectedLocalHost && detectedLocalHost !== localIP && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  IP corretto rilevato automaticamente da questa pagina: <strong>{currentHost}</strong>
+                  IP corretto rilevato automaticamente da questa pagina: <strong>{detectedLocalHost}</strong>
                 </p>
               )}
             </div>

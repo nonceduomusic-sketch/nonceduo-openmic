@@ -4,6 +4,7 @@
  */
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { safeGetItem, safeSetItem } from '@/lib/safeStorage';
+import { getCurrentLocalServerHost, getPreferredLocalServerHost } from '@/lib/localServerHost';
 
 export type ConnectionMode = 'cloud' | 'local';
 
@@ -30,23 +31,8 @@ const RECONNECT_INTERVAL = 1500;
  * When detected, auto-switch to local mode using the server's hostname.
  */
 function detectLocalServer(): { isLocal: boolean; detectedIP: string } {
-  try {
-    const proto = window.location.protocol;
-    const host = window.location.hostname;
-    // Running on HTTP (not HTTPS) and on localhost or a LAN IP → local server
-    if (proto === 'http:') {
-      if (host === 'localhost' || host === '127.0.0.1') {
-        return { isLocal: true, detectedIP: '127.0.0.1' };
-      }
-      // LAN IPs: 192.168.x.x, 10.x.x.x, 172.16-31.x.x
-      if (/^(192\.168\.|10\.|172\.(1[6-9]|2\d|3[01])\.)/.test(host)) {
-        return { isLocal: true, detectedIP: host };
-      }
-    }
-  } catch {
-    // ignore
-  }
-  return { isLocal: false, detectedIP: '' };
+  const detectedIP = getCurrentLocalServerHost() || '';
+  return { isLocal: !!detectedIP, detectedIP };
 }
 
 export function useConnectionMode() {
@@ -58,14 +44,15 @@ export function useConnectionMode() {
     return (safeGetItem('local', STORAGE_KEY_MODE) as ConnectionMode) || 'cloud';
   });
   const [localIP, setLocalIPState] = useState(() => {
-    // Auto-detect: use the server's hostname as the local IP
-    if (localServer.isLocal && localServer.detectedIP) {
-      // CRITICAL: persist to localStorage so fetch effects (outside React state) can read it
-      safeSetItem('local', STORAGE_KEY_IP, localServer.detectedIP);
-      return localServer.detectedIP;
-    }
-    return safeGetItem('local', STORAGE_KEY_IP) || '192.168.1.100';
+    return getPreferredLocalServerHost('192.168.1.100');
   });
+
+  useEffect(() => {
+    if (localServer.isLocal && localServer.detectedIP && localIP !== localServer.detectedIP) {
+      setLocalIPState(localServer.detectedIP);
+      safeSetItem('local', STORAGE_KEY_IP, localServer.detectedIP);
+    }
+  }, [localIP, localServer.detectedIP, localServer.isLocal]);
 
   const setMode = useCallback((m: ConnectionMode) => {
     setModeState(m);

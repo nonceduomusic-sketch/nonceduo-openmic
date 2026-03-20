@@ -4,7 +4,7 @@ import { useHybridBroadcast } from '@/hooks/useHybridBroadcast';
 import { useScreenShareViewer } from '@/hooks/useScreenShare';
 import { supabase } from '@/integrations/supabase/client';
 import { getCachedSongById } from '@/lib/songsCatalogCache';
-import { safeGetItem } from '@/lib/safeStorage';
+import { getPreferredLocalServerHost } from '@/lib/localServerHost';
 import { ConnectionSettings } from '@/components/songbook/ConnectionSettings';
 import { Maximize, Mic, Guitar, Mic2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -269,7 +269,7 @@ export default function Trasmetti() {
       }
 
       // Try Cloud and LAN in parallel — use whichever responds first
-      const localIP = safeGetItem('local', 'broadcast_local_ip') || '';
+      const localIP = getPreferredLocalServerHost();
 
       const cloudPromise = (async (): Promise<Song | null> => {
         try {
@@ -344,7 +344,7 @@ export default function Trasmetti() {
       }
 
       // Try Cloud and LAN in parallel
-      const localIP = safeGetItem('local', 'broadcast_local_ip') || '';
+      const localIP = getPreferredLocalServerHost();
 
       const cloudPromise = (async (): Promise<SongbookFile | null> => {
         try {
