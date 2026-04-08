@@ -266,7 +266,7 @@ export const FreeModeFullPanel: React.FC = () => {
       maxSongs: settings?.openmic_max_songs ?? undefined,
       maxDediche: settings?.dediche_max_total ?? undefined,
       durationMinutes: settings?.duration_minutes ?? undefined,
-      pinCode: (settings?.pin_enabled && settings?.pin_code) ? settings.pin_code : undefined,
+      // PIN sempre OFF all'avvio — l'admin lo attiva manualmente
       closureMode: settings?.closure_mode || 'overlay',
       closureTitle: settings?.closure_title || 'Prenotazioni chiuse',
       closureMessage: settings?.closure_message || 'Grazie per aver partecipato!',
