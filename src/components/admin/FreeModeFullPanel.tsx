@@ -266,7 +266,8 @@ export const FreeModeFullPanel: React.FC = () => {
       maxSongs: settings?.openmic_max_songs ?? undefined,
       maxDediche: settings?.dediche_max_total ?? undefined,
       durationMinutes: settings?.duration_minutes ?? undefined,
-      // PIN sempre OFF all'avvio — l'admin lo attiva manualmente
+      // Passa il PIN pre-configurato se attivato dall'admin prima dell'avvio
+      pinCode: (settings?.pin_enabled && settings?.pin_code) ? settings.pin_code : undefined,
       closureMode: settings?.closure_mode || 'overlay',
       closureTitle: settings?.closure_title || 'Prenotazioni chiuse',
       closureMessage: settings?.closure_message || 'Grazie per aver partecipato!',
@@ -476,7 +477,11 @@ export const FreeModeFullPanel: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="pin" className="mt-4 space-y-4">
-              <PinProtectionCard title="Protezione PIN" />
+              <EventPinConfig
+                rules={rules}
+                onUpdate={handleUpdate}
+                generatePin={generatePin}
+              />
             </TabsContent>
 
             {/* QR CODE TAB - NUOVO */}
