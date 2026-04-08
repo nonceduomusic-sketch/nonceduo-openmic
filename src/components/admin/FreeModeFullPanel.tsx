@@ -24,7 +24,6 @@ import { EventTimingConfig } from './EventTimingConfig';
 import { UserLimitsConfig } from './UserLimitsConfig';
 import { EventCountdownBanner } from '@/components/effects/EventCountdownBanner';
 import { PinProtectionCard } from './PinProtectionCard';
-import { ConnectedUsersStatCard } from './ConnectedUsersStatCard';
 import { EventQRCodesManager } from './EventQRCodesManager';
 
 /**
@@ -539,7 +538,7 @@ export const FreeModeFullPanel: React.FC = () => {
       
       <CardContent className="space-y-4">
         {/* Stats */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <div className="bg-primary/10 rounded-lg p-3 text-center">
             <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-xs mb-1">
               <Music className="w-3.5 h-3.5" />
@@ -568,8 +567,6 @@ export const FreeModeFullPanel: React.FC = () => {
               )}
             </div>
           </div>
-          {/* Connected Users */}
-          <ConnectedUsersStatCard />
         </div>
 
         {/* Countdown fine evento con banner animato - sempre visibile per admin (null = sempre) */}
