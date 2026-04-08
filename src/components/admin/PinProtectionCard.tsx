@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -10,7 +10,6 @@ import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -32,10 +31,10 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { 
-  Copy, 
-  RefreshCw, 
-  QrCode, 
+import {
+  Copy,
+  RefreshCw,
+  QrCode,
   Shield,
   CheckCircle2,
   Mic2,
@@ -62,18 +61,52 @@ import { adminAuditLog } from '@/lib/adminAudit';
 import { syncPinDisplayToLAN } from '@/lib/autoSyncLAN';
 import QRCode from 'qrcode';
 
-interface PinProtectionCardProps {
-  title?: string;
+interface FreeModePinConfig {
+  id: string;
+  isActive: boolean;
+  pinEnabled: boolean;
+  pinCode: string | null;
+  showPinOnGate: boolean;
 }
 
-export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({ 
-  title = 'Protezione PIN'
+interface PinProtectionCardProps {
+  title?: string;
+  freeModeConfig?: FreeModePinConfig;
+  onUpdateFreeModeConfig?: (updates: {
+    pin_enabled?: boolean;
+    pin_code?: string | null;
+    show_pin_on_gate?: boolean;
+  }) => Promise<boolean>;
+}
+
+interface DraftPinSession {
+  id: string;
+  pin_code: string;
+  protected_formats: FormatType[];
+  event_link_code: string | null;
+}
+
+const DEFAULT_FORMATS: FormatType[] = ['openmic', 'dediche'];
+
+const generateDraftPin = (): string => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let pin = '';
+  for (let i = 0; i < 6; i++) {
+    pin += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return pin;
+};
+
+export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
+  title = 'Protezione PIN',
+  freeModeConfig,
+  onUpdateFreeModeConfig,
 }) => {
   const { staffRole } = useAdmin();
 
-  const { 
-    session, 
-    loading, 
+  const {
+    session,
+    loading,
     isOwner,
     isActive,
     isPinActive,
@@ -86,11 +119,14 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
     regenerateLinkCode,
   } = useUnifiedLiveSession();
 
-  // Reset PIN sessions is allowed for Owner + Admin (matches backend policies)
   const canDisconnectAll = isOwner || staffRole === 'owner' || staffRole === 'admin';
 
   const { resetAllSessions, resetting } = useAdminPinSessionReset();
-  const { count: activeSessionsCount, loading: loadingSessionCount, refresh: refreshSessionCount } = useConnectedUsersCount(session?.id || null);
+  const {
+    count: activeSessionsCount,
+    loading: loadingSessionCount,
+    refresh: refreshSessionCount,
+  } = useConnectedUsersCount(session?.id || null);
 
   const [showQR, setShowQR] = useState(false);
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string | null>(null);
@@ -100,41 +136,77 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
   const [isTogglingPin, setIsTogglingPin] = useState(false);
   const [showPinOnGate, setShowPinOnGate] = useState(false);
   const [showUsersDialog, setShowUsersDialog] = useState(false);
+  const [draftSession, setDraftSession] = useState<DraftPinSession | null>(null);
+  const [draftLoading, setDraftLoading] = useState(Boolean(freeModeConfig));
 
-  // Load showPinOnGate from event_booking_rules or free_mode_settings
+  const eventIsActive = freeModeConfig?.isActive ?? isActive;
+  const displayIsPinActive = freeModeConfig?.pinEnabled ?? isPinActive;
+
+  const fetchDraftSession = useCallback(async () => {
+    if (!freeModeConfig) {
+      setDraftSession(null);
+      setDraftLoading(false);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('live_sessions')
+        .select('id, pin_code, protected_formats, event_link_code')
+        .eq('section', 'global')
+        .eq('is_active', false)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('[PinProtectionCard] Error loading draft session:', error);
+        setDraftSession(null);
+        return;
+      }
+
+      if (!data) {
+        setDraftSession(null);
+        return;
+      }
+
+      setDraftSession({
+        id: data.id,
+        pin_code: String(data.pin_code || '').toUpperCase().trim(),
+        protected_formats: ((data.protected_formats as FormatType[] | null) ?? []).filter(Boolean) as FormatType[],
+        event_link_code: data.event_link_code ?? null,
+      });
+    } catch (error) {
+      console.error('[PinProtectionCard] Error loading draft session:', error);
+      setDraftSession(null);
+    } finally {
+      setDraftLoading(false);
+    }
+  }, [freeModeConfig]);
+
   useEffect(() => {
+    setDraftLoading(Boolean(freeModeConfig));
+    void fetchDraftSession();
+  }, [fetchDraftSession, session?.id, isPinActive]);
+
+  useEffect(() => {
+    if (freeModeConfig) {
+      setShowPinOnGate(Boolean(freeModeConfig.showPinOnGate));
+      return;
+    }
+
     const loadShowPinSetting = async () => {
-      // Try live event first
       const { data: liveData } = await supabase
         .from('event_booking_rules')
         .select('show_pin_on_gate')
         .eq('event_status', 'live')
         .maybeSingle();
-      
-      if (liveData) {
-        setShowPinOnGate((liveData as any).show_pin_on_gate ?? false);
-        return;
-      }
 
-      // Try free mode
-      const { data: freeData } = await supabase
-        .from('free_mode_settings')
-        .select('show_pin_on_gate')
-        .eq('is_active', true)
-        .maybeSingle();
-      
-      if (freeData) {
-        setShowPinOnGate((freeData as any).show_pin_on_gate ?? false);
-      }
+      setShowPinOnGate((liveData as any)?.show_pin_on_gate ?? false);
     };
-    
-    if (isPinActive) {
-      loadShowPinSetting();
-      return;
-    }
 
-    setShowPinOnGate(false);
-  }, [isPinActive]);
+    void loadShowPinSetting();
+  }, [freeModeConfig?.id, freeModeConfig?.showPinOnGate]);
 
   useEffect(() => {
     void syncPinDisplayToLAN({
@@ -144,100 +216,141 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
     });
   }, [session?.pin_code, isPinActive, showPinOnGate]);
 
-  const handleToggleShowPin = async (checked: boolean) => {
-    setShowPinOnGate(checked);
-    
-    // Update in event_booking_rules (live event)
-    const { data: liveData } = await supabase
-      .from('event_booking_rules')
-      .select('id')
-      .eq('event_status', 'live')
-      .maybeSingle();
-    
-    if (liveData) {
-      await supabase
-        .from('event_booking_rules')
-        .update({ show_pin_on_gate: checked } as any)
-        .eq('id', liveData.id);
-    }
+  const persistFreeModeConfig = useCallback(
+    async (updates: {
+      pin_enabled?: boolean;
+      pin_code?: string | null;
+      show_pin_on_gate?: boolean;
+    }) => {
+      if (!freeModeConfig || !onUpdateFreeModeConfig) {
+        return true;
+      }
 
-    // Update in free_mode_settings
-    const { data: freeData } = await supabase
-      .from('free_mode_settings')
-      .select('id')
-      .eq('is_active', true)
-      .maybeSingle();
-    
-    if (freeData) {
-      await supabase
-        .from('free_mode_settings')
-        .update({ show_pin_on_gate: checked } as any)
-        .eq('id', freeData.id);
-    }
+      return onUpdateFreeModeConfig(updates);
+    },
+    [freeModeConfig, onUpdateFreeModeConfig]
+  );
 
-    toast.success(checked ? 'PIN visibile nella pagina di accesso' : 'PIN nascosto dalla pagina di accesso');
-  };
+  const syncPublicPinState = useCallback(
+    async (enabled: boolean, pinCode: string | null) => {
+      if (freeModeConfig) {
+        await persistFreeModeConfig({ pin_enabled: enabled, pin_code: pinCode });
+        return;
+      }
 
-  const syncPublicPinState = useCallback(async (enabled: boolean, pinCode: string | null) => {
-    try {
-      const [liveResult, freeResult] = await Promise.all([
-        supabase
+      try {
+        const { data: liveData } = await supabase
           .from('event_booking_rules')
           .select('id')
           .eq('event_status', 'live')
-          .maybeSingle(),
-        supabase
-          .from('free_mode_settings')
-          .select('id')
-          .eq('is_active', true)
-          .maybeSingle(),
-      ]);
+          .maybeSingle();
 
-      if (liveResult.error) {
-        console.error('[PinProtectionCard] Error reading live event for PIN sync:', liveResult.error);
-      }
-
-      if (freeResult.error) {
-        console.error('[PinProtectionCard] Error reading free mode for PIN sync:', freeResult.error);
-      }
-
-      const updateQueries = [];
-
-      if (liveResult.data?.id) {
-        updateQueries.push(
-          supabase
+        if (liveData?.id) {
+          await supabase
             .from('event_booking_rules')
             .update({
               pin_required: enabled,
               pin_code: pinCode,
             } as any)
-            .eq('id', liveResult.data.id)
-        );
+            .eq('id', liveData.id);
+        }
+      } catch (error) {
+        console.error('[PinProtectionCard] Error syncing public PIN state:', error);
       }
+    },
+    [freeModeConfig, persistFreeModeConfig]
+  );
 
-      if (freeResult.data?.id) {
-        updateQueries.push(
-          supabase
-            .from('free_mode_settings')
+  const upsertDraftSession = useCallback(
+    async (updates: Partial<DraftPinSession>): Promise<DraftPinSession | null> => {
+      if (!freeModeConfig) return null;
+
+      const pinCode = String(
+        updates.pin_code ?? draftSession?.pin_code ?? freeModeConfig.pinCode ?? generateDraftPin()
+      )
+        .toUpperCase()
+        .trim();
+
+      const protectedFormats =
+        (updates.protected_formats ?? draftSession?.protected_formats ?? DEFAULT_FORMATS).filter(Boolean) as FormatType[];
+
+      const eventLinkCode = updates.event_link_code ?? draftSession?.event_link_code ?? null;
+
+      try {
+        if (draftSession?.id) {
+          const { data, error } = await supabase
+            .from('live_sessions')
             .update({
-              pin_enabled: enabled,
               pin_code: pinCode,
+              protected_formats: protectedFormats,
+              event_link_code: eventLinkCode,
+              custom_pin: pinCode,
+              is_active: false,
             } as any)
-            .eq('id', freeResult.data.id)
-        );
-      }
+            .eq('id', draftSession.id)
+            .select('id, pin_code, protected_formats, event_link_code')
+            .single();
 
-      if (updateQueries.length > 0) {
-        await Promise.all(updateQueries);
-      }
-    } catch (error) {
-      console.error('[PinProtectionCard] Error syncing public PIN state:', error);
-    }
-  }, []);
+          if (error) throw error;
 
-  // Generate QR code when dialog opens
-  const eventUrl = getEventUrl();
-  
+          const nextDraft = {
+            id: data.id,
+            pin_code: String(data.pin_code || '').toUpperCase().trim(),
+            protected_formats: ((data.protected_formats as FormatType[] | null) ?? []).filter(Boolean) as FormatType[],
+            event_link_code: data.event_link_code ?? null,
+          };
+
+          setDraftSession(nextDraft);
+          return nextDraft;
+        }
+
+        const { data, error } = await supabase
+          .from('live_sessions')
+          .insert({
+            section: 'global',
+            pin_code: pinCode,
+            protected_formats: protectedFormats,
+            event_link_code: eventLinkCode,
+            custom_pin: pinCode,
+            is_active: false,
+          })
+          .select('id, pin_code, protected_formats, event_link_code')
+          .single();
+
+        if (error) throw error;
+
+        const nextDraft = {
+          id: data.id,
+          pin_code: String(data.pin_code || '').toUpperCase().trim(),
+          protected_formats: ((data.protected_formats as FormatType[] | null) ?? []).filter(Boolean) as FormatType[],
+          event_link_code: data.event_link_code ?? null,
+        };
+
+        setDraftSession(nextDraft);
+        return nextDraft;
+      } catch (error) {
+        console.error('[PinProtectionCard] Error saving draft session:', error);
+        toast.error('Errore nel salvataggio della configurazione PIN');
+        return null;
+      }
+    },
+    [draftSession, freeModeConfig]
+  );
+
+  const displayPinCode = String(
+    session?.pin_code ?? draftSession?.pin_code ?? freeModeConfig?.pinCode ?? ''
+  )
+    .toUpperCase()
+    .trim();
+
+  const currentFormats = (session?.protected_formats?.length
+    ? session.protected_formats
+    : draftSession?.protected_formats?.length
+      ? draftSession.protected_formats
+      : DEFAULT_FORMATS) as FormatType[];
+
+  const eventUrl = session ? getEventUrl() : null;
+
   useEffect(() => {
     if (showQR && eventUrl) {
       QRCode.toDataURL(eventUrl, {
@@ -245,56 +358,94 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
         margin: 2,
         color: {
           dark: '#1a1a3a',
-          light: '#ffffff'
-        }
-      }).then(url => {
-        setQrCodeDataUrl(url);
-      }).catch(err => {
-        console.error('Error generating QR code:', err);
-      });
+          light: '#ffffff',
+        },
+      })
+        .then((url) => {
+          setQrCodeDataUrl(url);
+        })
+        .catch((err) => {
+          console.error('Error generating QR code:', err);
+        });
     }
   }, [showQR, eventUrl]);
 
-  // Session count is now managed by useConnectedUsersCount (realtime + polling)
-
-  // Handle reset all sessions
   const handleResetSessions = async () => {
     if (!session) return;
-    
+
     if (activeSessionsCount === 0) {
       toast.info('Nessuna sessione attiva da invalidare.');
       return;
     }
-    
+
     const count = await resetAllSessions(session.id, 'admin_reset');
-    
+
     await adminAuditLog({
       action: 'live_session_reset_all',
       section: 'global',
       entity: 'pin_sessions',
       entity_id: session.id,
-      metadata: { invalidated_count: count }
+      metadata: { invalidated_count: count },
     });
-    
+
     toast.success(`${count} sessioni invalidate. Tutti gli utenti devono reinserire il PIN.`);
-    
-    // Refresh count after a short delay to confirm
     setTimeout(refreshSessionCount, 1000);
   };
 
+  const handleToggleShowPin = async (checked: boolean) => {
+    setShowPinOnGate(checked);
+
+    if (freeModeConfig) {
+      const success = await persistFreeModeConfig({ show_pin_on_gate: checked });
+      if (!success) {
+        setShowPinOnGate(!checked);
+        toast.error('Impossibile aggiornare la visibilità del PIN');
+        return;
+      }
+
+      toast.success(checked ? 'PIN visibile nella pagina di accesso' : 'PIN nascosto dalla pagina di accesso');
+      return;
+    }
+
+    const { data: liveData } = await supabase
+      .from('event_booking_rules')
+      .select('id')
+      .eq('event_status', 'live')
+      .maybeSingle();
+
+    if (liveData) {
+      await supabase
+        .from('event_booking_rules')
+        .update({ show_pin_on_gate: checked } as any)
+        .eq('id', liveData.id);
+    }
+
+    toast.success(checked ? 'PIN visibile nella pagina di accesso' : 'PIN nascosto dalla pagina di accesso');
+  };
+
   const handleFormatToggle = async (format: FormatType, checked: boolean) => {
-    if (!isPinActive) return;
-    
-    const newFormats = checked 
-      ? [...(session?.protected_formats || []), format]
-      : (session?.protected_formats || []).filter(f => f !== format);
-    
+    const newFormats = checked
+      ? Array.from(new Set([...currentFormats, format]))
+      : currentFormats.filter((f) => f !== format);
+
     if (newFormats.length === 0) {
       toast.error('Seleziona almeno un format');
       return;
     }
-    
-    await updateFormats(newFormats as FormatType[]);
+
+    if (session && displayIsPinActive) {
+      await updateFormats(newFormats as FormatType[]);
+      return;
+    }
+
+    const draft = await upsertDraftSession({
+      pin_code: displayPinCode || generateDraftPin(),
+      protected_formats: newFormats as FormatType[],
+    });
+
+    if (draft) {
+      toast.success('Format aggiornati');
+    }
   };
 
   const copyToClipboard = (text: string, type: 'pin' | 'link') => {
@@ -305,50 +456,109 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
   };
 
   const handleEditPin = () => {
-    if (session) {
-      setEditPinValue(session.pin_code);
-      setIsEditingPin(true);
-    }
+    setEditPinValue(displayPinCode || generateDraftPin());
+    setIsEditingPin(true);
   };
 
   const handleSavePin = async () => {
-    const success = await updatePin(editPinValue);
-    if (success) {
-      await syncPublicPinState(true, editPinValue.toUpperCase().trim());
-      setIsEditingPin(false);
+    const cleanPin = editPinValue.toUpperCase().trim();
+    if (cleanPin.length < 4 || cleanPin.length > 8) {
+      toast.error('Il PIN deve essere tra 4 e 8 caratteri');
+      return;
     }
+
+    if (session) {
+      const success = await updatePin(cleanPin);
+      if (success) {
+        await syncPublicPinState(displayIsPinActive, cleanPin);
+        setIsEditingPin(false);
+      }
+      return;
+    }
+
+    const draft = await upsertDraftSession({
+      pin_code: cleanPin,
+      protected_formats: currentFormats,
+    });
+
+    if (!draft) return;
+
+    await syncPublicPinState(displayIsPinActive, cleanPin);
+    setIsEditingPin(false);
+    toast.success(`PIN aggiornato: ${cleanPin}`);
   };
 
   const handleRegeneratePin = async () => {
-    const newPin = await regeneratePin();
-    if (newPin) {
-      await syncPublicPinState(true, newPin);
+    if (session) {
+      const newPin = await regeneratePin();
+      if (newPin) {
+        await syncPublicPinState(displayIsPinActive, newPin);
+      }
+      return;
     }
+
+    const newPin = generateDraftPin();
+    const draft = await upsertDraftSession({
+      pin_code: newPin,
+      protected_formats: currentFormats,
+    });
+
+    if (!draft) return;
+
+    await syncPublicPinState(displayIsPinActive, newPin);
+    toast.success(`Nuovo PIN generato: ${newPin}`);
   };
 
   const handleTogglePin = async (enabled: boolean) => {
-    if (!session) return;
-
     setIsTogglingPin(true);
-    try {
-      const currentPin = session.pin_code ?? null;
-      const success = enabled
-        ? await restorePin(['openmic', 'dediche'])
-        : await removePin();
 
-      if (!success) {
+    try {
+      const currentPin = displayPinCode || generateDraftPin();
+
+      if (session) {
+        const success = enabled
+          ? await restorePin(currentFormats)
+          : await removePin();
+
+        if (!success) return;
+
+        await syncPublicPinState(enabled, currentPin);
         return;
       }
 
+      if (enabled) {
+        if (eventIsActive) {
+          const { error } = await supabase
+            .from('live_sessions')
+            .insert({
+              section: 'global',
+              pin_code: currentPin,
+              protected_formats: currentFormats,
+              is_active: true,
+            });
+
+          if (error) throw error;
+        } else {
+          const draft = await upsertDraftSession({
+            pin_code: currentPin,
+            protected_formats: currentFormats,
+          });
+
+          if (!draft) return;
+        }
+      }
+
       await syncPublicPinState(enabled, currentPin);
+      toast.success(enabled ? 'Protezione PIN riattivata' : 'Protezione PIN rimossa – accesso diretto attivo');
+    } catch (error) {
+      console.error('[PinProtectionCard] Error toggling PIN:', error);
+      toast.error('Errore nell’aggiornamento della protezione PIN');
     } finally {
       setIsTogglingPin(false);
     }
   };
 
-  // eventUrl is already defined at the top of the component
-
-  if (loading) {
+  if (loading || draftLoading) {
     return (
       <Card className="glass-card animate-pulse">
         <CardContent className="p-4 h-24" />
@@ -356,53 +566,45 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
     );
   }
 
-  // Show full card even when event is not active (for pre-configuration)
-
-  const currentFormats = session?.protected_formats || [];
+  const showFullContent = Boolean(freeModeConfig) || Boolean(session);
 
   return (
-    <Card className={cn(
-      "glass-card transition-all duration-300",
-      isPinActive ? "border-secondary/50 bg-secondary/5" : "border-border/50"
-    )}>
+    <Card
+      className={cn(
+        'glass-card transition-all duration-300',
+        displayIsPinActive ? 'border-secondary/50 bg-secondary/5' : 'border-border/50'
+      )}
+    >
       <CardHeader className="pb-2 pt-4 px-4">
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {isPinActive ? (
+            {displayIsPinActive ? (
               <Lock className="w-5 h-5 md:w-4 md:h-4 text-secondary" />
             ) : (
               <Unlock className="w-5 h-5 md:w-4 md:h-4 text-muted-foreground" />
             )}
             <span className="font-semibold text-base md:text-sm">{title}</span>
-            {isPinActive && (
-              <Badge className="bg-secondary/20 text-secondary text-xs">
-                ATTIVO
-              </Badge>
+            {displayIsPinActive && (
+              <Badge className="bg-secondary/20 text-secondary text-xs">ATTIVO</Badge>
             )}
           </div>
-          
+
           {isOwner && (
             <Switch
-              checked={isPinActive}
+              checked={displayIsPinActive}
               onCheckedChange={handleTogglePin}
               disabled={isTogglingPin}
-              className={cn(
-                "scale-125 md:scale-100",
-                "data-[state=checked]:bg-secondary"
-              )}
+              className={cn('scale-125 md:scale-100', 'data-[state=checked]:bg-secondary')}
             />
           )}
         </CardTitle>
         <CardDescription className="text-xs">
-          {isPinActive 
-            ? 'Gli utenti devono inserire il PIN per accedere' 
-            : 'Accesso libero senza codice'}
+          {displayIsPinActive ? 'Gli utenti devono inserire il PIN per accedere' : 'Accesso libero senza codice'}
         </CardDescription>
       </CardHeader>
-      
+
       <CardContent className="px-4 pb-4 pt-2 space-y-4">
-        {/* PIN Display - only when active */}
-        {isPinActive && session && (
+        {showFullContent && (
           <>
             <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/10 border border-secondary/20">
               <div className="flex items-center gap-3">
@@ -423,12 +625,12 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                     </div>
                   ) : (
                     <p className="text-2xl font-mono font-bold tracking-wider text-secondary">
-                      {session.pin_code}
+                      {displayPinCode || '----'}
                     </p>
                   )}
                 </div>
               </div>
-              
+
               <div className="flex gap-2">
                 <TooltipProvider>
                   <Tooltip>
@@ -436,8 +638,9 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                       <Button
                         size="icon"
                         variant="ghost"
-                        onClick={() => copyToClipboard(session.pin_code, 'pin')}
+                        onClick={() => displayPinCode && copyToClipboard(displayPinCode, 'pin')}
                         className="h-8 w-8"
+                        disabled={!displayPinCode}
                       >
                         {copied === 'pin' ? (
                           <CheckCircle2 className="w-4 h-4 text-secondary" />
@@ -482,114 +685,109 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                   </>
                 )}
 
-                <Dialog open={showQR} onOpenChange={setShowQR}>
-                  <DialogTrigger asChild>
-                    <Button size="icon" variant="ghost" className="h-8 w-8">
-                      <QrCode className="w-4 h-4" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2">
-                        <QrCode className="w-5 h-5 text-secondary" />
-                        QR Code Evento
-                      </DialogTitle>
-                    </DialogHeader>
-                    <div className="flex flex-col items-center gap-4 py-4">
-                      {!eventUrl ? (
-                        <div className="w-48 h-48 bg-muted rounded-xl flex flex-col items-center justify-center text-center p-4">
-                          <p className="text-sm text-muted-foreground">Link evento non disponibile</p>
-                          <p className="text-xs text-muted-foreground mt-2">Prova a rigenerare il link</p>
+                {session && (
+                  <Dialog open={showQR} onOpenChange={setShowQR}>
+                    <DialogTrigger asChild>
+                      <Button size="icon" variant="ghost" className="h-8 w-8">
+                        <QrCode className="w-4 h-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <QrCode className="w-5 h-5 text-secondary" />
+                          QR Code Evento
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="flex flex-col items-center gap-4 py-4">
+                        {!eventUrl ? (
+                          <div className="w-48 h-48 bg-muted rounded-xl flex flex-col items-center justify-center text-center p-4">
+                            <p className="text-sm text-muted-foreground">Link evento non disponibile</p>
+                            <p className="text-xs text-muted-foreground mt-2">Prova a rigenerare il link</p>
+                          </div>
+                        ) : qrCodeDataUrl ? (
+                          <div className="p-4 bg-white rounded-xl shadow-lg">
+                            <img src={qrCodeDataUrl} alt="QR Code Evento" className="w-48 h-48" />
+                          </div>
+                        ) : (
+                          <div className="w-48 h-48 bg-muted rounded-xl flex items-center justify-center">
+                            <div className="animate-spin w-8 h-8 border-2 border-secondary border-t-transparent rounded-full" />
+                          </div>
+                        )}
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground max-w-xs break-all">
+                            {eventUrl || 'Non disponibile'}
+                          </p>
                         </div>
-                      ) : qrCodeDataUrl ? (
-                        <div className="p-4 bg-white rounded-xl shadow-lg">
-                          <img 
-                            src={qrCodeDataUrl} 
-                            alt="QR Code Evento"
-                            className="w-48 h-48"
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-48 h-48 bg-muted rounded-xl flex items-center justify-center">
-                          <div className="animate-spin w-8 h-8 border-2 border-secondary border-t-transparent rounded-full" />
-                        </div>
-                      )}
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground max-w-xs break-all">
-                          {eventUrl || 'Non disponibile'}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          onClick={() => {
-                            if (eventUrl) {
-                              navigator.clipboard.writeText(eventUrl).then(() => {
-                                setCopied('link');
-                                setTimeout(() => setCopied(null), 2000);
-                                toast.success('Link copiato!');
-                              }).catch((err) => {
-                                console.error('Clipboard error:', err);
-                                toast.error('Errore nel copiare il link');
-                              });
-                            } else {
-                              toast.error('Link non disponibile');
-                            }
-                          }} 
-                          variant="outline" 
-                          className="gap-2"
-                          disabled={!eventUrl}
-                        >
-                          {copied === 'link' ? (
-                            <>
-                              <CheckCircle2 className="w-4 h-4 text-secondary" />
-                              Copiato!
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-4 h-4" />
-                              Copia Link
-                            </>
-                          )}
-                        </Button>
-                        <Button 
-                          onClick={() => {
-                            if (qrCodeDataUrl) {
-                              try {
-                                // Direct download using anchor tag
-                                const link = document.createElement('a');
-                                link.href = qrCodeDataUrl;
-                                link.download = 'qr-code-evento.png';
-                                link.style.display = 'none';
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                                toast.success('Download avviato!');
-                              } catch (error) {
-                                console.error('Download error:', error);
-                                // Fallback: open in new tab
-                                window.open(qrCodeDataUrl, '_blank');
-                                toast.info('Tieni premuto sull\'immagine per salvare');
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={() => {
+                              if (eventUrl) {
+                                navigator.clipboard.writeText(eventUrl).then(() => {
+                                  setCopied('link');
+                                  setTimeout(() => setCopied(null), 2000);
+                                  toast.success('Link copiato!');
+                                }).catch((err) => {
+                                  console.error('Clipboard error:', err);
+                                  toast.error('Errore nel copiare il link');
+                                });
+                              } else {
+                                toast.error('Link non disponibile');
                               }
-                            } else {
-                              toast.error('QR Code non disponibile');
-                            }
-                          }}
-                          variant="outline"
-                          className="gap-2"
-                          disabled={!qrCodeDataUrl}
-                        >
-                          <Download className="w-4 h-4" />
-                          Scarica
-                        </Button>
+                            }}
+                            variant="outline"
+                            className="gap-2"
+                            disabled={!eventUrl}
+                          >
+                            {copied === 'link' ? (
+                              <>
+                                <CheckCircle2 className="w-4 h-4 text-secondary" />
+                                Copiato!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-4 h-4" />
+                                Copia Link
+                              </>
+                            )}
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              if (qrCodeDataUrl) {
+                                try {
+                                  const link = document.createElement('a');
+                                  link.href = qrCodeDataUrl;
+                                  link.download = 'qr-code-evento.png';
+                                  link.style.display = 'none';
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                  toast.success('Download avviato!');
+                                } catch (error) {
+                                  console.error('Download error:', error);
+                                  window.open(qrCodeDataUrl, '_blank');
+                                  toast.info('Tieni premuto sull\'immagine per salvare');
+                                }
+                              } else {
+                                toast.error('QR Code non disponibile');
+                              }
+                            }}
+                            variant="outline"
+                            className="gap-2"
+                            disabled={!qrCodeDataUrl}
+                          >
+                            <Download className="w-4 h-4" />
+                            Scarica
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </div>
             </div>
 
-            {/* Event Link */}
-            {eventUrl && (
+            {session && eventUrl && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 text-sm">
                   <LinkIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
@@ -623,19 +821,18 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
               </div>
             )}
 
-            {/* Format Selection */}
             {isOwner && (
               <div className="space-y-3">
-                <Label className="text-xs text-muted-foreground">
-                  Format protetti da PIN:
-                </Label>
+                <Label className="text-xs text-muted-foreground">Format protetti da PIN:</Label>
                 <div className="flex flex-col gap-2 md:flex-row md:gap-4">
-                  <label className={cn(
-                    "flex items-center gap-3 cursor-pointer p-3 rounded-xl transition-all",
-                    "min-h-[48px]",
-                    "bg-muted/30 hover:bg-muted/50",
-                    currentFormats.includes('openmic') && "bg-primary/10 border border-primary/30"
-                  )}>
+                  <label
+                    className={cn(
+                      'flex items-center gap-3 cursor-pointer p-3 rounded-xl transition-all',
+                      'min-h-[48px]',
+                      'bg-muted/30 hover:bg-muted/50',
+                      currentFormats.includes('openmic') && 'bg-primary/10 border border-primary/30'
+                    )}
+                  >
                     <Checkbox
                       checked={currentFormats.includes('openmic')}
                       onCheckedChange={(checked) => handleFormatToggle('openmic', !!checked)}
@@ -644,12 +841,14 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                     <Mic2 className="w-4 h-4 text-primary" />
                     <span className="text-sm font-medium">Open Mic</span>
                   </label>
-                  <label className={cn(
-                    "flex items-center gap-3 cursor-pointer p-3 rounded-xl transition-all",
-                    "min-h-[48px]",
-                    "bg-muted/30 hover:bg-muted/50",
-                    currentFormats.includes('dediche') && "bg-secondary/10 border border-secondary/30"
-                  )}>
+                  <label
+                    className={cn(
+                      'flex items-center gap-3 cursor-pointer p-3 rounded-xl transition-all',
+                      'min-h-[48px]',
+                      'bg-muted/30 hover:bg-muted/50',
+                      currentFormats.includes('dediche') && 'bg-secondary/10 border border-secondary/30'
+                    )}
+                  >
                     <Checkbox
                       checked={currentFormats.includes('dediche')}
                       onCheckedChange={(checked) => handleFormatToggle('dediche', !!checked)}
@@ -662,7 +861,6 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
               </div>
             )}
 
-            {/* Show PIN on TV/Trasmetti toggle */}
             <Separator />
             <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
               <div className="flex items-center gap-3">
@@ -680,19 +878,17 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                 className="scale-110 md:scale-100"
               />
             </div>
-
           </>
         )}
 
-        {/* Active Sessions Count + Reset (show whenever there is an active session) */}
         {canDisconnectAll && session && (
           <>
             <div className="flex items-center justify-between p-2 rounded-lg bg-muted/20">
               <button
                 onClick={() => activeSessionsCount > 0 && setShowUsersDialog(true)}
                 className={cn(
-                  "flex items-center gap-2 text-sm text-muted-foreground transition-colors",
-                  activeSessionsCount > 0 && "hover:text-foreground cursor-pointer"
+                  'flex items-center gap-2 text-sm text-muted-foreground transition-colors',
+                  activeSessionsCount > 0 && 'hover:text-foreground cursor-pointer'
                 )}
               >
                 <Users className="w-4 h-4" />
@@ -732,7 +928,6 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
               </AlertDialog>
             </div>
 
-            {/* Connected Users Dialog */}
             <ConnectedUsersDialog
               open={showUsersDialog}
               onOpenChange={setShowUsersDialog}

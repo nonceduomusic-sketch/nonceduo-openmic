@@ -319,37 +319,35 @@ export const useFreeModeSettings = () => {
       updates.pin_enabled = true;
       updates.pin_code = config.pinCode;
     } else {
-      // PIN disabilitato di default all'avvio: sarà l'admin ad attivarlo manualmente
       updates.pin_enabled = false;
-      updates.pin_code = null;
+      updates.pin_code = settings?.pin_code ?? null;
     }
-
-    if (config?.bookingOpensAt) updates.booking_opens_at = config.bookingOpensAt;
-    if (config?.bookingClosesAt) updates.booking_closes_at = config.bookingClosesAt;
-    if (config?.closureMode) updates.closure_mode = config.closureMode;
-    if (config?.closureTitle) updates.closure_title = config.closureTitle;
-    if (config?.closureMessage) updates.closure_message = config.closureMessage;
-    if (config?.closureRedirectUrl) updates.closure_redirect_url = config.closureRedirectUrl;
-
-    const success = await updateSettings(updates);
-    if (success) {
-      // Se PIN abilitato, crea live_session per persistenza
+...
       if (updates.pin_enabled && updates.pin_code) {
-        const protectedFormats: string[] = [];
-        if (updates.openmic_enabled !== false && (config?.openmic !== false)) {
-          protectedFormats.push('openmic');
-        }
-        if (updates.dediche_enabled !== false && (config?.dediche !== false)) {
-          protectedFormats.push('dediche');
+        let protectedFormats = computeProtectedFormats({
+          openmic_enabled: updates.openmic_enabled ?? settings?.openmic_enabled ?? true,
+          dediche_enabled: updates.dediche_enabled ?? settings?.dediche_enabled ?? true,
+        });
+
+        const { data: draftSession } = await supabase
+          .from('live_sessions')
+          .select('protected_formats')
+          .eq('section', 'global')
+          .eq('is_active', false)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        const draftFormats = ((draftSession?.protected_formats as string[] | null) ?? []).filter(Boolean);
+        if (draftFormats.length > 0) {
+          protectedFormats = draftFormats;
         }
 
-        // Disattiva eventuali live_sessions esistenti
         await supabase
           .from('live_sessions')
           .update({ is_active: false, deactivated_at: new Date().toISOString() })
           .eq('is_active', true);
 
-        // Crea nuova live_session (section='global' per rispettare il constraint DB)
         await supabase
           .from('live_sessions')
           .insert({
