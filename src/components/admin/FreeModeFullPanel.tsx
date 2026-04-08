@@ -477,11 +477,8 @@ export const FreeModeFullPanel: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="pin" className="mt-4 space-y-4">
-              <EventPinConfig
-                rules={rules}
-                onUpdate={handleUpdate}
-                generatePin={generatePin}
-              />
+              <EventPinConfig rules={rules} onUpdate={handleUpdate} generatePin={generatePin} />
+              {settings?.is_active && <PinProtectionCard title="Gestione Sessioni PIN" />}
             </TabsContent>
 
             {/* QR CODE TAB - NUOVO */}
@@ -836,7 +833,8 @@ export const FreeModeFullPanel: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="pin" className="mt-3 space-y-4">
-            <PinProtectionCard title="Protezione PIN" />
+            <EventPinConfig rules={rules} onUpdate={handleUpdate} generatePin={generatePin} />
+            <PinProtectionCard title="Gestione Sessioni PIN" />
           </TabsContent>
 
           <TabsContent value="reopen" className="mt-3">
