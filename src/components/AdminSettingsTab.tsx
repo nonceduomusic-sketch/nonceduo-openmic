@@ -854,15 +854,13 @@ const LocalServerGuide: React.FC = () => {
           Passo {index + 1}: {label}
         </div>
       )}
-      <div className="flex items-center gap-1">
-        <div className="flex-1 text-foreground/80 truncate">{cmd}</div>
-        <button
-          onClick={() => copySingle(cmd)}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
-          title="Copia questo comando"
-        >
-          <Copy className="w-3 h-3 text-muted-foreground" />
-        </button>
+      <div 
+        className="flex items-center gap-1.5 -mx-2 px-2 py-0.5 rounded cursor-pointer group-hover:bg-primary/10 transition-colors"
+        onClick={() => copySingle(cmd)}
+        title="Clicca per copiare"
+      >
+        <Copy className="w-3.5 h-3.5 shrink-0 text-muted-foreground group-hover:text-primary transition-colors" />
+        <div className="flex-1 text-foreground/80 group-hover:text-foreground truncate transition-colors">{cmd}</div>
       </div>
     </div>
   );
