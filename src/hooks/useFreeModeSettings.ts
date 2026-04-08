@@ -318,9 +318,8 @@ export const useFreeModeSettings = () => {
     if (config?.pinCode) {
       updates.pin_enabled = true;
       updates.pin_code = config.pinCode;
-    } else if (config?.pinCode === undefined && settings?.pin_enabled) {
-      // Mantieni il PIN se già configurato
     } else {
+      // PIN disabilitato di default all'avvio: sarà l'admin ad attivarlo manualmente
       updates.pin_enabled = false;
       updates.pin_code = null;
     }
