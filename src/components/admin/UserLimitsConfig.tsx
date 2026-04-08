@@ -183,7 +183,7 @@ export const UserLimitsConfig: React.FC<Props> = ({ settings, onUpdate, entityId
         </div>
       </CardHeader>
 
-      {enabled && (
+      {(
         <CardContent className="space-y-6">
           {/* Identification Mode */}
           <div className="space-y-3 p-4 rounded-lg border border-border bg-muted/30">

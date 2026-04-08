@@ -178,7 +178,7 @@ export const EventPinConfig: React.FC<Props> = ({ rules, onUpdate, generatePin }
         </div>
       </CardHeader>
 
-      {pinRequired && (
+      {(
         <CardContent className="space-y-4">
           {/* PIN Display */}
           <div className="space-y-2">
