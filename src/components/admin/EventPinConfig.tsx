@@ -179,7 +179,7 @@ export const EventPinConfig: React.FC<Props> = ({ rules, onUpdate, generatePin }
       </CardHeader>
 
       {(
-        <CardContent className="space-y-4">
+        <CardContent className={cn("space-y-4", !pinRequired && "opacity-50 pointer-events-none")}>
           {/* PIN Display */}
           <div className="space-y-2">
             <Label>Codice PIN</Label>
