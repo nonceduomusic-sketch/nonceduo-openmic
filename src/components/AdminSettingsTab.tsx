@@ -789,8 +789,8 @@ const LocalServerGuide: React.FC = () => {
   const updateCommands = [
     { cmd: 'taskkill /F /IM node.exe 2>$null', label: 'Ferma server vecchio' },
     { cmd: 'cd C:\\Users\\iaco_\\nonceduo-openmic-nuovo', label: 'Vai nella cartella codice' },
-    { cmd: 'git restore package-lock.json', label: 'Ripristina file lock (evita conflitti)' },
-    { cmd: 'git pull', label: 'Scarica aggiornamenti' },
+    { cmd: 'git fetch origin', label: 'Scarica aggiornamenti dal server' },
+    { cmd: 'git reset --hard origin/main', label: 'Allinea codice all\'ultima versione' },
     { cmd: 'npm install', label: 'Installa dipendenze' },
     { cmd: 'npm run build', label: 'Compila l\'app' },
     { cmd: 'Remove-Item "..\\nonceduo\\local-server\\public\\assets" -Recurse -Force -ErrorAction SilentlyContinue', label: 'Rimuovi assets vecchi' },
