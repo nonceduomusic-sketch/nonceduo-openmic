@@ -404,7 +404,7 @@ export const useEventBookingRules = () => {
             await supabase
               .from('live_sessions')
               .insert({
-                section: 'event',
+                section: 'global',
                 pin_code: pinCode.toUpperCase().trim(),
                 protected_formats: protectedFormats,
                 is_active: true,

@@ -59,6 +59,7 @@ export const AdminEventTab: React.FC = () => {
     duplicateEvent,
     deleteEvent,
     resetCounters,
+    updatePin,
     generatePin,
   } = useEventBookingRules();
   const { toast } = useToast();
@@ -382,7 +383,15 @@ export const AdminEventTab: React.FC = () => {
           <EventTypeSelector rules={rules} onUpdate={updateRules} />
 
           {/* PIN Config */}
-          <PinProtectionCard title="Protezione PIN" />
+          <PinProtectionCard
+            title="Protezione PIN"
+            pinRequired={rules.pin_required}
+            pinCode={rules.pin_code}
+            onPinConfigChange={({ pinRequired, pinCode }) =>
+              updatePin(pinCode ?? null, pinRequired ?? rules.pin_required)
+            }
+            generatePin={generatePin}
+          />
         </TabsContent>
 
         <TabsContent value="window" className="mt-4">

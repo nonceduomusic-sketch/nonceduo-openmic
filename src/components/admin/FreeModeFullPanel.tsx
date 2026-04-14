@@ -476,7 +476,18 @@ export const FreeModeFullPanel: React.FC = () => {
             </TabsContent>
 
             <TabsContent value="pin" className="mt-4 space-y-4">
-              <PinProtectionCard title="Protezione PIN" />
+              <PinProtectionCard
+                title="Protezione PIN"
+                pinRequired={settings?.pin_enabled ?? false}
+                pinCode={settings?.pin_code}
+                onPinConfigChange={({ pinRequired, pinCode }) =>
+                  updateSettings({
+                    pin_enabled: pinRequired ?? (settings?.pin_enabled ?? false),
+                    pin_code: pinCode ?? null,
+                  })
+                }
+                generatePin={generatePin}
+              />
             </TabsContent>
 
             {/* QR CODE TAB - NUOVO */}
@@ -829,7 +840,18 @@ export const FreeModeFullPanel: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="pin" className="mt-3 space-y-4">
-            <PinProtectionCard title="Protezione PIN" />
+            <PinProtectionCard
+              title="Protezione PIN"
+              pinRequired={settings?.pin_enabled ?? false}
+              pinCode={settings?.pin_code}
+              onPinConfigChange={({ pinRequired, pinCode }) =>
+                updateSettings({
+                  pin_enabled: pinRequired ?? (settings?.pin_enabled ?? false),
+                  pin_code: pinCode ?? null,
+                })
+              }
+              generatePin={generatePin}
+            />
           </TabsContent>
 
           <TabsContent value="reopen" className="mt-3">

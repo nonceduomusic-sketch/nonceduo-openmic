@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -64,10 +64,18 @@ import QRCode from 'qrcode';
 
 interface PinProtectionCardProps {
   title?: string;
+  pinRequired?: boolean;
+  pinCode?: string | null;
+  onPinConfigChange?: (updates: { pinRequired?: boolean; pinCode?: string | null }) => Promise<boolean>;
+  generatePin?: () => string;
 }
 
 export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({ 
-  title = 'Protezione PIN'
+  title = 'Protezione PIN',
+  pinRequired = false,
+  pinCode = null,
+  onPinConfigChange,
+  generatePin,
 }) => {
   const { staffRole } = useAdmin();
 
@@ -78,8 +86,8 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
     isActive,
     isPinActive,
     updateFormats,
-    updatePin,
-    regeneratePin,
+    updatePin: updateLivePin,
+    regeneratePin: regenerateLivePin,
     removePin,
     restorePin,
     getEventUrl,
@@ -100,6 +108,24 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
   const [isTogglingPin, setIsTogglingPin] = useState(false);
   const [showPinOnGate, setShowPinOnGate] = useState(false);
   const [showUsersDialog, setShowUsersDialog] = useState(false);
+  const [localPinRequired, setLocalPinRequired] = useState(pinRequired);
+  const [localPinCode, setLocalPinCode] = useState(pinCode || '');
+
+  const canManageWithoutSession = Boolean(onPinConfigChange);
+  const canEditPin = isOwner || staffRole === 'owner';
+  const resolvedPinActive = session ? isPinActive : localPinRequired;
+  const resolvedPinCode = session?.pin_code ?? localPinCode;
+
+  useEffect(() => {
+    setLocalPinRequired(pinRequired);
+    setLocalPinCode(pinCode || '');
+  }, [pinRequired, pinCode]);
+
+  const defaultGeneratePin = useCallback(() => {
+    return (generatePin?.() || Math.floor(1000 + Math.random() * 9000).toString())
+      .toUpperCase()
+      .trim();
+  }, [generatePin]);
 
   // Load showPinOnGate from event_booking_rules or free_mode_settings
   useEffect(() => {
@@ -235,6 +261,26 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
     }
   }, []);
 
+  const persistPinConfig = useCallback(async (updates: { pinRequired?: boolean; pinCode?: string | null }) => {
+    if (!onPinConfigChange) {
+      return false;
+    }
+
+    const success = await onPinConfigChange(updates);
+
+    if (success) {
+      if (updates.pinRequired !== undefined) {
+        setLocalPinRequired(updates.pinRequired);
+      }
+
+      if (updates.pinCode !== undefined) {
+        setLocalPinCode(updates.pinCode || '');
+      }
+    }
+
+    return success;
+  }, [onPinConfigChange]);
+
   // Generate QR code when dialog opens
   const eventUrl = getEventUrl();
   
@@ -305,33 +351,96 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
   };
 
   const handleEditPin = () => {
-    if (session) {
-      setEditPinValue(session.pin_code);
+    if (resolvedPinCode) {
+      setEditPinValue(resolvedPinCode);
       setIsEditingPin(true);
     }
   };
 
   const handleSavePin = async () => {
-    const success = await updatePin(editPinValue);
+    const cleanPin = editPinValue.toUpperCase().trim();
+
+    if (cleanPin.length < 4 || cleanPin.length > 8) {
+      toast.error('Il PIN deve contenere da 4 a 8 caratteri');
+      return;
+    }
+
+    if (session) {
+      const success = await updateLivePin(cleanPin);
+
+      if (success) {
+        await syncPublicPinState(true, cleanPin);
+        setIsEditingPin(false);
+      }
+
+      return;
+    }
+
+    const success = await persistPinConfig({
+      pinRequired: localPinRequired,
+      pinCode: cleanPin,
+    });
+
     if (success) {
-      await syncPublicPinState(true, editPinValue.toUpperCase().trim());
+      toast.success(`PIN aggiornato: ${cleanPin}`);
       setIsEditingPin(false);
     }
   };
 
   const handleRegeneratePin = async () => {
-    const newPin = await regeneratePin();
-    if (newPin) {
-      await syncPublicPinState(true, newPin);
+    if (session) {
+      const newPin = await regenerateLivePin();
+      if (newPin) {
+        await syncPublicPinState(true, newPin);
+      }
+      return;
+    }
+
+    const newPin = defaultGeneratePin();
+    const success = await persistPinConfig({
+      pinRequired: true,
+      pinCode: newPin,
+    });
+
+    if (success) {
+      toast.success(`Nuovo PIN generato: ${newPin}`);
     }
   };
 
   const handleTogglePin = async (enabled: boolean) => {
-    if (!session) return;
+    const nextPin = enabled ? (resolvedPinCode || defaultGeneratePin()) : null;
+
+    if (!session) {
+      if (!canManageWithoutSession) {
+        return;
+      }
+
+      setIsTogglingPin(true);
+
+      try {
+        const success = await persistPinConfig({
+          pinRequired: enabled,
+          pinCode: nextPin,
+        });
+
+        if (success) {
+          toast.success(
+            enabled
+              ? `PIN attivato: ${nextPin}`
+              : 'PIN disattivato'
+          );
+        } else {
+          toast.error('Impossibile aggiornare la configurazione PIN');
+        }
+      } finally {
+        setIsTogglingPin(false);
+      }
+
+      return;
+    }
 
     setIsTogglingPin(true);
     try {
-      const currentPin = session.pin_code ?? null;
       const success = enabled
         ? await restorePin(['openmic', 'dediche'])
         : await removePin();
@@ -340,7 +449,7 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
         return;
       }
 
-      await syncPublicPinState(enabled, currentPin);
+      await syncPublicPinState(enabled, nextPin);
     } finally {
       setIsTogglingPin(false);
     }
@@ -357,7 +466,7 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
   }
 
   // Don't show if no active session
-  if (!isActive) {
+  if (!isActive && !canManageWithoutSession) {
     return (
       <Card className="glass-card border-border/50 opacity-60">
         <CardHeader className="pb-2 pt-4 px-4">
@@ -378,27 +487,27 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
   return (
     <Card className={cn(
       "glass-card transition-all duration-300",
-      isPinActive ? "border-secondary/50 bg-secondary/5" : "border-border/50"
+      resolvedPinActive ? "border-secondary/50 bg-secondary/5" : "border-border/50"
     )}>
       <CardHeader className="pb-2 pt-4 px-4">
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            {isPinActive ? (
+            {resolvedPinActive ? (
               <Lock className="w-5 h-5 md:w-4 md:h-4 text-secondary" />
             ) : (
               <Unlock className="w-5 h-5 md:w-4 md:h-4 text-muted-foreground" />
             )}
             <span className="font-semibold text-base md:text-sm">{title}</span>
-            {isPinActive && (
+            {resolvedPinActive && (
               <Badge className="bg-secondary/20 text-secondary text-xs">
                 ATTIVO
               </Badge>
             )}
           </div>
           
-          {isOwner && (
+          {canEditPin && (
             <Switch
-              checked={isPinActive}
+              checked={resolvedPinActive}
               onCheckedChange={handleTogglePin}
               disabled={isTogglingPin}
               className={cn(
@@ -409,15 +518,17 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
           )}
         </CardTitle>
         <CardDescription className="text-xs">
-          {isPinActive 
-            ? 'Gli utenti devono inserire il PIN per accedere' 
-            : 'Accesso libero senza codice'}
+          {resolvedPinActive
+            ? session
+              ? 'Gli utenti devono inserire il PIN per accedere'
+              : 'PIN configurato: sarà richiesto non appena attivi l\'evento'
+            : 'Puoi attivare o disattivare il PIN prima o durante l\'evento'}
         </CardDescription>
       </CardHeader>
       
       <CardContent className="px-4 pb-4 pt-2 space-y-4">
         {/* PIN Display - only when active */}
-        {isPinActive && session && (
+        {resolvedPinActive && (
           <>
             <div className="flex items-center justify-between p-3 rounded-xl bg-secondary/10 border border-secondary/20">
               <div className="flex items-center gap-3">
@@ -438,7 +549,7 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                     </div>
                   ) : (
                     <p className="text-2xl font-mono font-bold tracking-wider text-secondary">
-                      {session.pin_code}
+                      {resolvedPinCode}
                     </p>
                   )}
                 </div>
@@ -451,8 +562,9 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                       <Button
                         size="icon"
                         variant="ghost"
-                        onClick={() => copyToClipboard(session.pin_code, 'pin')}
+                        onClick={() => copyToClipboard(resolvedPinCode, 'pin')}
                         className="h-8 w-8"
+                        disabled={!resolvedPinCode}
                       >
                         {copied === 'pin' ? (
                           <CheckCircle2 className="w-4 h-4 text-secondary" />
@@ -467,7 +579,7 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                   </Tooltip>
                 </TooltipProvider>
 
-                {isOwner && !isEditingPin && (
+                {canEditPin && !isEditingPin && (
                   <>
                     <TooltipProvider>
                       <Tooltip>
@@ -497,114 +609,120 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                   </>
                 )}
 
-                <Dialog open={showQR} onOpenChange={setShowQR}>
-                  <DialogTrigger asChild>
-                    <Button size="icon" variant="ghost" className="h-8 w-8">
-                      <QrCode className="w-4 h-4" />
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2">
-                        <QrCode className="w-5 h-5 text-secondary" />
-                        QR Code Evento
-                      </DialogTitle>
-                    </DialogHeader>
-                    <div className="flex flex-col items-center gap-4 py-4">
-                      {!eventUrl ? (
-                        <div className="w-48 h-48 bg-muted rounded-xl flex flex-col items-center justify-center text-center p-4">
-                          <p className="text-sm text-muted-foreground">Link evento non disponibile</p>
-                          <p className="text-xs text-muted-foreground mt-2">Prova a rigenerare il link</p>
+                {session && (
+                  <Dialog open={showQR} onOpenChange={setShowQR}>
+                    <DialogTrigger asChild>
+                      <Button size="icon" variant="ghost" className="h-8 w-8">
+                        <QrCode className="w-4 h-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <QrCode className="w-5 h-5 text-secondary" />
+                          QR Code Evento
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="flex flex-col items-center gap-4 py-4">
+                        {!eventUrl ? (
+                          <div className="w-48 h-48 bg-muted rounded-xl flex flex-col items-center justify-center text-center p-4">
+                            <p className="text-sm text-muted-foreground">Link evento non disponibile</p>
+                            <p className="text-xs text-muted-foreground mt-2">Prova a rigenerare il link</p>
+                          </div>
+                        ) : qrCodeDataUrl ? (
+                          <div className="p-4 bg-white rounded-xl shadow-lg">
+                            <img 
+                              src={qrCodeDataUrl} 
+                              alt="QR Code Evento"
+                              className="w-48 h-48"
+                            />
+                          </div>
+                        ) : (
+                          <div className="w-48 h-48 bg-muted rounded-xl flex items-center justify-center">
+                            <div className="animate-spin w-8 h-8 border-2 border-secondary border-t-transparent rounded-full" />
+                          </div>
+                        )}
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground max-w-xs break-all">
+                            {eventUrl || 'Non disponibile'}
+                          </p>
                         </div>
-                      ) : qrCodeDataUrl ? (
-                        <div className="p-4 bg-white rounded-xl shadow-lg">
-                          <img 
-                            src={qrCodeDataUrl} 
-                            alt="QR Code Evento"
-                            className="w-48 h-48"
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-48 h-48 bg-muted rounded-xl flex items-center justify-center">
-                          <div className="animate-spin w-8 h-8 border-2 border-secondary border-t-transparent rounded-full" />
-                        </div>
-                      )}
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground max-w-xs break-all">
-                          {eventUrl || 'Non disponibile'}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button 
-                          onClick={() => {
-                            if (eventUrl) {
-                              navigator.clipboard.writeText(eventUrl).then(() => {
-                                setCopied('link');
-                                setTimeout(() => setCopied(null), 2000);
-                                toast.success('Link copiato!');
-                              }).catch((err) => {
-                                console.error('Clipboard error:', err);
-                                toast.error('Errore nel copiare il link');
-                              });
-                            } else {
-                              toast.error('Link non disponibile');
-                            }
-                          }} 
-                          variant="outline" 
-                          className="gap-2"
-                          disabled={!eventUrl}
-                        >
-                          {copied === 'link' ? (
-                            <>
-                              <CheckCircle2 className="w-4 h-4 text-secondary" />
-                              Copiato!
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-4 h-4" />
-                              Copia Link
-                            </>
-                          )}
-                        </Button>
-                        <Button 
-                          onClick={() => {
-                            if (qrCodeDataUrl) {
-                              try {
-                                // Direct download using anchor tag
-                                const link = document.createElement('a');
-                                link.href = qrCodeDataUrl;
-                                link.download = 'qr-code-evento.png';
-                                link.style.display = 'none';
-                                document.body.appendChild(link);
-                                link.click();
-                                document.body.removeChild(link);
-                                toast.success('Download avviato!');
-                              } catch (error) {
-                                console.error('Download error:', error);
-                                // Fallback: open in new tab
-                                window.open(qrCodeDataUrl, '_blank');
-                                toast.info('Tieni premuto sull\'immagine per salvare');
+                        <div className="flex gap-2">
+                          <Button 
+                            onClick={() => {
+                              if (eventUrl) {
+                                navigator.clipboard.writeText(eventUrl).then(() => {
+                                  setCopied('link');
+                                  setTimeout(() => setCopied(null), 2000);
+                                  toast.success('Link copiato!');
+                                }).catch((err) => {
+                                  console.error('Clipboard error:', err);
+                                  toast.error('Errore nel copiare il link');
+                                });
+                              } else {
+                                toast.error('Link non disponibile');
                               }
-                            } else {
-                              toast.error('QR Code non disponibile');
-                            }
-                          }}
-                          variant="outline"
-                          className="gap-2"
-                          disabled={!qrCodeDataUrl}
-                        >
-                          <Download className="w-4 h-4" />
-                          Scarica
-                        </Button>
+                            }} 
+                            variant="outline" 
+                            className="gap-2"
+                            disabled={!eventUrl}
+                          >
+                            {copied === 'link' ? (
+                              <>
+                                <CheckCircle2 className="w-4 h-4 text-secondary" />
+                                Copiato!
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-4 h-4" />
+                                Copia Link
+                              </>
+                            )}
+                          </Button>
+                          <Button 
+                            onClick={() => {
+                              if (qrCodeDataUrl) {
+                                try {
+                                  const link = document.createElement('a');
+                                  link.href = qrCodeDataUrl;
+                                  link.download = 'qr-code-evento.png';
+                                  link.style.display = 'none';
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                  toast.success('Download avviato!');
+                                } catch (error) {
+                                  console.error('Download error:', error);
+                                  window.open(qrCodeDataUrl, '_blank');
+                                  toast.info('Tieni premuto sull\'immagine per salvare');
+                                }
+                              } else {
+                                toast.error('QR Code non disponibile');
+                              }
+                            }}
+                            variant="outline"
+                            className="gap-2"
+                            disabled={!qrCodeDataUrl}
+                          >
+                            <Download className="w-4 h-4" />
+                            Scarica
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </div>
             </div>
 
+            {!session && (
+              <p className="text-xs text-muted-foreground">
+                Il PIN è già configurato e puoi cambiarlo anche prima dell'avvio dell'evento.
+              </p>
+            )}
+
             {/* Event Link */}
-            {eventUrl && (
+            {session && eventUrl && (
               <div className="space-y-2">
                 <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/30 text-sm">
                   <LinkIcon className="w-4 h-4 text-muted-foreground flex-shrink-0" />
@@ -622,7 +740,7 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                     )}
                   </Button>
                 </div>
-                {isOwner && (
+                {canEditPin && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -639,7 +757,7 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
             )}
 
             {/* Format Selection */}
-            {isOwner && (
+            {session && canEditPin && (
               <div className="space-y-3">
                 <Label className="text-xs text-muted-foreground">
                   Format protetti da PIN:
@@ -678,45 +796,54 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
             )}
 
             {/* Show PIN on TV/Trasmetti toggle */}
-            <Separator />
-            <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
-              <div className="flex items-center gap-3">
-                <Eye className="w-4 h-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm font-medium">Mostra PIN su TV e Trasmetti</p>
-                  <p className="text-xs text-muted-foreground">
-                    Il PIN sarà visibile sotto il QR code nelle pagine di proiezione
-                  </p>
+            {session && (
+              <>
+                <Separator />
+                <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <Eye className="w-4 h-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">Mostra PIN su TV e Trasmetti</p>
+                      <p className="text-xs text-muted-foreground">
+                        Il PIN sarà visibile sotto il QR code nelle pagine di proiezione
+                      </p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={showPinOnGate}
+                    onCheckedChange={handleToggleShowPin}
+                    className="scale-110 md:scale-100"
+                  />
                 </div>
-              </div>
-              <Switch
-                checked={showPinOnGate}
-                onCheckedChange={handleToggleShowPin}
-                className="scale-110 md:scale-100"
-              />
-            </div>
+              </>
+            )}
 
           </>
         )}
 
         {/* Active Sessions Count + Reset (show whenever there is an active session) */}
-        {canDisconnectAll && session && (
+        {canDisconnectAll && (
           <>
             <div className="flex items-center justify-between p-2 rounded-lg bg-muted/20">
               <button
-                onClick={() => activeSessionsCount > 0 && setShowUsersDialog(true)}
+                type="button"
+                onClick={() => session && activeSessionsCount > 0 && setShowUsersDialog(true)}
                 className={cn(
                   "flex items-center gap-2 text-sm text-muted-foreground transition-colors",
-                  activeSessionsCount > 0 && "hover:text-foreground cursor-pointer"
+                  session && activeSessionsCount > 0
+                    ? "hover:text-foreground cursor-pointer"
+                    : "cursor-default"
                 )}
               >
                 <Users className="w-4 h-4" />
                 <span>
-                  {loadingSessionCount
-                    ? 'Caricamento...'
-                    : activeSessionsCount > 0
-                      ? `${activeSessionsCount} utenti connessi`
-                      : 'Nessun utente connesso'}
+                  {!session
+                    ? '0 utenti connessi'
+                    : loadingSessionCount
+                      ? 'Caricamento...'
+                      : activeSessionsCount > 0
+                        ? `${activeSessionsCount} utenti connessi`
+                        : 'Nessun utente connesso'}
                 </span>
               </button>
               <AlertDialog>
@@ -725,6 +852,7 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
                     size="sm"
                     variant="ghost"
                     className="h-7 text-xs text-destructive hover:text-destructive gap-1"
+                    disabled={!session || activeSessionsCount === 0 || resetting}
                   >
                     <Trash2 className="w-3 h-3" />
                     Sconnetti tutti
@@ -748,12 +876,14 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
             </div>
 
             {/* Connected Users Dialog */}
-            <ConnectedUsersDialog
-              open={showUsersDialog}
-              onOpenChange={setShowUsersDialog}
-              liveSessionId={session.id}
-              onSessionsChanged={refreshSessionCount}
-            />
+            {session && (
+              <ConnectedUsersDialog
+                open={showUsersDialog}
+                onOpenChange={setShowUsersDialog}
+                liveSessionId={session.id}
+                onSessionsChanged={refreshSessionCount}
+              />
+            )}
           </>
         )}
       </CardContent>
