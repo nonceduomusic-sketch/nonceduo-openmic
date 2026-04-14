@@ -1313,9 +1313,47 @@ export default function Trasmetti() {
 
   // FURORE MODE - Show the Furore overlay directly
   if (standbyMode === 'furore') {
+    const defaults = STANDBY_DEFAULTS.furore;
+    const title = tvSettings.title?.trim() && tvSettings.title !== 'Open Mic'
+      ? tvSettings.title
+      : defaults.title;
+    const subtitle = tvSettings.subtitle?.trim() && tvSettings.subtitle !== 'NonceDuo Live Experience'
+      ? tvSettings.subtitle
+      : '';
+    const footer = tvSettings.footer?.trim() || 'Powered by NonceDuo';
+
     return (
       <>
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white relative overflow-hidden select-none">
+      <div className="min-h-screen bg-gradient-to-br from-orange-950 via-black to-red-950 text-white relative overflow-hidden select-none">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-orange-500/20 rounded-full blur-[200px] animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-red-500/15 rounded-full blur-[150px] animate-pulse" style={{ animationDelay: '1s' }} />
+        </div>
+
+        <div className="relative z-10 min-h-screen w-full flex flex-col items-center justify-center gap-6 py-[5vh] px-8 text-center">
+          {tvSettings.showLogo && (
+            <img
+              src={tvSettings.logoUrl || brandLogoText}
+              alt="Logo"
+              className="h-14 md:h-20 w-auto object-contain shrink-0"
+              onError={(e) => { (e.target as HTMLImageElement).src = brandLogoText; }}
+            />
+          )}
+          {tvSettings.showTitle && (
+            <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold tracking-tight shrink-0">
+              <span className="bg-gradient-to-r from-orange-400 via-red-400 to-orange-400 bg-clip-text text-transparent">
+                {title}
+              </span>
+            </h1>
+          )}
+          {tvSettings.showSubtitle && subtitle && (
+            <p className="text-lg md:text-2xl text-white/60 font-light shrink-0 max-w-3xl">{subtitle}</p>
+          )}
+          {tvSettings.showFooter && (
+            <p className="text-white/30 text-sm shrink-0">{footer}</p>
+          )}
+        </div>
+
         {/* Fullscreen + Connection Settings */}
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2">
           <ConnectionSettings mode={mode} setMode={setMode} localIP={localIP} setLocalIP={setLocalIP} isLocalConnected={localConnected} localLatency={localLatency} />
