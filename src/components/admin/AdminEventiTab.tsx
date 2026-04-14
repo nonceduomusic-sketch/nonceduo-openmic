@@ -53,7 +53,7 @@ import { EventLimitsConfig } from './EventLimitsConfig';
 import { EventReopenControl } from './EventReopenControl';
 import { EventClosureConfig } from './EventClosureConfig';
 import { EventStatusControl } from './EventStatusControl';
-import { EventPinConfig } from './EventPinConfig';
+
 import { EventTypeSelector } from './EventTypeSelector';
 import { EventTimingConfig } from './EventTimingConfig';
 import { UserLimitsConfig } from './UserLimitsConfig';
