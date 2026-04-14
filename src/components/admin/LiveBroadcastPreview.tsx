@@ -516,16 +516,34 @@ import { parseChordPro, transposeSong, ChordProSong, ChordProLine } from '@/lib/
 
       // FURORE MODE (no QR)
       if (currentStandbyMode === 'furore') {
+        const defaults = STANDBY_DEFAULTS.furore;
+        const title = tvSettings.title?.trim() && tvSettings.title !== 'Open Mic'
+          ? tvSettings.title
+          : defaults.title;
+        const subtitle = tvSettings.subtitle?.trim() && tvSettings.subtitle !== 'NonceDuo Live Experience'
+          ? tvSettings.subtitle
+          : '';
+        const footer = tvSettings.footer?.trim() || 'Powered by NonceDuo';
+
         return (
           <div className="relative rounded-xl overflow-hidden bg-gradient-to-br from-orange-950 via-black to-red-950" style={{ minHeight: previewHeight }}>
             <div className="absolute inset-0 pointer-events-none">
               <div className="absolute top-1/4 left-1/4 w-[150px] h-[150px] bg-orange-500/20 rounded-full blur-[80px] animate-pulse" />
               <div className="absolute bottom-1/4 right-1/4 w-[120px] h-[120px] bg-red-500/15 rounded-full blur-[60px] animate-pulse" style={{ animationDelay: '1s' }} />
             </div>
-            <div className="relative z-10 flex flex-col items-center justify-center h-full py-6 px-4 text-center" style={{ minHeight: previewHeight }}>
-              <img src={tvSettings.logoUrl || brandLogoText} alt="Logo" className="h-10 md:h-14 w-auto object-contain mb-4" onError={(e) => { (e.target as HTMLImageElement).src = brandLogoText; }} />
-              <h1 className="text-2xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-orange-400 via-red-400 to-orange-400 bg-clip-text text-transparent">Non C'è Furore</h1>
-              <p className="text-xs text-white/30 absolute bottom-4">{tvSettings.footer}</p>
+            <div className="relative z-10 flex flex-col items-center justify-center h-full py-6 px-4 text-center gap-3" style={{ minHeight: previewHeight }}>
+              {tvSettings.showLogo && (
+                <img src={tvSettings.logoUrl || brandLogoText} alt="Logo" className="h-10 md:h-14 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).src = brandLogoText; }} />
+              )}
+              {tvSettings.showTitle && (
+                <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-orange-400 via-red-400 to-orange-400 bg-clip-text text-transparent">{title}</h1>
+              )}
+              {tvSettings.showSubtitle && subtitle && (
+                <p className="text-xs md:text-sm text-white/60 max-w-md">{subtitle}</p>
+              )}
+              {tvSettings.showFooter && (
+                <p className="text-xs text-white/30">{footer}</p>
+              )}
             </div>
           </div>
         );
