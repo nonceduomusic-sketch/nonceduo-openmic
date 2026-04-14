@@ -306,7 +306,7 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
     setIsSaving(true);
     
     try {
-      syncUpdate({
+      const payload: Record<string, any> = {
         tv_title: defaultSettings.tv_title,
         tv_subtitle: defaultSettings.tv_subtitle,
         tv_footer: defaultSettings.tv_footer,
@@ -320,8 +320,21 @@ export function BroadcastTVSettings({ canManage = true }: BroadcastTVSettingsPro
         tv_show_footer: defaultSettings.tv_show_footer,
         tv_show_status: defaultSettings.tv_show_status,
         tv_element_positions: defaultSettings.tv_element_positions,
-      });
-      
+      };
+
+      syncUpdate(payload);
+
+      const { error: dbError } = await supabase
+        .from('broadcast_sessions')
+        .update(payload)
+        .eq('sala_code', (session as any)?.sala_code ?? 'main');
+
+      if (dbError) {
+        console.error('[BroadcastTVSettings] DB reset failed:', dbError.message);
+        toast.error('Errore nel ripristino');
+        return;
+      }
+
       setHasChanges(false);
       toast.success('Impostazioni ripristinate ai valori predefiniti!');
     } catch (err) {
