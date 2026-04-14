@@ -19,7 +19,7 @@ import type { EventBookingRules } from '@/hooks/useEventBookingRules';
 import { EventLimitsConfig } from './EventLimitsConfig';
 import { EventReopenControl } from './EventReopenControl';
 import { EventClosureConfig } from './EventClosureConfig';
-import { EventPinConfig } from './EventPinConfig';
+
 import { EventTimingConfig } from './EventTimingConfig';
 import { UserLimitsConfig } from './UserLimitsConfig';
 import { EventCountdownBanner } from '@/components/effects/EventCountdownBanner';
