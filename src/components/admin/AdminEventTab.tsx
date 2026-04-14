@@ -43,7 +43,7 @@ import { EventLimitsConfig } from './EventLimitsConfig';
 import { EventReopenControl } from './EventReopenControl';
 import { EventClosureConfig } from './EventClosureConfig';
 import { EventStatusControl } from './EventStatusControl';
-import { EventPinConfig } from './EventPinConfig';
+import { PinProtectionCard } from './PinProtectionCard';
 import { EventTypeSelector } from './EventTypeSelector';
 
 export const AdminEventTab: React.FC = () => {
@@ -382,11 +382,7 @@ export const AdminEventTab: React.FC = () => {
           <EventTypeSelector rules={rules} onUpdate={updateRules} />
 
           {/* PIN Config */}
-          <EventPinConfig 
-            rules={rules} 
-            onUpdate={updateRules}
-            generatePin={generatePin}
-          />
+          <PinProtectionCard title="Protezione PIN" />
         </TabsContent>
 
         <TabsContent value="window" className="mt-4">

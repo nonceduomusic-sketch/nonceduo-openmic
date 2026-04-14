@@ -53,7 +53,7 @@ import { EventLimitsConfig } from './EventLimitsConfig';
 import { EventReopenControl } from './EventReopenControl';
 import { EventClosureConfig } from './EventClosureConfig';
 import { EventStatusControl } from './EventStatusControl';
-import { EventPinConfig } from './EventPinConfig';
+
 import { EventTypeSelector } from './EventTypeSelector';
 import { EventTimingConfig } from './EventTimingConfig';
 import { UserLimitsConfig } from './UserLimitsConfig';
@@ -631,19 +631,7 @@ export const AdminEventiTab: React.FC = () => {
 
                 {/* PIN TAB - Unified single card */}
                 <TabsContent value="pin" className="mt-4 space-y-4">
-                  {rules.event_status === 'live' ? (
-                    <PinProtectionCard title="Protezione PIN" />
-                  ) : (
-                    <EventPinConfig 
-                      rules={rules} 
-                      onUpdate={async (updates) => {
-                        const nextPinRequired = updates.pin_required ?? rules.pin_required;
-                        const nextPinCode = (updates.pin_code ?? rules.pin_code) ?? null;
-                        return updatePin(nextPinRequired ? nextPinCode : null, nextPinRequired);
-                      }}
-                      generatePin={generatePin}
-                    />
-                  )}
+                  <PinProtectionCard title="Protezione PIN" />
                 </TabsContent>
 
                 {/* QR CODE TAB - NUOVO */}
