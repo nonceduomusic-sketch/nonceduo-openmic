@@ -631,19 +631,7 @@ export const AdminEventiTab: React.FC = () => {
 
                 {/* PIN TAB - Unified single card */}
                 <TabsContent value="pin" className="mt-4 space-y-4">
-                  {rules.event_status === 'live' ? (
-                    <PinProtectionCard title="Protezione PIN" />
-                  ) : (
-                    <EventPinConfig 
-                      rules={rules} 
-                      onUpdate={async (updates) => {
-                        const nextPinRequired = updates.pin_required ?? rules.pin_required;
-                        const nextPinCode = (updates.pin_code ?? rules.pin_code) ?? null;
-                        return updatePin(nextPinRequired ? nextPinCode : null, nextPinRequired);
-                      }}
-                      generatePin={generatePin}
-                    />
-                  )}
+                  <PinProtectionCard title="Protezione PIN" />
                 </TabsContent>
 
                 {/* QR CODE TAB - NUOVO */}
