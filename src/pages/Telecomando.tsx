@@ -524,7 +524,9 @@ function RemoteControlInterface({ salaCode, sessionId, viewMode, onViewModeChang
             textAlign={textAlign}
             onScrollUp={scrollUp}
             onScrollDown={scrollDown}
-            onScrollPositionChange={(ratio) => updateScrollPosition(ratio)}
+            onScrollPositionChange={(ratio) => {
+              syncUpdate({ scroll_position: Math.min(1000, Math.max(0, Math.round(ratio))) });
+            }}
           />
         )}
       </main>
