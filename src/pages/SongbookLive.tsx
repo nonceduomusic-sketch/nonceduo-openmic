@@ -351,17 +351,23 @@ export default function SongbookLive() {
     toast.success('Trasmissione interrotta');
   }, [syncUpdate]);
 
-  // Passive scroll listener for maximum performance on mobile
+  // Passive scroll listener — listener attached ONCE per mount.
+  // Reads songbook_mode via ref to avoid re-binding on every session update,
+  // which previously dropped queued scroll events during live broadcast.
+  const songbookModeRef = useRef(false);
+  useEffect(() => {
+    songbookModeRef.current = !!(session as any)?.songbook_mode;
+  }, [session]);
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     const onScroll = () => {
-      if (!(session as any)?.songbook_mode) return;
+      if (!songbookModeRef.current) return;
       syncScrollToTV();
     };
     el.addEventListener('scroll', onScroll, { passive: true });
     return () => el.removeEventListener('scroll', onScroll);
-  }, [syncScrollToTV, session]);
+  }, [syncScrollToTV]);
 
   // Rebuild line index cache when song content changes
   useEffect(() => {
