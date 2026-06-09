@@ -223,7 +223,8 @@ export const useFreeModeSettings = () => {
           finalUpdates.expires_at = null;
         } else if (newEndMode === 'scheduled' && newEventEndDate && newEventEndTime) {
           const tp = newEventEndTime.length <= 5 ? `${newEventEndTime}:00` : newEventEndTime;
-          finalUpdates.expires_at = `${newEventEndDate}T${tp}`;
+          // Interpreta come ora LOCALE e converti in ISO UTC per il DB (timestamptz)
+          finalUpdates.expires_at = new Date(`${newEventEndDate}T${tp}`).toISOString();
         } else if (newEndMode === 'duration' && newDurationMinutes) {
           finalUpdates.expires_at = new Date(startedAt.getTime() + newDurationMinutes * 60 * 1000).toISOString();
         } else {
