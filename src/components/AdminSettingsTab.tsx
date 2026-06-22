@@ -937,7 +937,7 @@ const LocalServerGuide: React.FC = () => {
       {/* Aggiornamento completo */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">🔄 Aggiornamento + Avvio</span>
+          <span className="text-xs font-medium text-muted-foreground">🔄 Aggiornamento Produzione Locale (definitivo)</span>
           <Button
             variant="ghost"
             size="sm"
@@ -948,12 +948,20 @@ const LocalServerGuide: React.FC = () => {
             Copia tutto
           </Button>
         </div>
+        <div className="rounded-lg p-2 text-[11px] bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 space-y-1">
+          <div><strong>🛡️ Protezioni automatiche:</strong></div>
+          <div>• Backup di <code>local-server/data/</code> (pin-cache, sessions, catalog, songbook) prima di ogni aggiornamento</div>
+          <div>• Backup di <code>local-server/.env</code> in <code>.env.backup</code></div>
+          <div>• <code>git reset --hard</code> opera <strong>solo</strong> sulla cartella codice (<code>nonceduo-openmic-nuovo</code>) → non tocca mai <code>local-server/data/</code> né <code>.env</code> (sono in <code>nonceduo/local-server</code>)</div>
+          <div>• <code>.env</code> esistente <strong>non viene mai sovrascritto</strong>: viene creato solo se assente</div>
+        </div>
         <div className="bg-muted/50 rounded-lg p-3 font-mono text-xs space-y-0.5 border border-border">
           {updateCommands.map((item, i) => (
             <CommandLine key={i} cmd={item.cmd} label={item.label} index={i} />
           ))}
         </div>
       </div>
+
 
       {/* PIN di emergenza (opzionale) */}
       <div className="space-y-2">
