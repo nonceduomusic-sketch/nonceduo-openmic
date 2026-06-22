@@ -210,6 +210,7 @@ function makeStaffCache({ cacheFile, logFile, ttlDays, tokenSecret, tokenTtlMs }
     upsertEntry,
     removeEntry,
     clearAll,
+    renewAll,
     verify,
     issueToken,
     verifyToken,
