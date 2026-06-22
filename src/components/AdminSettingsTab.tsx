@@ -788,33 +788,42 @@ const LocalServerGuide: React.FC = () => {
 
   const updateCommands = [
     { cmd: 'taskkill /F /IM node.exe 2>$null', label: 'Ferma server vecchio' },
+    { cmd: 'Start-Sleep -Seconds 1', label: 'Attendi chiusura processo' },
+    { cmd: '$ts = Get-Date -Format "yyyyMMdd-HHmmss"; if (Test-Path "C:\\Users\\iaco_\\nonceduo\\local-server\\data") { Copy-Item "C:\\Users\\iaco_\\nonceduo\\local-server\\data" -Destination "C:\\Users\\iaco_\\nonceduo\\local-server\\data-backup-$ts" -Recurse -Force; Write-Host "✅ Backup creato: data-backup-$ts" } else { Write-Host "ℹ️ Nessuna cartella data da salvare" }', label: 'BACKUP cartella data/ (pin-cache, sessions, catalog, songbook)' },
+    { cmd: 'if (Test-Path "C:\\Users\\iaco_\\nonceduo\\local-server\\.env") { Copy-Item "C:\\Users\\iaco_\\nonceduo\\local-server\\.env" -Destination "C:\\Users\\iaco_\\nonceduo\\local-server\\.env.backup" -Force; Write-Host "✅ .env salvato in .env.backup" }', label: 'BACKUP file .env (PIN emergenza)' },
     { cmd: 'cd C:\\Users\\iaco_\\nonceduo-openmic-nuovo', label: 'Vai nella cartella codice' },
     { cmd: 'git fetch origin', label: 'Scarica aggiornamenti dal server' },
-    { cmd: 'git reset --hard origin/main', label: 'Allinea codice all\'ultima versione' },
+    { cmd: 'git reset --hard origin/main', label: 'Allinea codice (NON tocca local-server/data né .env: sono in altra cartella)' },
     { cmd: 'npm install', label: 'Installa dipendenze' },
     { cmd: 'npm run build', label: 'Compila l\'app' },
-    { cmd: 'Remove-Item "..\\nonceduo\\local-server\\public\\assets" -Recurse -Force -ErrorAction SilentlyContinue', label: 'Rimuovi assets vecchi' },
+    { cmd: 'Remove-Item "..\\nonceduo\\local-server\\public\\assets" -Recurse -Force -ErrorAction SilentlyContinue', label: 'Rimuovi assets vecchi (solo public/, NON data/)' },
     { cmd: 'Copy-Item ".\\dist\\*" -Destination "..\\nonceduo\\local-server\\public" -Recurse -Force', label: 'Copia file compilati' },
     { cmd: 'Copy-Item ".\\local-server\\server.js" -Destination "..\\nonceduo\\local-server\\server.js" -Force', label: 'Copia server.js' },
-    { cmd: 'Copy-Item ".\\local-server\\.env.example" -Destination "..\\nonceduo\\local-server\\.env.example" -Force', label: 'Copia template .env (PIN emergenza)' },
-    { cmd: 'if (-not (Test-Path "..\\nonceduo\\local-server\\.env")) { Copy-Item "..\\nonceduo\\local-server\\.env.example" "..\\nonceduo\\local-server\\.env" }', label: 'Crea .env se manca (preserva config esistente)' },
+    { cmd: 'Copy-Item ".\\local-server\\.env.example" -Destination "..\\nonceduo\\local-server\\.env.example" -Force', label: 'Copia template .env.example (NON sovrascrive .env)' },
+    { cmd: 'if (-not (Test-Path "..\\nonceduo\\local-server\\.env")) { Copy-Item "..\\nonceduo\\local-server\\.env.example" "..\\nonceduo\\local-server\\.env"; Write-Host "✅ Creato .env vuoto" } else { Write-Host "✅ .env esistente preservato" }', label: 'Crea .env solo se manca (preserva EMERGENCY_PIN esistente)' },
     { cmd: 'cd ..\\nonceduo\\local-server', label: 'Vai nella cartella server' },
-    { cmd: 'node server.js', label: 'Avvia il server' },
+    { cmd: 'node server.js', label: 'Avvia il server (controlla i log iniziali)' },
   ];
 
   const startCommands = [
     { cmd: 'taskkill /F /IM node.exe 2>$null', label: 'Ferma server vecchio' },
+    { cmd: 'Start-Sleep -Seconds 1', label: 'Attendi chiusura processo' },
     { cmd: 'cd C:\\Users\\iaco_\\nonceduo\\local-server', label: 'Vai nella cartella server' },
     { cmd: 'node server.js', label: 'Avvia il server' },
   ];
 
   const emergencyPinCommands = [
     { cmd: 'cd C:\\Users\\iaco_\\nonceduo\\local-server', label: 'Vai nella cartella server' },
-    { cmd: 'notepad .env', label: 'Apri il file .env (sostituisci 9999 con il PIN desiderato)' },
-    { cmd: '# Nel file scrivi:  EMERGENCY_PIN=9999', label: 'Imposta il PIN di emergenza (4+ cifre)' },
-    { cmd: 'taskkill /F /IM node.exe 2>$null; node server.js', label: 'Riavvia il server per applicare' },
+    { cmd: 'if (-not (Test-Path ".env")) { Copy-Item ".env.example" ".env"; Write-Host "✅ .env creato da template" } else { Write-Host "✅ .env già presente — NON viene sovrascritto" }', label: 'Crea .env SOLO se non esiste (preserva config attuale)' },
+    { cmd: 'if (Select-String -Path ".env" -Pattern "^EMERGENCY_PIN=.+" -Quiet) { Write-Host "⚠️ EMERGENCY_PIN già impostato — verrà mantenuto. Modificalo a mano se vuoi cambiarlo." } else { Write-Host "ℹ️ EMERGENCY_PIN non ancora impostato — apri .env e aggiungilo." }', label: 'Controlla se EMERGENCY_PIN è già impostato' },
+    { cmd: 'notepad .env', label: 'Apri .env (aggiungi/modifica:  EMERGENCY_PIN=9999  con il PIN che vuoi)' },
+    { cmd: 'taskkill /F /IM node.exe 2>$null', label: 'Ferma server' },
+    { cmd: 'Start-Sleep -Seconds 1', label: 'Attendi chiusura processo' },
+    { cmd: 'node server.js', label: 'Riavvia il server (controlla i log)' },
     { cmd: 'curl http://127.0.0.1:8080/api/pin-status', label: 'Verifica: emergency_pin_enabled deve essere true' },
   ];
+
+
 
 
   const copySingle = (cmd: string) => {
