@@ -115,7 +115,9 @@ export function useHybridBroadcast(salaCode: string = 'main') {
     }
   }, [isLocalMode, localSendUpdate]);
 
-  // Local-aware broadcastSong: in local mode, also push via WS so LAN devices update
+  // Local-aware broadcastSong: in local mode, WS è la via primaria;
+  // il cloud viene chiamato in background (fire-and-forget) per non bloccare l'UI
+  // se il router LAN non ha internet o la rete è lenta.
   const broadcastSong = useCallback(async (songId: string, reservationId?: string) => {
     const updates = {
       current_song_id: songId,
@@ -131,8 +133,10 @@ export function useHybridBroadcast(salaCode: string = 'main') {
     if (isLocalMode) {
       localSendUpdate(updates);
       setLocalOverrides(prev => ({ ...prev, ...updates }));
+      // Cloud in background, non bloccante
+      void cloud.broadcastSong(songId, reservationId);
+      return true;
     }
-    // Always call cloud too (for DB persistence when online, local state always)
     return cloud.broadcastSong(songId, reservationId);
   }, [isLocalMode, localSendUpdate, cloud.broadcastSong]);
 
@@ -155,6 +159,8 @@ export function useHybridBroadcast(salaCode: string = 'main') {
     if (isLocalMode) {
       localSendUpdate(updates);
       setLocalOverrides(prev => ({ ...prev, ...updates }));
+      void cloud.broadcastDual(catalogSongId, songbookFileId);
+      return true;
     }
     return cloud.broadcastDual(catalogSongId, songbookFileId);
   }, [isLocalMode, localSendUpdate, cloud.broadcastDual]);
@@ -175,6 +181,8 @@ export function useHybridBroadcast(salaCode: string = 'main') {
     if (isLocalMode) {
       localSendUpdate(updates);
       setLocalOverrides(prev => ({ ...prev, ...updates }));
+      void cloud.stopBroadcast();
+      return true;
     }
     return cloud.stopBroadcast();
   }, [isLocalMode, localSendUpdate, cloud.stopBroadcast]);
