@@ -34,6 +34,8 @@ import { usePedalSettings, PedalPage, PedalMode } from '@/hooks/usePedalControl'
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { getCurrentLocalServerHost } from '@/lib/localServerHost';
+import { getStaffOfflineStatus, wipeStaffCache, type MasterPinStatus } from '@/lib/localStaffAuth';
+
 
 interface LocalServerVersionInfo {
   ok: boolean;
@@ -789,7 +791,7 @@ const LocalServerGuide: React.FC = () => {
   const updateCommands = [
     { cmd: 'taskkill /F /IM node.exe 2>$null', label: 'Ferma server vecchio' },
     { cmd: 'Start-Sleep -Seconds 1', label: 'Attendi chiusura processo' },
-    { cmd: '$ts = Get-Date -Format "yyyyMMdd-HHmmss"; if (Test-Path "C:\\Users\\iaco_\\nonceduo\\local-server\\data") { Copy-Item "C:\\Users\\iaco_\\nonceduo\\local-server\\data" -Destination "C:\\Users\\iaco_\\nonceduo\\local-server\\data-backup-$ts" -Recurse -Force; Write-Host "✅ Backup creato: data-backup-$ts" } else { Write-Host "ℹ️ Nessuna cartella data da salvare" }', label: 'BACKUP cartella data/ (pin-cache, sessions, catalog, songbook)' },
+    { cmd: '$ts = Get-Date -Format "yyyyMMdd-HHmmss"; if (Test-Path "C:\\Users\\iaco_\\nonceduo\\local-server\\data") { Copy-Item "C:\\Users\\iaco_\\nonceduo\\local-server\\data" -Destination "C:\\Users\\iaco_\\nonceduo\\local-server\\data-backup-$ts" -Recurse -Force; Write-Host "✅ Backup creato: data-backup-$ts (include staff-cache, pending-sync, pin-cache, sessions, catalog, songbook)" } else { Write-Host "ℹ️ Nessuna cartella data da salvare" }', label: 'BACKUP cartella data/ (staff-cache, pending-sync, pin-cache, sessions, catalog, songbook)' },
     { cmd: 'if (Test-Path "C:\\Users\\iaco_\\nonceduo\\local-server\\.env") { Copy-Item "C:\\Users\\iaco_\\nonceduo\\local-server\\.env" -Destination "C:\\Users\\iaco_\\nonceduo\\local-server\\.env.backup" -Force; Write-Host "✅ .env salvato in .env.backup" }', label: 'BACKUP file .env (PIN emergenza)' },
     { cmd: 'Get-ChildItem "C:\\Users\\iaco_\\nonceduo\\local-server" -Directory -Filter "data-backup-*" | Sort-Object Name -Descending | Select-Object -Skip 5 | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue; $c = (Get-ChildItem "C:\\Users\\iaco_\\nonceduo\\local-server" -Directory -Filter "data-backup-*" | Measure-Object).Count; Write-Host "🧹 Backup puliti: mantenuti gli ultimi 5 (totale $c)"', label: 'PULIZIA backup: mantieni solo gli ultimi 5 (cancella i più vecchi)' },
     { cmd: 'cd C:\\Users\\iaco_\\nonceduo-openmic-nuovo', label: 'Vai nella cartella codice' },
@@ -951,7 +953,7 @@ const LocalServerGuide: React.FC = () => {
         </div>
         <div className="rounded-lg p-2 text-[11px] bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 space-y-1">
           <div><strong>🛡️ Protezioni automatiche:</strong></div>
-          <div>• Backup di <code>local-server/data/</code> (pin-cache, sessions, catalog, songbook) prima di ogni aggiornamento</div>
+          <div>• Backup di <code>local-server/data/</code> (staff-cache, pending-sync, pin-cache, sessions, catalog, songbook) prima di ogni aggiornamento</div>
           <div>• Backup di <code>local-server/.env</code> in <code>.env.backup</code></div>
           <div>• <code>git reset --hard</code> opera <strong>solo</strong> sulla cartella codice (<code>nonceduo-openmic-nuovo</code>) → non tocca mai <code>local-server/data/</code> né <code>.env</code> (sono in <code>nonceduo/local-server</code>)</div>
           <div>• <code>.env</code> esistente <strong>non viene mai sovrascritto</strong>: viene creato solo se assente</div>
@@ -964,10 +966,13 @@ const LocalServerGuide: React.FC = () => {
       </div>
 
 
-      {/* PIN di emergenza (opzionale) */}
+      {/* Staff Offline (Fase 1 + Fase 2) */}
+      <StaffOfflineSection />
+
+      {/* PIN di emergenza (FORMAT/clienti) */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">🆘 PIN di Emergenza (opzionale, una volta sola)</span>
+          <span className="text-xs font-medium text-muted-foreground">🆘 PIN di Emergenza Formati (opzionale, una volta sola)</span>
           <Button
             variant="ghost"
             size="sm"
@@ -984,10 +989,11 @@ const LocalServerGuide: React.FC = () => {
           ))}
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Il PIN di emergenza viene usato <strong>solo</strong> se il local-server parte senza Internet <strong>e</strong> non ha mai sincronizzato il PIN dell'admin.
-          Si inserisce nella <strong>stessa schermata PIN dei formati</strong> (Open Mic, Dediche, ecc.), non nell'area Staff.
+          ⚠️ Questo PIN è <strong>solo per i formati clienti</strong> (Open Mic, Dediche, ecc.), non per l'area Staff.
+          Per l'accesso Staff offline, vedi la sezione <strong>Staff Offline</strong> qui sopra.
         </p>
       </div>
+
 
       <p className="text-xs text-muted-foreground">
         ⚠️ <strong>Esegui i comandi uno alla volta</strong> in PowerShell (non incollarli tutti insieme). Dopo l'aggiornamento, fai <strong>Ctrl+Shift+R</strong> su ogni dispositivo per caricare la versione nuova.
@@ -996,6 +1002,93 @@ const LocalServerGuide: React.FC = () => {
         Se continui a vedere la UI vecchia, apri <strong>{localBaseUrl}/api/version</strong>: se la data non cambia, il problema è nella copia della build, non nel browser.
       </p>
 
+    </div>
+  );
+};
+
+// ──────────────────────────────────────────────────────────
+// Staff Offline (Fase 1 — cache credenziali + Fase 2 — Master PIN)
+// ──────────────────────────────────────────────────────────
+const StaffOfflineSection: React.FC = () => {
+  const { toast } = useToast();
+  const [status, setStatus] = useState<MasterPinStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [wiping, setWiping] = useState(false);
+
+  const refresh = async () => {
+    setLoading(true);
+    const s = await getStaffOfflineStatus();
+    setStatus(s);
+    setLoading(false);
+  };
+
+  useEffect(() => { refresh(); }, []);
+
+  const handleWipe = async () => {
+    if (!confirm('Svuotare la cache Staff locale? Tutti gli utenti dovranno rientrare con Internet per ripopolarla.')) return;
+    setWiping(true);
+    const ok = await wipeStaffCache();
+    setWiping(false);
+    if (ok) {
+      toast({ title: '🧹 Cache Staff svuotata', description: 'Servirà un nuovo login online per riattivare la modalità offline.' });
+      refresh();
+    } else {
+      toast({ title: 'Errore', description: 'Server locale non raggiungibile', variant: 'destructive' });
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">👤 Staff Offline (accesso /admin senza Internet)</span>
+      </div>
+      <div className="rounded-lg p-3 bg-muted/40 border border-border space-y-2 text-[11px]">
+        {loading ? (
+          <div className="text-muted-foreground">Lettura stato server locale…</div>
+        ) : !status ? (
+          <div className="text-muted-foreground">
+            Server locale non raggiungibile. Funzione disponibile solo dalle pagine servite da <code>http://192.168.x.x:8080</code>.
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <div className="text-muted-foreground">Staff in cache</div>
+                <div className="font-semibold text-foreground">{status.cached_emails_count}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Master PIN</div>
+                <div className="font-semibold text-foreground">
+                  {status.master_pin_enabled ? <span className="text-amber-600 dark:text-amber-400">ATTIVO</span> : 'disattivato'}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Scritture in coda</div>
+                <div className="font-semibold text-foreground">{status.pending_sync_count}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Stato</div>
+                <div className="font-semibold">
+                  {status.cache_empty
+                    ? <span className="text-amber-600 dark:text-amber-400">Cache vuota</span>
+                    : <span className="text-emerald-600 dark:text-emerald-400">Pronto</span>}
+                </div>
+              </div>
+            </div>
+            <div className="pt-1 text-muted-foreground leading-relaxed">
+              <div>• <strong>Fase 1 (default):</strong> ad ogni login Staff con Internet, la tua password viene salvata in forma HASHED (PBKDF2) in <code>data/staff-cache.json</code>. Senza Internet, <code>/admin</code> tenta il login locale automaticamente.</div>
+              <div>• <strong>Fase 2 (emergenza):</strong> se la cache è vuota o corrotta, configura <code>STAFF_MASTER_PIN</code> in <code>local-server/.env</code> per accedere comunque (solo locale, niente sync cloud).</div>
+              <div>• Distinzione: <strong>PIN format/clienti</strong> ≠ <strong>credenziali Staff cache</strong> ≠ <strong>Master PIN emergenza</strong>.</div>
+            </div>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={refresh}>Aggiorna</Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs text-destructive" onClick={handleWipe} disabled={wiping || status.cached_emails_count === 0}>
+                {wiping ? 'Svuoto…' : 'Svuota cache Staff'}
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 };
