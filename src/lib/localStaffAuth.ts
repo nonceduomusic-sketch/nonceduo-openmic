@@ -175,8 +175,10 @@ export interface MasterPinStatus {
   enabled: boolean;
   cache_empty: boolean;
   cached_emails_count: number;
+  master_pin_enabled: boolean;
   pending_sync_count: number;
 }
+
 
 export async function getStaffOfflineStatus(): Promise<MasterPinStatus | null> {
   const b = base();
