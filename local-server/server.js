@@ -23,6 +23,45 @@ const DATA_DIR = path.join(__dirname, 'data');
 const SONGBOOK_DIR = path.join(DATA_DIR, 'songbook');
 const CATALOG_FILE = path.join(DATA_DIR, 'catalog.json');
 const SONGBOOK_IDS_FILE = path.join(DATA_DIR, 'songbook-ids.json');
+const PIN_CACHE_FILE = path.join(DATA_DIR, 'pin-cache.json');
+const LOCAL_SESSIONS_FILE = path.join(DATA_DIR, 'local-sessions.json');
+const ENV_FILE = path.join(__dirname, '.env');
+
+// ═══════════════════════════════════════
+// .env loader (no dotenv dependency)
+// ═══════════════════════════════════════
+function loadEnv() {
+  const env = {};
+  try {
+    if (fs.existsSync(ENV_FILE)) {
+      const lines = fs.readFileSync(ENV_FILE, 'utf-8').split(/\r?\n/);
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eq = trimmed.indexOf('=');
+        if (eq === -1) continue;
+        const key = trimmed.slice(0, eq).trim();
+        let val = trimmed.slice(eq + 1).trim();
+        // Strip surrounding quotes
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        env[key] = val;
+      }
+    }
+  } catch (e) {
+    console.warn('⚠️  Errore lettura .env:', e.message);
+  }
+  return env;
+}
+const LOCAL_ENV = loadEnv();
+const EMERGENCY_PIN = (LOCAL_ENV.EMERGENCY_PIN || process.env.EMERGENCY_PIN || '').trim().toUpperCase();
+const LOCAL_SESSION_TTL_MS = Number(LOCAL_ENV.LOCAL_SESSION_TTL_MS || process.env.LOCAL_SESSION_TTL_MS || 24 * 60 * 60 * 1000);
+if (EMERGENCY_PIN) {
+  console.log(`🚨 PIN di emergenza ATTIVO (configurato in .env)`);
+} else {
+  console.log(`ℹ️  PIN di emergenza disabilitato (per attivare: EMERGENCY_PIN=XXXX in .env)`);
+}
 
 function getFileMTimeISO(filePath) {
   try {
