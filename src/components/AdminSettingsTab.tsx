@@ -796,6 +796,8 @@ const LocalServerGuide: React.FC = () => {
     { cmd: 'Remove-Item "..\\nonceduo\\local-server\\public\\assets" -Recurse -Force -ErrorAction SilentlyContinue', label: 'Rimuovi assets vecchi' },
     { cmd: 'Copy-Item ".\\dist\\*" -Destination "..\\nonceduo\\local-server\\public" -Recurse -Force', label: 'Copia file compilati' },
     { cmd: 'Copy-Item ".\\local-server\\server.js" -Destination "..\\nonceduo\\local-server\\server.js" -Force', label: 'Copia server.js' },
+    { cmd: 'Copy-Item ".\\local-server\\.env.example" -Destination "..\\nonceduo\\local-server\\.env.example" -Force', label: 'Copia template .env (PIN emergenza)' },
+    { cmd: 'if (-not (Test-Path "..\\nonceduo\\local-server\\.env")) { Copy-Item "..\\nonceduo\\local-server\\.env.example" "..\\nonceduo\\local-server\\.env" }', label: 'Crea .env se manca (preserva config esistente)' },
     { cmd: 'cd ..\\nonceduo\\local-server', label: 'Vai nella cartella server' },
     { cmd: 'node server.js', label: 'Avvia il server' },
   ];
@@ -805,6 +807,15 @@ const LocalServerGuide: React.FC = () => {
     { cmd: 'cd C:\\Users\\iaco_\\nonceduo\\local-server', label: 'Vai nella cartella server' },
     { cmd: 'node server.js', label: 'Avvia il server' },
   ];
+
+  const emergencyPinCommands = [
+    { cmd: 'cd C:\\Users\\iaco_\\nonceduo\\local-server', label: 'Vai nella cartella server' },
+    { cmd: 'notepad .env', label: 'Apri il file .env (sostituisci 9999 con il PIN desiderato)' },
+    { cmd: '# Nel file scrivi:  EMERGENCY_PIN=9999', label: 'Imposta il PIN di emergenza (4+ cifre)' },
+    { cmd: 'taskkill /F /IM node.exe 2>$null; node server.js', label: 'Riavvia il server per applicare' },
+    { cmd: 'curl http://127.0.0.1:8080/api/pin-status', label: 'Verifica: emergency_pin_enabled deve essere true' },
+  ];
+
 
   const copySingle = (cmd: string) => {
     navigator.clipboard.writeText(cmd).then(() => {
@@ -935,12 +946,38 @@ const LocalServerGuide: React.FC = () => {
         </div>
       </div>
 
+      {/* PIN di emergenza (opzionale) */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-muted-foreground">🆘 PIN di Emergenza (opzionale, una volta sola)</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={() => copyAll(emergencyPinCommands)}
+          >
+            <Copy className="w-3 h-3 mr-1" />
+            Copia tutto
+          </Button>
+        </div>
+        <div className="bg-muted/50 rounded-lg p-3 font-mono text-xs space-y-0.5 border border-border">
+          {emergencyPinCommands.map((item, i) => (
+            <CommandLine key={i} cmd={item.cmd} label={item.label} index={i} />
+          ))}
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Il PIN di emergenza viene usato <strong>solo</strong> se il local-server parte senza Internet <strong>e</strong> non ha mai sincronizzato il PIN dell'admin.
+          Si inserisce nella <strong>stessa schermata PIN dei formati</strong> (Open Mic, Dediche, ecc.), non nell'area Staff.
+        </p>
+      </div>
+
       <p className="text-xs text-muted-foreground">
         ⚠️ <strong>Esegui i comandi uno alla volta</strong> in PowerShell (non incollarli tutti insieme). Dopo l'aggiornamento, fai <strong>Ctrl+Shift+R</strong> su ogni dispositivo per caricare la versione nuova.
       </p>
       <p className="text-xs text-muted-foreground">
         Se continui a vedere la UI vecchia, apri <strong>{localBaseUrl}/api/version</strong>: se la data non cambia, il problema è nella copia della build, non nel browser.
       </p>
+
     </div>
   );
 };
