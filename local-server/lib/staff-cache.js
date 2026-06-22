@@ -115,6 +115,32 @@ function makeStaffCache({ cacheFile, logFile, ttlDays, tokenSecret, tokenTtlMs }
     saveAll({});
   }
 
+  /**
+   * Estende expires_at di tutte le entry a now + TTL_MS, senza re-hash.
+   * Non rinnova entry scadute da più di GRACE_MS (default 90 giorni)
+   * per evitare di tenere indefinitamente vive credenziali abbandonate.
+   */
+  function renewAll({ graceMs = 90 * 24 * 60 * 60 * 1000 } = {}) {
+    const map = loadAll();
+    const now = Date.now();
+    const newExp = new Date(now + TTL_MS).toISOString();
+    let renewed = 0;
+    let skipped = 0;
+    for (const key of Object.keys(map)) {
+      const entry = map[key];
+      const exp = entry?.expires_at ? new Date(entry.expires_at).getTime() : 0;
+      // Skip entry scadute da troppo tempo
+      if (exp > 0 && now - exp > graceMs) {
+        skipped++;
+        continue;
+      }
+      entry.expires_at = newExp;
+      renewed++;
+    }
+    saveAll(map);
+    return { renewed, skipped, total: Object.keys(map).length, new_expires_at: newExp };
+  }
+
   function verify({ email, password }) {
     const entry = getEntry(email);
     if (!entry) return { ok: false, reason: 'no_cache' };
@@ -184,6 +210,7 @@ function makeStaffCache({ cacheFile, logFile, ttlDays, tokenSecret, tokenTtlMs }
     upsertEntry,
     removeEntry,
     clearAll,
+    renewAll,
     verify,
     issueToken,
     verifyToken,

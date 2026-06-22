@@ -692,6 +692,21 @@ const httpServer = http.createServer(async (req, res) => {
     return sendJSON(res, { ok: true });
   }
 
+  // Rinnova TTL di tutte le entry in cache (chiamato dallo script di avvio/aggiornamento)
+  // Ristretto a localhost: solo il PC server stesso può chiamarlo.
+  if (urlPath === '/api/staff/cache-renew' && req.method === 'POST') {
+    const ip = (req.socket?.remoteAddress || '').replace('::ffff:', '');
+    const isLocal = ip === '127.0.0.1' || ip === '::1' || ip === 'localhost';
+    if (!isLocal) {
+      return sendJSON(res, { ok: false, error: 'localhost_only' }, 403);
+    }
+    const result = staffCache.renewAll();
+    staffCache.appendLog({ event: 'cache_renewed', ...result });
+    console.log(`🔄 Staff cache rinnovata: ${result.renewed} attive, ${result.skipped} ignorate (scadute >90gg), nuova scadenza ${result.new_expires_at}`);
+    return sendJSON(res, { ok: true, ...result });
+  }
+
+
   // ── Pending sync queue ──
   if (urlPath === '/api/staff/queue-write' && req.method === 'POST') {
     try {

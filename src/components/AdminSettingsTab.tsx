@@ -805,14 +805,14 @@ const LocalServerGuide: React.FC = () => {
     { cmd: 'Copy-Item ".\\local-server\\.env.example" -Destination "..\\nonceduo\\local-server\\.env.example" -Force', label: 'Copia template .env.example (NON sovrascrive .env)' },
     { cmd: 'if (-not (Test-Path "..\\nonceduo\\local-server\\.env")) { Copy-Item "..\\nonceduo\\local-server\\.env.example" "..\\nonceduo\\local-server\\.env"; Write-Host "✅ Creato .env vuoto" } else { Write-Host "✅ .env esistente preservato" }', label: 'Crea .env solo se manca (preserva EMERGENCY_PIN esistente)' },
     { cmd: 'cd ..\\nonceduo\\local-server', label: 'Vai nella cartella server' },
-    { cmd: 'node server.js', label: 'Avvia il server (controlla i log iniziali)' },
+    { cmd: 'Start-Process powershell -ArgumentList \'-NoExit\',\'-Command\',\'cd C:\\Users\\iaco_\\nonceduo\\local-server; node server.js\'; Start-Sleep -Seconds 3; try { Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/staff/cache-renew" -Method POST -TimeoutSec 5 | Out-Host } catch { Write-Host "ℹ️ Cache renew saltato (server non ancora pronto o cache vuota)" }', label: 'Avvia il server + rinnova TTL cache Staff (+30 giorni) — login offline garantito' },
   ];
 
   const startCommands = [
     { cmd: 'taskkill /F /IM node.exe 2>$null', label: 'Ferma server vecchio' },
     { cmd: 'Start-Sleep -Seconds 1', label: 'Attendi chiusura processo' },
     { cmd: 'cd C:\\Users\\iaco_\\nonceduo\\local-server', label: 'Vai nella cartella server' },
-    { cmd: 'node server.js', label: 'Avvia il server' },
+    { cmd: 'Start-Process powershell -ArgumentList \'-NoExit\',\'-Command\',\'cd C:\\Users\\iaco_\\nonceduo\\local-server; node server.js\'; Start-Sleep -Seconds 3; try { Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/staff/cache-renew" -Method POST -TimeoutSec 5 | Out-Host } catch { Write-Host "ℹ️ Cache renew saltato (server non ancora pronto o cache vuota)" }', label: 'Avvia il server + rinnova TTL cache Staff (+30 giorni) — login offline garantito' },
   ];
 
   const emergencyPinCommands = [
