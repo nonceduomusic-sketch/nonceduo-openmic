@@ -982,7 +982,35 @@ const LocalServerGuide: React.FC = () => {
         )}
       </div>
 
+      {/* Setup iniziale (prima installazione) */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-muted-foreground">🆕 Setup Iniziale (solo prima installazione su PC nuovo)</span>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 px-2 text-xs"
+            onClick={() => copyAll(setupCommands)}
+          >
+            <Copy className="w-3 h-3 mr-1" />
+            Copia tutto
+          </Button>
+        </div>
+        <div className="rounded-lg p-2 text-[11px] bg-blue-500/10 border border-blue-500/30 text-blue-900 dark:text-blue-200 space-y-1">
+          <div><strong>📌 Quando usarlo:</strong> SOLO la prima volta che configuri il server su un PC nuovo (o dopo formattazione). Per gli aggiornamenti successivi usa "🔄 Aggiornamento Produzione Locale".</div>
+          <div><strong>⚠️ Prima di iniziare:</strong> modifica nel codice la costante <code>REPO_URL</code> con l'URL del tuo repository GitHub.</div>
+          <div><strong>⏱️ Tempo stimato:</strong> 10-15 minuti (dipende dalla velocità di download).</div>
+          <div><strong>🔁 Riavvio PowerShell:</strong> dopo l'installazione di Node.js e Git devi chiudere e riaprire PowerShell prima di proseguire (passo 5).</div>
+        </div>
+        <div className="bg-muted/50 rounded-lg p-3 font-mono text-xs space-y-0.5 border border-border">
+          {setupCommands.map((item, i) => (
+            <CommandLine key={i} cmd={item.cmd} label={item.label} index={i} />
+          ))}
+        </div>
+      </div>
+
       {/* Solo avvio */}
+
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-xs font-medium text-muted-foreground">🚀 Solo Avvio</span>
