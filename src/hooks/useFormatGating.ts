@@ -142,6 +142,28 @@ export function useFormatPinValidator(format: FormatKey) {
     setIsValid(null);
 
     try {
+      // OFFLINE-FIRST: when served from the local mini-server, try local
+      // validation first so it works even without Internet.
+      try {
+        const { isLocalServerAvailable, localValidatePin } = await import('@/lib/localPinAuth');
+        if (isLocalServerAvailable()) {
+          const local = await localValidatePin(pin.toUpperCase().trim(), format);
+          if (local?.ok) {
+            setIsValid(true);
+            return true;
+          }
+          // If the local server explicitly rejected the PIN (and we have no
+          // internet), don't fall through — surface the rejection.
+          if (local && !local.ok && !navigator.onLine) {
+            setIsValid(false);
+            return false;
+          }
+          // local server unreachable OR rejected but we still have internet → try cloud
+        }
+      } catch {
+        // local helper failed, fall through to cloud
+      }
+
       // Use secure RPC function instead of reading pin_code directly
       // This prevents client-side exposure of PIN codes
       const { data: isValid, error } = await supabase.rpc('validate_live_session_pin', {
