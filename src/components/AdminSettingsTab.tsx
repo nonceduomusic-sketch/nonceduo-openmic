@@ -847,8 +847,8 @@ const LocalServerGuide: React.FC = () => {
     { cmd: 'Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/pin-status" -Method GET | Format-List', label: '✅ Verifica: il campo emergency_pin_enabled deve essere True' },
   ];
 
-  // ⚠️ MODIFICA QUI con l'URL del tuo repo GitHub prima di usare il Setup Iniziale
-  const REPO_URL = 'https://github.com/iaco/nonceduo-openmic-nuovo.git';
+  // URL del repository GitHub ufficiale
+  const REPO_URL = 'https://github.com/nonceduomusic-sketch/nonceduo-openmic.git';
 
   const setupCommands = [
     // ── 1. PREREQUISITI ──────────────────────────────────────
@@ -863,7 +863,7 @@ const LocalServerGuide: React.FC = () => {
     { cmd: 'New-Item -ItemType Directory -Path "nonceduo" -Force | Out-Null; Write-Host "✅ Cartella nonceduo/ pronta"', label: '📁 CARTELLE — Crea la cartella base nonceduo/ (per il server locale)' },
 
     // ── 3. CLONE CODICE ──────────────────────────────────────
-    { cmd: `git clone ${REPO_URL} nonceduo-openmic-nuovo`, label: '⬇️ CODICE — Clona il repository sorgente in nonceduo-openmic-nuovo/ (⚠️ modifica REPO_URL nel codice prima!)' },
+    { cmd: `git clone ${REPO_URL} nonceduo-openmic-nuovo`, label: '⬇️ CODICE — Clona il repository ufficiale in nonceduo-openmic-nuovo/' },
     { cmd: `cd ${PATH_CODE}`, label: '📂 CODICE — Entra nella cartella del codice appena clonato' },
     { cmd: 'npm install', label: '📦 CODICE — Installa tutte le dipendenze npm (può richiedere 2-3 minuti)' },
     { cmd: 'npm run build', label: '🏗️ CODICE — Compila l\'app per la produzione (crea cartella dist/)' },
@@ -998,7 +998,7 @@ const LocalServerGuide: React.FC = () => {
         </div>
         <div className="rounded-lg p-2 text-[11px] bg-blue-500/10 border border-blue-500/30 text-blue-900 dark:text-blue-200 space-y-1">
           <div><strong>📌 Quando usarlo:</strong> SOLO la prima volta che configuri il server su un PC nuovo (o dopo formattazione). Per gli aggiornamenti successivi usa "🔄 Aggiornamento Produzione Locale".</div>
-          <div><strong>⚠️ Prima di iniziare:</strong> modifica nel codice la costante <code>REPO_URL</code> con l'URL del tuo repository GitHub.</div>
+          <div><strong>📦 Repository:</strong> <code>nonceduomusic-sketch/nonceduo-openmic</code> (già configurato).</div>
           <div><strong>⏱️ Tempo stimato:</strong> 10-15 minuti (dipende dalla velocità di download).</div>
           <div><strong>🔁 Riavvio PowerShell:</strong> dopo l'installazione di Node.js e Git devi chiudere e riaprire PowerShell prima di proseguire (passo 5).</div>
         </div>
