@@ -966,10 +966,13 @@ const LocalServerGuide: React.FC = () => {
       </div>
 
 
-      {/* PIN di emergenza (opzionale) */}
+      {/* Staff Offline (Fase 1 + Fase 2) */}
+      <StaffOfflineSection />
+
+      {/* PIN di emergenza (FORMAT/clienti) */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-medium text-muted-foreground">🆘 PIN di Emergenza (opzionale, una volta sola)</span>
+          <span className="text-xs font-medium text-muted-foreground">🆘 PIN di Emergenza Formati (opzionale, una volta sola)</span>
           <Button
             variant="ghost"
             size="sm"
@@ -986,10 +989,11 @@ const LocalServerGuide: React.FC = () => {
           ))}
         </div>
         <p className="text-[11px] text-muted-foreground">
-          Il PIN di emergenza viene usato <strong>solo</strong> se il local-server parte senza Internet <strong>e</strong> non ha mai sincronizzato il PIN dell'admin.
-          Si inserisce nella <strong>stessa schermata PIN dei formati</strong> (Open Mic, Dediche, ecc.), non nell'area Staff.
+          ⚠️ Questo PIN è <strong>solo per i formati clienti</strong> (Open Mic, Dediche, ecc.), non per l'area Staff.
+          Per l'accesso Staff offline, vedi la sezione <strong>Staff Offline</strong> qui sopra.
         </p>
       </div>
+
 
       <p className="text-xs text-muted-foreground">
         ⚠️ <strong>Esegui i comandi uno alla volta</strong> in PowerShell (non incollarli tutti insieme). Dopo l'aggiornamento, fai <strong>Ctrl+Shift+R</strong> su ogni dispositivo per caricare la versione nuova.
