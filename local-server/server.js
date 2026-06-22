@@ -550,6 +550,180 @@ const httpServer = http.createServer(async (req, res) => {
     }
   }
 
+  // ════════════════════════════════════════════════
+  // STAFF OFFLINE AUTH (Fase 1 + Fase 2)
+  // ════════════════════════════════════════════════
+  function clientKey() {
+    return (req.socket.remoteAddress || 'unknown').replace(/^::ffff:/, '');
+  }
+
+  // Status pubblico (per UI: capire se cache vuota / master pin attivo / coda pending)
+  if (urlPath === '/api/staff/status' && req.method === 'GET') {
+    const emails = staffCache.listEmails();
+    return sendJSON(res, {
+      enabled: true,
+      cache_empty: emails.length === 0,
+      cached_emails_count: emails.length,
+      master_pin_enabled: !!STAFF_MASTER_PIN,
+      pending_sync_count: pendingQueue.count(),
+    });
+  }
+
+  // Cache credenziali Staff (chiamato DOPO login Supabase OK)
+  if (urlPath === '/api/staff/cache-credentials' && req.method === 'POST') {
+    try {
+      const body = await readBody(req);
+      const email = String(body.email || '').trim().toLowerCase();
+      const password = String(body.password || '');
+      const role = String(body.role || '').trim().toLowerCase();
+      const username = String(body.username || '').trim();
+
+      if (!email || !password || !role) {
+        return sendJSON(res, { ok: false, error: 'missing_fields' }, 400);
+      }
+      if (!['owner', 'admin', 'moderator', 'operator'].includes(role)) {
+        return sendJSON(res, { ok: false, error: 'invalid_role' }, 400);
+      }
+      if (STAFF_CACHE_ALLOWED_EMAILS.length && !STAFF_CACHE_ALLOWED_EMAILS.includes(email)) {
+        return sendJSON(res, { ok: false, error: 'email_not_whitelisted' }, 403);
+      }
+      staffCache.upsertEntry({ email, password, role, username });
+      console.log(`👤 Staff cache aggiornata per ${email} (${role})`);
+      return sendJSON(res, { ok: true });
+    } catch (e) {
+      return sendJSON(res, { ok: false, error: 'bad_request' }, 400);
+    }
+  }
+
+  // Login offline contro la cache locale
+  if (urlPath === '/api/staff/validate-offline' && req.method === 'POST') {
+    try {
+      const rl = staffRateLimit.check(`offline:${clientKey()}`);
+      if (!rl.allowed) {
+        return sendJSON(res, { ok: false, error: 'rate_limited', retry_after_ms: rl.retryAfterMs }, 429);
+      }
+      const body = await readBody(req);
+      const email = String(body.email || '').trim().toLowerCase();
+      const password = String(body.password || '');
+      if (!email || !password) {
+        return sendJSON(res, { ok: false, error: 'missing_fields' }, 400);
+      }
+      const result = staffCache.verify({ email, password });
+      if (!result.ok) {
+        staffCache.appendLog({ event: 'login_failed', email, reason: result.reason });
+        return sendJSON(res, { ok: false, error: result.reason }, 401);
+      }
+      const token = staffCache.issueToken({ email, role: result.entry.role, source: 'cache' });
+      const exp = new Date(Date.now() + STAFF_LOCAL_TOKEN_TTL_MS).toISOString();
+      staffCache.appendLog({ event: 'login_ok', email, role: result.entry.role, source: 'cache' });
+      return sendJSON(res, {
+        ok: true,
+        token,
+        email,
+        username: result.entry.username,
+        role: result.entry.role,
+        expires_at: exp,
+      });
+    } catch (e) {
+      return sendJSON(res, { ok: false, error: 'bad_request' }, 400);
+    }
+  }
+
+  // Login di emergenza tramite STAFF_MASTER_PIN
+  if (urlPath === '/api/staff/master-pin-login' && req.method === 'POST') {
+    try {
+      const rl = staffRateLimit.check(`master:${clientKey()}`);
+      if (!rl.allowed) {
+        return sendJSON(res, { ok: false, error: 'rate_limited', retry_after_ms: rl.retryAfterMs }, 429);
+      }
+      if (!STAFF_MASTER_PIN) {
+        return sendJSON(res, { ok: false, error: 'master_pin_disabled' }, 403);
+      }
+      const body = await readBody(req);
+      const pin = String(body.pin || '').trim().toUpperCase();
+      if (!pin) {
+        return sendJSON(res, { ok: false, error: 'missing_pin' }, 400);
+      }
+      // Confronto a tempo costante
+      const a = Buffer.from(pin);
+      const b = Buffer.from(STAFF_MASTER_PIN);
+      const equal = a.length === b.length && crypto.timingSafeEqual(a, b);
+      if (!equal) {
+        staffCache.appendLog({ event: 'master_pin_failed' });
+        return sendJSON(res, { ok: false, error: 'pin_invalid' }, 401);
+      }
+      const token = staffCache.issueToken({
+        email: 'emergency@local',
+        role: STAFF_MASTER_PIN_ROLE,
+        source: 'master_pin',
+      });
+      const exp = new Date(Date.now() + STAFF_LOCAL_TOKEN_TTL_MS).toISOString();
+      staffCache.appendLog({ event: 'master_pin_login', role: STAFF_MASTER_PIN_ROLE });
+      console.log(`🆘 Accesso Staff EMERGENZA via Master PIN (ruolo: ${STAFF_MASTER_PIN_ROLE})`);
+      return sendJSON(res, {
+        ok: true,
+        token,
+        role: STAFF_MASTER_PIN_ROLE,
+        expires_at: exp,
+      });
+    } catch (e) {
+      return sendJSON(res, { ok: false, error: 'bad_request' }, 400);
+    }
+  }
+
+  // Verifica token Staff locale
+  if (urlPath === '/api/staff/token-check' && req.method === 'POST') {
+    try {
+      const body = await readBody(req);
+      const token = String(body.token || '');
+      const payload = staffCache.verifyToken(token);
+      if (!payload) return sendJSON(res, { ok: false, error: 'token_invalid' }, 401);
+      return sendJSON(res, { ok: true, ...payload });
+    } catch (e) {
+      return sendJSON(res, { ok: false, error: 'bad_request' }, 400);
+    }
+  }
+
+  // Svuota intera cache Staff (azione manuale dall'admin)
+  if (urlPath === '/api/staff/cache-clear' && req.method === 'POST') {
+    staffCache.clearAll();
+    staffCache.appendLog({ event: 'cache_cleared' });
+    console.log('🧹 Staff cache svuotata');
+    return sendJSON(res, { ok: true });
+  }
+
+  // ── Pending sync queue ──
+  if (urlPath === '/api/staff/queue-write' && req.method === 'POST') {
+    try {
+      const body = await readBody(req);
+      const out = pendingQueue.enqueue({
+        kind: body.kind,
+        payload: body.payload,
+        idempotency_key: body.idempotency_key,
+        actor_email: body.actor_email,
+      });
+      return sendJSON(res, out);
+    } catch {
+      return sendJSON(res, { ok: false, error: 'bad_request' }, 400);
+    }
+  }
+
+  if (urlPath === '/api/staff/pending-sync/list' && req.method === 'GET') {
+    return sendJSON(res, pendingQueue.list());
+  }
+
+  if (urlPath === '/api/staff/pending-sync/remove' && req.method === 'POST') {
+    try {
+      const body = await readBody(req);
+      pendingQueue.remove(String(body.idempotency_key || ''));
+      return sendJSON(res, { ok: true });
+    } catch {
+      return sendJSON(res, { ok: false, error: 'bad_request' }, 400);
+    }
+  }
+
+
+
   // SongBook: lista brani
   if (urlPath === '/api/songbook/list' && req.method === 'GET') {
     return sendJSON(res, getSongbookList());
