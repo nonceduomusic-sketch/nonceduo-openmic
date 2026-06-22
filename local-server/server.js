@@ -636,6 +636,16 @@ let broadcastState = {
   tv_element_positions: null,
 };
 
+// Hydrate PIN state from disk on startup (so offline reboot keeps PIN active)
+try {
+  const cached = loadPinCache();
+  if (cached) {
+    if (cached.pin_code) broadcastState.pin_code = cached.pin_code;
+    if (typeof cached.pin_required === 'boolean') broadcastState.pin_required = cached.pin_required;
+    console.log(`🔐 PIN cache caricata da disco (formati: ${(cached.protected_formats || []).join(', ') || 'tutti'})`);
+  }
+} catch {}
+
 // ═══════════════════════════════════════
 // WebSocket Server
 // ═══════════════════════════════════════
