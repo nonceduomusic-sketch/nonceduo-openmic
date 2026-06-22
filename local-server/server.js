@@ -65,10 +65,54 @@ const LOCAL_ENV = loadEnv();
 const EMERGENCY_PIN = (LOCAL_ENV.EMERGENCY_PIN || process.env.EMERGENCY_PIN || '').trim().toUpperCase();
 const LOCAL_SESSION_TTL_MS = Number(LOCAL_ENV.LOCAL_SESSION_TTL_MS || process.env.LOCAL_SESSION_TTL_MS || 24 * 60 * 60 * 1000);
 if (EMERGENCY_PIN) {
-  console.log(`🚨 PIN di emergenza ATTIVO (configurato in .env)`);
+  console.log(`🚨 PIN di emergenza (formati) ATTIVO`);
 } else {
-  console.log(`ℹ️  PIN di emergenza disabilitato (per attivare: EMERGENCY_PIN=XXXX in .env)`);
+  console.log(`ℹ️  PIN di emergenza (formati) disabilitato`);
 }
+
+// ─── Staff offline auth config ───
+const STAFF_CACHE_TTL_DAYS = Number(LOCAL_ENV.STAFF_CACHE_TTL_DAYS || 30);
+const STAFF_LOCAL_TOKEN_TTL_MS = Number(LOCAL_ENV.STAFF_LOCAL_TOKEN_TTL_MS || 12 * 60 * 60 * 1000);
+const STAFF_MASTER_PIN = (LOCAL_ENV.STAFF_MASTER_PIN || '').trim().toUpperCase();
+const STAFF_MASTER_PIN_ROLE = (LOCAL_ENV.STAFF_MASTER_PIN_ROLE || 'admin').trim().toLowerCase();
+const STAFF_CACHE_ALLOWED_EMAILS = (LOCAL_ENV.STAFF_CACHE_ALLOWED_EMAILS || '')
+  .split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
+
+// Auto-generate STAFF_LOCAL_TOKEN_SECRET if missing
+let STAFF_LOCAL_TOKEN_SECRET = (LOCAL_ENV.STAFF_LOCAL_TOKEN_SECRET || '').trim();
+if (!STAFF_LOCAL_TOKEN_SECRET) {
+  STAFF_LOCAL_TOKEN_SECRET = crypto.randomBytes(32).toString('hex');
+  try {
+    const line = `\nSTAFF_LOCAL_TOKEN_SECRET=${STAFF_LOCAL_TOKEN_SECRET}\n`;
+    fs.appendFileSync(ENV_FILE, line);
+    console.log('🔑 STAFF_LOCAL_TOKEN_SECRET generato e salvato in .env');
+  } catch (e) {
+    console.warn('⚠️  Impossibile scrivere STAFF_LOCAL_TOKEN_SECRET in .env:', e.message);
+    console.warn('    Il segreto verrà rigenerato ad ogni riavvio (le sessioni Staff locali non sopravvivono ai restart).');
+  }
+}
+
+// Assicura che le cartelle dati esistano (serve PRIMA di creare staff cache)
+if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+if (!fs.existsSync(SONGBOOK_DIR)) fs.mkdirSync(SONGBOOK_DIR, { recursive: true });
+
+const staffCache = makeStaffCache({
+  cacheFile: STAFF_CACHE_FILE,
+  logFile: STAFF_LOG_FILE,
+  ttlDays: STAFF_CACHE_TTL_DAYS,
+  tokenSecret: STAFF_LOCAL_TOKEN_SECRET,
+  tokenTtlMs: STAFF_LOCAL_TOKEN_TTL_MS,
+});
+const pendingQueue = makePendingQueue({ queueFile: PENDING_SYNC_FILE });
+const staffRateLimit = makeRateLimiter({ windowMs: 15 * 60 * 1000, maxAttempts: 5 });
+
+if (STAFF_MASTER_PIN) {
+  console.log(`🆘 STAFF_MASTER_PIN ATTIVO (ruolo: ${STAFF_MASTER_PIN_ROLE}) — solo emergenza`);
+} else {
+  console.log(`ℹ️  STAFF_MASTER_PIN disabilitato`);
+}
+console.log(`👥 Staff cache: ${staffCache.listEmails().length} utenti memorizzati`);
+
 
 function getFileMTimeISO(filePath) {
   try {
