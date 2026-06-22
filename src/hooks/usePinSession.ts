@@ -417,6 +417,20 @@ export function usePinSession(format: FormatKey) {
         return;
       }
 
+      // LOCAL TOKEN PATH — never hit Supabase, just ping the local server.
+      if (isLocalToken(stored.token)) {
+        const check = await localCheckToken(stored.token, format);
+        if (check === null) {
+          // Local server momentarily unreachable — stay valid, don't kick out.
+          return;
+        }
+        if (!check.is_valid && !cancelled) {
+          if (import.meta.env.DEV) console.warn('[PinSession] Local token invalidated:', check.reason);
+          invalidateLocally(check.reason || 'admin_reset');
+        }
+        return;
+      }
+
       try {
         const { data: validationRows, error: validationError } = await supabase.rpc('validate_pin_session', {
           p_token: stored.token,
