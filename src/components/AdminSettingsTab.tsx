@@ -796,6 +796,8 @@ const LocalServerGuide: React.FC = () => {
     { cmd: 'Remove-Item "..\\nonceduo\\local-server\\public\\assets" -Recurse -Force -ErrorAction SilentlyContinue', label: 'Rimuovi assets vecchi' },
     { cmd: 'Copy-Item ".\\dist\\*" -Destination "..\\nonceduo\\local-server\\public" -Recurse -Force', label: 'Copia file compilati' },
     { cmd: 'Copy-Item ".\\local-server\\server.js" -Destination "..\\nonceduo\\local-server\\server.js" -Force', label: 'Copia server.js' },
+    { cmd: 'Copy-Item ".\\local-server\\.env.example" -Destination "..\\nonceduo\\local-server\\.env.example" -Force', label: 'Copia template .env (PIN emergenza)' },
+    { cmd: 'if (-not (Test-Path "..\\nonceduo\\local-server\\.env")) { Copy-Item "..\\nonceduo\\local-server\\.env.example" "..\\nonceduo\\local-server\\.env" }', label: 'Crea .env se manca (preserva config esistente)' },
     { cmd: 'cd ..\\nonceduo\\local-server', label: 'Vai nella cartella server' },
     { cmd: 'node server.js', label: 'Avvia il server' },
   ];
@@ -805,6 +807,15 @@ const LocalServerGuide: React.FC = () => {
     { cmd: 'cd C:\\Users\\iaco_\\nonceduo\\local-server', label: 'Vai nella cartella server' },
     { cmd: 'node server.js', label: 'Avvia il server' },
   ];
+
+  const emergencyPinCommands = [
+    { cmd: 'cd C:\\Users\\iaco_\\nonceduo\\local-server', label: 'Vai nella cartella server' },
+    { cmd: 'notepad .env', label: 'Apri il file .env (sostituisci 9999 con il PIN desiderato)' },
+    { cmd: '# Nel file scrivi:  EMERGENCY_PIN=9999', label: 'Imposta il PIN di emergenza (4+ cifre)' },
+    { cmd: 'taskkill /F /IM node.exe 2>$null; node server.js', label: 'Riavvia il server per applicare' },
+    { cmd: 'curl http://127.0.0.1:8080/api/pin-status', label: 'Verifica: emergency_pin_enabled deve essere true' },
+  ];
+
 
   const copySingle = (cmd: string) => {
     navigator.clipboard.writeText(cmd).then(() => {
