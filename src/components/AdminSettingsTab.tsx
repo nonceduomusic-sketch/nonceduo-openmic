@@ -788,43 +788,65 @@ const LocalServerGuide: React.FC = () => {
 
   const localBaseUrl = detectedLocalHost ? `http://${detectedLocalHost}:8080` : 'http://127.0.0.1:8080';
 
+  // Path base (usati ovunque per chiarezza)
+  const PATH_SERVER = 'C:\\Users\\iaco_\\nonceduo\\local-server';
+  const PATH_CODE = 'C:\\Users\\iaco_\\nonceduo-openmic-nuovo';
+
   const updateCommands = [
-    { cmd: 'taskkill /F /IM node.exe 2>$null', label: 'Ferma server vecchio' },
-    { cmd: 'Start-Sleep -Seconds 1', label: 'Attendi chiusura processo' },
-    { cmd: '$ts = Get-Date -Format "yyyyMMdd-HHmmss"; if (Test-Path "C:\\Users\\iaco_\\nonceduo\\local-server\\data") { Copy-Item "C:\\Users\\iaco_\\nonceduo\\local-server\\data" -Destination "C:\\Users\\iaco_\\nonceduo\\local-server\\data-backup-$ts" -Recurse -Force; Write-Host "✅ Backup creato: data-backup-$ts (include staff-cache, pending-sync, pin-cache, sessions, catalog, songbook)" } else { Write-Host "ℹ️ Nessuna cartella data da salvare" }', label: 'BACKUP cartella data/ (staff-cache, pending-sync, pin-cache, sessions, catalog, songbook)' },
-    { cmd: 'if (Test-Path "C:\\Users\\iaco_\\nonceduo\\local-server\\.env") { Copy-Item "C:\\Users\\iaco_\\nonceduo\\local-server\\.env" -Destination "C:\\Users\\iaco_\\nonceduo\\local-server\\.env.backup" -Force; Write-Host "✅ .env salvato in .env.backup" }', label: 'BACKUP file .env (PIN emergenza)' },
-    { cmd: 'Get-ChildItem "C:\\Users\\iaco_\\nonceduo\\local-server" -Directory -Filter "data-backup-*" | Sort-Object Name -Descending | Select-Object -Skip 5 | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue; $c = (Get-ChildItem "C:\\Users\\iaco_\\nonceduo\\local-server" -Directory -Filter "data-backup-*" | Measure-Object).Count; Write-Host "🧹 Backup puliti: mantenuti gli ultimi 5 (totale $c)"', label: 'PULIZIA backup: mantieni solo gli ultimi 5 (cancella i più vecchi)' },
-    { cmd: 'cd C:\\Users\\iaco_\\nonceduo-openmic-nuovo', label: 'Vai nella cartella codice' },
-    { cmd: 'git fetch origin', label: 'Scarica aggiornamenti dal server' },
-    { cmd: 'git reset --hard origin/main', label: 'Allinea codice (NON tocca local-server/data né .env: sono in altra cartella)' },
-    { cmd: 'npm install', label: 'Installa dipendenze' },
-    { cmd: 'npm run build', label: 'Compila l\'app' },
-    { cmd: 'Remove-Item "..\\nonceduo\\local-server\\public\\assets" -Recurse -Force -ErrorAction SilentlyContinue', label: 'Rimuovi assets vecchi (solo public/, NON data/)' },
-    { cmd: 'Copy-Item ".\\dist\\*" -Destination "..\\nonceduo\\local-server\\public" -Recurse -Force', label: 'Copia file compilati' },
-    { cmd: 'Copy-Item ".\\local-server\\server.js" -Destination "..\\nonceduo\\local-server\\server.js" -Force', label: 'Copia server.js' },
-    { cmd: 'Copy-Item ".\\local-server\\.env.example" -Destination "..\\nonceduo\\local-server\\.env.example" -Force', label: 'Copia template .env.example (NON sovrascrive .env)' },
-    { cmd: 'if (-not (Test-Path "..\\nonceduo\\local-server\\.env")) { Copy-Item "..\\nonceduo\\local-server\\.env.example" "..\\nonceduo\\local-server\\.env"; Write-Host "✅ Creato .env vuoto" } else { Write-Host "✅ .env esistente preservato" }', label: 'Crea .env solo se manca (preserva EMERGENCY_PIN esistente)' },
-    { cmd: 'cd ..\\nonceduo\\local-server', label: 'Vai nella cartella server' },
-    { cmd: 'Start-Process powershell -ArgumentList \'-NoExit\',\'-Command\',\'cd C:\\Users\\iaco_\\nonceduo\\local-server; node server.js\'; Start-Sleep -Seconds 3; try { Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/staff/cache-renew" -Method POST -TimeoutSec 5 | Out-Host } catch { Write-Host "ℹ️ Cache renew saltato (server non ancora pronto o cache vuota)" }', label: 'Avvia il server + rinnova TTL cache Staff (+30 giorni) — login offline garantito' },
+    // ── 1. STOP ──────────────────────────────────────────────
+    { cmd: 'taskkill /F /IM node.exe 2>$null', label: '🛑 STOP — Chiudi il server vecchio (uccide tutti i processi node)' },
+    { cmd: 'Start-Sleep -Seconds 1', label: '⏳ STOP — Aspetta 1 secondo che i processi si chiudano davvero' },
+
+    // ── 2. BACKUP ────────────────────────────────────────────
+    { cmd: `$ts = Get-Date -Format "yyyyMMdd-HHmmss"; if (Test-Path "${PATH_SERVER}\\data") { Copy-Item "${PATH_SERVER}\\data" -Destination "${PATH_SERVER}\\data-backup-$ts" -Recurse -Force; Write-Host "✅ Backup creato: data-backup-$ts" } else { Write-Host "ℹ️ Nessuna cartella data da salvare" }`, label: '💾 BACKUP — Salva cartella data/ (staff-cache, pending-sync, pin-cache, sessions, catalog, songbook) con timestamp' },
+    { cmd: `if (Test-Path "${PATH_SERVER}\\.env") { Copy-Item "${PATH_SERVER}\\.env" -Destination "${PATH_SERVER}\\.env.backup" -Force; Write-Host "✅ .env salvato in .env.backup" } else { Write-Host "ℹ️ Nessun .env da salvare" }`, label: '💾 BACKUP — Salva il file .env (contiene EMERGENCY_PIN e STAFF_MASTER_PIN)' },
+    { cmd: `Get-ChildItem "${PATH_SERVER}" -Directory -Filter "data-backup-*" | Sort-Object Name -Descending | Select-Object -Skip 5 | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue; $c = (Get-ChildItem "${PATH_SERVER}" -Directory -Filter "data-backup-*" | Measure-Object).Count; Write-Host "🧹 Backup totali ora: $c (mantengo solo gli ultimi 5)"`, label: '🧹 PULIZIA — Cancella i backup più vecchi e tieni solo gli ultimi 5' },
+
+    // ── 3. CODICE ────────────────────────────────────────────
+    { cmd: `cd ${PATH_CODE}`, label: '📂 CODICE — Entra nella cartella del codice sorgente (nonceduo-openmic-nuovo)' },
+    { cmd: 'git fetch origin', label: '⬇️ CODICE — Scarica gli ultimi aggiornamenti dal repository remoto' },
+    { cmd: 'git reset --hard origin/main', label: '🔄 CODICE — Allinea il codice all\'ultima versione (NON tocca local-server/data né .env)' },
+    { cmd: 'npm install', label: '📦 CODICE — Installa/aggiorna le dipendenze npm' },
+    { cmd: 'npm run build', label: '🏗️ CODICE — Compila l\'app per la produzione (crea cartella dist/)' },
+
+    // ── 4. DEPLOY ────────────────────────────────────────────
+    { cmd: `Remove-Item "${PATH_SERVER}\\public\\assets" -Recurse -Force -ErrorAction SilentlyContinue`, label: '🗑️ DEPLOY — Cancella gli assets vecchi (solo da public/, MAI da data/)' },
+    { cmd: `Copy-Item ".\\dist\\*" -Destination "${PATH_SERVER}\\public" -Recurse -Force`, label: '📋 DEPLOY — Copia i file compilati (dist/) dentro local-server/public/' },
+    { cmd: `Copy-Item ".\\local-server\\server.js" -Destination "${PATH_SERVER}\\server.js" -Force`, label: '📋 DEPLOY — Copia il nuovo server.js' },
+    { cmd: `Copy-Item ".\\local-server\\lib\\*" -Destination "${PATH_SERVER}\\lib\\" -Recurse -Force`, label: '📋 DEPLOY — Copia le librerie del server (staff-cache, pending-sync, ecc.)' },
+    { cmd: `Copy-Item ".\\local-server\\.env.example" -Destination "${PATH_SERVER}\\.env.example" -Force`, label: '📋 DEPLOY — Copia il template .env.example (NON sovrascrive il .env reale)' },
+    { cmd: `if (-not (Test-Path "${PATH_SERVER}\\.env")) { Copy-Item "${PATH_SERVER}\\.env.example" "${PATH_SERVER}\\.env"; Write-Host "✅ Creato .env vuoto da template" } else { Write-Host "✅ .env esistente preservato (EMERGENCY_PIN/STAFF_MASTER_PIN intatti)" }`, label: '🔐 DEPLOY — Crea .env SOLO se mancante (preserva i PIN esistenti)' },
+
+    // ── 5. AVVIO ─────────────────────────────────────────────
+    { cmd: `cd ${PATH_SERVER}`, label: '📂 AVVIO — Entra nella cartella del server' },
+    { cmd: `Start-Process powershell -ArgumentList '-NoExit','-Command','cd ${PATH_SERVER}; node server.js'`, label: '🚀 AVVIO — Lancia il server in una NUOVA finestra PowerShell (così questa resta libera)' },
+    { cmd: 'Start-Sleep -Seconds 3', label: '⏳ AVVIO — Aspetta 3 secondi che il server sia pronto a rispondere' },
+    { cmd: 'try { Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/staff/cache-renew" -Method POST -TimeoutSec 5 | Format-List } catch { Write-Host "ℹ️ Cache renew saltato (server non pronto o cache vuota — normale al primo avvio)" }', label: '🔄 AVVIO — Rinnova TTL cache Staff (+30 giorni) → login offline garantito' },
+    { cmd: 'Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/version" -Method GET | Format-List', label: '✅ VERIFICA — Controlla che il server risponda e mostra date di server.js e build' },
   ];
 
   const startCommands = [
-    { cmd: 'taskkill /F /IM node.exe 2>$null', label: 'Ferma server vecchio' },
-    { cmd: 'Start-Sleep -Seconds 1', label: 'Attendi chiusura processo' },
-    { cmd: 'cd C:\\Users\\iaco_\\nonceduo\\local-server', label: 'Vai nella cartella server' },
-    { cmd: 'Start-Process powershell -ArgumentList \'-NoExit\',\'-Command\',\'cd C:\\Users\\iaco_\\nonceduo\\local-server; node server.js\'; Start-Sleep -Seconds 3; try { Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/staff/cache-renew" -Method POST -TimeoutSec 5 | Out-Host } catch { Write-Host "ℹ️ Cache renew saltato (server non ancora pronto o cache vuota)" }', label: 'Avvia il server + rinnova TTL cache Staff (+30 giorni) — login offline garantito' },
+    { cmd: 'taskkill /F /IM node.exe 2>$null', label: '🛑 Chiudi il server vecchio (uccide tutti i processi node)' },
+    { cmd: 'Start-Sleep -Seconds 1', label: '⏳ Aspetta 1 secondo che i processi si chiudano' },
+    { cmd: `cd ${PATH_SERVER}`, label: '📂 Entra nella cartella del server' },
+    { cmd: `Start-Process powershell -ArgumentList '-NoExit','-Command','cd ${PATH_SERVER}; node server.js'`, label: '🚀 Lancia il server in una NUOVA finestra PowerShell (questa resta libera)' },
+    { cmd: 'Start-Sleep -Seconds 3', label: '⏳ Aspetta 3 secondi che il server sia pronto' },
+    { cmd: 'try { Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/staff/cache-renew" -Method POST -TimeoutSec 5 | Format-List } catch { Write-Host "ℹ️ Cache renew saltato (cache vuota o server non pronto)" }', label: '🔄 Rinnova TTL cache Staff (+30 giorni) → login offline garantito' },
+    { cmd: 'Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/version" -Method GET | Format-List', label: '✅ Verifica che il server risponda (mostra le date di build)' },
   ];
 
   const emergencyPinCommands = [
-    { cmd: 'cd C:\\Users\\iaco_\\nonceduo\\local-server', label: 'Vai nella cartella server' },
-    { cmd: 'if (-not (Test-Path ".env")) { Copy-Item ".env.example" ".env"; Write-Host "✅ .env creato da template" } else { Write-Host "✅ .env già presente — NON viene sovrascritto" }', label: 'Crea .env SOLO se non esiste (preserva config attuale)' },
-    { cmd: 'if (Select-String -Path ".env" -Pattern "^EMERGENCY_PIN=.+" -Quiet) { Write-Host "⚠️ EMERGENCY_PIN già impostato — verrà mantenuto. Modificalo a mano se vuoi cambiarlo." } else { Write-Host "ℹ️ EMERGENCY_PIN non ancora impostato — apri .env e aggiungilo." }', label: 'Controlla se EMERGENCY_PIN è già impostato' },
-    { cmd: 'notepad .env', label: 'Apri .env (aggiungi/modifica:  EMERGENCY_PIN=9999  con il PIN che vuoi)' },
-    { cmd: 'taskkill /F /IM node.exe 2>$null', label: 'Ferma server' },
-    { cmd: 'Start-Sleep -Seconds 1', label: 'Attendi chiusura processo' },
-    { cmd: 'node server.js', label: 'Riavvia il server (controlla i log)' },
-    { cmd: 'curl http://127.0.0.1:8080/api/pin-status', label: 'Verifica: emergency_pin_enabled deve essere true' },
+    { cmd: `cd ${PATH_SERVER}`, label: '📂 Entra nella cartella del server' },
+    { cmd: 'if (-not (Test-Path ".env")) { Copy-Item ".env.example" ".env"; Write-Host "✅ .env creato da template" } else { Write-Host "✅ .env già presente — NON viene sovrascritto" }', label: '🔐 Crea .env SOLO se non esiste (preserva la config attuale)' },
+    { cmd: 'if (Select-String -Path ".env" -Pattern "^EMERGENCY_PIN=.+" -Quiet) { Write-Host "⚠️ EMERGENCY_PIN già impostato — verrà mantenuto. Modificalo a mano in notepad se vuoi cambiarlo." } else { Write-Host "ℹ️ EMERGENCY_PIN non ancora impostato — aprilo con il prossimo comando e aggiungilo." }', label: '🔍 Controlla se EMERGENCY_PIN è già impostato nel .env' },
+    { cmd: 'notepad .env', label: '✏️ Apri .env con Blocco Note (aggiungi/modifica la riga: EMERGENCY_PIN=9999 — usa il PIN che vuoi)' },
+    { cmd: 'taskkill /F /IM node.exe 2>$null', label: '🛑 Ferma il server per ricaricare il .env' },
+    { cmd: 'Start-Sleep -Seconds 1', label: '⏳ Aspetta 1 secondo' },
+    { cmd: `Start-Process powershell -ArgumentList '-NoExit','-Command','cd ${PATH_SERVER}; node server.js'`, label: '🚀 Riavvia il server in nuova finestra (controlla i log iniziali)' },
+    { cmd: 'Start-Sleep -Seconds 3', label: '⏳ Aspetta 3 secondi' },
+    { cmd: 'Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/pin-status" -Method GET | Format-List', label: '✅ Verifica: il campo emergency_pin_enabled deve essere True' },
   ];
+
 
 
 
