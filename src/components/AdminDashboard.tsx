@@ -97,7 +97,7 @@ interface UndoAction {
 }
 
 export const AdminDashboard: React.FC = () => {
-  const { currentUser, logout, staffRole, session } = useAdmin();
+  const { currentUser, logout, staffRole, session, isLocalSession } = useAdmin();
   const { toast } = useToast();
   const { access, isLoading: isAccessLoading } = useAdminSectionAccess();
   const operatorPerms = useOperatorPermissions();
