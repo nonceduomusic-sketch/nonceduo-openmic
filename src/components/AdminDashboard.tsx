@@ -715,7 +715,13 @@ export const AdminDashboard: React.FC = () => {
                   Ciao {userName}! 👋
                 </h1>
                 <Badge variant="secondary" className="capitalize text-[10px] h-5 font-medium shrink-0">{staffLabel}</Badge>
+                {isLocalSession && (
+                  <Badge variant="outline" className="text-[10px] h-5 font-medium shrink-0 border-amber-500/50 text-amber-700 dark:text-amber-300 bg-amber-500/10">
+                    🔌 Modalità Locale
+                  </Badge>
+                )}
               </div>
+
             </div>
 
             {/* Right: Actions - compact */}
