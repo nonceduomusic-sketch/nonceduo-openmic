@@ -847,6 +847,50 @@ const LocalServerGuide: React.FC = () => {
     { cmd: 'Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/pin-status" -Method GET | Format-List', label: '✅ Verifica: il campo emergency_pin_enabled deve essere True' },
   ];
 
+  // ⚠️ MODIFICA QUI con l'URL del tuo repo GitHub prima di usare il Setup Iniziale
+  const REPO_URL = 'https://github.com/iaco/nonceduo-openmic-nuovo.git';
+
+  const setupCommands = [
+    // ── 1. PREREQUISITI ──────────────────────────────────────
+    { cmd: 'winget --version', label: '🔍 PREREQUISITI — Verifica che winget sia installato (Windows 10/11 lo include di default)' },
+    { cmd: 'winget install -e --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements', label: '📥 PREREQUISITI — Installa Node.js LTS (se già presente, dice "già installato")' },
+    { cmd: 'winget install -e --id Git.Git --accept-source-agreements --accept-package-agreements', label: '📥 PREREQUISITI — Installa Git (se già presente, dice "già installato")' },
+    { cmd: 'Write-Host "⚠️ CHIUDI E RIAPRI POWERSHELL ORA, poi torna qui e prosegui dal passo successivo (serve per ricaricare PATH)"', label: '🔄 PREREQUISITI — IMPORTANTE: chiudi e riapri PowerShell prima di continuare' },
+    { cmd: 'node --version; npm --version; git --version', label: '✅ PREREQUISITI — Verifica che node, npm e git rispondano (deve apparire una versione per ognuno)' },
+
+    // ── 2. CARTELLE BASE ─────────────────────────────────────
+    { cmd: 'cd C:\\Users\\iaco_', label: '📂 CARTELLE — Vai nella cartella utente (home)' },
+    { cmd: 'New-Item -ItemType Directory -Path "nonceduo" -Force | Out-Null; Write-Host "✅ Cartella nonceduo/ pronta"', label: '📁 CARTELLE — Crea la cartella base nonceduo/ (per il server locale)' },
+
+    // ── 3. CLONE CODICE ──────────────────────────────────────
+    { cmd: `git clone ${REPO_URL} nonceduo-openmic-nuovo`, label: '⬇️ CODICE — Clona il repository sorgente in nonceduo-openmic-nuovo/ (⚠️ modifica REPO_URL nel codice prima!)' },
+    { cmd: `cd ${PATH_CODE}`, label: '📂 CODICE — Entra nella cartella del codice appena clonato' },
+    { cmd: 'npm install', label: '📦 CODICE — Installa tutte le dipendenze npm (può richiedere 2-3 minuti)' },
+    { cmd: 'npm run build', label: '🏗️ CODICE — Compila l\'app per la produzione (crea cartella dist/)' },
+
+    // ── 4. STRUTTURA SERVER LOCALE ───────────────────────────
+    { cmd: `New-Item -ItemType Directory -Path "${PATH_SERVER}" -Force | Out-Null; New-Item -ItemType Directory -Path "${PATH_SERVER}\\public" -Force | Out-Null; New-Item -ItemType Directory -Path "${PATH_SERVER}\\data" -Force | Out-Null; New-Item -ItemType Directory -Path "${PATH_SERVER}\\lib" -Force | Out-Null; Write-Host "✅ Struttura local-server/ creata (public, data, lib)"`, label: '📁 SERVER — Crea la struttura cartelle: local-server/{public, data, lib}' },
+
+    // ── 5. COPIA FILE SERVER ─────────────────────────────────
+    { cmd: `Copy-Item ".\\dist\\*" -Destination "${PATH_SERVER}\\public" -Recurse -Force`, label: '📋 SERVER — Copia i file compilati (dist/) dentro local-server/public/' },
+    { cmd: `Copy-Item ".\\local-server\\server.js" -Destination "${PATH_SERVER}\\server.js" -Force`, label: '📋 SERVER — Copia server.js' },
+    { cmd: `Copy-Item ".\\local-server\\lib\\*" -Destination "${PATH_SERVER}\\lib\\" -Recurse -Force`, label: '📋 SERVER — Copia le librerie (staff-cache.js, pending-sync.js)' },
+    { cmd: `Copy-Item ".\\local-server\\.env.example" -Destination "${PATH_SERVER}\\.env.example" -Force`, label: '📋 SERVER — Copia il template .env.example' },
+
+    // ── 6. CONFIGURAZIONE .env ───────────────────────────────
+    { cmd: `Copy-Item "${PATH_SERVER}\\.env.example" "${PATH_SERVER}\\.env" -Force; Write-Host "✅ .env creato da template — ora apri e configura i PIN"`, label: '🔐 CONFIG — Crea il .env dal template (prima installazione, può sovrascrivere)' },
+    { cmd: `notepad "${PATH_SERVER}\\.env"`, label: '✏️ CONFIG — Apri .env con Blocco Note e imposta EMERGENCY_PIN=9999 e STAFF_MASTER_PIN=12345 (cambia i valori!)' },
+
+    // ── 7. PRIMO AVVIO ───────────────────────────────────────
+    { cmd: `cd ${PATH_SERVER}`, label: '📂 AVVIO — Entra nella cartella del server' },
+    { cmd: `Start-Process powershell -ArgumentList '-NoExit','-Command','cd ${PATH_SERVER}; node server.js'`, label: '🚀 AVVIO — Lancia il server in una NUOVA finestra PowerShell' },
+    { cmd: 'Start-Sleep -Seconds 3', label: '⏳ AVVIO — Aspetta 3 secondi che il server sia pronto' },
+    { cmd: 'Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/version" -Method GET | Format-List', label: '✅ VERIFICA — Controlla che il server risponda (mostra le date di server.js e build)' },
+    { cmd: 'Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/pin-status" -Method GET | Format-List', label: '✅ VERIFICA — Controlla che emergency_pin_enabled e staff_master_pin_enabled siano True' },
+    { cmd: 'Write-Host "🎉 SETUP COMPLETATO! Ora puoi accedere da qualsiasi dispositivo in LAN a http://$((Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias Wi-Fi).IPAddress):8080"', label: '🎉 FINE — Setup completato! Mostra l\'IP locale da usare dagli altri dispositivi' },
+  ];
+
+
 
 
 
