@@ -11,6 +11,9 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const crypto = require('crypto');
+const { makeStaffCache, makeRateLimiter } = require('./lib/staff-cache');
+const { makePendingQueue } = require('./lib/pending-sync');
 
 const HTTP_PORT = 8080;
 const WS_PORT = 3456;
@@ -25,7 +28,11 @@ const CATALOG_FILE = path.join(DATA_DIR, 'catalog.json');
 const SONGBOOK_IDS_FILE = path.join(DATA_DIR, 'songbook-ids.json');
 const PIN_CACHE_FILE = path.join(DATA_DIR, 'pin-cache.json');
 const LOCAL_SESSIONS_FILE = path.join(DATA_DIR, 'local-sessions.json');
+const STAFF_CACHE_FILE = path.join(DATA_DIR, 'staff-cache.json');
+const STAFF_LOG_FILE = path.join(DATA_DIR, 'staff-offline-log.json');
+const PENDING_SYNC_FILE = path.join(DATA_DIR, 'pending-sync.json');
 const ENV_FILE = path.join(__dirname, '.env');
+
 
 // ═══════════════════════════════════════
 // .env loader (no dotenv dependency)
