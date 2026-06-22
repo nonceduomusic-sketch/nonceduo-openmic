@@ -9,8 +9,8 @@ import {
   flushPendingSync,
   pingLocalServer,
   type LocalStaffSession,
-  type LocalStaffRole,
 } from '@/lib/localStaffAuth';
+
 
 interface AdminUser {
   username: string;
