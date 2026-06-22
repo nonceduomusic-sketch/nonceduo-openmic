@@ -239,6 +239,87 @@ function saveCatalog(songs) {
 }
 
 // ═══════════════════════════════════════
+// PIN cache + Local sessions (offline auth)
+// ═══════════════════════════════════════
+function loadPinCache() {
+  try {
+    if (fs.existsSync(PIN_CACHE_FILE)) {
+      return JSON.parse(fs.readFileSync(PIN_CACHE_FILE, 'utf-8'));
+    }
+  } catch (e) {
+    console.warn('⚠️  pin-cache.json corrotto:', e.message);
+  }
+  return null;
+}
+
+function savePinCache(meta) {
+  try {
+    const prev = loadPinCache() || {};
+    const merged = { ...prev, ...meta };
+    fs.writeFileSync(PIN_CACHE_FILE, JSON.stringify(merged, null, 2), 'utf-8');
+    if (meta.pin_code) {
+      console.log(`🔐 PIN sincronizzato e salvato in pin-cache.json (formati: ${(meta.protected_formats || []).join(', ') || 'tutti'})`);
+    }
+  } catch (e) {
+    console.warn('⚠️  Errore scrittura pin-cache.json:', e.message);
+  }
+}
+
+function loadLocalSessions() {
+  try {
+    if (fs.existsSync(LOCAL_SESSIONS_FILE)) {
+      return JSON.parse(fs.readFileSync(LOCAL_SESSIONS_FILE, 'utf-8'));
+    }
+  } catch {}
+  return {};
+}
+
+function persistLocalSessions(map) {
+  try {
+    fs.writeFileSync(LOCAL_SESSIONS_FILE, JSON.stringify(map, null, 2), 'utf-8');
+  } catch (e) {
+    console.warn('⚠️  Errore scrittura local-sessions.json:', e.message);
+  }
+}
+
+// Garbage-collect expired sessions periodically
+function gcLocalSessions() {
+  const map = loadLocalSessions();
+  const now = Date.now();
+  let removed = 0;
+  for (const k of Object.keys(map)) {
+    if (!map[k]?.expires_at || new Date(map[k].expires_at).getTime() < now) {
+      delete map[k];
+      removed++;
+    }
+  }
+  if (removed > 0) persistLocalSessions(map);
+}
+setInterval(gcLocalSessions, 60 * 60 * 1000); // every hour
+
+function saveLocalSession(session) {
+  const map = loadLocalSessions();
+  map[session.token] = session;
+  persistLocalSessions(map);
+}
+
+function getLocalSession(token) {
+  if (!token) return null;
+  const map = loadLocalSessions();
+  return map[token] || null;
+}
+
+function removeLocalSession(token) {
+  const map = loadLocalSessions();
+  if (map[token]) {
+    delete map[token];
+    persistLocalSessions(map);
+  }
+}
+
+
+
+// ═══════════════════════════════════════
 // HTTP Server — SPA + API
 // ═══════════════════════════════════════
 const httpServer = http.createServer(async (req, res) => {
