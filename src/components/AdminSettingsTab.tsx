@@ -951,7 +951,7 @@ const LocalServerGuide: React.FC = () => {
         </div>
         <div className="rounded-lg p-2 text-[11px] bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 space-y-1">
           <div><strong>🛡️ Protezioni automatiche:</strong></div>
-          <div>• Backup di <code>local-server/data/</code> (pin-cache, sessions, catalog, songbook) prima di ogni aggiornamento</div>
+          <div>• Backup di <code>local-server/data/</code> (staff-cache, pending-sync, pin-cache, sessions, catalog, songbook) prima di ogni aggiornamento</div>
           <div>• Backup di <code>local-server/.env</code> in <code>.env.backup</code></div>
           <div>• <code>git reset --hard</code> opera <strong>solo</strong> sulla cartella codice (<code>nonceduo-openmic-nuovo</code>) → non tocca mai <code>local-server/data/</code> né <code>.env</code> (sono in <code>nonceduo/local-server</code>)</div>
           <div>• <code>.env</code> esistente <strong>non viene mai sovrascritto</strong>: viene creato solo se assente</div>
