@@ -847,8 +847,8 @@ const LocalServerGuide: React.FC = () => {
     { cmd: 'Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/pin-status" -Method GET | Format-List', label: '✅ Verifica: il campo emergency_pin_enabled deve essere True' },
   ];
 
-  // ⚠️ MODIFICA QUI con l'URL del tuo repo GitHub prima di usare il Setup Iniziale
-  const REPO_URL = 'https://github.com/iaco/nonceduo-openmic-nuovo.git';
+  // URL del repository GitHub ufficiale
+  const REPO_URL = 'https://github.com/nonceduomusic-sketch/nonceduo-openmic.git';
 
   const setupCommands = [
     // ── 1. PREREQUISITI ──────────────────────────────────────
