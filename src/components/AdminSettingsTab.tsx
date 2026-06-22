@@ -1005,3 +1005,90 @@ const LocalServerGuide: React.FC = () => {
     </div>
   );
 };
+
+// ──────────────────────────────────────────────────────────
+// Staff Offline (Fase 1 — cache credenziali + Fase 2 — Master PIN)
+// ──────────────────────────────────────────────────────────
+const StaffOfflineSection: React.FC = () => {
+  const { toast } = useToast();
+  const [status, setStatus] = useState<MasterPinStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [wiping, setWiping] = useState(false);
+
+  const refresh = async () => {
+    setLoading(true);
+    const s = await getStaffOfflineStatus();
+    setStatus(s);
+    setLoading(false);
+  };
+
+  useEffect(() => { refresh(); }, []);
+
+  const handleWipe = async () => {
+    if (!confirm('Svuotare la cache Staff locale? Tutti gli utenti dovranno rientrare con Internet per ripopolarla.')) return;
+    setWiping(true);
+    const ok = await wipeStaffCache();
+    setWiping(false);
+    if (ok) {
+      toast({ title: '🧹 Cache Staff svuotata', description: 'Servirà un nuovo login online per riattivare la modalità offline.' });
+      refresh();
+    } else {
+      toast({ title: 'Errore', description: 'Server locale non raggiungibile', variant: 'destructive' });
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">👤 Staff Offline (accesso /admin senza Internet)</span>
+      </div>
+      <div className="rounded-lg p-3 bg-muted/40 border border-border space-y-2 text-[11px]">
+        {loading ? (
+          <div className="text-muted-foreground">Lettura stato server locale…</div>
+        ) : !status ? (
+          <div className="text-muted-foreground">
+            Server locale non raggiungibile. Funzione disponibile solo dalle pagine servite da <code>http://192.168.x.x:8080</code>.
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <div className="text-muted-foreground">Staff in cache</div>
+                <div className="font-semibold text-foreground">{status.cached_emails_count}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Master PIN</div>
+                <div className="font-semibold text-foreground">
+                  {status.master_pin_enabled ? <span className="text-amber-600 dark:text-amber-400">ATTIVO</span> : 'disattivato'}
+                </div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Scritture in coda</div>
+                <div className="font-semibold text-foreground">{status.pending_sync_count}</div>
+              </div>
+              <div>
+                <div className="text-muted-foreground">Stato</div>
+                <div className="font-semibold">
+                  {status.cache_empty
+                    ? <span className="text-amber-600 dark:text-amber-400">Cache vuota</span>
+                    : <span className="text-emerald-600 dark:text-emerald-400">Pronto</span>}
+                </div>
+              </div>
+            </div>
+            <div className="pt-1 text-muted-foreground leading-relaxed">
+              <div>• <strong>Fase 1 (default):</strong> ad ogni login Staff con Internet, la tua password viene salvata in forma HASHED (PBKDF2) in <code>data/staff-cache.json</code>. Senza Internet, <code>/admin</code> tenta il login locale automaticamente.</div>
+              <div>• <strong>Fase 2 (emergenza):</strong> se la cache è vuota o corrotta, configura <code>STAFF_MASTER_PIN</code> in <code>local-server/.env</code> per accedere comunque (solo locale, niente sync cloud).</div>
+              <div>• Distinzione: <strong>PIN format/clienti</strong> ≠ <strong>credenziali Staff cache</strong> ≠ <strong>Master PIN emergenza</strong>.</div>
+            </div>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={refresh}>Aggiorna</Button>
+              <Button variant="outline" size="sm" className="h-7 text-xs text-destructive" onClick={handleWipe} disabled={wiping || status.cached_emails_count === 0}>
+                {wiping ? 'Svuoto…' : 'Svuota cache Staff'}
+              </Button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
