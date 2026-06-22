@@ -319,6 +319,8 @@ export function usePinSession(format: FormatKey) {
   useEffect(() => {
     const stored = getStoredSession();
     if (!stored?.token || !stored.liveSessionId) return;
+    // Local-only sessions don't have a matching cloud row; skip realtime.
+    if (isLocalToken(stored.token)) return;
 
     const channel = supabase
       .channel(`pin-session-global-${stored.token.substring(0, 8)}`)
