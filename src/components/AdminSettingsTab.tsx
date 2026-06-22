@@ -863,7 +863,7 @@ const LocalServerGuide: React.FC = () => {
     { cmd: 'New-Item -ItemType Directory -Path "nonceduo" -Force | Out-Null; Write-Host "✅ Cartella nonceduo/ pronta"', label: '📁 CARTELLE — Crea la cartella base nonceduo/ (per il server locale)' },
 
     // ── 3. CLONE CODICE ──────────────────────────────────────
-    { cmd: `git clone ${REPO_URL} nonceduo-openmic-nuovo`, label: '⬇️ CODICE — Clona il repository sorgente in nonceduo-openmic-nuovo/ (⚠️ modifica REPO_URL nel codice prima!)' },
+    { cmd: `git clone ${REPO_URL} nonceduo-openmic-nuovo`, label: '⬇️ CODICE — Clona il repository ufficiale in nonceduo-openmic-nuovo/' },
     { cmd: `cd ${PATH_CODE}`, label: '📂 CODICE — Entra nella cartella del codice appena clonato' },
     { cmd: 'npm install', label: '📦 CODICE — Installa tutte le dipendenze npm (può richiedere 2-3 minuti)' },
     { cmd: 'npm run build', label: '🏗️ CODICE — Compila l\'app per la produzione (crea cartella dist/)' },
