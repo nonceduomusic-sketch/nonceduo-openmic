@@ -152,9 +152,8 @@ function getLocalBuildInfo() {
   };
 }
 
-// Assicura che le cartelle dati esistano
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-if (!fs.existsSync(SONGBOOK_DIR)) fs.mkdirSync(SONGBOOK_DIR, { recursive: true });
+// (cartelle data/ già create sopra)
+
 
 // ═══════════════════════════════════════
 // MIME Types per il server HTTP
