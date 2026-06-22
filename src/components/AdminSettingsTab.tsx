@@ -34,6 +34,8 @@ import { usePedalSettings, PedalPage, PedalMode } from '@/hooks/usePedalControl'
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import { getCurrentLocalServerHost } from '@/lib/localServerHost';
+import { getStaffOfflineStatus, wipeStaffCache, type MasterPinStatus } from '@/lib/localStaffAuth';
+
 
 interface LocalServerVersionInfo {
   ok: boolean;
