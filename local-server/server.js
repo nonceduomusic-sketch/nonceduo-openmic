@@ -389,9 +389,32 @@ const httpServer = http.createServer(async (req, res) => {
     }
   }
 
+  // ── OFFLINE PIN STATUS (verifica esplicita) ──
+  // Espone se il PIN è realmente persistito in pin-cache.json,
+  // senza rivelare il PIN completo. Utile per verificare prima di
+  // andare offline che la sincronizzazione sia avvenuta.
+  if (urlPath === '/api/pin-status' && req.method === 'GET') {
+    const cache = loadPinCache();
+    const hasPin = !!(cache && cache.pin_code);
+    const pin = cache?.pin_code || '';
+    return sendJSON(res, {
+      ok: true,
+      has_cached_pin: hasPin,
+      pin_last2: hasPin ? pin.slice(-2) : null,
+      pin_length: hasPin ? pin.length : 0,
+      protected_formats: cache?.protected_formats || [],
+      live_session_id: cache?.live_session_id || null,
+      synced_at: cache?.synced_at || null,
+      cache_file: PIN_CACHE_FILE,
+      emergency_pin_enabled: !!EMERGENCY_PIN,
+      active_local_sessions: loadLocalSessions().length,
+    });
+  }
+
   // ── OFFLINE PIN AUTHENTICATION ──
   // Validate a PIN against the locally cached value (or the emergency PIN).
   // Returns a token usable while offline.
+
   if (urlPath === '/api/pin-validate' && req.method === 'POST') {
     try {
       const body = await readBody(req);
