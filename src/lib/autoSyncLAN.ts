@@ -20,6 +20,9 @@ interface PinDisplaySyncPayload {
   pinCode: string | null;
   showPinOnGate: boolean;
   pinRequired: boolean;
+  liveSessionId?: string | null;
+  protectedFormats?: string[];
+  expiresAt?: string | null;
 }
 
 /** Public entry-point — debounced + deduped */
@@ -39,6 +42,9 @@ export async function syncPinDisplayToLAN({
   pinCode,
   showPinOnGate,
   pinRequired,
+  liveSessionId = null,
+  protectedFormats = [],
+  expiresAt = null,
 }: PinDisplaySyncPayload): Promise<boolean> {
   const localIP = getPreferredLocalServerHost();
   if (!localIP) return false;
@@ -53,6 +59,9 @@ export async function syncPinDisplayToLAN({
         pin_code: pinCode?.trim().toUpperCase() || null,
         show_pin_on_gate: showPinOnGate,
         pin_required: pinRequired,
+        live_session_id: liveSessionId,
+        protected_formats: protectedFormats,
+        expires_at: expiresAt,
       }),
       signal: AbortSignal.timeout(2500),
     });

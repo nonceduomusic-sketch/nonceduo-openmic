@@ -167,8 +167,11 @@ export const PinProtectionCard: React.FC<PinProtectionCardProps> = ({
       pinCode: isPinActive ? session?.pin_code ?? null : null,
       showPinOnGate: isPinActive && showPinOnGate,
       pinRequired: isPinActive,
+      liveSessionId: session?.id ?? null,
+      protectedFormats: (session?.protected_formats as string[] | undefined) ?? [],
+      expiresAt: (session as { expires_at?: string | null } | null)?.expires_at ?? null,
     });
-  }, [session?.pin_code, isPinActive, showPinOnGate]);
+  }, [session?.id, session?.pin_code, (session as { expires_at?: string | null } | null)?.expires_at, session?.protected_formats, isPinActive, showPinOnGate]);
 
   const handleToggleShowPin = async (checked: boolean) => {
     setShowPinOnGate(checked);
