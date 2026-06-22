@@ -270,6 +270,7 @@ const httpServer = http.createServer(async (req, res) => {
   }
 
   // Sync PIN display state for local /trasmetti pages
+  // Also persists PIN to disk so it survives restarts WITHOUT internet
   if (urlPath === '/api/pin-display/sync' && req.method === 'POST') {
     try {
       const body = await readBody(req);
@@ -281,7 +282,18 @@ const httpServer = http.createServer(async (req, res) => {
         pin_required: Boolean(body.pin_required),
       };
 
+      // Extra fields (optional, used by offline PIN validation)
+      const pinMeta = {
+        pin_code: updates.pin_code,
+        pin_required: updates.pin_required,
+        live_session_id: typeof body.live_session_id === 'string' ? body.live_session_id : null,
+        protected_formats: Array.isArray(body.protected_formats) ? body.protected_formats : [],
+        expires_at: typeof body.expires_at === 'string' ? body.expires_at : null,
+        synced_at: new Date().toISOString(),
+      };
+
       Object.assign(broadcastState, updates);
+      savePinCache(pinMeta);
 
       const outMsg = JSON.stringify({ type: 'update', data: updates });
       wss.clients.forEach((client) => {
@@ -293,6 +305,94 @@ const httpServer = http.createServer(async (req, res) => {
       return sendJSON(res, { ok: true, ...updates });
     } catch (e) {
       return sendJSON(res, { error: 'JSON non valido' }, 400);
+    }
+  }
+
+  // ── OFFLINE PIN AUTHENTICATION ──
+  // Validate a PIN against the locally cached value (or the emergency PIN).
+  // Returns a token usable while offline.
+  if (urlPath === '/api/pin-validate' && req.method === 'POST') {
+    try {
+      const body = await readBody(req);
+      const pin = typeof body.pin === 'string' ? body.pin.trim().toUpperCase() : '';
+      const format = typeof body.format === 'string' ? body.format.trim() : '';
+
+      if (!pin || pin.length < 3) {
+        return sendJSON(res, { ok: false, error: 'pin_missing' }, 400);
+      }
+
+      const cache = loadPinCache();
+      let source = null;
+      let liveSessionId = cache?.live_session_id || null;
+      let protectedFormats = cache?.protected_formats || [];
+      let expiresAt = cache?.expires_at || null;
+
+      // 1) Match against cached PIN (synced by admin while online)
+      if (cache && cache.pin_code && cache.pin_code === pin) {
+        source = 'cache';
+      }
+      // 2) Fallback: emergency PIN configured in .env
+      else if (EMERGENCY_PIN && pin === EMERGENCY_PIN) {
+        source = 'emergency';
+        liveSessionId = liveSessionId || 'local-emergency';
+        // Emergency PIN grants access to all known formats
+        if (!protectedFormats.length) {
+          protectedFormats = ['openmic', 'dediche', 'furore', 'giochi', 'community'];
+        }
+      } else {
+        return sendJSON(res, { ok: false, error: 'pin_invalid' }, 401);
+      }
+
+      // If a format was specified, ensure it's covered (or empty list = all)
+      if (format && protectedFormats.length && !protectedFormats.includes(format)) {
+        return sendJSON(res, { ok: false, error: 'format_not_protected' }, 403);
+      }
+
+      // Issue local token (random hex)
+      const token = require('crypto').randomBytes(24).toString('hex');
+      const ttl = LOCAL_SESSION_TTL_MS;
+      const session = {
+        token,
+        live_session_id: liveSessionId,
+        protected_formats: protectedFormats,
+        source,
+        created_at: new Date().toISOString(),
+        expires_at: expiresAt || new Date(Date.now() + ttl).toISOString(),
+      };
+      saveLocalSession(session);
+
+      return sendJSON(res, { ok: true, ...session });
+    } catch (e) {
+      return sendJSON(res, { ok: false, error: 'bad_request' }, 400);
+    }
+  }
+
+  // Validate an existing local token
+  if (urlPath === '/api/pin-session-check' && req.method === 'POST') {
+    try {
+      const body = await readBody(req);
+      const token = typeof body.token === 'string' ? body.token : '';
+      const format = typeof body.format === 'string' ? body.format : '';
+
+      const session = getLocalSession(token);
+      if (!session) {
+        return sendJSON(res, { is_valid: false, reason: 'token_invalid' });
+      }
+      if (new Date(session.expires_at).getTime() < Date.now()) {
+        removeLocalSession(token);
+        return sendJSON(res, { is_valid: false, reason: 'token_expired' });
+      }
+      if (format && session.protected_formats?.length && !session.protected_formats.includes(format)) {
+        return sendJSON(res, { is_valid: false, reason: 'format_not_allowed' });
+      }
+      return sendJSON(res, {
+        is_valid: true,
+        live_session_id: session.live_session_id,
+        protected_formats: session.protected_formats,
+        expires_at: session.expires_at,
+      });
+    } catch (e) {
+      return sendJSON(res, { is_valid: false, reason: 'bad_request' }, 400);
     }
   }
 
