@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { FormatKey } from './useFormatGating';
+import {
+  isLocalServerAvailable,
+  isLocalToken,
+  localCheckToken,
+  localValidatePin,
+  LOCAL_TOKEN_PREFIX,
+} from '@/lib/localPinAuth';
 
 const PIN_SESSION_STORAGE_KEY = 'ncd_pin_sessions_v2';
 const PIN_SESSION_SYNC_EVENT = 'ncd-pin-session-sync';
@@ -79,6 +86,29 @@ export function usePinSession(format: FormatKey) {
       return false;
     }
 
+    // LOCAL TOKEN PATH — talk only to the local mini-server, no Supabase.
+    if (isLocalToken(stored.token)) {
+      const check = await localCheckToken(stored.token, format);
+      if (check === null) {
+        // Local server unreachable — keep the session optimistically valid so
+        // a temporary WS hiccup doesn't kick users out. The next interval will
+        // retry.
+        if (import.meta.env.DEV) console.warn('[PinSession] Local server unreachable, keeping session optimistic');
+        return true;
+      }
+      if (!check.is_valid) {
+        if (import.meta.env.DEV) console.warn('[PinSession] Local token rejected:', check.reason);
+        removeSession();
+        return false;
+      }
+      // If the local server declares a protected_formats list and our format
+      // isn't in it, no PIN is needed for this format → no valid session.
+      if (check.protected_formats?.length && !check.protected_formats.includes(format)) {
+        return false;
+      }
+      return true;
+    }
+
     try {
       // 1) Validate the referenced live session first (public table, cheap check)
       const { data: liveSession, error: liveError } = await supabase
@@ -150,6 +180,43 @@ export function usePinSession(format: FormatKey) {
 
   // Create new GLOBAL session after PIN validation (works for ALL formats with same PIN)
   const createSession = useCallback(async (liveSessionId: string, pinCode: string): Promise<boolean> => {
+    // OFFLINE-FIRST: when served from the local mini-server, mint a local
+    // token so the session works without Internet.
+    if (isLocalServerAvailable()) {
+      try {
+        const local = await localValidatePin(pinCode.toUpperCase().trim(), format);
+        if (local?.ok && local.token) {
+          const session: StoredSession = {
+            token: `${LOCAL_TOKEN_PREFIX}${local.token}`,
+            liveSessionId: local.live_session_id || liveSessionId,
+            pinCodeHash: hashPin(pinCode),
+            createdAt: new Date().toISOString(),
+          };
+          saveSession(session);
+          setHasValidSession(true);
+          setSessionInvalidated(false);
+          setInvalidationReason(null);
+          console.log(`[PinSession] Local session created (source=${local.source})`);
+          // Fire-and-forget: also create the cloud session so admin "connected
+          // users" view stays accurate when Internet is back.
+          void supabase.rpc('create_pin_session', {
+            p_live_session_id: liveSessionId,
+            p_format: format,
+            p_pin_code: pinCode.toUpperCase().trim(),
+            p_device_fingerprint: navigator.userAgent.substring(0, 100),
+          });
+          return true;
+        }
+        // Local server reachable, PIN rejected, AND we're offline → fail hard
+        if (local && !local.ok && !navigator.onLine) {
+          return false;
+        }
+        // Otherwise fall through to cloud
+      } catch {
+        // fall through to cloud
+      }
+    }
+
     try {
       const { data: token, error } = await supabase.rpc('create_pin_session', {
         p_live_session_id: liveSessionId,
@@ -252,6 +319,8 @@ export function usePinSession(format: FormatKey) {
   useEffect(() => {
     const stored = getStoredSession();
     if (!stored?.token || !stored.liveSessionId) return;
+    // Local-only sessions don't have a matching cloud row; skip realtime.
+    if (isLocalToken(stored.token)) return;
 
     const channel = supabase
       .channel(`pin-session-global-${stored.token.substring(0, 8)}`)
@@ -344,6 +413,20 @@ export function usePinSession(format: FormatKey) {
           setHasValidSession(false);
           setSessionInvalidated(true);
           setInvalidationReason('session_missing');
+        }
+        return;
+      }
+
+      // LOCAL TOKEN PATH — never hit Supabase, just ping the local server.
+      if (isLocalToken(stored.token)) {
+        const check = await localCheckToken(stored.token, format);
+        if (check === null) {
+          // Local server momentarily unreachable — stay valid, don't kick out.
+          return;
+        }
+        if (!check.is_valid && !cancelled) {
+          if (import.meta.env.DEV) console.warn('[PinSession] Local token invalidated:', check.reason);
+          invalidateLocally(check.reason || 'admin_reset');
         }
         return;
       }

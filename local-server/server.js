@@ -23,6 +23,45 @@ const DATA_DIR = path.join(__dirname, 'data');
 const SONGBOOK_DIR = path.join(DATA_DIR, 'songbook');
 const CATALOG_FILE = path.join(DATA_DIR, 'catalog.json');
 const SONGBOOK_IDS_FILE = path.join(DATA_DIR, 'songbook-ids.json');
+const PIN_CACHE_FILE = path.join(DATA_DIR, 'pin-cache.json');
+const LOCAL_SESSIONS_FILE = path.join(DATA_DIR, 'local-sessions.json');
+const ENV_FILE = path.join(__dirname, '.env');
+
+// ═══════════════════════════════════════
+// .env loader (no dotenv dependency)
+// ═══════════════════════════════════════
+function loadEnv() {
+  const env = {};
+  try {
+    if (fs.existsSync(ENV_FILE)) {
+      const lines = fs.readFileSync(ENV_FILE, 'utf-8').split(/\r?\n/);
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eq = trimmed.indexOf('=');
+        if (eq === -1) continue;
+        const key = trimmed.slice(0, eq).trim();
+        let val = trimmed.slice(eq + 1).trim();
+        // Strip surrounding quotes
+        if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+          val = val.slice(1, -1);
+        }
+        env[key] = val;
+      }
+    }
+  } catch (e) {
+    console.warn('⚠️  Errore lettura .env:', e.message);
+  }
+  return env;
+}
+const LOCAL_ENV = loadEnv();
+const EMERGENCY_PIN = (LOCAL_ENV.EMERGENCY_PIN || process.env.EMERGENCY_PIN || '').trim().toUpperCase();
+const LOCAL_SESSION_TTL_MS = Number(LOCAL_ENV.LOCAL_SESSION_TTL_MS || process.env.LOCAL_SESSION_TTL_MS || 24 * 60 * 60 * 1000);
+if (EMERGENCY_PIN) {
+  console.log(`🚨 PIN di emergenza ATTIVO (configurato in .env)`);
+} else {
+  console.log(`ℹ️  PIN di emergenza disabilitato (per attivare: EMERGENCY_PIN=XXXX in .env)`);
+}
 
 function getFileMTimeISO(filePath) {
   try {
@@ -200,6 +239,87 @@ function saveCatalog(songs) {
 }
 
 // ═══════════════════════════════════════
+// PIN cache + Local sessions (offline auth)
+// ═══════════════════════════════════════
+function loadPinCache() {
+  try {
+    if (fs.existsSync(PIN_CACHE_FILE)) {
+      return JSON.parse(fs.readFileSync(PIN_CACHE_FILE, 'utf-8'));
+    }
+  } catch (e) {
+    console.warn('⚠️  pin-cache.json corrotto:', e.message);
+  }
+  return null;
+}
+
+function savePinCache(meta) {
+  try {
+    const prev = loadPinCache() || {};
+    const merged = { ...prev, ...meta };
+    fs.writeFileSync(PIN_CACHE_FILE, JSON.stringify(merged, null, 2), 'utf-8');
+    if (meta.pin_code) {
+      console.log(`🔐 PIN sincronizzato e salvato in pin-cache.json (formati: ${(meta.protected_formats || []).join(', ') || 'tutti'})`);
+    }
+  } catch (e) {
+    console.warn('⚠️  Errore scrittura pin-cache.json:', e.message);
+  }
+}
+
+function loadLocalSessions() {
+  try {
+    if (fs.existsSync(LOCAL_SESSIONS_FILE)) {
+      return JSON.parse(fs.readFileSync(LOCAL_SESSIONS_FILE, 'utf-8'));
+    }
+  } catch {}
+  return {};
+}
+
+function persistLocalSessions(map) {
+  try {
+    fs.writeFileSync(LOCAL_SESSIONS_FILE, JSON.stringify(map, null, 2), 'utf-8');
+  } catch (e) {
+    console.warn('⚠️  Errore scrittura local-sessions.json:', e.message);
+  }
+}
+
+// Garbage-collect expired sessions periodically
+function gcLocalSessions() {
+  const map = loadLocalSessions();
+  const now = Date.now();
+  let removed = 0;
+  for (const k of Object.keys(map)) {
+    if (!map[k]?.expires_at || new Date(map[k].expires_at).getTime() < now) {
+      delete map[k];
+      removed++;
+    }
+  }
+  if (removed > 0) persistLocalSessions(map);
+}
+setInterval(gcLocalSessions, 60 * 60 * 1000); // every hour
+
+function saveLocalSession(session) {
+  const map = loadLocalSessions();
+  map[session.token] = session;
+  persistLocalSessions(map);
+}
+
+function getLocalSession(token) {
+  if (!token) return null;
+  const map = loadLocalSessions();
+  return map[token] || null;
+}
+
+function removeLocalSession(token) {
+  const map = loadLocalSessions();
+  if (map[token]) {
+    delete map[token];
+    persistLocalSessions(map);
+  }
+}
+
+
+
+// ═══════════════════════════════════════
 // HTTP Server — SPA + API
 // ═══════════════════════════════════════
 const httpServer = http.createServer(async (req, res) => {
@@ -231,6 +351,7 @@ const httpServer = http.createServer(async (req, res) => {
   }
 
   // Sync PIN display state for local /trasmetti pages
+  // Also persists PIN to disk so it survives restarts WITHOUT internet
   if (urlPath === '/api/pin-display/sync' && req.method === 'POST') {
     try {
       const body = await readBody(req);
@@ -242,7 +363,18 @@ const httpServer = http.createServer(async (req, res) => {
         pin_required: Boolean(body.pin_required),
       };
 
+      // Extra fields (optional, used by offline PIN validation)
+      const pinMeta = {
+        pin_code: updates.pin_code,
+        pin_required: updates.pin_required,
+        live_session_id: typeof body.live_session_id === 'string' ? body.live_session_id : null,
+        protected_formats: Array.isArray(body.protected_formats) ? body.protected_formats : [],
+        expires_at: typeof body.expires_at === 'string' ? body.expires_at : null,
+        synced_at: new Date().toISOString(),
+      };
+
       Object.assign(broadcastState, updates);
+      savePinCache(pinMeta);
 
       const outMsg = JSON.stringify({ type: 'update', data: updates });
       wss.clients.forEach((client) => {
@@ -254,6 +386,94 @@ const httpServer = http.createServer(async (req, res) => {
       return sendJSON(res, { ok: true, ...updates });
     } catch (e) {
       return sendJSON(res, { error: 'JSON non valido' }, 400);
+    }
+  }
+
+  // ── OFFLINE PIN AUTHENTICATION ──
+  // Validate a PIN against the locally cached value (or the emergency PIN).
+  // Returns a token usable while offline.
+  if (urlPath === '/api/pin-validate' && req.method === 'POST') {
+    try {
+      const body = await readBody(req);
+      const pin = typeof body.pin === 'string' ? body.pin.trim().toUpperCase() : '';
+      const format = typeof body.format === 'string' ? body.format.trim() : '';
+
+      if (!pin || pin.length < 3) {
+        return sendJSON(res, { ok: false, error: 'pin_missing' }, 400);
+      }
+
+      const cache = loadPinCache();
+      let source = null;
+      let liveSessionId = cache?.live_session_id || null;
+      let protectedFormats = cache?.protected_formats || [];
+      let expiresAt = cache?.expires_at || null;
+
+      // 1) Match against cached PIN (synced by admin while online)
+      if (cache && cache.pin_code && cache.pin_code === pin) {
+        source = 'cache';
+      }
+      // 2) Fallback: emergency PIN configured in .env
+      else if (EMERGENCY_PIN && pin === EMERGENCY_PIN) {
+        source = 'emergency';
+        liveSessionId = liveSessionId || 'local-emergency';
+        // Emergency PIN grants access to all known formats
+        if (!protectedFormats.length) {
+          protectedFormats = ['openmic', 'dediche', 'furore', 'giochi', 'community'];
+        }
+      } else {
+        return sendJSON(res, { ok: false, error: 'pin_invalid' }, 401);
+      }
+
+      // If a format was specified, ensure it's covered (or empty list = all)
+      if (format && protectedFormats.length && !protectedFormats.includes(format)) {
+        return sendJSON(res, { ok: false, error: 'format_not_protected' }, 403);
+      }
+
+      // Issue local token (random hex)
+      const token = require('crypto').randomBytes(24).toString('hex');
+      const ttl = LOCAL_SESSION_TTL_MS;
+      const session = {
+        token,
+        live_session_id: liveSessionId,
+        protected_formats: protectedFormats,
+        source,
+        created_at: new Date().toISOString(),
+        expires_at: expiresAt || new Date(Date.now() + ttl).toISOString(),
+      };
+      saveLocalSession(session);
+
+      return sendJSON(res, { ok: true, ...session });
+    } catch (e) {
+      return sendJSON(res, { ok: false, error: 'bad_request' }, 400);
+    }
+  }
+
+  // Validate an existing local token
+  if (urlPath === '/api/pin-session-check' && req.method === 'POST') {
+    try {
+      const body = await readBody(req);
+      const token = typeof body.token === 'string' ? body.token : '';
+      const format = typeof body.format === 'string' ? body.format : '';
+
+      const session = getLocalSession(token);
+      if (!session) {
+        return sendJSON(res, { is_valid: false, reason: 'token_invalid' });
+      }
+      if (new Date(session.expires_at).getTime() < Date.now()) {
+        removeLocalSession(token);
+        return sendJSON(res, { is_valid: false, reason: 'token_expired' });
+      }
+      if (format && session.protected_formats?.length && !session.protected_formats.includes(format)) {
+        return sendJSON(res, { is_valid: false, reason: 'format_not_allowed' });
+      }
+      return sendJSON(res, {
+        is_valid: true,
+        live_session_id: session.live_session_id,
+        protected_formats: session.protected_formats,
+        expires_at: session.expires_at,
+      });
+    } catch (e) {
+      return sendJSON(res, { is_valid: false, reason: 'bad_request' }, 400);
     }
   }
 
@@ -415,6 +635,16 @@ let broadcastState = {
   tv_view_mode: null,
   tv_element_positions: null,
 };
+
+// Hydrate PIN state from disk on startup (so offline reboot keeps PIN active)
+try {
+  const cached = loadPinCache();
+  if (cached) {
+    if (cached.pin_code) broadcastState.pin_code = cached.pin_code;
+    if (typeof cached.pin_required === 'boolean') broadcastState.pin_required = cached.pin_required;
+    console.log(`🔐 PIN cache caricata da disco (formati: ${(cached.protected_formats || []).join(', ') || 'tutti'})`);
+  }
+} catch {}
 
 // ═══════════════════════════════════════
 // WebSocket Server
