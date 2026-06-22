@@ -216,7 +216,38 @@ taskkill /F /IM node.exe 2>$null; cd C:\Users\iaco_\nonceduo-openmic-nuovo; git 
 Il sistema è progettato per funzionare **completamente offline** sulla rete locale.
 Dopo aver sincronizzato i brani (con internet), puoi staccare internet e tutto continua a funzionare.
 
+### 🔐 Accesso Staff offline (admin/owner/moderator/operator)
+
+L'area `/admin` funziona **anche senza Internet** grazie a due livelli:
+
+1. **Fase 1 — Cache credenziali (automatica):** ogni volta che fai login in `/admin` con Internet, la tua password viene memorizzata in forma HASHED (PBKDF2-SHA256, 100.000 iter) in `local-server/data/staff-cache.json` con durata 30 giorni (configurabile). Se Internet cade, `/admin` tenta automaticamente il login locale con la **stessa email e password**.
+   - Nella schermata login, se non avevi mai aperto `/admin` prima, inserisci l'**email completa** invece dello username.
+   - Appare il badge **🔌 Modalità Locale** nell'header admin per ricordartelo.
+   - Le scritture cloud (settings globali, ruoli, audit log) vengono accodate in `data/pending-sync.json` e sincronizzate quando torna Internet.
+
+2. **Fase 2 — Master PIN (emergenza):** se il PC è nuovo o la cache è vuota/corrotta, configura `STAFF_MASTER_PIN` in `local-server/.env`. Nella schermata `/admin` compare il link **"Accesso di emergenza locale"** che chiede solo il PIN. Modalità solo-locale (niente sync cloud finché non rientri da utente reale).
+
+```bash
+# In local-server/.env (opzionale)
+STAFF_CACHE_TTL_DAYS=30
+STAFF_MASTER_PIN=        # vuoto = disattivato
+STAFF_MASTER_PIN_ROLE=admin
+STAFF_CACHE_ALLOWED_EMAILS=  # opzionale: whitelist email
+```
+
+**Distinzione chiara dei tre PIN/accessi:**
+
+| Accesso | A chi serve | Quando |
+|---|---|---|
+| **PIN Format/Clienti** | Partecipanti Open Mic, Dediche | Schermata PIN dei formati |
+| **Credenziali Staff in cache** | Tu/Staff già loggato online almeno una volta | Default in qualunque login offline |
+| **STAFF_MASTER_PIN** | Solo emergenza | PC nuovo / cache vuota |
+
+Puoi vedere lo stato della cache (utenti memorizzati, scritture in coda, Master PIN attivo) da **Admin → Impostazioni → Server Locale → Staff Offline**. Da lì puoi anche **svuotare la cache** prima di prestare o dismettere il PC.
+
 ### Requisiti per il funzionamento offline
+
+
 
 1. **Il router deve mantenere la rete locale attiva** senza internet (la maggior parte dei router tradizionali lo fa)
 2. **I brani devono essere stati sincronizzati** prima di staccare internet
