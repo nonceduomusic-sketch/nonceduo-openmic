@@ -86,6 +86,29 @@ export function usePinSession(format: FormatKey) {
       return false;
     }
 
+    // LOCAL TOKEN PATH — talk only to the local mini-server, no Supabase.
+    if (isLocalToken(stored.token)) {
+      const check = await localCheckToken(stored.token, format);
+      if (check === null) {
+        // Local server unreachable — keep the session optimistically valid so
+        // a temporary WS hiccup doesn't kick users out. The next interval will
+        // retry.
+        if (import.meta.env.DEV) console.warn('[PinSession] Local server unreachable, keeping session optimistic');
+        return true;
+      }
+      if (!check.is_valid) {
+        if (import.meta.env.DEV) console.warn('[PinSession] Local token rejected:', check.reason);
+        removeSession();
+        return false;
+      }
+      // If the local server declares a protected_formats list and our format
+      // isn't in it, no PIN is needed for this format → no valid session.
+      if (check.protected_formats?.length && !check.protected_formats.includes(format)) {
+        return false;
+      }
+      return true;
+    }
+
     try {
       // 1) Validate the referenced live session first (public table, cheap check)
       const { data: liveSession, error: liveError } = await supabase
