@@ -180,6 +180,43 @@ export function usePinSession(format: FormatKey) {
 
   // Create new GLOBAL session after PIN validation (works for ALL formats with same PIN)
   const createSession = useCallback(async (liveSessionId: string, pinCode: string): Promise<boolean> => {
+    // OFFLINE-FIRST: when served from the local mini-server, mint a local
+    // token so the session works without Internet.
+    if (isLocalServerAvailable()) {
+      try {
+        const local = await localValidatePin(pinCode.toUpperCase().trim(), format);
+        if (local?.ok && local.token) {
+          const session: StoredSession = {
+            token: `${LOCAL_TOKEN_PREFIX}${local.token}`,
+            liveSessionId: local.live_session_id || liveSessionId,
+            pinCodeHash: hashPin(pinCode),
+            createdAt: new Date().toISOString(),
+          };
+          saveSession(session);
+          setHasValidSession(true);
+          setSessionInvalidated(false);
+          setInvalidationReason(null);
+          console.log(`[PinSession] Local session created (source=${local.source})`);
+          // Fire-and-forget: also create the cloud session so admin "connected
+          // users" view stays accurate when Internet is back.
+          void supabase.rpc('create_pin_session', {
+            p_live_session_id: liveSessionId,
+            p_format: format,
+            p_pin_code: pinCode.toUpperCase().trim(),
+            p_device_fingerprint: navigator.userAgent.substring(0, 100),
+          });
+          return true;
+        }
+        // Local server reachable, PIN rejected, AND we're offline → fail hard
+        if (local && !local.ok && !navigator.onLine) {
+          return false;
+        }
+        // Otherwise fall through to cloud
+      } catch {
+        // fall through to cloud
+      }
+    }
+
     try {
       const { data: token, error } = await supabase.rpc('create_pin_session', {
         p_live_session_id: liveSessionId,
