@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { FormatKey } from './useFormatGating';
+import {
+  isLocalServerAvailable,
+  isLocalToken,
+  localCheckToken,
+  localValidatePin,
+  LOCAL_TOKEN_PREFIX,
+} from '@/lib/localPinAuth';
 
 const PIN_SESSION_STORAGE_KEY = 'ncd_pin_sessions_v2';
 const PIN_SESSION_SYNC_EVENT = 'ncd-pin-session-sync';
