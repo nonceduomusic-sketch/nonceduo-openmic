@@ -99,8 +99,16 @@ Aspetta il messaggio verde di conferma ✅
 
 > Usa questo SOLO quando ti dico "aggiorna il server" o dopo che ho fatto modifiche al codice.
 
+> Regola importante: se PowerShell mostra un errore rosso tipo **"Impossibile trovare il percorso local-server\\lib"** o **".env.example mancante"**, fermati. Vuol dire che il codice non è stato allineato davvero: riparti dal passo 2 e fai `git fetch origin` + `git reset --hard origin/main`.
+
 Apri **PowerShell** e scrivi i comandi **uno alla volta**.
 **Aspetta che ogni comando finisca prima di scrivere il successivo!**
+
+### Passo 0 — Attiva sicurezza errori
+
+```
+$ErrorActionPreference = "Stop"
+```
 
 ### Passo 1 — Ferma il server se è acceso
 
@@ -116,13 +124,24 @@ taskkill /F /IM node.exe 2>$null
 cd C:\Users\iaco_\nonceduo-openmic-nuovo
 ```
 
-### Passo 3 — Scarica gli aggiornamenti
+### Passo 3 — Scarica e applica gli aggiornamenti
 
 ```
-git pull
+git fetch origin
+git reset --hard origin/main
+git rev-parse --short HEAD
 ```
 
-> Aspetta che finisca. Devi vedere i file aggiornati o "Already up to date."
+> `git fetch` da solo NON basta: scarica gli aggiornamenti ma non li applica. Il comando che li applica davvero è `git reset --hard origin/main`.
+
+### Passo 3B — Controllo obbligatorio file server
+
+```
+if (-not (Test-Path ".\local-server\server.js")) { throw "ERRORE: local-server\server.js mancante" }
+if (-not (Test-Path ".\local-server\lib\staff-cache.js")) { throw "ERRORE: local-server\lib\staff-cache.js mancante: codice non aggiornato" }
+if (-not (Test-Path ".\local-server\.env.example")) { throw "ERRORE: local-server\.env.example mancante: codice non aggiornato" }
+Write-Host "✅ File server nuovi trovati"
+```
 
 ### Passo 4 — Installa le dipendenze
 
@@ -143,7 +162,9 @@ npm run build
 ### Passo 6 — Copia i file compilati nel server
 
 ```
-xcopy dist\* ..\nonceduo\local-server\public\ /E /Y
+New-Item -ItemType Directory -Path "C:\Users\iaco_\nonceduo\local-server\public","C:\Users\iaco_\nonceduo\local-server\data","C:\Users\iaco_\nonceduo\local-server\lib" -Force | Out-Null
+Remove-Item "C:\Users\iaco_\nonceduo\local-server\public\assets" -Recurse -Force -ErrorAction SilentlyContinue
+Copy-Item ".\dist\*" -Destination "C:\Users\iaco_\nonceduo\local-server\public" -Recurse -Force -ErrorAction Stop
 ```
 
 > Deve copiare tanti file. Aspetta che finisca.
@@ -151,7 +172,13 @@ xcopy dist\* ..\nonceduo\local-server\public\ /E /Y
 ### Passo 7 — Copia anche il server.js aggiornato
 
 ```
-Copy-Item ".\local-server\server.js" -Destination "..\nonceduo\local-server\server.js" -Force
+Copy-Item ".\local-server\server.js" -Destination "C:\Users\iaco_\nonceduo\local-server\server.js" -Force -ErrorAction Stop
+Copy-Item ".\local-server\lib\*" -Destination "C:\Users\iaco_\nonceduo\local-server\lib\" -Recurse -Force -ErrorAction Stop
+Copy-Item ".\local-server\.env.example" -Destination "C:\Users\iaco_\nonceduo\local-server\.env.example" -Force -ErrorAction Stop
+if (-not (Test-Path "C:\Users\iaco_\nonceduo\local-server\.env")) { Copy-Item "C:\Users\iaco_\nonceduo\local-server\.env.example" "C:\Users\iaco_\nonceduo\local-server\.env" }
+if (-not (Test-Path "C:\Users\iaco_\nonceduo\local-server\lib\staff-cache.js")) { throw "ERRORE: staff-cache.js non copiato" }
+if (-not (Select-String -Path "C:\Users\iaco_\nonceduo\local-server\server.js" -Pattern "/api/staff/cache-renew" -Quiet)) { throw "ERRORE: server.js locale ancora vecchio" }
+Write-Host "✅ Server locale aggiornato davvero"
 ```
 
 ### Passo 8 — Vai nella cartella del server
@@ -190,7 +217,7 @@ taskkill /F /IM node.exe 2>$null; cd C:\Users\iaco_\nonceduo\local-server; node 
 
 **Aggiornare tutto + avviare (tutto in un colpo):**
 ```
-taskkill /F /IM node.exe 2>$null; cd C:\Users\iaco_\nonceduo-openmic-nuovo; git pull; npm install; npm run build; xcopy dist\* ..\nonceduo\local-server\public\ /E /Y; Copy-Item ".\local-server\server.js" -Destination "..\nonceduo\local-server\server.js" -Force; cd ..\nonceduo\local-server; node server.js
+$ErrorActionPreference="Stop"; taskkill /F /IM node.exe 2>$null; cd C:\Users\iaco_\nonceduo-openmic-nuovo; git fetch origin; git reset --hard origin/main; if (-not (Test-Path ".\local-server\lib\staff-cache.js")) { throw "codice non aggiornato: manca local-server\lib" }; npm install; npm run build; New-Item -ItemType Directory -Path "C:\Users\iaco_\nonceduo\local-server\public","C:\Users\iaco_\nonceduo\local-server\data","C:\Users\iaco_\nonceduo\local-server\lib" -Force | Out-Null; Remove-Item "C:\Users\iaco_\nonceduo\local-server\public\assets" -Recurse -Force -ErrorAction SilentlyContinue; Copy-Item ".\dist\*" -Destination "C:\Users\iaco_\nonceduo\local-server\public" -Recurse -Force; Copy-Item ".\local-server\server.js" -Destination "C:\Users\iaco_\nonceduo\local-server\server.js" -Force; Copy-Item ".\local-server\lib\*" -Destination "C:\Users\iaco_\nonceduo\local-server\lib\" -Recurse -Force; Copy-Item ".\local-server\.env.example" -Destination "C:\Users\iaco_\nonceduo\local-server\.env.example" -Force; if (-not (Test-Path "C:\Users\iaco_\nonceduo\local-server\.env")) { Copy-Item "C:\Users\iaco_\nonceduo\local-server\.env.example" "C:\Users\iaco_\nonceduo\local-server\.env" }; cd C:\Users\iaco_\nonceduo\local-server; node server.js
 ```
 
 ---

@@ -144,6 +144,10 @@ function getLocalBuildInfo() {
 
   return {
     server_updated_at: getFileMTimeISO(__filename),
+    server_lib_exists: fs.existsSync(path.join(__dirname, 'lib', 'staff-cache.js')) && fs.existsSync(path.join(__dirname, 'lib', 'pending-sync.js')),
+    staff_cache_lib_updated_at: getFileMTimeISO(path.join(__dirname, 'lib', 'staff-cache.js')),
+    pending_sync_lib_updated_at: getFileMTimeISO(path.join(__dirname, 'lib', 'pending-sync.js')),
+    env_example_exists: fs.existsSync(path.join(__dirname, '.env.example')),
     public_dir_exists: fs.existsSync(PUBLIC_DIR),
     public_index_exists: fs.existsSync(indexPath),
     public_index_updated_at: getFileMTimeISO(indexPath),

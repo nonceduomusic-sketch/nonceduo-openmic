@@ -41,6 +41,10 @@ interface LocalServerVersionInfo {
   ok: boolean;
   ts?: number;
   server_updated_at?: string | null;
+  server_lib_exists?: boolean;
+  staff_cache_lib_updated_at?: string | null;
+  pending_sync_lib_updated_at?: string | null;
+  env_example_exists?: boolean;
   public_dir_exists?: boolean;
   public_index_exists?: boolean;
   public_index_updated_at?: string | null;
@@ -988,6 +992,8 @@ const LocalServerGuide: React.FC = () => {
         {versionInfo && (
           <div className="grid gap-1 text-[11px] text-muted-foreground">
             <div>server.js: <span className="text-foreground">{versionInfo.server_updated_at ? new Date(versionInfo.server_updated_at).toLocaleString('it-IT') : 'n/d'}</span></div>
+            <div>lib server: <span className="text-foreground">{versionInfo.server_lib_exists ? 'presenti' : 'mancanti/vecchie'}</span></div>
+            <div>.env.example: <span className="text-foreground">{versionInfo.env_example_exists ? 'presente' : 'mancante'}</span></div>
             <div>public/index.html: <span className="text-foreground">{versionInfo.public_index_updated_at ? new Date(versionInfo.public_index_updated_at).toLocaleString('it-IT') : 'mancante'}</span></div>
             <div>assets copiati: <span className="text-foreground">{versionInfo.public_assets_count ?? 0}</span></div>
             <div>ultimo asset: <span className="text-foreground">{versionInfo.latest_asset_updated_at ? new Date(versionInfo.latest_asset_updated_at).toLocaleString('it-IT') : 'n/d'}</span></div>
@@ -1059,6 +1065,7 @@ const LocalServerGuide: React.FC = () => {
           </Button>
         </div>
         <div className="rounded-lg p-2 text-[11px] bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 space-y-1">
+          <div><strong>✅ Fix importante:</strong> ora i comandi si fermano se mancano <code>local-server/lib</code> o <code>.env.example</code>. Se vedi “percorso non trovato”, non proseguire: riparti dal passo <code>git fetch</code> + <code>git reset --hard origin/main</code>.</div>
           <div><strong>🛡️ Protezioni automatiche:</strong></div>
           <div>• Backup di <code>local-server/data/</code> (staff-cache, pending-sync, pin-cache, sessions, catalog, songbook) prima di ogni aggiornamento</div>
           <div>• Backup di <code>local-server/.env</code> in <code>.env.backup</code></div>
