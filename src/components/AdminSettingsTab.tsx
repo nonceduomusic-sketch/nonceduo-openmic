@@ -41,6 +41,10 @@ interface LocalServerVersionInfo {
   ok: boolean;
   ts?: number;
   server_updated_at?: string | null;
+  server_lib_exists?: boolean;
+  staff_cache_lib_updated_at?: string | null;
+  pending_sync_lib_updated_at?: string | null;
+  env_example_exists?: boolean;
   public_dir_exists?: boolean;
   public_index_exists?: boolean;
   public_index_updated_at?: string | null;
@@ -793,6 +797,9 @@ const LocalServerGuide: React.FC = () => {
   const PATH_CODE = 'C:\\Users\\iaco_\\nonceduo-openmic-nuovo';
 
   const updateCommands = [
+    // ── 0. SICUREZZA POWERSHELL ──────────────────────────────
+    { cmd: '$ErrorActionPreference = "Stop"; Write-Host "✅ Modalità sicurezza attiva: se un file manca, PowerShell si ferma"', label: '🧯 SICUREZZA — Attiva STOP sugli errori: niente aggiornamenti a metà senza accorgersene' },
+
     // ── 1. STOP ──────────────────────────────────────────────
     { cmd: 'taskkill /F /IM node.exe 2>$null', label: '🛑 STOP — Chiudi il server vecchio (uccide tutti i processi node)' },
     { cmd: 'Start-Sleep -Seconds 1', label: '⏳ STOP — Aspetta 1 secondo che i processi si chiudano davvero' },
@@ -806,22 +813,26 @@ const LocalServerGuide: React.FC = () => {
     { cmd: `cd ${PATH_CODE}`, label: '📂 CODICE — Entra nella cartella del codice sorgente (nonceduo-openmic-nuovo)' },
     { cmd: 'git fetch origin', label: '⬇️ CODICE — Scarica gli ultimi aggiornamenti dal repository remoto' },
     { cmd: 'git reset --hard origin/main', label: '🔄 CODICE — Allinea il codice all\'ultima versione (NON tocca local-server/data né .env)' },
+    { cmd: 'git rev-parse --short HEAD', label: '🔍 CODICE — Mostra il codice versione/commit attualmente installato' },
+    { cmd: 'if (-not (Test-Path ".\\local-server\\server.js")) { throw "ERRORE: local-server\\server.js mancante. Il repository non è aggiornato." }; if (-not (Test-Path ".\\local-server\\lib\\staff-cache.js")) { throw "ERRORE: local-server\\lib\\staff-cache.js mancante. Hai fatto git fetch ma non git reset/pull: riparti da git fetch + git reset." }; if (-not (Test-Path ".\\local-server\\.env.example")) { throw "ERRORE: local-server\\.env.example mancante. Devi aggiornare il codice prima di copiare." }; Write-Host "✅ File server nuovi trovati nel codice sorgente"', label: '✅ CODICE — Controllo obbligatorio: server.js, lib/ e .env.example devono esistere prima di continuare' },
     { cmd: 'npm install', label: '📦 CODICE — Installa/aggiorna le dipendenze npm' },
     { cmd: 'npm run build', label: '🏗️ CODICE — Compila l\'app per la produzione (crea cartella dist/)' },
 
     // ── 4. DEPLOY ────────────────────────────────────────────
+    { cmd: `New-Item -ItemType Directory -Path "${PATH_SERVER}\\public","${PATH_SERVER}\\data","${PATH_SERVER}\\lib" -Force | Out-Null; Write-Host "✅ Cartelle server pronte: public, data, lib"`, label: '📁 DEPLOY — Crea/controlla le cartelle server necessarie' },
     { cmd: `Remove-Item "${PATH_SERVER}\\public\\assets" -Recurse -Force -ErrorAction SilentlyContinue`, label: '🗑️ DEPLOY — Cancella gli assets vecchi (solo da public/, MAI da data/)' },
-    { cmd: `Copy-Item ".\\dist\\*" -Destination "${PATH_SERVER}\\public" -Recurse -Force`, label: '📋 DEPLOY — Copia i file compilati (dist/) dentro local-server/public/' },
-    { cmd: `Copy-Item ".\\local-server\\server.js" -Destination "${PATH_SERVER}\\server.js" -Force`, label: '📋 DEPLOY — Copia il nuovo server.js' },
-    { cmd: `Copy-Item ".\\local-server\\lib\\*" -Destination "${PATH_SERVER}\\lib\\" -Recurse -Force`, label: '📋 DEPLOY — Copia le librerie del server (staff-cache, pending-sync, ecc.)' },
-    { cmd: `Copy-Item ".\\local-server\\.env.example" -Destination "${PATH_SERVER}\\.env.example" -Force`, label: '📋 DEPLOY — Copia il template .env.example (NON sovrascrive il .env reale)' },
+    { cmd: `Copy-Item ".\\dist\\*" -Destination "${PATH_SERVER}\\public" -Recurse -Force -ErrorAction Stop`, label: '📋 DEPLOY — Copia i file compilati (dist/) dentro local-server/public/' },
+    { cmd: `Copy-Item ".\\local-server\\server.js" -Destination "${PATH_SERVER}\\server.js" -Force -ErrorAction Stop`, label: '📋 DEPLOY — Copia il nuovo server.js' },
+    { cmd: `Copy-Item ".\\local-server\\lib\\*" -Destination "${PATH_SERVER}\\lib\\" -Recurse -Force -ErrorAction Stop`, label: '📋 DEPLOY — Copia le librerie del server (staff-cache, pending-sync, ecc.)' },
+    { cmd: `Copy-Item ".\\local-server\\.env.example" -Destination "${PATH_SERVER}\\.env.example" -Force -ErrorAction Stop`, label: '📋 DEPLOY — Copia il template .env.example (NON sovrascrive il .env reale)' },
     { cmd: `if (-not (Test-Path "${PATH_SERVER}\\.env")) { Copy-Item "${PATH_SERVER}\\.env.example" "${PATH_SERVER}\\.env"; Write-Host "✅ Creato .env vuoto da template" } else { Write-Host "✅ .env esistente preservato (EMERGENCY_PIN/STAFF_MASTER_PIN intatti)" }`, label: '🔐 DEPLOY — Crea .env SOLO se mancante (preserva i PIN esistenti)' },
+    { cmd: `if (-not (Test-Path "${PATH_SERVER}\\lib\\staff-cache.js")) { throw "ERRORE: staff-cache.js non copiato nel server locale" }; if (-not (Select-String -Path "${PATH_SERVER}\\server.js" -Pattern "/api/staff/cache-renew" -Quiet)) { throw "ERRORE: server.js locale ancora vecchio: ricopia server.js" }; Write-Host "✅ Server locale aggiornato davvero: server.js nuovo + lib presenti"`, label: '✅ DEPLOY — Controllo finale: impedisce di avviare un server aggiornato solo a metà' },
 
     // ── 5. AVVIO ─────────────────────────────────────────────
     { cmd: `cd ${PATH_SERVER}`, label: '📂 AVVIO — Entra nella cartella del server' },
     { cmd: `Start-Process powershell -ArgumentList '-NoExit','-Command','cd ${PATH_SERVER}; node server.js'`, label: '🚀 AVVIO — Lancia il server in una NUOVA finestra PowerShell (così questa resta libera)' },
     { cmd: 'Start-Sleep -Seconds 3', label: '⏳ AVVIO — Aspetta 3 secondi che il server sia pronto a rispondere' },
-    { cmd: 'try { Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/staff/cache-renew" -Method POST -TimeoutSec 5 | Format-List } catch { Write-Host "ℹ️ Cache renew saltato (server non pronto o cache vuota — normale al primo avvio)" }', label: '🔄 AVVIO — Rinnova TTL cache Staff (+30 giorni) → login offline garantito' },
+    { cmd: 'try { $r = Invoke-WebRequest -Uri "http://127.0.0.1:8080/api/staff/cache-renew" -Method POST -TimeoutSec 5 -UseBasicParsing; if ($r.Content.TrimStart().StartsWith("<")) { throw "Risposta HTML: server.js ancora vecchio" }; $r.Content | ConvertFrom-Json | Format-List } catch { Write-Host "ℹ️ Cache renew saltato: $($_.Exception.Message)" }', label: '🔄 AVVIO — Rinnova TTL cache Staff; se risponde HTML significa che il server.js è ancora vecchio' },
     { cmd: 'Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/version" -Method GET | Format-List', label: '✅ VERIFICA — Controlla che il server risponda e mostra date di server.js e build' },
   ];
 
@@ -831,7 +842,7 @@ const LocalServerGuide: React.FC = () => {
     { cmd: `cd ${PATH_SERVER}`, label: '📂 Entra nella cartella del server' },
     { cmd: `Start-Process powershell -ArgumentList '-NoExit','-Command','cd ${PATH_SERVER}; node server.js'`, label: '🚀 Lancia il server in una NUOVA finestra PowerShell (questa resta libera)' },
     { cmd: 'Start-Sleep -Seconds 3', label: '⏳ Aspetta 3 secondi che il server sia pronto' },
-    { cmd: 'try { Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/staff/cache-renew" -Method POST -TimeoutSec 5 | Format-List } catch { Write-Host "ℹ️ Cache renew saltato (cache vuota o server non pronto)" }', label: '🔄 Rinnova TTL cache Staff (+30 giorni) → login offline garantito' },
+    { cmd: 'try { $r = Invoke-WebRequest -Uri "http://127.0.0.1:8080/api/staff/cache-renew" -Method POST -TimeoutSec 5 -UseBasicParsing; if ($r.Content.TrimStart().StartsWith("<")) { throw "Risposta HTML: server.js ancora vecchio" }; $r.Content | ConvertFrom-Json | Format-List } catch { Write-Host "ℹ️ Cache renew saltato: $($_.Exception.Message)" }', label: '🔄 Rinnova TTL cache Staff (+30 giorni), se disponibile' },
     { cmd: 'Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/version" -Method GET | Format-List', label: '✅ Verifica che il server risponda (mostra le date di build)' },
   ];
 
@@ -851,6 +862,9 @@ const LocalServerGuide: React.FC = () => {
   const REPO_URL = 'https://github.com/nonceduomusic-sketch/nonceduo-openmic.git';
 
   const setupCommands = [
+    // ── 0. SICUREZZA POWERSHELL ──────────────────────────────
+    { cmd: '$ErrorActionPreference = "Stop"; Write-Host "✅ Modalità sicurezza attiva: se un file manca, PowerShell si ferma"', label: '🧯 SICUREZZA — Attiva STOP sugli errori' },
+
     // ── 1. PREREQUISITI ──────────────────────────────────────
     { cmd: 'winget --version', label: '🔍 PREREQUISITI — Verifica che winget sia installato (Windows 10/11 lo include di default)' },
     { cmd: 'winget install -e --id OpenJS.NodeJS.LTS --accept-source-agreements --accept-package-agreements', label: '📥 PREREQUISITI — Installa Node.js LTS (se già presente, dice "già installato")' },
@@ -863,8 +877,10 @@ const LocalServerGuide: React.FC = () => {
     { cmd: 'New-Item -ItemType Directory -Path "nonceduo" -Force | Out-Null; Write-Host "✅ Cartella nonceduo/ pronta"', label: '📁 CARTELLE — Crea la cartella base nonceduo/ (per il server locale)' },
 
     // ── 3. CLONE CODICE ──────────────────────────────────────
+    { cmd: 'if (Test-Path "nonceduo-openmic-nuovo") { throw "La cartella nonceduo-openmic-nuovo esiste già: non usare Setup Iniziale, usa Aggiornamento Produzione Locale." }', label: '🧯 CODICE — Evita di clonare sopra una cartella già esistente' },
     { cmd: `git clone ${REPO_URL} nonceduo-openmic-nuovo`, label: '⬇️ CODICE — Clona il repository ufficiale in nonceduo-openmic-nuovo/' },
     { cmd: `cd ${PATH_CODE}`, label: '📂 CODICE — Entra nella cartella del codice appena clonato' },
+    { cmd: 'if (-not (Test-Path ".\\local-server\\server.js")) { throw "ERRORE: local-server\\server.js mancante" }; if (-not (Test-Path ".\\local-server\\lib\\staff-cache.js")) { throw "ERRORE: local-server\\lib\\staff-cache.js mancante" }; if (-not (Test-Path ".\\local-server\\.env.example")) { throw "ERRORE: local-server\\.env.example mancante" }; Write-Host "✅ File server trovati"', label: '✅ CODICE — Verifica che il repository contenga server.js, lib/ e .env.example' },
     { cmd: 'npm install', label: '📦 CODICE — Installa tutte le dipendenze npm (può richiedere 2-3 minuti)' },
     { cmd: 'npm run build', label: '🏗️ CODICE — Compila l\'app per la produzione (crea cartella dist/)' },
 
@@ -872,14 +888,15 @@ const LocalServerGuide: React.FC = () => {
     { cmd: `New-Item -ItemType Directory -Path "${PATH_SERVER}" -Force | Out-Null; New-Item -ItemType Directory -Path "${PATH_SERVER}\\public" -Force | Out-Null; New-Item -ItemType Directory -Path "${PATH_SERVER}\\data" -Force | Out-Null; New-Item -ItemType Directory -Path "${PATH_SERVER}\\lib" -Force | Out-Null; Write-Host "✅ Struttura local-server/ creata (public, data, lib)"`, label: '📁 SERVER — Crea la struttura cartelle: local-server/{public, data, lib}' },
 
     // ── 5. COPIA FILE SERVER ─────────────────────────────────
-    { cmd: `Copy-Item ".\\dist\\*" -Destination "${PATH_SERVER}\\public" -Recurse -Force`, label: '📋 SERVER — Copia i file compilati (dist/) dentro local-server/public/' },
-    { cmd: `Copy-Item ".\\local-server\\server.js" -Destination "${PATH_SERVER}\\server.js" -Force`, label: '📋 SERVER — Copia server.js' },
-    { cmd: `Copy-Item ".\\local-server\\lib\\*" -Destination "${PATH_SERVER}\\lib\\" -Recurse -Force`, label: '📋 SERVER — Copia le librerie (staff-cache.js, pending-sync.js)' },
-    { cmd: `Copy-Item ".\\local-server\\.env.example" -Destination "${PATH_SERVER}\\.env.example" -Force`, label: '📋 SERVER — Copia il template .env.example' },
+    { cmd: `Copy-Item ".\\dist\\*" -Destination "${PATH_SERVER}\\public" -Recurse -Force -ErrorAction Stop`, label: '📋 SERVER — Copia i file compilati (dist/) dentro local-server/public/' },
+    { cmd: `Copy-Item ".\\local-server\\server.js" -Destination "${PATH_SERVER}\\server.js" -Force -ErrorAction Stop`, label: '📋 SERVER — Copia server.js' },
+    { cmd: `Copy-Item ".\\local-server\\lib\\*" -Destination "${PATH_SERVER}\\lib\\" -Recurse -Force -ErrorAction Stop`, label: '📋 SERVER — Copia le librerie (staff-cache.js, pending-sync.js)' },
+    { cmd: `Copy-Item ".\\local-server\\.env.example" -Destination "${PATH_SERVER}\\.env.example" -Force -ErrorAction Stop`, label: '📋 SERVER — Copia il template .env.example' },
 
     // ── 6. CONFIGURAZIONE .env ───────────────────────────────
     { cmd: `Copy-Item "${PATH_SERVER}\\.env.example" "${PATH_SERVER}\\.env" -Force; Write-Host "✅ .env creato da template — ora apri e configura i PIN"`, label: '🔐 CONFIG — Crea il .env dal template (prima installazione, può sovrascrivere)' },
     { cmd: `notepad "${PATH_SERVER}\\.env"`, label: '✏️ CONFIG — Apri .env con Blocco Note e imposta EMERGENCY_PIN=9999 e STAFF_MASTER_PIN=12345 (cambia i valori!)' },
+    { cmd: `if (-not (Test-Path "${PATH_SERVER}\\lib\\staff-cache.js")) { throw "ERRORE: staff-cache.js non copiato" }; if (-not (Select-String -Path "${PATH_SERVER}\\server.js" -Pattern "/api/staff/cache-renew" -Quiet)) { throw "ERRORE: server.js locale non aggiornato" }; Write-Host "✅ Server locale completo e pronto"`, label: '✅ CONFIG — Controllo finale prima del primo avvio' },
 
     // ── 7. PRIMO AVVIO ───────────────────────────────────────
     { cmd: `cd ${PATH_SERVER}`, label: '📂 AVVIO — Entra nella cartella del server' },
@@ -975,6 +992,8 @@ const LocalServerGuide: React.FC = () => {
         {versionInfo && (
           <div className="grid gap-1 text-[11px] text-muted-foreground">
             <div>server.js: <span className="text-foreground">{versionInfo.server_updated_at ? new Date(versionInfo.server_updated_at).toLocaleString('it-IT') : 'n/d'}</span></div>
+            <div>lib server: <span className="text-foreground">{versionInfo.server_lib_exists ? 'presenti' : 'mancanti/vecchie'}</span></div>
+            <div>.env.example: <span className="text-foreground">{versionInfo.env_example_exists ? 'presente' : 'mancante'}</span></div>
             <div>public/index.html: <span className="text-foreground">{versionInfo.public_index_updated_at ? new Date(versionInfo.public_index_updated_at).toLocaleString('it-IT') : 'mancante'}</span></div>
             <div>assets copiati: <span className="text-foreground">{versionInfo.public_assets_count ?? 0}</span></div>
             <div>ultimo asset: <span className="text-foreground">{versionInfo.latest_asset_updated_at ? new Date(versionInfo.latest_asset_updated_at).toLocaleString('it-IT') : 'n/d'}</span></div>
@@ -1046,6 +1065,7 @@ const LocalServerGuide: React.FC = () => {
           </Button>
         </div>
         <div className="rounded-lg p-2 text-[11px] bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 space-y-1">
+          <div><strong>✅ Fix importante:</strong> ora i comandi si fermano se mancano <code>local-server/lib</code> o <code>.env.example</code>. Se vedi “percorso non trovato”, non proseguire: riparti dal passo <code>git fetch</code> + <code>git reset --hard origin/main</code>.</div>
           <div><strong>🛡️ Protezioni automatiche:</strong></div>
           <div>• Backup di <code>local-server/data/</code> (staff-cache, pending-sync, pin-cache, sessions, catalog, songbook) prima di ogni aggiornamento</div>
           <div>• Backup di <code>local-server/.env</code> in <code>.env.backup</code></div>
