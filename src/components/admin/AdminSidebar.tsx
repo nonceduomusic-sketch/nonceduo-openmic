@@ -58,7 +58,8 @@ export type AdminMainTab =
   | "catalog-songbook"
   | "games"
   | "quiz"
-  | "furore";
+  | "furore"
+  | "db-maintenance";
 
 type Item = {
   key: AdminMainTab;
