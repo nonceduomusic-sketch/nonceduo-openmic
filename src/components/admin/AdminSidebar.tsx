@@ -103,6 +103,7 @@ const ITEMS: Item[] = [
   { key: "permissions", label: "Permessi", icon: Shield, group: "Gestione", description: "Controllo accessi" },
   { key: "audit", label: "Audit", icon: Database, group: "Gestione", description: "Log attività" },
   { key: "manuale", label: "Manuale", icon: BookOpen, group: "Gestione", description: "Guida Admin" },
+  { key: "db-maintenance", label: "Manutenzione DB", icon: Database, group: "Gestione", description: "Peso, pulizie e backup" },
 ];
 
 export function AdminSidebar({
