@@ -138,7 +138,7 @@ export function AdminSidebar({
       if (key === "assistant") return !operatorAccess.canViewAssistente;
       if (key === "trasmetti") return !operatorAccess.canViewTrasmetti;
       // Operators never see these sections
-      if (["event", "formats", "grafiche", "songs", "community", "settings", "staff", "permissions", "audit", "notifiche-live", "operators"].includes(key)) {
+      if (["event", "formats", "grafiche", "songs", "community", "settings", "staff", "permissions", "audit", "notifiche-live", "operators", "db-maintenance"].includes(key)) {
         return true;
       }
       return false;
