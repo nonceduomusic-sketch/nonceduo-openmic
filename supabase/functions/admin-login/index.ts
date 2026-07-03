@@ -119,8 +119,49 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
+    // Rate limiting: max 5 failed attempts per 15 minutes per IP+username
+    const clientIp =
+      req.headers.get("cf-connecting-ip") ||
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      "unknown";
+    const rateLimitId = `admin_login:${clientIp}:${username.trim().toLowerCase()}`;
+    const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+
+    const { count: recentFailures } = await supabaseAdmin
+      .from("security_rate_limits")
+      .select("*", { count: "exact", head: true })
+      .eq("identifier", rateLimitId)
+      .eq("action_type", "admin_login")
+      .eq("success", false)
+      .gte("attempted_at", fifteenMinAgo);
+
+    if ((recentFailures ?? 0) >= 5) {
+      console.log(`Rate limit exceeded for ${rateLimitId}`);
+      await supabaseAdmin.from("security_rate_limits").insert({
+        identifier: rateLimitId,
+        action_type: "admin_login_blocked",
+        success: false,
+      });
+      return new Response(
+        JSON.stringify({ error: "Troppi tentativi. Riprova tra 15 minuti." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const logAttempt = async (success: boolean) => {
+      try {
+        await supabaseAdmin.from("security_rate_limits").insert({
+          identifier: rateLimitId,
+          action_type: "admin_login",
+          success,
+        });
+      } catch (e) {
+        console.error("Failed to log rate-limit attempt:", e);
+      }
+    };
+
     const trimmedUsername = username.trim().toLowerCase();
-    
+
     // First, check if this is an operator (check Auth user with @operator.local email)
     const operatorEmail = `${trimmedUsername}@operator.local`;
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
@@ -146,6 +187,7 @@ serve(async (req) => {
       
       if (signInError || !signInData.user) {
         console.log("Operator password mismatch:", signInError?.message);
+        await logAttempt(false);
         return new Response(
           JSON.stringify({ error: "Credenziali non valide" }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -162,11 +204,14 @@ serve(async (req) => {
       
       if (!roleData) {
         console.log("User exists but doesn't have operator role");
+        await logAttempt(false);
         return new Response(
           JSON.stringify({ error: "Credenziali non valide" }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      await logAttempt(true);
       
       console.log(`Operator ${trimmedUsername} authenticated successfully`);
       
@@ -198,6 +243,7 @@ serve(async (req) => {
 
     if (!adminUser) {
       console.log("Admin user not found");
+      await logAttempt(false);
       return new Response(
         JSON.stringify({ error: "Credenziali non valide" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -206,14 +252,17 @@ serve(async (req) => {
 
     // Verify password with PBKDF2
     const passwordMatch = await verifyPassword(password, adminUser.password_hash);
-    
+
     if (!passwordMatch) {
       console.log("Password mismatch");
+      await logAttempt(false);
       return new Response(
         JSON.stringify({ error: "Credenziali non valide" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    await logAttempt(true);
 
     // Generate a unique email for this admin user (for Supabase Auth)
     const adminEmail = `${adminUser.username.toLowerCase()}@karaoke-admin.local`;

@@ -3175,6 +3175,63 @@ export type Database = {
       }
     }
     Views: {
+      assistant_public_settings: {
+        Row: {
+          enabled_on_app: boolean | null
+          enabled_on_community: boolean | null
+          enabled_on_dediche: boolean | null
+          enabled_on_furore: boolean | null
+          enabled_on_giochi: boolean | null
+          enabled_on_openmic: boolean | null
+          enabled_on_site: boolean | null
+          enabled_pages: Json | null
+          id: string | null
+          is_enabled: boolean | null
+          proactive_delay_seconds: number | null
+          welcome_message: string | null
+          welcome_on_community: boolean | null
+          welcome_on_dediche: boolean | null
+          welcome_on_openmic: boolean | null
+          welcome_on_site: boolean | null
+        }
+        Insert: {
+          enabled_on_app?: boolean | null
+          enabled_on_community?: boolean | null
+          enabled_on_dediche?: boolean | null
+          enabled_on_furore?: boolean | null
+          enabled_on_giochi?: boolean | null
+          enabled_on_openmic?: boolean | null
+          enabled_on_site?: boolean | null
+          enabled_pages?: Json | null
+          id?: string | null
+          is_enabled?: boolean | null
+          proactive_delay_seconds?: number | null
+          welcome_message?: string | null
+          welcome_on_community?: boolean | null
+          welcome_on_dediche?: boolean | null
+          welcome_on_openmic?: boolean | null
+          welcome_on_site?: boolean | null
+        }
+        Update: {
+          enabled_on_app?: boolean | null
+          enabled_on_community?: boolean | null
+          enabled_on_dediche?: boolean | null
+          enabled_on_furore?: boolean | null
+          enabled_on_giochi?: boolean | null
+          enabled_on_openmic?: boolean | null
+          enabled_on_site?: boolean | null
+          enabled_pages?: Json | null
+          id?: string | null
+          is_enabled?: boolean | null
+          proactive_delay_seconds?: number | null
+          welcome_message?: string | null
+          welcome_on_community?: boolean | null
+          welcome_on_dediche?: boolean | null
+          welcome_on_openmic?: boolean | null
+          welcome_on_site?: boolean | null
+        }
+        Relationships: []
+      }
       live_sessions_public: {
         Row: {
           created_at: string | null
@@ -3235,6 +3292,14 @@ export type Database = {
       can_message_user: {
         Args: { recipient: string; sender: string }
         Returns: boolean
+      }
+      cast_performance_vote: {
+        Args: {
+          p_fingerprint: string
+          p_reservation_id: string
+          p_vote_type: string
+        }
+        Returns: undefined
       }
       check_furore_remote_token: {
         Args: { p_token: string }

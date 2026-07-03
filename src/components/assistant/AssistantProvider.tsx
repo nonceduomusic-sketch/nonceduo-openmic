@@ -80,8 +80,8 @@ export const AssistantProvider: React.FC = () => {
   useEffect(() => {
     const fetchEnabledPages = async () => {
       try {
-        const { data, error } = await supabase
-          .from('assistant_settings')
+        const { data, error } = await (supabase as any)
+          .from('assistant_public_settings')
           .select('enabled_pages, is_enabled')
           .limit(1)
           .single();

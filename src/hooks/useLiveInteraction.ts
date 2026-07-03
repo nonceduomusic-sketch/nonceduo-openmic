@@ -144,36 +144,17 @@ export const usePerformanceVotes = (reservationId?: string) => {
     const fingerprint = getFingerprint();
 
     try {
-      if (userVoteType) {
-        // User is changing their vote - UPDATE
-        const { error } = await supabase
-          .from('performance_votes')
-          .update({ vote_type: voteType })
-          .eq('reservation_id', reservationId)
-          .eq('voter_fingerprint', fingerprint);
+      // Cast/change vote via SECURITY DEFINER RPC (server-side validated upsert)
+      const { error } = await supabase.rpc('cast_performance_vote', {
+        p_reservation_id: reservationId,
+        p_fingerprint: fingerprint,
+        p_vote_type: voteType,
+      });
 
-        if (!error) {
-          setUserVoteType(voteType);
-          setIsLoading(false);
-          return true;
-        }
-      } else {
-        // First vote - INSERT (use upsert to handle race conditions)
-        const { error } = await supabase
-          .from('performance_votes')
-          .upsert({
-            reservation_id: reservationId,
-            voter_fingerprint: fingerprint,
-            vote_type: voteType,
-          }, {
-            onConflict: 'reservation_id,voter_fingerprint'
-          });
-
-        if (!error) {
-          setUserVoteType(voteType);
-          setIsLoading(false);
-          return true;
-        }
+      if (!error) {
+        setUserVoteType(voteType);
+        setIsLoading(false);
+        return true;
       }
     } catch (e) {
       console.error('Vote error:', e);
