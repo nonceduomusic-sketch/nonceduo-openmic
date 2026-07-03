@@ -2658,6 +2658,48 @@ export type Database = {
         }
         Relationships: []
       }
+      reservations_archive: {
+        Row: {
+          archive_batch_id: string
+          archived_at: string
+          customer_name: string | null
+          dedication_message: string | null
+          id: string
+          original_created_at: string | null
+          original_data: Json
+          song_artist: string | null
+          song_key: string | null
+          song_title: string | null
+          status: string | null
+        }
+        Insert: {
+          archive_batch_id: string
+          archived_at?: string
+          customer_name?: string | null
+          dedication_message?: string | null
+          id: string
+          original_created_at?: string | null
+          original_data: Json
+          song_artist?: string | null
+          song_key?: string | null
+          song_title?: string | null
+          status?: string | null
+        }
+        Update: {
+          archive_batch_id?: string
+          archived_at?: string
+          customer_name?: string | null
+          dedication_message?: string | null
+          id?: string
+          original_created_at?: string | null
+          original_data?: Json
+          song_artist?: string | null
+          song_key?: string | null
+          song_title?: string | null
+          status?: string | null
+        }
+        Relationships: []
+      }
       role_permissions: {
         Row: {
           created_at: string
@@ -3165,6 +3207,31 @@ export type Database = {
       }
     }
     Functions: {
+      admin_archive_reservations: {
+        Args: { p_before_date: string; p_dry_run?: boolean }
+        Returns: Json
+      }
+      admin_cleanup_all: {
+        Args: { p_confirm: string; p_dry_run?: boolean }
+        Returns: Json
+      }
+      admin_cleanup_by_age: {
+        Args: { p_days: number; p_dry_run?: boolean }
+        Returns: Json
+      }
+      admin_db_stats: {
+        Args: never
+        Returns: {
+          row_count: number
+          table_name: string
+          total_size_bytes: number
+          total_size_pretty: string
+        }[]
+      }
+      admin_restore_archive_batch: {
+        Args: { p_batch_id: string }
+        Returns: Json
+      }
       can_message_user: {
         Args: { recipient: string; sender: string }
         Returns: boolean
