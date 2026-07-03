@@ -119,7 +119,46 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    const trimmedUsername = username.trim().toLowerCase();
+    // Rate limiting: max 5 failed attempts per 15 minutes per IP+username
+    const clientIp =
+      req.headers.get("cf-connecting-ip") ||
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      "unknown";
+    const rateLimitId = `admin_login:${clientIp}:${username.trim().toLowerCase()}`;
+    const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+
+    const { count: recentFailures } = await supabaseAdmin
+      .from("security_rate_limits")
+      .select("*", { count: "exact", head: true })
+      .eq("identifier", rateLimitId)
+      .eq("action_type", "admin_login")
+      .eq("success", false)
+      .gte("attempted_at", fifteenMinAgo);
+
+    if ((recentFailures ?? 0) >= 5) {
+      console.log(`Rate limit exceeded for ${rateLimitId}`);
+      await supabaseAdmin.from("security_rate_limits").insert({
+        identifier: rateLimitId,
+        action_type: "admin_login_blocked",
+        success: false,
+      });
+      return new Response(
+        JSON.stringify({ error: "Troppi tentativi. Riprova tra 15 minuti." }),
+        { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const logAttempt = async (success: boolean) => {
+      try {
+        await supabaseAdmin.from("security_rate_limits").insert({
+          identifier: rateLimitId,
+          action_type: "admin_login",
+          success,
+        });
+      } catch (e) {
+        console.error("Failed to log rate-limit attempt:", e);
+      }
+    };
     
     // First, check if this is an operator (check Auth user with @operator.local email)
     const operatorEmail = `${trimmedUsername}@operator.local`;
