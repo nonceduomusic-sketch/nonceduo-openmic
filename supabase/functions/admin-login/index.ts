@@ -159,7 +159,9 @@ serve(async (req) => {
         console.error("Failed to log rate-limit attempt:", e);
       }
     };
-    
+
+    const trimmedUsername = username.trim().toLowerCase();
+
     // First, check if this is an operator (check Auth user with @operator.local email)
     const operatorEmail = `${trimmedUsername}@operator.local`;
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
