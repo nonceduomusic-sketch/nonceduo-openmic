@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
-    const authHeader = req.get?.("authorization") ?? req.headers.get("authorization");
+    const authHeader = req.headers.get("authorization");
     if (!authHeader) return json({ error: "Missing auth" }, 401);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
