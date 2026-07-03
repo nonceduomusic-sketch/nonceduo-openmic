@@ -1037,6 +1037,8 @@ export const AdminDashboard: React.FC = () => {
           <AdminFuroreTab />
         ) : mainTab === 'manuale' ? (
           <AdminManual embedded />
+        ) : mainTab === 'db-maintenance' ? (
+          <AdminDBMaintenance />
         ) : mainTab === 'notifications' ? (
           <LiveCentroTab 
             onNavigate={(tab, subTab) => {
