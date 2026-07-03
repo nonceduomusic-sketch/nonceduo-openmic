@@ -187,6 +187,7 @@ serve(async (req) => {
       
       if (signInError || !signInData.user) {
         console.log("Operator password mismatch:", signInError?.message);
+        await logAttempt(false);
         return new Response(
           JSON.stringify({ error: "Credenziali non valide" }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
