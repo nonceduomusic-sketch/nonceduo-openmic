@@ -88,8 +88,8 @@ export function useAssistantWidget(currentSection: Section = 'site') {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const { data, error } = await supabase
-          .from('assistant_settings')
+        const { data, error } = await (supabase as any)
+          .from('assistant_public_settings')
           .select('*')
           .limit(1)
           .single();
