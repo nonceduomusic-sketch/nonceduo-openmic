@@ -178,6 +178,7 @@ export function AdminSidebar({
     if (item.key === "operators" && !isOwner) return false;
     if (item.key === "permissions" && !isOwner) return false;
     if (item.key === "audit" && !isOwner) return false;
+    if (item.key === "db-maintenance" && !isOwner) return false;
     // Assistant visible for owner and admins
     if (item.key === "assistant" && !isOwner) return false;
     return true;
