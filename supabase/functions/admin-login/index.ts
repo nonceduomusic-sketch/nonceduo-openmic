@@ -243,6 +243,7 @@ serve(async (req) => {
 
     if (!adminUser) {
       console.log("Admin user not found");
+      await logAttempt(false);
       return new Response(
         JSON.stringify({ error: "Credenziali non valide" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -251,14 +252,17 @@ serve(async (req) => {
 
     // Verify password with PBKDF2
     const passwordMatch = await verifyPassword(password, adminUser.password_hash);
-    
+
     if (!passwordMatch) {
       console.log("Password mismatch");
+      await logAttempt(false);
       return new Response(
         JSON.stringify({ error: "Credenziali non valide" }),
         { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    await logAttempt(true);
 
     // Generate a unique email for this admin user (for Supabase Auth)
     const adminEmail = `${adminUser.username.toLowerCase()}@karaoke-admin.local`;
