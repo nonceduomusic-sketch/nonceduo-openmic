@@ -58,7 +58,8 @@ export type AdminMainTab =
   | "catalog-songbook"
   | "games"
   | "quiz"
-  | "furore";
+  | "furore"
+  | "db-maintenance";
 
 type Item = {
   key: AdminMainTab;
@@ -102,6 +103,7 @@ const ITEMS: Item[] = [
   { key: "permissions", label: "Permessi", icon: Shield, group: "Gestione", description: "Controllo accessi" },
   { key: "audit", label: "Audit", icon: Database, group: "Gestione", description: "Log attività" },
   { key: "manuale", label: "Manuale", icon: BookOpen, group: "Gestione", description: "Guida Admin" },
+  { key: "db-maintenance", label: "Manutenzione DB", icon: Database, group: "Gestione", description: "Peso, pulizie e backup" },
 ];
 
 export function AdminSidebar({
@@ -136,7 +138,7 @@ export function AdminSidebar({
       if (key === "assistant") return !operatorAccess.canViewAssistente;
       if (key === "trasmetti") return !operatorAccess.canViewTrasmetti;
       // Operators never see these sections
-      if (["event", "formats", "grafiche", "songs", "community", "settings", "staff", "permissions", "audit", "notifiche-live", "operators"].includes(key)) {
+      if (["event", "formats", "grafiche", "songs", "community", "settings", "staff", "permissions", "audit", "notifiche-live", "operators", "db-maintenance"].includes(key)) {
         return true;
       }
       return false;
@@ -151,6 +153,7 @@ export function AdminSidebar({
     if (key === "operators") return !isOwner;
     if (key === "permissions") return !isOwner;
     if (key === "audit") return !isOwner;
+    if (key === "db-maintenance") return !isOwner;
     // Assistant is owner/admin only
     if (key === "assistant") return !isOwner && !access.openmic;
     // Trasmetti available to all staff
@@ -175,6 +178,7 @@ export function AdminSidebar({
     if (item.key === "operators" && !isOwner) return false;
     if (item.key === "permissions" && !isOwner) return false;
     if (item.key === "audit" && !isOwner) return false;
+    if (item.key === "db-maintenance" && !isOwner) return false;
     // Assistant visible for owner and admins
     if (item.key === "assistant" && !isOwner) return false;
     return true;

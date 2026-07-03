@@ -1,116 +1,89 @@
-## Obiettivo
 
-Permetterti di operare come Staff/Admin **anche completamente offline**, mantenendo lo stesso login email/password quando c'è Internet, con fallback automatico locale e un PIN di emergenza per casi estremi.
+# Piano — Manutenzione Database NONCEDUO (sicura, senza perdere dati)
 
----
-
-## Distinzione chiara dei tre PIN/accessi (come da te richiesto)
-
-| Accesso | A chi serve | Quando si usa |
-|---|---|---|
-| **PIN Format/Clienti** (attuale) | Partecipanti Open Mic, Dediche, ecc. | Resta identico, nessuna modifica |
-| **Credenziali Staff in cache** (Fase 1) | Tu/Staff già loggati almeno una volta online da quel PC | Default in tutti gli scenari offline |
-| **STAFF_MASTER_PIN** (Fase 2) | Solo emergenza | PC nuovo / cache vuota / cache corrotta |
+Aggiungo un **unico pannello Admin** chiamato *"Manutenzione Database"* con tutte le operazioni di pulizia in un posto solo, protette e reversibili quando possibile.
 
 ---
 
-## Fase 1 — Cache Staff + fallback automatico
+## 1. Nuova pagina Admin: `/admin/manutenzione`
 
-### Lato `local-server/server.js`
-- Nuovo file `local-server/data/staff-cache.json` (gitignored) con voci:
-  ```
-  { email, username, role, pwd_hash (PBKDF2), salt, last_online_login, expires_at }
-  ```
-- Nuovi endpoint:
-  - `POST /api/staff/cache-credentials` — riceve email+password dopo login Supabase riuscito, salva hash PBKDF2 (100k iter, SHA-256, salt random 16B) + ruolo. TTL default 30 giorni (configurabile via `.env` `STAFF_CACHE_TTL_DAYS`).
-  - `POST /api/staff/validate-offline` — riceve email+password, valida contro l'hash, ritorna `{ ok, role, username, local_token }` (token firmato HMAC con segreto in `.env`, durata 12h).
-  - `POST /api/staff/queue-write` — accoda mutazioni cloud in `local-server/data/pending-sync.json` quando offline.
-  - `POST /api/staff/flush-queue` — esegue il flush quando Internet torna (chiamato dal client).
+Sezione accessibile solo a `owner` (non a operator/staff).
 
-### Lato client
-- Nuovo `src/lib/localStaffAuth.ts`:
-  - `cacheCredentialsAfterLogin(email, password, role)` — chiamato in `AdminContext.login` **dopo** signin Supabase OK e ruolo risolto.
-  - `tryOfflineLogin(email, password)` — chiamato in `AdminContext.login` se `supabase.auth.signInWithPassword` fallisce per network error.
-  - `flushPendingSync()` — chiamato all'avvio di `AdminContext` quando Internet è disponibile.
-- Modifica `src/contexts/AdminContext.tsx`:
-  - `login()` prova prima Supabase. Se errore di rete → tenta `tryOfflineLogin`. Se OK, popola `session/staffRole/currentUser` con un oggetto "local session" (flag `isLocalSession: true`).
-  - `useEffect` ruolo: se `isLocalSession`, salta la fetch a `user_roles` e usa il ruolo dalla cache.
-- Indicatore UI: badge piccolo "🔌 Modalità Locale" nell'header admin quando `isLocalSession === true`.
+### A. Report peso database
+- Tabella con: nome tabella, numero righe, dimensione MB, ultima scrittura.
+- Ordinata per peso decrescente. Aggiornata on-demand.
+- Evidenzia in rosso le tabelle > 10.000 righe o > 50 MB.
 
-### Operazioni offline
-- Le azioni live (telecomando, broadcast, partiture, ricerca catalogo, start/stop) già funzionano via local-server → nessuna modifica.
-- Le scritture Cloud (settings globali, permessi, audit log) vengono **accodate** in `pending-sync.json` con timestamp + payload. Sincronizzate automaticamente al ritorno di Internet con notifica toast.
+### B. Separazione Reset ↔ Archivia serata
+- **Reset Serata** (già esistente) → resta com'è: azzera solo lo stato operativo.
+- **Archivia Serata** (nuovo) → sposta le `reservations` chiuse della serata in `reservations_archive` (stessa struttura + `archived_at`), poi le rimuove da `reservations`. Reversibile con "Ripristina ultima archiviazione" (finestra 24h).
 
----
+### C. Pulizia cronologie — con **3 livelli**
+Ogni livello mostra prima un'anteprima ("stai per cancellare N righe da X tabelle") e richiede doppia conferma.
 
-## Fase 2 — STAFF_MASTER_PIN (emergenza)
+1. **Pulisci > 90 giorni** (sicuro, consigliato mensile)
+   - `chat_messages`, `messages`, `private_messages` con `created_at < now() - 90d`
+   - `security_rate_limits`, `notification_logs`, `admin_audit_logs` > 90 giorni
+   - `live_reactions`, `typing_indicators` > 7 giorni
+   - `pin_sessions` invalidate > 30 giorni
+   - `broadcast_remote_sessions` inattive > 30 giorni
 
-### `.env` del local-server
-```
-STAFF_MASTER_PIN=        # vuoto = disattivato (default)
-STAFF_MASTER_PIN_ROLE=admin  # o 'owner'
-STAFF_CACHE_TTL_DAYS=30
-STAFF_LOCAL_TOKEN_SECRET=<auto-generato al primo avvio se mancante>
-```
+2. **Pulisci > 30 giorni** (medio, per manutenzione più aggressiva)
+   - Stesse tabelle sopra ma con soglia 30 giorni.
 
-### Endpoint
-- `POST /api/staff/master-pin-login` — valida il PIN, ritorna `local_token` con ruolo da `STAFF_MASTER_PIN_ROLE`. Funziona **solo se cache vuota** OR query param `?force=true` (per recupero esplicito).
+3. **Pulizia totale** (⚠️ distruttivo)
+   - Svuota completamente: chat, messaggi, log, notifiche, reazioni, sessioni PIN scadute, rate limits, indicatori digitazione, broadcast_remote_sessions inattive.
+   - **NON tocca**: `profiles`, `user_roles`, `songs`, `songbook_files`, `event_booking_rules`, `free_mode_settings`, `assistant_settings`, `game_settings`, `leaderboard_stats`, `user_badges`, `permissions`, `admin_users` — cioè configurazione, catalogo e identità utenti.
+   - Richiede: digitare `CANCELLA TUTTO` + conferma finale.
+   - **Obbligatorio**: prima di eseguire propone di scaricare il backup (punto D).
 
-### UI
-- Nella schermata `/admin` (AdminLogin), sotto "Hai dimenticato le credenziali?", aggiungo link discreto: **"Accesso di emergenza locale"** → apre dialog che chiede solo il Master PIN. Visibile solo quando il local-server risponde a `/api/ping` e Supabase non risponde (rilevamento automatico).
+### D. Export Backup completo (JSON + ZIP)
+- Pulsante "Scarica backup completo" (sempre disponibile, non solo prima di cancellare).
+- Genera uno ZIP con un file `.json` per ogni tabella pubblica (fino a 100k righe per tabella; oltre, avviso).
+- Nome file: `nonceduo-backup-YYYYMMDD-HHmm.zip`.
+- Anche opzione "Backup solo cronologie" (solo le tabelle che le pulizie andrebbero a toccare) — utile prima della pulizia totale.
 
 ---
 
-## Procedura aggiornamento — backup esteso
+## 2. Come lo faccio in sicurezza (dettaglio tecnico)
 
-In `AdminSettingsTab.tsx` (sezione "Aggiornamento + Avvio") e in `GUIDA-LOCALE.md`, aggiorno il blocco backup per includere **`staff-cache.json`** insieme agli altri:
-```
-local-server/data/
-  ├── pin-cache.json
-  ├── local-sessions.json
-  ├── staff-cache.json        ← NUOVO
-  ├── pending-sync.json       ← NUOVO
-  ├── catalog.json
-  └── songbook/
-```
-La rotazione automatica (ultimi 5 backup) già implementata copre anche questi nuovi file.
+- Tutte le operazioni distruttive passano per **RPC `SECURITY DEFINER`** con check `is_owner(auth.uid())` — nessuna DELETE dal client.
+- Ogni pulizia scrive una riga in `admin_audit_logs` con: chi, quando, cosa, quante righe cancellate.
+- La tabella `reservations_archive` viene creata con GRANT e RLS (solo owner legge/scrive).
+- L'export usa una Edge Function `export-backup` che streamma JSON (evita di caricare tutto in memoria browser).
+- Nessuna modifica alle tabelle esistenti eccetto l'aggiunta di `reservations_archive` e degli RPC.
 
 ---
 
-## Dettagli tecnici sicurezza
+## 3. Cosa NON faccio (per sicurezza)
 
-- **PBKDF2-SHA256** con 100.000 iterazioni e salt random 16B per password Staff in cache (stesso standard già usato per i PIN).
-- **Local token HMAC-SHA256** firmato con `STAFF_LOCAL_TOKEN_SECRET` (auto-generato in `.env` se assente). Payload: `{ email, role, exp }`. Durata 12h.
-- **`staff-cache.json` ha permessi 600** (solo owner) — chmod automatico alla scrittura.
-- **Master PIN** validato con confronto a tempo costante (`crypto.timingSafeEqual`).
-- **Rate limiting locale**: max 5 tentativi/15min per IP su `/api/staff/validate-offline` e `/api/staff/master-pin-login`.
-- Tutte le scritture cloud accodate hanno **idempotency key** per evitare doppie esecuzioni al flush.
+- Non tocco `Reset Serata` esistente (resta identico).
+- Non modifico RLS di tabelle già in produzione.
+- Non aggiungo cron automatici: tutto è **manuale + confermato**.
+- Nessun `TRUNCATE` — sempre `DELETE` con condizione, così i trigger e cascade funzionano correttamente.
 
 ---
 
-## File toccati
+## 4. Ordine di implementazione (una sola sessione)
 
-**Nuovi:**
-- `src/lib/localStaffAuth.ts`
-- `local-server/lib/staff-cache.js` (logica PBKDF2 + token)
-- `local-server/lib/pending-sync.js`
-
-**Modificati:**
-- `local-server/server.js` (5 nuovi endpoint + auto-gen secret)
-- `local-server/.env.example` (4 nuove variabili documentate)
-- `src/contexts/AdminContext.tsx` (cache + fallback + flush)
-- `src/components/AdminLogin.tsx` (link emergenza + dialog Master PIN)
-- `src/components/AdminDashboard.tsx` (badge "Modalità Locale")
-- `src/components/AdminSettingsTab.tsx` (backup esteso, doc Master PIN)
-- `local-server/GUIDA-LOCALE.md` (sezione "Staff Offline" + backup esteso)
+1. Migration: crea `reservations_archive`, RPC `admin_cleanup_by_age(days int)`, `admin_cleanup_all()`, `admin_archive_reservations(before date)`, `admin_db_stats()`.
+2. Edge Function `export-backup` (ZIP streaming, solo owner).
+3. Pagina `/admin/manutenzione` con le 4 sezioni (Peso · Archivia · Pulizia · Backup).
+4. Link nel menu admin (solo owner).
+5. Test manuale su ogni pulsante con anteprima.
 
 ---
 
-## Cosa farei diversamente / consiglio aggiuntivo
+## 5. Rischi residui
 
-1. **Master PIN forte di default disattivato**: se attivato per la prima volta, mostro un warning chiaro in admin ("Chiunque con questo PIN ha accesso Staff completo locale"). Tu lo abiliti esplicitamente, non parte attivo.
-2. **Whitelist email per cache**: opzionale `STAFF_CACHE_ALLOWED_EMAILS=email1,email2` per evitare che un secondo utente Staff casuale lasci credenziali su un PC condiviso. Se vuota → tutti gli Staff loggati vengono cachati.
-3. **Pulsante "Svuota cache Staff locale"** in Admin Settings: utile prima di prestare/dismettere il PC.
-4. **Log delle sessioni offline** in un file `staff-offline-log.json` (data, email, ruolo, durata) per audit a posteriori quando torna Internet.
+- Cancellazioni massicce possono impegnare il DB per qualche secondo → eseguite fuori orario serata.
+- Il backup ZIP di tutto il DB può essere grande (stimato 5–20 MB oggi) → tempo di download qualche secondo.
+- "Pulizia totale" è irreversibile senza il backup — l'UI **impone** di scaricarlo prima.
 
-Confermi questi 4 extra o ne salto qualcuno?
+---
+
+## Domanda prima di partire
+
+Confermi questi due punti?
+- **Archivia Serata**: le prenotazioni finite vanno in `reservations_archive` (non cancellate). OK?
+- **Menu**: metto la voce solo sotto il tuo utente `owner` (non visibile a operator/staff). OK?
