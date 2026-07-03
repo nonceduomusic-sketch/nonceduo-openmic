@@ -76,6 +76,7 @@ const MENU_ITEMS: MenuItem[] = [
   { key: "permissions", label: "Permessi", icon: Shield, group: "Gestione", ownerOnly: true },
   { key: "audit", label: "Audit", icon: Database, group: "Gestione", ownerOnly: true },
   { key: "manuale", label: "Manuale", icon: Book, group: "Gestione" },
+  { key: "db-maintenance" as AdminMainTab, label: "Manutenzione DB", icon: Database, group: "Gestione", ownerOnly: true },
 ];
 
 interface AdminMobileDrawerProps {
