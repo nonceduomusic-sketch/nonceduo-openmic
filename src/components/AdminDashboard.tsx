@@ -59,6 +59,7 @@ import { useSongs } from '@/hooks/useSongs';
 import type { Song as DbSong } from '@/hooks/useSongs';
 import { toast as sonnerToast } from 'sonner';
 import AdminManual from '@/pages/AdminManual';
+import AdminDBMaintenance from '@/components/admin/AdminDBMaintenance';
 import { AdminSidebar, type AdminMainTab } from '@/components/admin/AdminSidebar';
 import {
   AlertDialog,
