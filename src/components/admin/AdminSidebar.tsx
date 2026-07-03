@@ -153,6 +153,7 @@ export function AdminSidebar({
     if (key === "operators") return !isOwner;
     if (key === "permissions") return !isOwner;
     if (key === "audit") return !isOwner;
+    if (key === "db-maintenance") return !isOwner;
     // Assistant is owner/admin only
     if (key === "assistant") return !isOwner && !access.openmic;
     // Trasmetti available to all staff
