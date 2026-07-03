@@ -204,11 +204,14 @@ serve(async (req) => {
       
       if (!roleData) {
         console.log("User exists but doesn't have operator role");
+        await logAttempt(false);
         return new Response(
           JSON.stringify({ error: "Credenziali non valide" }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+
+      await logAttempt(true);
       
       console.log(`Operator ${trimmedUsername} authenticated successfully`);
       
