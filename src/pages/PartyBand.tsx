@@ -257,6 +257,42 @@ const PartyBand: React.FC = () => {
         </div>
       </section>
 
+      {/* Live Gallery Section */}
+      <section className="py-24 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent pointer-events-none" />
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/10 border border-secondary/30 mb-4">
+              <Camera className="w-4 h-4 text-secondary" />
+              <span className="text-secondary font-semibold text-xs uppercase tracking-wider">Live in azione</span>
+            </div>
+            <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 text-foreground">
+              Dal <span className="neon-text-pink">palco</span>, senza filtri
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              Scatti dai nostri live. È così che suona una festa Non C'è Band.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 auto-rows-[180px] md:auto-rows-[220px] gap-3 md:gap-4 max-w-6xl mx-auto">
+            {bandGallery.map((photo, i) => (
+              <div
+                key={i}
+                className={`group relative overflow-hidden rounded-xl md:rounded-2xl bg-card border border-border hover:border-primary/60 transition-all duration-500 ${photo.span ?? ''}`}
+              >
+                <img
+                  src={photo.src}
+                  alt={photo.alt}
+                  loading="lazy"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* What We Offer Section */}
       <section className="py-24">
         <div className="container mx-auto px-4">
