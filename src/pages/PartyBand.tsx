@@ -1,9 +1,36 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Music, Phone, Mail, Instagram, PartyPopper, Users, Sparkles, Volume2, ArrowLeft, ChevronDown, Mic2, Zap, Heart } from 'lucide-react';
+import { Music, Phone, Mail, Instagram, PartyPopper, Users, Sparkles, Volume2, ArrowLeft, ChevronDown, Mic2, Zap, Heart, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SEO } from '@/components/SEO';
 import { TestimonialsSection } from '@/components/TestimonialsSection';
+import bandFullStage from '@/assets/band/band-full-stage.jpg.asset.json';
+import bandSinger1 from '@/assets/band/band-singer-1.jpg.asset.json';
+import bandSinger2 from '@/assets/band/band-singer-2.jpg.asset.json';
+import bandSinger3 from '@/assets/band/band-singer-3.jpg.asset.json';
+import bandGuitarVocal from '@/assets/band/band-guitar-vocal.jpg.asset.json';
+import bandGuitar2 from '@/assets/band/band-guitar-2.jpg.asset.json';
+import bandGuitarDrums from '@/assets/band/band-guitar-drums.jpg.asset.json';
+import bandBass from '@/assets/band/band-bass.jpg.asset.json';
+import bandBassBack from '@/assets/band/band-bass-back.jpg.asset.json';
+import bandDrums from '@/assets/band/band-drums.jpg.asset.json';
+import bandDrums2 from '@/assets/band/band-drums-2.jpg.asset.json';
+import bandDuel from '@/assets/band/band-duel.jpg.asset.json';
+
+const bandGallery = [
+  { src: bandFullStage.url, alt: 'Non C\'è Band sul palco - formazione completa', span: 'md:col-span-2 md:row-span-2' },
+  { src: bandSinger1.url, alt: 'Voce live' },
+  { src: bandDrums.url, alt: 'Batteria live' },
+  { src: bandGuitarVocal.url, alt: 'Chitarra e voce' },
+  { src: bandBass.url, alt: 'Bassista live' },
+  { src: bandDuel.url, alt: 'Chitarra e voce in duetto' },
+  { src: bandGuitarDrums.url, alt: 'Chitarra e batteria' },
+  { src: bandSinger3.url, alt: 'Cantante al microfono' },
+  { src: bandBassBack.url, alt: 'Bassista di spalle sul palco' },
+  { src: bandGuitar2.url, alt: 'Chitarrista in azione' },
+  { src: bandDrums2.url, alt: 'Batterista dettaglio' },
+  { src: bandSinger2.url, alt: 'Voce sotto le luci blu' },
+];
 
 const PartyBand: React.FC = () => {
   const scrollToSection = (id: string) => {
