@@ -1,9 +1,36 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Music, Phone, Mail, Instagram, PartyPopper, Users, Sparkles, Volume2, ArrowLeft, ChevronDown, Mic2, Zap, Heart } from 'lucide-react';
+import { Music, Phone, Mail, Instagram, PartyPopper, Users, Sparkles, Volume2, ArrowLeft, ChevronDown, Mic2, Zap, Heart, Camera } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SEO } from '@/components/SEO';
 import { TestimonialsSection } from '@/components/TestimonialsSection';
+import bandFullStage from '@/assets/band/band-full-stage.jpg.asset.json';
+import bandSinger1 from '@/assets/band/band-singer-1.jpg.asset.json';
+import bandSinger2 from '@/assets/band/band-singer-2.jpg.asset.json';
+import bandSinger3 from '@/assets/band/band-singer-3.jpg.asset.json';
+import bandGuitarVocal from '@/assets/band/band-guitar-vocal.jpg.asset.json';
+import bandGuitar2 from '@/assets/band/band-guitar-2.jpg.asset.json';
+import bandGuitarDrums from '@/assets/band/band-guitar-drums.jpg.asset.json';
+import bandBass from '@/assets/band/band-bass.jpg.asset.json';
+import bandBassBack from '@/assets/band/band-bass-back.jpg.asset.json';
+import bandDrums from '@/assets/band/band-drums.jpg.asset.json';
+import bandDrums2 from '@/assets/band/band-drums-2.jpg.asset.json';
+import bandDuel from '@/assets/band/band-duel.jpg.asset.json';
+
+const bandGallery = [
+  { src: bandFullStage.url, alt: 'Non C\'è Band sul palco - formazione completa', span: 'md:col-span-2 md:row-span-2' },
+  { src: bandSinger1.url, alt: 'Voce live' },
+  { src: bandDrums.url, alt: 'Batteria live' },
+  { src: bandGuitarVocal.url, alt: 'Chitarra e voce' },
+  { src: bandBass.url, alt: 'Bassista live' },
+  { src: bandDuel.url, alt: 'Chitarra e voce in duetto' },
+  { src: bandGuitarDrums.url, alt: 'Chitarra e batteria' },
+  { src: bandSinger3.url, alt: 'Cantante al microfono' },
+  { src: bandBassBack.url, alt: 'Bassista di spalle sul palco' },
+  { src: bandGuitar2.url, alt: 'Chitarrista in azione' },
+  { src: bandDrums2.url, alt: 'Batterista dettaglio' },
+  { src: bandSinger2.url, alt: 'Voce sotto le luci blu' },
+];
 
 const PartyBand: React.FC = () => {
   const scrollToSection = (id: string) => {
@@ -56,12 +83,19 @@ const PartyBand: React.FC = () => {
 
       {/* Hero Section */}
       <section className="relative min-h-screen flex items-center justify-center pt-20 overflow-hidden">
-        {/* Animated background */}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/20 via-accent/10 to-background z-0" />
-        <div className="absolute inset-0 overflow-hidden z-0">
-          <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-primary/30 rounded-full blur-[150px] animate-pulse" />
-          <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-secondary/30 rounded-full blur-[120px] animate-pulse delay-700" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-accent/20 rounded-full blur-[100px] animate-pulse delay-1000" />
+        {/* Background photo */}
+        <div className="absolute inset-0 z-0">
+          <img
+            src={bandFullStage.url}
+            alt="Non C'è Band live sul palco"
+            className="w-full h-full object-cover opacity-40"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-background/70 via-background/60 to-background z-0" />
+        </div>
+        <div className="absolute inset-0 overflow-hidden z-0 pointer-events-none">
+          <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[150px] animate-pulse" />
+          <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-secondary/20 rounded-full blur-[120px] animate-pulse delay-700" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-accent/15 rounded-full blur-[100px] animate-pulse delay-1000" />
         </div>
 
         {/* Floating elements */}
@@ -219,6 +253,42 @@ const PartyBand: React.FC = () => {
             <p className="text-muted-foreground">
               💡 <strong className="text-foreground">Stesso repertorio, stessa energia</strong> — solo con più strumenti quando serve
             </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Live Gallery Section */}
+      <section className="py-24 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent pointer-events-none" />
+        <div className="container mx-auto px-4 relative z-10">
+          <div className="text-center mb-14">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/10 border border-secondary/30 mb-4">
+              <Camera className="w-4 h-4 text-secondary" />
+              <span className="text-secondary font-semibold text-xs uppercase tracking-wider">Live in azione</span>
+            </div>
+            <h2 className="font-display text-3xl md:text-4xl font-bold mb-4 text-foreground">
+              Dal <span className="neon-text-pink">palco</span>, senza filtri
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              Scatti dai nostri live. È così che suona una festa Non C'è Band.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 auto-rows-[180px] md:auto-rows-[220px] gap-3 md:gap-4 max-w-6xl mx-auto">
+            {bandGallery.map((photo, i) => (
+              <div
+                key={i}
+                className={`group relative overflow-hidden rounded-xl md:rounded-2xl bg-card border border-border hover:border-primary/60 transition-all duration-500 ${photo.span ?? ''}`}
+              >
+                <img
+                  src={photo.src}
+                  alt={photo.alt}
+                  loading="lazy"
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-background/0 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              </div>
+            ))}
           </div>
         </div>
       </section>
