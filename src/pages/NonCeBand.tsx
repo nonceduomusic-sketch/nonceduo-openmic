@@ -242,22 +242,20 @@ const NonCeBand: React.FC = () => {
 
           <div className="grid grid-cols-2 gap-4 md:gap-6 max-w-5xl mx-auto">
             {lineup.map((m, i) => {
-              // Frontline top row: taller portrait to show faces; backline bottom row: wider landscape for groove/motor depth
+              // Frontline top row: taller portrait; backline bottom row: slightly wider but still portrait to keep faces intact
               const isFront = i < 2;
               return (
                 <div
                   key={i}
                   className={`group relative rounded-2xl overflow-hidden border border-border hover:border-primary/60 transition-all duration-500 ${
-                    isFront ? 'aspect-[3/4]' : 'aspect-[4/3]'
+                    isFront ? 'aspect-[3/4]' : 'aspect-[4/5]'
                   }`}
                 >
                   <img
                     src={m.photo}
                     alt={m.role}
                     loading="lazy"
-                    className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${
-                      isFront ? 'object-top' : 'object-center'
-                    }`}
+                    className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-110"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
                   <div className="absolute inset-x-0 bottom-0 p-4 md:p-5">
