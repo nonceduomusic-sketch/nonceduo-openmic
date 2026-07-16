@@ -82,7 +82,7 @@ const setlist = [
 ];
 
 const eventi = [
-  { icon: Flame, title: 'Feste in Piazza', desc: 'Sagre, patronali, capodanni. Impianto e luci pro.' },
+  { icon: Flame, title: 'Feste in Piazza', desc: 'Patronali, capodanni, eventi comunali. Impianto e luci pro.' },
   { icon: Users, title: 'Matrimoni & Ricevimenti', desc: 'La festa serale che gli ospiti ricorderanno.' },
   { icon: Radio, title: 'Locali & Live Club', desc: 'Serate rock/pop con sound da concerto vero.' },
   { icon: Sparkles, title: 'Eventi Aziendali', desc: 'Gala, inaugurazioni, party di fine anno.' },
@@ -477,7 +477,7 @@ const NonCeBand: React.FC = () => {
               Dove ci trovate a suonare
             </h2>
             <p className="text-muted-foreground mb-8 text-lg">
-              Dalla festa di paese al matrimonio da mille invitati: adattiamo impianto, scaletta e
+              Dalle feste in piazza al matrimonio da mille invitati: adattiamo impianto, scaletta e
               formazione all'evento.
             </p>
             <div className="grid sm:grid-cols-2 gap-4">
