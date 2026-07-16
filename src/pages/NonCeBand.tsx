@@ -266,9 +266,6 @@ const NonCeBand: React.FC = () => {
                     {m.role}
                   </div>
                 </div>
-                <div className="absolute top-3 right-3 font-display text-3xl font-black text-primary/70">
-                  0{i + 1}
-                </div>
               </div>
             ))}
           </div>
