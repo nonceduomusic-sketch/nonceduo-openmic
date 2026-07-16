@@ -477,7 +477,7 @@ const NonCeBand: React.FC = () => {
               Dove ci trovate a suonare
             </h2>
             <p className="text-muted-foreground mb-8 text-lg">
-              Dalla sagra di paese al matrimonio da mille invitati: adattiamo impianto, scaletta e
+              Dalla festa di paese al matrimonio da mille invitati: adattiamo impianto, scaletta e
               formazione all'evento.
             </p>
             <div className="grid sm:grid-cols-2 gap-4">
