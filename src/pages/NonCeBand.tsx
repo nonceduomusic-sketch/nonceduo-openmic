@@ -36,8 +36,8 @@ const WA_LINK =
   'https://wa.me/393807911941?text=Ciao!%20Vorrei%20info%20su%20Non%20C%27%C3%A8%20Band%20per%20il%20mio%20evento';
 
 const lineup = [
-  { icon: Mic2, role: 'Voce', tag: 'Frontman', photo: bandSinger1.url },
-  { icon: Guitar, role: 'Chitarra & Voce', tag: 'Riff & armonie', photo: bandGuitarVocal.url },
+  { icon: Mic2, role: 'Voce', tag: 'Frontline', photo: bandSinger1.url },
+  { icon: Guitar, role: 'Chitarra & Voce', tag: 'Frontline', photo: bandGuitarVocal.url },
   { icon: Music2, role: 'Basso', tag: 'Groove', photo: bandBass.url },
   { icon: Drum, role: 'Batteria', tag: 'Motore', photo: bandDrums.url },
 ];
