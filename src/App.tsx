@@ -60,6 +60,8 @@ const AppContent = () => (
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/partyband" element={<PartyBand />} />
+      <Route path="/band" element={<NonCeBand />} />
+      <Route path="/nonceband" element={<NonCeBand />} />
       {/* SITO (vetrina) */}
       <Route path="/openmic" element={<OpenMicInfo />} />
       <Route path="/furore" element={<FuroreInfo />} />
