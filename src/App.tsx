@@ -17,6 +17,7 @@ import AdminReset from "./pages/AdminReset";
 import AdminManual from "./pages/AdminManual";
 import JoinChat from "./pages/JoinChat";
 import PartyBand from "./pages/PartyBand";
+import NonCeBand from "./pages/NonCeBand";
 import Social from "./pages/Social";
 import SocialAuth from "./pages/SocialAuth";
 import SocialDashboard from "./pages/SocialDashboard";
