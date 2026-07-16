@@ -241,33 +241,41 @@ const NonCeBand: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-2 gap-4 md:gap-6 max-w-5xl mx-auto">
-            {lineup.map((m, i) => (
-              <div
-                key={i}
-                className="group relative aspect-[3/4] rounded-2xl overflow-hidden border border-border hover:border-primary/60 transition-all duration-500"
-              >
-                <img
-                  src={m.photo}
-                  alt={m.role}
-                  loading="lazy"
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-                <div className="absolute inset-x-0 bottom-0 p-4 md:p-5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/40 flex items-center justify-center">
-                      <m.icon className="w-4 h-4 text-primary" />
+            {lineup.map((m, i) => {
+              // Frontline top row: taller portrait to show faces; backline bottom row: wider landscape for groove/motor depth
+              const isFront = i < 2;
+              return (
+                <div
+                  key={i}
+                  className={`group relative rounded-2xl overflow-hidden border border-border hover:border-primary/60 transition-all duration-500 ${
+                    isFront ? 'aspect-[3/4]' : 'aspect-[4/3]'
+                  }`}
+                >
+                  <img
+                    src={m.photo}
+                    alt={m.role}
+                    loading="lazy"
+                    className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 ${
+                      isFront ? 'object-top' : 'object-center'
+                    }`}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 p-4 md:p-5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/40 flex items-center justify-center">
+                        <m.icon className="w-4 h-4 text-primary" />
+                      </div>
+                      <span className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
+                        {m.tag}
+                      </span>
                     </div>
-                    <span className="text-[10px] uppercase tracking-[0.25em] text-muted-foreground">
-                      {m.tag}
-                    </span>
-                  </div>
-                  <div className="font-display text-xl md:text-2xl font-black text-foreground">
-                    {m.role}
+                    <div className="font-display text-xl md:text-2xl font-black text-foreground">
+                      {m.role}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <p className="mt-8 text-center text-sm text-muted-foreground">
