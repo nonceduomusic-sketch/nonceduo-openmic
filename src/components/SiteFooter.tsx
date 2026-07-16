@@ -86,8 +86,8 @@ export const SiteFooter: React.FC<SiteFooterProps> = ({
             <Link to="/social" className="text-muted-foreground hover:text-primary transition-colors">
               Community
             </Link>
-            <Link to="/partyband" className="text-muted-foreground hover:text-primary transition-colors">
-              Party Band
+            <Link to="/band" className="text-muted-foreground hover:text-primary transition-colors">
+              Non C&apos;è Band
             </Link>
             <Link to="/collabora" className="text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
               <Handshake className="w-3 h-3" />

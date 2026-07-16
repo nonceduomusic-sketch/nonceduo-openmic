@@ -58,7 +58,7 @@ export const MobileBottomNav = forwardRef<HTMLElement, MobileBottomNavProps>(({ 
       path: '/', 
       icon: <Home className="w-5 h-5" />, 
       label: 'Home', 
-      matchPaths: ['/', '/partyband'],
+      matchPaths: ['/', '/partyband', '/band', '/nonceband'],
       activeClass: 'text-primary'
     },
     ...(isOpenmicOnMenu ? [{ 
