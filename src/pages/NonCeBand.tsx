@@ -243,6 +243,7 @@ const NonCeBand: React.FC = () => {
                 <span className="hidden sm:inline">Prenota la band</span>
               </Button>
             </a>
+            <BandMenu />
           </div>
         </div>
       </nav>
