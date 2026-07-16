@@ -16,8 +16,23 @@ import {
   Users,
   Sparkles,
   Radio,
+  Menu,
+  ExternalLink,
+  Shield,
+  Download,
+  MessageCircle,
+  Gamepad2,
+  Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet';
+import { useFormatActiveCheck } from '@/hooks/useGlobalFormatSettings';
 import { SEO } from '@/components/SEO';
 import bandFullStage from '@/assets/band/band-full-stage.jpg.asset.json';
 import bandSinger1 from '@/assets/band/band-singer-1.jpg.asset.json';
