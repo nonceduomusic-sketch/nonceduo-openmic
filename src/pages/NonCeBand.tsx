@@ -88,6 +88,110 @@ const eventi = [
   { icon: Sparkles, title: 'Eventi Aziendali', desc: 'Gala, inaugurazioni, party di fine anno.' },
 ];
 
+const BandMenu: React.FC = () => {
+  const { isActive: isOpenmicMenu } = useFormatActiveCheck('openmic', 'menu');
+  const { isActive: isOpenmicSite } = useFormatActiveCheck('openmic', 'site');
+  const { isActive: isDedicheMenu } = useFormatActiveCheck('dediche', 'menu');
+  const { isActive: isDedicheSite } = useFormatActiveCheck('dediche', 'site');
+  const { isActive: isGiochiMenu } = useFormatActiveCheck('giochi', 'menu');
+  const { isActive: isGiochiSite } = useFormatActiveCheck('giochi', 'site');
+  const { isActive: isFuroreMenu } = useFormatActiveCheck('furore', 'menu');
+  const { isActive: isFuroreSite } = useFormatActiveCheck('furore', 'site');
+  const { isActive: isCommunityMenu } = useFormatActiveCheck('community', 'menu');
+  const { isActive: isCommunitySite } = useFormatActiveCheck('community', 'site');
+
+  const menuFormats = [
+    (isOpenmicSite && isOpenmicMenu) && { label: 'Open Mic', to: '/openmic', icon: Mic2 },
+    (isFuroreSite && isFuroreMenu) && { label: "Non C'è Furore", to: '/furore', icon: Zap },
+    (isDedicheSite && isDedicheMenu) && { label: 'Dediche', to: '/messaggi', icon: MessageCircle },
+    (isGiochiSite && isGiochiMenu) && { label: 'Giochi', to: '/giochi', icon: Gamepad2 },
+    (isCommunitySite && isCommunityMenu) && { label: 'Community', to: '/social', icon: Users },
+  ].filter(Boolean) as { label: string; to: string; icon: React.ElementType }[];
+
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="ghost" size="icon" className="rounded-xl md:hidden">
+          <Menu className="w-5 h-5" />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="w-[320px] sm:w-[380px]">
+        <SheetHeader>
+          <SheetTitle className="font-display neon-text-pink">Menu</SheetTitle>
+        </SheetHeader>
+
+        <nav className="mt-6 space-y-2">
+          <Link to="/">
+            <Button variant="ghost" className="w-full justify-start">
+              Home
+            </Button>
+          </Link>
+
+          <Link to="/band">
+            <Button variant="ghost" className="w-full justify-start">
+              Non C&apos;è Band
+            </Button>
+          </Link>
+
+          {menuFormats.map((item) => (
+            <Link key={item.to} to={item.to}>
+              <Button variant="ghost" className="w-full justify-start gap-2">
+                <item.icon className="w-4 h-4" />
+                {item.label}
+              </Button>
+            </Link>
+          ))}
+
+          <div className="pt-3 mt-3 border-t border-border/60" />
+
+          <Link to="/app">
+            <Button className="w-full neon-button-cyan justify-between">
+              Entra nell&apos;App
+              <ExternalLink className="w-4 h-4" />
+            </Button>
+          </Link>
+        </nav>
+
+        <div className="mt-6 glass-card p-4">
+          <p className="text-sm text-muted-foreground mb-3">Per info e date eventi:</p>
+          <div className="grid grid-cols-3 gap-2">
+            <a href="https://wa.me/393807911941" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="icon" className="w-full">
+                <Phone className="w-4 h-4" />
+              </Button>
+            </a>
+            <a href="https://www.instagram.com/nonceduo.music/" target="_blank" rel="noopener noreferrer">
+              <Button variant="outline" size="icon" className="w-full">
+                <Instagram className="w-4 h-4" />
+              </Button>
+            </a>
+            <a href="mailto:nonceduo.music@gmail.com">
+              <Button variant="outline" size="icon" className="w-full">
+                <Mail className="w-4 h-4" />
+              </Button>
+            </a>
+          </div>
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-border/60 space-y-2">
+          <Link to="/installa">
+            <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground">
+              <Download className="w-4 h-4 mr-2" />
+              Installa App
+            </Button>
+          </Link>
+          <Link to="/admin">
+            <Button variant="ghost" className="w-full justify-start text-muted-foreground hover:text-foreground">
+              <Shield className="w-4 h-4 mr-2" />
+              Area Staff
+            </Button>
+          </Link>
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+};
+
 const NonCeBand: React.FC = () => {
   const scrollTo = (id: string) =>
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
