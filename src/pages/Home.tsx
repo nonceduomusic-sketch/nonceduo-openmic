@@ -183,7 +183,7 @@ const Home: React.FC = () => {
                 Contattaci
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </Button>
-              <Link to="/partyband" className="w-full sm:w-auto">
+              <Link to="/band" className="w-full sm:w-auto">
                 <Button 
                   size="lg" 
                   variant="outline"
@@ -436,7 +436,7 @@ const Home: React.FC = () => {
               </div>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center px-4">
-                <Link to="/partyband" className="w-full sm:w-auto">
+                <Link to="/band" className="w-full sm:w-auto">
                   <Button 
                     size="lg" 
                     className="w-full neon-button-pink text-lg px-10 py-6 group touch-target"

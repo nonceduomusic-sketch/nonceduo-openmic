@@ -81,9 +81,9 @@ export const SiteHeader: React.FC<{ className?: string }> = ({ className }) => {
                   </Button>
                 </Link>
 
-                <Link to="/partyband">
+                <Link to="/band">
                   <Button variant="ghost" className="w-full justify-start">
-                    Party Band
+                    Non C&apos;è Band
                   </Button>
                 </Link>
 

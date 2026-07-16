@@ -65,7 +65,7 @@ export const DesktopHeader: React.FC<DesktopHeaderProps> = ({
   const renderMainNav = () => (
     <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide min-w-0">
       <NavButton to="/" icon={<Home className="w-4 h-4" />} label="Home" />
-      <NavButton to="/partyband" icon={<PartyPopper className="w-4 h-4" />} label="Party Band" />
+      <NavButton to="/band" icon={<PartyPopper className="w-4 h-4" />} label="Non C'è Band" />
       {isOpenmicActive && (
         <NavButton 
           to="/openmic" 
