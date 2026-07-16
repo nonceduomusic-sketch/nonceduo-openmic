@@ -236,7 +236,7 @@ const NonCeBand: React.FC = () => {
               </h2>
             </div>
             <p className="text-muted-foreground max-w-md text-lg">
-              Nessuna base preregistrata. Ogni nota è suonata dal vivo, ogni sera.
+              Due voci al centro del palco, chitarra e voce insieme. Nessuna base preregistrata: ogni nota è suonata dal vivo, ogni sera.
             </p>
           </div>
 
