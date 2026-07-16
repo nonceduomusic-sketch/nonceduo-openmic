@@ -17,6 +17,7 @@ import AdminReset from "./pages/AdminReset";
 import AdminManual from "./pages/AdminManual";
 import JoinChat from "./pages/JoinChat";
 import PartyBand from "./pages/PartyBand";
+import NonCeBand from "./pages/NonCeBand";
 import Social from "./pages/Social";
 import SocialAuth from "./pages/SocialAuth";
 import SocialDashboard from "./pages/SocialDashboard";
@@ -59,6 +60,8 @@ const AppContent = () => (
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/partyband" element={<PartyBand />} />
+      <Route path="/band" element={<NonCeBand />} />
+      <Route path="/nonceband" element={<NonCeBand />} />
       {/* SITO (vetrina) */}
       <Route path="/openmic" element={<OpenMicInfo />} />
       <Route path="/furore" element={<FuroreInfo />} />
